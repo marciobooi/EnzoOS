@@ -6,7 +6,12 @@ const { getDb } = require('../db/database');
 async function saveAndApplyConfig(req, res) {
   try {
     const answers = req.body;
-    const presetName = req.body.presetName || 'Default Wizard Setup';
+    if (!answers || typeof answers !== 'object') {
+      return res.status(400).json({ success: false, error: 'Invalid input payload' });
+    }
+
+    // Input sanitization
+    const presetName = (req.body.presetName || 'Default Wizard Setup').toString().substring(0, 50).replace(/[^a-zA-Z0-9 _-]/g, '');
 
     // Generate the CamillaDSP YAML structure (and write to file inside the generator)
     const newConfig = generateDSPConfig(answers);

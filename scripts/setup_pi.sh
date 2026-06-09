@@ -15,7 +15,7 @@ echo "========================================================="
 # 1. System Updates & Essential Packages
 echo ">> Updating system and installing dependencies..."
 apt-get update
-apt-get install -y mpd mpc upmpdcli shairport-sync nginx curl wget tar alsa-utils
+apt-get install -y mpd mpc upmpdcli shairport-sync nginx curl wget tar alsa-utils network-manager
 
 # Kiosk Mode GUI packages
 echo ">> Installing GUI and Kiosk mode packages..."
@@ -125,10 +125,10 @@ exec openbox-session
 EOF
 chown pi:pi "$PI_HOME/.xinitrc"
 
-echo ">> Configuring sudoers for CamillaDSP restart..."
-# Allow user 'pi' to run systemctl restart camilladsp without a password
-echo "pi ALL=(ALL) NOPASSWD: /bin/systemctl restart camilladsp, /usr/bin/systemctl restart camilladsp" > /etc/sudoers.d/camilladsp
-chmod 0440 /etc/sudoers.d/camilladsp
+echo ">> Configuring sudoers for CamillaDSP restart and nmcli..."
+# Allow user 'pi' to run systemctl restart camilladsp and nmcli without a password
+echo "pi ALL=(ALL) NOPASSWD: /bin/systemctl restart camilladsp, /usr/bin/systemctl restart camilladsp, /usr/bin/nmcli" > /etc/sudoers.d/hifi_permissions
+chmod 0440 /etc/sudoers.d/hifi_permissions
 
 # 6. Installing Node Modules & Building Frontend
 echo ">> Building application..."

@@ -2,14 +2,27 @@ const express = require('express');
 const http = require('http');
 const WebSocket = require('ws');
 const cors = require('cors');
+const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
 
 const mpdClient = require('./mpdClient');
 const dspClient = require('./dspClient');
 const apiRoutes = require('./routes/api');
 
 const app = express();
+
+// Security Middlewares
+app.use(helmet()); // Sets HTTP headers to protect against common vulnerabilities
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '1mb' })); // Limit body size to prevent DoS
+
+// Rate Limiting to prevent API spam (100 requests per 15 minutes per IP)
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 100,
+  message: { success: false, error: 'Too many requests, please try again later.' }
+});
+app.use('/api', limiter);
 
 const server = http.createServer(app);
 const wss = new WebSocket.Server({ server, path: '/ws' });

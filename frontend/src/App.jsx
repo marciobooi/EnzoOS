@@ -3,6 +3,7 @@ import NowPlaying from './components/NowPlaying';
 import Controls from './components/Controls';
 import SourceSelect from './components/SourceSelect';
 import DspWizard from './components/DspWizard';
+import NetworkSettings from './components/NetworkSettings';
 
 function App() {
   const [state, setState] = useState({
@@ -15,6 +16,7 @@ function App() {
 
   const [ws, setWs] = useState(null);
   const [showWizard, setShowWizard] = useState(false);
+  const [showNetwork, setShowNetwork] = useState(false);
 
   useEffect(() => {
     // Connect to WebSocket using the current host via the Nginx reverse proxy
@@ -48,6 +50,16 @@ function App() {
   }, []);
 
   const sendAction = (action, value = null) => {
+    // Optimistic UI Update: Instantly update the local state to eliminate perceived latency.
+    setState(prevState => {
+      let newState = { ...prevState };
+      if (action === 'play') newState.status = 'playing';
+      if (action === 'pause') newState.status = 'paused';
+      if (action === 'volume') newState.volume = value;
+      if (action === 'source') newState.source = value;
+      return newState;
+    });
+
     if (ws && ws.readyState === WebSocket.OPEN) {
       ws.send(JSON.stringify({
         type: 'action',
@@ -70,12 +82,21 @@ function App() {
         <SourceSelect currentSource={state.source} onChange={(src) => sendAction('source', src)} />
 
         <div className="mt-4 flex flex-col space-y-4">
-          <button
-            onClick={() => setShowWizard(true)}
-            className="w-full py-2 bg-gray-800 hover:bg-gray-700 rounded text-sm text-gray-300 transition-colors border border-gray-600"
-          >
-            DSP Settings Wizard
-          </button>
+          <div className="flex space-x-2">
+            <button
+              onClick={() => setShowWizard(true)}
+              className="flex-1 py-2 bg-gray-800 hover:bg-gray-700 rounded text-sm text-gray-300 transition-colors border border-gray-600"
+            >
+              DSP Settings
+            </button>
+            <button
+              onClick={() => setShowNetwork(true)}
+              className="flex-1 py-2 bg-gray-800 hover:bg-gray-700 rounded text-sm text-gray-300 transition-colors border border-gray-600"
+            >
+              Network
+            </button>
+          </div>
+
           <label className="text-gray-400 text-sm mb-2 block">Volume ({state.volume}%)</label>
           <input
             type="range"
@@ -113,6 +134,7 @@ function App() {
       </div>
 
       {showWizard && <DspWizard onClose={() => setShowWizard(false)} />}
+      {showNetwork && <NetworkSettings onClose={() => setShowNetwork(false)} />}
     </div>
   );
 }

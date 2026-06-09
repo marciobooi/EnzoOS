@@ -13,6 +13,8 @@
   "dependencies": {
     "cors": "^2.8.6",
     "express": "^5.2.1",
+    "express-rate-limit": "^8.5.2",
+    "helmet": "^8.2.0",
     "sqlite": "^5.1.1",
     "sqlite3": "^6.0.1",
     "ws": "^8.21.0",
