@@ -1,0 +1,22 @@
+@import "tailwindcss";
+
+@theme {
+  --color-dark: #0f172a;
+  --color-darker: #020617;
+  --color-accent: #3b82f6;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  background-color: var(--color-darker);
+  color: white;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen,
+    Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+  overflow: hidden; /* Recommended for touchscreen panels */
+}
+
+/* Custom VU Meter animation class */
+.vu-bar {
+  transition: height 0.05s ease-out;
+}

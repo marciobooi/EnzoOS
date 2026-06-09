@@ -1,0 +1,30 @@
+devices:
+  samplerate: 44100
+  chunksize: 1024
+  queuelimit: 4
+  capture:
+    type: Alsa
+    channels: 2
+    device: "hw:Loopback,1,0"
+    format: S16LE
+  playback:
+    type: Alsa
+    channels: 2
+    device: "hw:IanCanadaDAC" # Replace with actual ALSA device name for Ian Canada DAC
+    format: S32LE
+
+filters:
+  vol:
+    type: Volume
+    parameters:
+      ramp_time: 200
+
+pipeline:
+  - type: Filter
+    channel: 0
+    names:
+      - vol
+  - type: Filter
+    channel: 1
+    names:
+      - vol

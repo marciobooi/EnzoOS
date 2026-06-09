@@ -1,0 +1,18 @@
+[Unit]
+Description=Hi-Fi Streamer Backend (Node.js)
+After=network.target mpd.service camilladsp.service
+
+[Service]
+ExecStart=/usr/bin/node /opt/hifi-streamer/backend/server.js
+WorkingDirectory=/opt/hifi-streamer/backend
+Restart=always
+# Restart service after 10 seconds if node service crashes
+RestartSec=10
+StandardOutput=syslog
+StandardError=syslog
+SyslogIdentifier=hifi-streamer-backend
+User=pi
+Environment=NODE_ENV=production PORT=3001
+
+[Install]
+WantedBy=multi-user.target
