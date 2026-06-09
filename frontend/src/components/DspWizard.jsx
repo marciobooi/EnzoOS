@@ -113,7 +113,8 @@ export default function DspWizard({ onClose }) {
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      const url = `http://${window.location.hostname}:3001/api/config-dsp`;
+      const portString = window.location.port ? `:${window.location.port}` : '';
+      const url = `${window.location.protocol}//${window.location.hostname}${portString}/api/config-dsp`;
       const response = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

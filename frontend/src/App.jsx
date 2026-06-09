@@ -17,9 +17,12 @@ function App() {
   const [showWizard, setShowWizard] = useState(false);
 
   useEffect(() => {
-    // Connect to backend WebSocket via same-origin (works behind nginx; preserves HTTPS -> WSS)
-    const wsProtocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
-    const wsUrl = `${wsProtocol}://${window.location.host}/ws`;
+    // Connect to WebSocket using the current host via the Nginx reverse proxy
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    // Use window.location.port if running dev server on a specific port, otherwise rely on Nginx default
+    const portString = window.location.port ? `:${window.location.port}` : '';
+    // But since API proxy needs to be deterministic, we point WS directly to the same host
+    const wsUrl = `${protocol}//${window.location.hostname}${portString}/ws`;
     const socket = new WebSocket(wsUrl);
 
     socket.onopen = () => {
@@ -79,7 +82,7 @@ function App() {
             min="0"
             max="100"
             value={state.volume}
-            onChange={(e) => sendAction('volume', parseInt(e.target.value, 10))}
+            onChange={(e) => sendAction('volume', parseInt(e.target.value))}
             className="w-full accent-accent"
           />
         </div>

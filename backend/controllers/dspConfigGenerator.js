@@ -2,7 +2,7 @@ const fs = require('fs');
 const path = require('path');
 const YAML = require('yaml');
 
-const CONFIG_PATH = path.join(__dirname, '../configs/camilladsp.yml');
+const CONFIG_PATH = path.join(__dirname, '../../configs/camilladsp.yml');
 
 /**
  * Generate a CamillaDSP configuration based on 7 wizard answers.

@@ -1,0 +1,18 @@
+[Unit]
+Description=CamillaDSP Audio Processing Engine
+After=network.target
+Wants=sound.target
+
+[Service]
+Type=simple
+User=pi
+# Adjust the path to where camilladsp binary and config are located
+ExecStart=/usr/local/bin/camilladsp /opt/hifi-streamer/configs/camilladsp.yml -p 1234
+Restart=always
+RestartSec=5
+# Give CamillaDSP high priority to avoid audio dropouts
+CPUSchedulingPolicy=fifo
+CPUSchedulingPriority=80
+
+[Install]
+WantedBy=multi-user.target
