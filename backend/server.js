@@ -88,18 +88,28 @@ wss.on('connection', (ws) => {
 
 // REST API
 app.get('/api/state', (req, res) => {
-  res.json(systemState);
+  res.json(metadataService.getState());
 });
 
 app.post('/api/action', (req, res) => {
   const { action, value } = req.body;
-  if (action === 'play') systemState.status = 'playing';
-  if (action === 'pause') systemState.status = 'paused';
-  if (action === 'volume') systemState.volume = value;
-  if (action === 'source') systemState.source = value;
+  const currentState = metadataService.getState();
 
-  broadcastState();
-  res.json({ success: true, state: systemState });
+  if (currentState.source === 'mpd') {
+    if (action === 'play') mpdClient.play();
+    if (action === 'pause') mpdClient.pause();
+    if (action === 'next') mpdClient.next();
+    if (action === 'previous') mpdClient.previous();
+    if (action === 'volume') mpdClient.setVolume(value);
+  }
+
+  metadataService.updateState({
+     status: action === 'play' ? 'playing' : action === 'pause' ? 'paused' : currentState.status,
+     volume: action === 'volume' ? value : currentState.volume,
+     source: action === 'source' ? value : currentState.source
+  });
+
+  res.json({ success: true, state: metadataService.getState() });
 });
 
 // Register the API router module

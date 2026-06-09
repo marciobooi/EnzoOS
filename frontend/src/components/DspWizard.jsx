@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import GraphicEQ from './GraphicEQ';
 
 const QUESTIONS = [
   {
@@ -82,6 +83,11 @@ const QUESTIONS = [
     min: -10,
     max: 10,
     labelFormatter: (val) => val === 0 ? 'Center' : (val < 0 ? `Left +${Math.abs(val)}dB` : `Right +${val}dB`)
+  },
+  {
+    id: 'graphicEQ',
+    title: '11. Custom 10-Band Graphic EQ',
+    isEQ: true
   }
 ];
 
@@ -97,7 +103,8 @@ export default function DspWizard({ onClose }) {
     maxVolumeLimit: 100,
     subsonicFilter: true,
     nightMode: false,
-    lrBalance: 0
+    lrBalance: 0,
+    graphicEQ: Array(10).fill(0)
   });
   const [isSaving, setIsSaving] = useState(false);
 
@@ -105,7 +112,7 @@ export default function DspWizard({ onClose }) {
 
   const handleSelect = (val) => {
     setAnswers(prev => ({ ...prev, [currentQ.id]: val }));
-    if (step < QUESTIONS.length - 1 && !currentQ.isSlider) {
+    if (step < QUESTIONS.length - 1 && !currentQ.isSlider && !currentQ.isEQ) {
       setStep(step + 1);
     }
   };
@@ -158,7 +165,12 @@ export default function DspWizard({ onClose }) {
           <h3 className="text-xl text-gray-200 mb-6 text-center">{currentQ.title}</h3>
 
           <div className="flex flex-col space-y-3">
-            {currentQ.isSlider ? (
+            {currentQ.isEQ ? (
+              <GraphicEQ
+                 bands={answers.graphicEQ}
+                 onChange={(newBands) => setAnswers(prev => ({ ...prev, graphicEQ: newBands }))}
+              />
+            ) : currentQ.isSlider ? (
               <div className="px-8">
                 <input
                   type="range"

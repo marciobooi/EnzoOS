@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import DspWizard from './components/DspWizard';
 import NetworkSettings from './components/NetworkSettings';
 import SystemSettings from './components/SystemSettings';
+import ClockMode from './components/ClockMode';
 import KioskView from './views/KioskView';
 import MobileView from './views/MobileView';
 
@@ -23,6 +24,7 @@ function AppContent() {
   // Theming state
   const [theme, setTheme] = useState('dark-minimalist');
   const [vuStyle, setVuStyle] = useState('digital');
+  const [isClockMode, setIsClockMode] = useState(false);
 
   useEffect(() => {
     // Load theme immediately to prevent flash
@@ -86,6 +88,19 @@ function AppContent() {
     }
   };
 
+  useEffect(() => {
+    // Screensaver logic
+    let timeoutId;
+    if (state.status === 'paused' || state.status === 'stopped') {
+      // Activate clock mode after 5 minutes of inactivity
+      timeoutId = setTimeout(() => setIsClockMode(true), 5 * 60 * 1000);
+    } else {
+      setIsClockMode(false);
+    }
+
+    return () => clearTimeout(timeoutId);
+  }, [state.status]);
+
   const viewProps = {
     state,
     sendAction,
@@ -95,8 +110,17 @@ function AppContent() {
     onOpenSystem: () => setShowSystem(true)
   };
 
+  // Wake up if the user interacts or music starts playing
+  useEffect(() => {
+    if (state.status === 'playing') {
+      setIsClockMode(false);
+    }
+  }, [state.status]);
+
   return (
     <div data-theme={theme} className="w-full h-full text-[var(--text-main)] transition-colors duration-500">
+      {isClockMode && <ClockMode onWake={() => setIsClockMode(false)} />}
+
       <Routes>
         <Route path="/" element={<KioskView {...viewProps} />} />
         <Route path="/remote" element={<MobileView {...viewProps} />} />

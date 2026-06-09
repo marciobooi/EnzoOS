@@ -18,6 +18,7 @@ const CONFIG_PATH = path.join(__dirname, '../../configs/camilladsp.yml');
  * 8. subsonicFilter: boolean
  * 9. nightMode: boolean
  * 10. lrBalance: number (-10 to 10)
+ * 11. graphicEQ: array of 10 numbers (-12 to +12)
  */
 function generateDSPConfig(answers) {
   // Base configuration
@@ -120,6 +121,21 @@ function generateDSPConfig(answers) {
     } else {
        addFilter('balance_cut_left', 'Gain', { gain: -answers.lrBalance, inverted: false }, 0); // Channel 0 = Left
     }
+  }
+
+  // 11. 10-Band Graphic EQ
+  if (answers.graphicEQ && Array.isArray(answers.graphicEQ)) {
+    const eqFreqs = [31, 62, 125, 250, 500, 1000, 2000, 4000, 8000, 16000];
+    answers.graphicEQ.forEach((gain, i) => {
+      if (gain !== 0) {
+         addFilter(`graphic_eq_${eqFreqs[i]}`, 'Biquad', {
+           type: 'Peaking',
+           freq: eqFreqs[i],
+           q: 1.41, // Typical Q factor for 1-octave graphic EQ bands
+           gain: gain
+         });
+      }
+    });
   }
 
   // Convert to YAML and save

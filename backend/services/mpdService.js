@@ -27,18 +27,23 @@ class MPDService {
       const status = await this.mpc.status.status();
       const currentSong = await this.mpc.status.currentSong();
 
+      const title = currentSong?.title || currentSong?.name || 'Unknown Title';
+      const artist = currentSong?.artist || 'Unknown Artist';
+      const album = currentSong?.album || 'Unknown Album';
+
+      let albumArtUrl = null;
+
+      // Smart Scraping for Album Art via MusicBrainz/CoverArtArchive if available
+      // Note: We only try to scrape if we have a valid artist and album, avoiding rate limits on junk data
+      if (artist !== 'Unknown Artist' && album !== 'Unknown Album') {
+         albumArtUrl = await this.scrapeAlbumArt(artist, album);
+      }
+
       const payload = {
         source: 'mpd',
         status: status.state, // 'play', 'pause', 'stop'
         volume: status.volume,
-        track: {
-          title: currentSong?.title || currentSong?.name || 'Unknown Title',
-          artist: currentSong?.artist || 'Unknown Artist',
-          album: currentSong?.album || 'Unknown Album',
-          // MPD doesn't natively expose a URL for album art without additional HTTP setups,
-          // but we leave the property ready. In a real scenario, we could use Last.fm API to fetch this.
-          albumArtUrl: null
-        }
+        track: { title, artist, album, albumArtUrl }
       };
 
       if (this.onMetadataChange) {
@@ -46,6 +51,35 @@ class MPDService {
       }
     } catch (err) {
       console.error('Error fetching MPD status:', err);
+    }
+  }
+
+  async scrapeAlbumArt(artist, album) {
+    try {
+       // Search MusicBrainz for the release group
+       const mbQuery = encodeURIComponent(`artist:"${artist}" AND release:"${album}"`);
+       const mbRes = await fetch(`https://musicbrainz.org/ws/2/release?query=${mbQuery}&fmt=json`, {
+          headers: { 'User-Agent': 'EnzoOS-HiFiStreamer/1.0.0 ( DIY Audio )' }
+       });
+
+       if (!mbRes.ok) return null;
+
+       const mbData = await mbRes.json();
+       if (mbData.releases && mbData.releases.length > 0) {
+           const releaseId = mbData.releases[0].id;
+           // Query CoverArtArchive
+           const caaRes = await fetch(`https://coverartarchive.org/release/${releaseId}`);
+           if (caaRes.ok) {
+               const caaData = await caaRes.json();
+               if (caaData.images && caaData.images.length > 0) {
+                   return caaData.images[0].image; // Returns highest quality available
+               }
+           }
+       }
+       return null;
+    } catch (e) {
+       console.error('Album art scraping failed:', e.message);
+       return null;
     }
   }
 
