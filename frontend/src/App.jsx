@@ -79,7 +79,7 @@ function App() {
             min="0"
             max="100"
             value={state.volume}
-            onChange={(e) => sendAction('volume', parseInt(e.target.value))}
+            onChange={(e) => sendAction('volume', parseInt(e.target.value, 10))}
             className="w-full accent-accent"
           />
         </div>
