@@ -58,6 +58,30 @@ const QUESTIONS = [
     id: 'maxVolumeLimit',
     title: '7. Set a Maximum Volume Limit (%)',
     isSlider: true
+  },
+  {
+    id: 'subsonicFilter',
+    title: '8. Enable Subsonic Filter (Protects speakers from sub-20Hz frequencies)?',
+    options: [
+      { label: 'Yes', value: true },
+      { label: 'No', value: false },
+    ]
+  },
+  {
+    id: 'nightMode',
+    title: '9. Enable Night Mode (Reduces heavy bass for nighttime listening)?',
+    options: [
+      { label: 'Yes', value: true },
+      { label: 'No', value: false },
+    ]
+  },
+  {
+    id: 'lrBalance',
+    title: '10. Adjust L/R Channel Balance',
+    isSlider: true,
+    min: -10,
+    max: 10,
+    labelFormatter: (val) => val === 0 ? 'Center' : (val < 0 ? `Left +${Math.abs(val)}dB` : `Right +${val}dB`)
   }
 ];
 
@@ -70,7 +94,10 @@ export default function DspWizard({ onClose }) {
     roomAcoustics: 'neutral',
     soundSignature: 'flat',
     wallProximity: 'free',
-    maxVolumeLimit: 100
+    maxVolumeLimit: 100,
+    subsonicFilter: true,
+    nightMode: false,
+    lrBalance: 0
   });
   const [isSaving, setIsSaving] = useState(false);
 
@@ -134,12 +161,14 @@ export default function DspWizard({ onClose }) {
               <div className="px-8">
                 <input
                   type="range"
-                  min="50" max="100"
-                  value={answers.maxVolumeLimit}
-                  onChange={(e) => setAnswers(prev => ({ ...prev, maxVolumeLimit: parseInt(e.target.value) }))}
+                  min={currentQ.min || "50"} max={currentQ.max || "100"}
+                  value={answers[currentQ.id]}
+                  onChange={(e) => setAnswers(prev => ({ ...prev, [currentQ.id]: parseInt(e.target.value) }))}
                   className="w-full accent-accent"
                 />
-                <div className="text-center mt-4 text-2xl font-bold text-accent">{answers.maxVolumeLimit}%</div>
+                <div className="text-center mt-4 text-2xl font-bold text-accent">
+                  {currentQ.labelFormatter ? currentQ.labelFormatter(answers[currentQ.id]) : `${answers[currentQ.id]}%`}
+                </div>
               </div>
             ) : (
               currentQ.options.map((opt, idx) => {

@@ -15,6 +15,9 @@ const CONFIG_PATH = path.join(__dirname, '../configs/camilladsp.yml');
  * 5. soundSignature: 'flat' | 'v-shape' | 'warm'
  * 6. wallProximity: 'corner' | 'wall' | 'free'
  * 7. maxVolumeLimit: number (0-100)
+ * 8. subsonicFilter: boolean
+ * 9. nightMode: boolean
+ * 10. lrBalance: number (-10 to 10)
  */
 function generateDSPConfig(answers) {
   // Base configuration
@@ -43,10 +46,10 @@ function generateDSPConfig(answers) {
     ]
   };
 
-  const addFilter = (name, type, parameters) => {
+  const addFilter = (name, type, parameters, channel = 'both') => {
     config.filters[name] = { type, parameters };
-    config.pipeline[0].names.push(name);
-    config.pipeline[1].names.push(name);
+    if (channel === 'both' || channel === 0) config.pipeline[0].names.push(name);
+    if (channel === 'both' || channel === 1) config.pipeline[1].names.push(name);
   };
 
   // 1. & 2. Speaker Size and Subwoofer (High pass / Low pass)
@@ -89,15 +92,35 @@ function generateDSPConfig(answers) {
   }
 
   // 7. Max Volume Limit / Overall Gain Calculation
-  // Max volume mapped to a dB reduction to protect speakers
-  let volumeDb = -20; // Default startup volume
-  if (answers.maxVolumeLimit) {
-      // Very basic translation: 100% = 0dB, 0% = -60dB
+  if (answers.maxVolumeLimit !== undefined) {
+      // 100% = 0dB, 50% = -30dB
       const maxDb = (answers.maxVolumeLimit - 100) * 0.6;
       baseGain += maxDb;
   }
 
   addFilter('master_gain', 'Gain', { gain: baseGain, inverted: false });
+
+  // 8. Subsonic Filter
+  if (answers.subsonicFilter) {
+    addFilter('subsonic_hp', 'Biquad', { type: 'Highpass', freq: 20, q: 0.707 });
+  }
+
+  // 9. Night Mode
+  if (answers.nightMode) {
+    addFilter('night_mode_bass_cut', 'Biquad', { type: 'Lowshelf', freq: 150, q: 0.707, gain: -8.0 });
+    // Compress dynamic range slightly by boosting overall volume to hear quiet parts but limiting bass
+    addFilter('night_mode_gain', 'Gain', { gain: 2.0, inverted: false });
+  }
+
+  // 10. L/R Balance
+  if (answers.lrBalance !== 0 && answers.lrBalance !== undefined) {
+    // If balance is negative, boost left (or cut right). We will cut the opposite channel to avoid clipping.
+    if (answers.lrBalance < 0) {
+       addFilter('balance_cut_right', 'Gain', { gain: answers.lrBalance, inverted: false }, 1); // Channel 1 = Right
+    } else {
+       addFilter('balance_cut_left', 'Gain', { gain: -answers.lrBalance, inverted: false }, 0); // Channel 0 = Left
+    }
+  }
 
   // Convert to YAML and save
   const yamlStr = YAML.stringify(config);

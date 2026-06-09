@@ -13,61 +13,47 @@ devices:
     device: hw:IanCanadaDAC
     format: S32LE
 filters:
-  hp_crossover:
-    type: Biquad
-    parameters:
-      type: Highpass
-      freq: 80
-      q: 0.707
-  treble_boost_room:
-    type: Biquad
-    parameters:
-      type: Highshelf
-      freq: 6000
-      q: 0.707
-      gain: 2
-  eq_v_bass:
-    type: Biquad
-    parameters:
-      type: Lowshelf
-      freq: 150
-      q: 0.707
-      gain: 4
-  eq_v_treble:
-    type: Biquad
-    parameters:
-      type: Highshelf
-      freq: 8000
-      q: 0.707
-      gain: 3
-  boundary_cut_wall:
-    type: Biquad
-    parameters:
-      type: Lowshelf
-      freq: 150
-      q: 0.707
-      gain: -3
   master_gain:
     type: Gain
     parameters:
-      gain: -11
+      gain: 0
+      inverted: false
+  subsonic_hp:
+    type: Biquad
+    parameters:
+      type: Highpass
+      freq: 20
+      q: 0.707
+  night_mode_bass_cut:
+    type: Biquad
+    parameters:
+      type: Lowshelf
+      freq: 150
+      q: 0.707
+      gain: -8
+  night_mode_gain:
+    type: Gain
+    parameters:
+      gain: 2
+      inverted: false
+  balance_cut_right:
+    type: Gain
+    parameters:
+      gain: -3
       inverted: false
 pipeline:
   - type: Filter
     channel: 0
     names:
-      - hp_crossover
-      - treble_boost_room
-      - eq_v_bass
-      - eq_v_treble
-      - boundary_cut_wall
       - master_gain
+      - subsonic_hp
+      - night_mode_bass_cut
+      - night_mode_gain
   - type: Filter
     channel: 1
     names:
-      - hp_crossover
-      - treble_boost_room
-      - eq_v_bass
-      - eq_v_treble
-      - boundary_cut_wall
       - master_gain
+      - subsonic_hp
+      - night_mode_bass_cut
+      - night_mode_gain
+      - balance_cut_right
