@@ -5,6 +5,7 @@ const cors = require('cors');
 
 const mpdClient = require('./mpdClient');
 const dspClient = require('./dspClient');
+const { generateDSPConfig } = require('./dspConfigGenerator');
 
 const app = express();
 app.use(cors());
@@ -84,6 +85,21 @@ app.post('/api/action', (req, res) => {
 
   broadcastState();
   res.json({ success: true, state: systemState });
+});
+
+app.post('/api/config-dsp', (req, res) => {
+  try {
+    const answers = req.body;
+    const newConfig = generateDSPConfig(answers);
+
+    // In a real scenario, you'd also restart the CamillaDSP service or reload its config
+    // e.g. exec('systemctl restart camilladsp')
+
+    res.json({ success: true, message: 'DSP Configuration generated successfully', config: newConfig });
+  } catch (err) {
+    console.error('Error generating DSP Config:', err);
+    res.status(500).json({ success: false, error: 'Failed to generate DSP config' });
+  }
 });
 
 const PORT = process.env.PORT || 3001;

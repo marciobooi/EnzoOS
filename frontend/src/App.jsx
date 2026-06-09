@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import NowPlaying from './components/NowPlaying';
 import Controls from './components/Controls';
 import SourceSelect from './components/SourceSelect';
+import DspWizard from './components/DspWizard';
 
 function App() {
   const [state, setState] = useState({
@@ -13,6 +14,7 @@ function App() {
   });
 
   const [ws, setWs] = useState(null);
+  const [showWizard, setShowWizard] = useState(false);
 
   useEffect(() => {
     // Connect to WebSocket using the current host, defaulting port to 3001 if testing locally
@@ -63,7 +65,13 @@ function App() {
       <div className="flex-1 flex flex-col justify-between h-full pr-4 border-r border-gray-700">
         <SourceSelect currentSource={state.source} onChange={(src) => sendAction('source', src)} />
 
-        <div className="mt-4">
+        <div className="mt-4 flex flex-col space-y-4">
+          <button
+            onClick={() => setShowWizard(true)}
+            className="w-full py-2 bg-gray-800 hover:bg-gray-700 rounded text-sm text-gray-300 transition-colors border border-gray-600"
+          >
+            DSP Settings Wizard
+          </button>
           <label className="text-gray-400 text-sm mb-2 block">Volume ({state.volume}%)</label>
           <input
             type="range"
@@ -100,6 +108,7 @@ function App() {
         </div>
       </div>
 
+      {showWizard && <DspWizard onClose={() => setShowWizard(false)} />}
     </div>
   );
 }

@@ -5,26 +5,69 @@ devices:
   capture:
     type: Alsa
     channels: 2
-    device: "hw:Loopback,1,0"
+    device: hw:Loopback,1,0
     format: S16LE
   playback:
     type: Alsa
     channels: 2
-    device: "hw:IanCanadaDAC" # Replace with actual ALSA device name for Ian Canada DAC
+    device: hw:IanCanadaDAC
     format: S32LE
-
 filters:
-  vol:
-    type: Volume
+  hp_crossover:
+    type: Biquad
     parameters:
-      ramp_time: 200
-
+      type: Highpass
+      freq: 80
+      q: 0.707
+  treble_boost_room:
+    type: Biquad
+    parameters:
+      type: Highshelf
+      freq: 6000
+      q: 0.707
+      gain: 2
+  eq_v_bass:
+    type: Biquad
+    parameters:
+      type: Lowshelf
+      freq: 150
+      q: 0.707
+      gain: 4
+  eq_v_treble:
+    type: Biquad
+    parameters:
+      type: Highshelf
+      freq: 8000
+      q: 0.707
+      gain: 3
+  boundary_cut_wall:
+    type: Biquad
+    parameters:
+      type: Lowshelf
+      freq: 150
+      q: 0.707
+      gain: -3
+  master_gain:
+    type: Gain
+    parameters:
+      gain: -11
+      inverted: false
 pipeline:
   - type: Filter
     channel: 0
     names:
-      - vol
+      - hp_crossover
+      - treble_boost_room
+      - eq_v_bass
+      - eq_v_treble
+      - boundary_cut_wall
+      - master_gain
   - type: Filter
     channel: 1
     names:
-      - vol
+      - hp_crossover
+      - treble_boost_room
+      - eq_v_bass
+      - eq_v_treble
+      - boundary_cut_wall
+      - master_gain
