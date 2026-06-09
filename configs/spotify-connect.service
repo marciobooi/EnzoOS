@@ -6,7 +6,7 @@ After=network.target
 User=pi
 # We use the ALSA backend and route to the loopback device
 # Bitrate 320 for highest quality Spotify Premium
-ExecStart=/usr/local/bin/librespot --name "HiFi Streamer" --device hw:Loopback,0,0 --backend alsa --bitrate 320 --disable-audio-cache --enable-volume-normalisation --initial-volume=100
+ExecStart=/usr/local/bin/librespot --name "HiFi Streamer" --device hw:Loopback,0,0 --backend alsa --bitrate 320 --disable-audio-cache --enable-volume-normalisation --initial-volume=100 --onevent /opt/hifi-streamer/scripts/spotify_event.sh
 Restart=always
 RestartSec=10
 

@@ -3,10 +3,10 @@ const router = express.Router();
 
 const dspController = require('../controllers/dspController');
 const networkController = require('../controllers/networkController');
+const stateController = require('../controllers/stateController');
 
-// System state routes (mocked in server.js currently, but can be migrated later)
-// router.get('/state', stateController.getState);
-// router.post('/action', stateController.postAction);
+// Webhook to receive metadata updates from external services (Spotify/AirPlay)
+router.post('/metadata/webhook', stateController.updateMetadataWebhook);
 
 // DSP Configuration / Wizard routes
 router.post('/config-dsp', dspController.saveAndApplyConfig);
