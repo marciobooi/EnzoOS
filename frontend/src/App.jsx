@@ -17,8 +17,9 @@ function App() {
   const [showWizard, setShowWizard] = useState(false);
 
   useEffect(() => {
-    // Connect to WebSocket using the current host, defaulting port to 3001 if testing locally
-    const wsUrl = `ws://${window.location.hostname}:3001/ws`;
+    // Connect to backend WebSocket via same-origin (works behind nginx; preserves HTTPS -> WSS)
+    const wsProtocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
+    const wsUrl = `${wsProtocol}://${window.location.host}/ws`;
     const socket = new WebSocket(wsUrl);
 
     socket.onopen = () => {
