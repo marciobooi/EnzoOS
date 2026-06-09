@@ -133,7 +133,7 @@ chown pi:pi "$PI_HOME/.xinitrc"
 
 echo ">> Configuring sudoers for CamillaDSP restart and nmcli..."
 # Allow user 'pi' to run systemctl restart camilladsp and nmcli without a password
-echo "pi ALL=(ALL) NOPASSWD: /bin/systemctl restart camilladsp, /usr/bin/systemctl restart camilladsp, /usr/bin/nmcli" > /etc/sudoers.d/hifi_permissions
+echo "pi ALL=(ALL) NOPASSWD: /bin/systemctl restart camilladsp, /usr/bin/systemctl restart camilladsp, /usr/bin/nmcli, /opt/hifi-streamer/scripts/update.sh" > /etc/sudoers.d/hifi_permissions
 chmod 0440 /etc/sudoers.d/hifi_permissions
 
 chmod +x $REPO_PATH/scripts/spotify_event.sh

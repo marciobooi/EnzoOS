@@ -4,6 +4,7 @@ const router = express.Router();
 const dspController = require('../controllers/dspController');
 const networkController = require('../controllers/networkController');
 const stateController = require('../controllers/stateController');
+const systemController = require('../controllers/systemController');
 
 // Webhook to receive metadata updates from external services (Spotify/AirPlay)
 router.post('/metadata/webhook', stateController.updateMetadataWebhook);
@@ -16,5 +17,10 @@ router.get('/presets', dspController.getPresets);
 router.get('/network/status', networkController.getNetworkStatus);
 router.get('/network/scan', networkController.scanWifi);
 router.post('/network/connect', networkController.connectWifi);
+
+// System OTA & Settings routes
+router.post('/system/update', systemController.triggerOTAUpdate);
+router.get('/system/settings', systemController.getSettings);
+router.post('/system/settings', systemController.updateSettings);
 
 module.exports = router;

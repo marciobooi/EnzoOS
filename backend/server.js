@@ -21,6 +21,9 @@ mpdClient.onMetadataChange = (payload) => {
   metadataService.updateState(payload);
 };
 
+// Connect to CamillaDSP Engine for real-time VU Meters
+dspClient.connect();
+
 // Security Middlewares
 app.use(helmet()); // Sets HTTP headers to protect against common vulnerabilities
 app.use(cors());
@@ -49,19 +52,6 @@ const broadcastState = (stateObj) => {
 
 // Tell Metadata service to use our broadcast function
 metadataService.setBroadcastCallback(broadcastState);
-
-// Simulate VU meters change based on CamillaDSP (mocked here for now)
-setInterval(() => {
-  const state = metadataService.getState();
-  if (state.status === 'playing' || state.status === 'play') {
-    metadataService.updateState({
-      vuMeters: {
-        left: Math.random() * -20,
-        right: Math.random() * -20
-      }
-    });
-  }
-}, 100);
 
 wss.on('connection', (ws) => {
   console.log('Client connected to WebSocket');

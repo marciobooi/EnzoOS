@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react';
-import NowPlaying from './components/NowPlaying';
-import Controls from './components/Controls';
-import SourceSelect from './components/SourceSelect';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import DspWizard from './components/DspWizard';
 import NetworkSettings from './components/NetworkSettings';
+import SystemSettings from './components/SystemSettings';
+import KioskView from './views/KioskView';
+import MobileView from './views/MobileView';
 
-function App() {
+function AppContent() {
   const [state, setState] = useState({
     status: 'paused',
     volume: 50,
@@ -17,6 +18,23 @@ function App() {
   const [ws, setWs] = useState(null);
   const [showWizard, setShowWizard] = useState(false);
   const [showNetwork, setShowNetwork] = useState(false);
+  const [showSystem, setShowSystem] = useState(false);
+
+  // Theming state
+  const [theme, setTheme] = useState('dark-minimalist');
+  const [vuStyle, setVuStyle] = useState('digital');
+
+  useEffect(() => {
+    // Load theme immediately to prevent flash
+    fetch(`${window.location.protocol}//${window.location.hostname}${window.location.port ? `:${window.location.port}` : ''}/api/system/settings`)
+      .then(r => r.json())
+      .then(d => {
+        if(d.success) {
+           setTheme(d.settings.theme || 'dark-minimalist');
+           setVuStyle(d.settings.vuMeterStyle || 'digital');
+        }
+      }).catch(() => {});
+  }, []);
 
   useEffect(() => {
     // Connect to WebSocket using the current host via the Nginx reverse proxy
@@ -68,75 +86,41 @@ function App() {
     }
   };
 
+  const viewProps = {
+    state,
+    sendAction,
+    vuStyle,
+    onOpenWizard: () => setShowWizard(true),
+    onOpenNetwork: () => setShowNetwork(true),
+    onOpenSystem: () => setShowSystem(true)
+  };
+
   return (
-    <div className="w-full h-screen bg-darker text-white flex flex-row items-center p-4">
-      {/*
-        Horizontal Layout for 1400x320 screen.
-        Divided into 3 main columns:
-        1. Source & Volume (Left)
-        2. Now Playing / Metadata (Center)
-        3. Controls & VU Meters (Right)
-      */}
-
-      <div className="flex-1 flex flex-col justify-between h-full pr-4 border-r border-gray-700">
-        <SourceSelect currentSource={state.source} onChange={(src) => sendAction('source', src)} />
-
-        <div className="mt-4 flex flex-col space-y-4">
-          <div className="flex space-x-2">
-            <button
-              onClick={() => setShowWizard(true)}
-              className="flex-1 py-2 bg-gray-800 hover:bg-gray-700 rounded text-sm text-gray-300 transition-colors border border-gray-600"
-            >
-              DSP Settings
-            </button>
-            <button
-              onClick={() => setShowNetwork(true)}
-              className="flex-1 py-2 bg-gray-800 hover:bg-gray-700 rounded text-sm text-gray-300 transition-colors border border-gray-600"
-            >
-              Network
-            </button>
-          </div>
-
-          <label className="text-gray-400 text-sm mb-2 block">Volume ({state.volume}%)</label>
-          <input
-            type="range"
-            min="0"
-            max="100"
-            value={state.volume}
-            onChange={(e) => sendAction('volume', parseInt(e.target.value))}
-            className="w-full accent-accent"
-          />
-        </div>
-      </div>
-
-      <div className="flex-[2] px-8 flex items-center justify-center h-full">
-        <NowPlaying track={state.track} status={state.status} />
-      </div>
-
-      <div className="flex-1 flex flex-col justify-between h-full pl-4 border-l border-gray-700">
-        <Controls status={state.status} onPlay={() => sendAction('play')} onPause={() => sendAction('pause')} />
-
-        {/* Simple VU Meters visualization */}
-        <div className="mt-4 flex flex-row justify-center space-x-4 h-24 items-end">
-          <div className="w-8 bg-gray-800 rounded-t overflow-hidden relative">
-            <div
-              className="absolute bottom-0 w-full bg-green-500 vu-bar"
-              style={{ height: `${Math.max(0, 100 + state.vuMeters.left)}%` }}
-            ></div>
-          </div>
-          <div className="w-8 bg-gray-800 rounded-t overflow-hidden relative">
-            <div
-              className="absolute bottom-0 w-full bg-green-500 vu-bar"
-              style={{ height: `${Math.max(0, 100 + state.vuMeters.right)}%` }}
-            ></div>
-          </div>
-        </div>
-      </div>
+    <div data-theme={theme} className="w-full h-full text-[var(--text-main)] transition-colors duration-500">
+      <Routes>
+        <Route path="/" element={<KioskView {...viewProps} />} />
+        <Route path="/remote" element={<MobileView {...viewProps} />} />
+      </Routes>
 
       {showWizard && <DspWizard onClose={() => setShowWizard(false)} />}
       {showNetwork && <NetworkSettings onClose={() => setShowNetwork(false)} />}
+      {showSystem && (
+        <SystemSettings
+          onClose={() => setShowSystem(false)}
+          onThemeChange={(newTheme, newVuStyle) => {
+            setTheme(newTheme);
+            setVuStyle(newVuStyle);
+          }}
+        />
+      )}
     </div>
   );
 }
 
-export default App;
+export default function App() {
+  return (
+    <Router>
+      <AppContent />
+    </Router>
+  );
+}
