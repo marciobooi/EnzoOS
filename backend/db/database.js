@@ -17,7 +17,12 @@ async function getDb() {
   });
 
   // Enable Write-Ahead Logging to reduce disk I/O and protect the SD card
-  await dbInstance.exec('PRAGMA journal_mode = WAL;');
+  try {
+      await dbInstance.exec('PRAGMA journal_mode = WAL;');
+  } catch (e) {
+      console.error('Failed to set WAL mode (possibly read-only dir), falling back to MEMORY journal', e.message);
+      await dbInstance.exec('PRAGMA journal_mode = MEMORY;');
+  }
 
   // High availability memory optimizations
   await dbInstance.exec('PRAGMA synchronous = NORMAL;');

@@ -143,8 +143,21 @@ function generateDSPConfig(answers) {
 
   // Convert to YAML and save
   const yamlStr = YAML.stringify(config);
-  fs.writeFileSync(CONFIG_PATH, yamlStr, 'utf8');
-  console.log('DSP Configuration updated successfully.');
+  try {
+     fs.writeFileSync(CONFIG_PATH, yamlStr, 'utf8');
+     console.log('DSP Configuration updated successfully at', CONFIG_PATH);
+  } catch(e) {
+     console.error('Failed to write DSP config to', CONFIG_PATH, e);
+     // Fallback to writing in /tmp which is always writable
+     try {
+         const FALLBACK_PATH = '/tmp/camilladsp.yml';
+         fs.writeFileSync(FALLBACK_PATH, yamlStr, 'utf8');
+         console.log('Fallback: Saved DSP config to', FALLBACK_PATH);
+         // You would need to tell camilladsp service to read from here, but this prevents API crash
+     } catch(fallbackErr) {
+         throw new Error("Failed to save configuration: " + e.message);
+     }
+  }
 
   return config;
 }

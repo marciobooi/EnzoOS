@@ -41,7 +41,7 @@ async function saveAndApplyConfig(req, res) {
 
   } catch (err) {
     console.error('Error in DSP Controller:', err);
-    res.status(500).json({ success: false, error: 'Failed to process DSP config' });
+    res.status(500).json({ success: false, error: err.message || 'Failed to process DSP config' });
   }
 }
 

@@ -2,45 +2,42 @@ import { Play, Pause, SkipForward, SkipBack, Shuffle, Repeat } from 'lucide-reac
 
 export default function Controls({ status, shuffle, repeat, onPlay, onPause, onNext, onPrevious, onToggleShuffle, onToggleRepeat }) {
   return (
-    <div className="flex flex-col items-center justify-center pt-4">
-      <div className="flex items-center space-x-6">
+    <div className="flex flex-col w-full gap-4">
+      <div className="flex items-center justify-between px-2">
 
         <button
           onClick={onToggleShuffle}
-          className={`transition-colors ${shuffle ? 'text-[var(--accent)]' : 'text-[var(--text-muted)] hover:text-[var(--text-main)]'}`}
+          className={`p-2 rounded-full transition-all ${shuffle ? 'text-[#007aff] bg-[#007aff]/10' : 'text-white/40 hover:text-white hover:bg-white/5'}`}
         >
-          <Shuffle size={24} />
+          <Shuffle size={20} />
         </button>
 
-        <button onClick={onPrevious} className="text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors">
-          <SkipBack size={36} fill="currentColor" />
-        </button>
-
-        {status === 'playing' ? (
-          <button
-            onClick={onPause}
-            className="w-16 h-16 flex items-center justify-center bg-[var(--accent)] text-white rounded-full hover:brightness-110 transition-colors shadow-[0_0_15px_var(--accent)]"
-          >
-            <Pause size={32} fill="currentColor" />
+        <div className="flex items-center gap-6">
+          <button onClick={onPrevious} className="text-white/70 hover:text-white transition-colors active:scale-95">
+            <SkipBack size={32} fill="currentColor" />
           </button>
-        ) : (
-          <button
-            onClick={onPlay}
-            className="w-16 h-16 flex items-center justify-center bg-[var(--accent)] text-white rounded-full hover:brightness-110 transition-colors shadow-[0_0_15px_var(--accent)]"
-          >
-            <Play size={32} fill="currentColor" className="ml-1" />
-          </button>
-        )}
 
-        <button onClick={onNext} className="text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors">
-          <SkipForward size={36} fill="currentColor" />
-        </button>
+          <button
+            onClick={status === 'playing' ? onPause : onPlay}
+            className="w-16 h-16 flex items-center justify-center bg-[#ffb800] text-black rounded-full hover:brightness-110 active:scale-95 transition-all shadow-[0_0_20px_rgba(255,184,0,0.4)]"
+          >
+            {status === 'playing' ? (
+               <Pause size={28} fill="currentColor" />
+            ) : (
+               <Play size={28} fill="currentColor" className="ml-1" />
+            )}
+          </button>
+
+          <button onClick={onNext} className="text-white/70 hover:text-white transition-colors active:scale-95">
+            <SkipForward size={32} fill="currentColor" />
+          </button>
+        </div>
 
         <button
           onClick={onToggleRepeat}
-          className={`transition-colors ${repeat ? 'text-[var(--accent)]' : 'text-[var(--text-muted)] hover:text-[var(--text-main)]'}`}
+          className={`p-2 rounded-full transition-all ${repeat ? 'text-[#007aff] bg-[#007aff]/10' : 'text-white/40 hover:text-white hover:bg-white/5'}`}
         >
-          <Repeat size={24} />
+          <Repeat size={20} />
         </button>
 
       </div>

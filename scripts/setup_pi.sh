@@ -78,16 +78,6 @@ if [[ -d "$REPO_PATH/configs" ]]; then
 
     # Copy Shairport & UPnP configs
     cp $REPO_PATH/configs/shairport-sync.conf /etc/shairport-sync.conf
-    # Inject AirPlay wake-on-demand hook if it doesn't exist
-    if ! grep -q "run_this_before_play_begins" /etc/shairport-sync.conf; then
-        cat << 'CONFEOF' >> /etc/shairport-sync.conf
-
-sessioncontrol = {
-  run_this_before_play_begins = "/usr/bin/curl -X POST http://localhost:3001/api/webhooks/state -H \"Content-Type: application/json\" -d '{\"state\":\"play\", \"source\":\"AirPlay\"}'";
-};
-CONFEOF
-    fi
-
     cp $REPO_PATH/configs/upmpdcli.conf /etc/upmpdcli.conf
 
     # Copy Systemd Services
@@ -159,12 +149,9 @@ chmod +x $REPO_PATH/scripts/spotify_event.sh
 
 # 7. Installing Node Modules & Building Frontend
 echo ">> Building application..."
-cd $REPO_PATH/backend && npm install
-cd $REPO_PATH/frontend && npm install && npm run build
-# Setup NGINX web root
-mkdir -p /var/www/hifi-streamer
-cp -r $REPO_PATH/frontend /var/www/hifi-streamer/
-chown -R pi:pi $REPO_PATH /var/www/hifi-streamer
+cd /opt/hifi-streamer/backend && npm install
+cd /opt/hifi-streamer/frontend && npm install && npm run build
+chown -R pi:pi /opt/hifi-streamer
 
 # 8. Enable and Start Services
 echo ">> Enabling and starting systemd services..."
@@ -188,13 +175,9 @@ done
 
 # 9. Configure Hardware RTC (Real-Time Clock)
 echo ">> Configuring Hardware RTC (DS3231) for Offline Clock Sync..."
-if [ -f /boot/firmware/config.txt ]; then
-    if ! grep -q "dtoverlay=i2c-rtc,ds3231" /boot/firmware/config.txt; then
-        echo "dtparam=i2c_arm=on" >> /boot/firmware/config.txt
-        echo "dtoverlay=i2c-rtc,ds3231" >> /boot/firmware/config.txt
-    fi
-else
-    echo "Skipping RTC config: /boot/firmware/config.txt not found (Not a Raspberry Pi OS?)"
+if ! grep -q "dtoverlay=i2c-rtc,ds3231" /boot/firmware/config.txt; then
+    echo "dtparam=i2c_arm=on" >> /boot/firmware/config.txt
+    echo "dtoverlay=i2c-rtc,ds3231" >> /boot/firmware/config.txt
 fi
 # Uninstall fake-hwclock to prevent conflicts with real RTC
 apt-get remove -y fake-hwclock
@@ -224,11 +207,7 @@ chown pi:pi /boot/hifi_data/camilladsp.yml
 echo ">> Enabling OverlayFS for SD Card Protection..."
 # This locks the root filesystem as Read-Only, changes are written to RAM
 # and lost on reboot. We linked the DB/Configs to /boot which ignores the overlay.
-if command -v raspi-config &> /dev/null; then
-    raspi-config nonint enable_overlayfs
-else
-    echo "Skipping OverlayFS: raspi-config not found. (Not running on Raspberry Pi OS?)"
-fi
+raspi-config nonint enable_overlayfs
 
 echo "========================================================="
 echo " Installation Complete! "

@@ -132,7 +132,8 @@ export default function DspWizard({ onClose }) {
         alert('DSP Config saved successfully!');
         onClose();
       } else {
-        alert('Failed to save configuration');
+        const errData = await response.json();
+        alert('Failed to save configuration: ' + (errData.error || 'Unknown error'));
       }
     } catch (e) {
       console.error(e);

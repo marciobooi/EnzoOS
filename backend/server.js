@@ -79,19 +79,28 @@ wss.on('connection', (ws) => {
             if (action === 'repeat') mpdClient.toggleRepeat(value);
         }
 
+        // Stop MPD if switching to another source to prevent audio overlap
+        if (action === 'source' && value !== 'mpd') {
+             mpdClient.pause();
+             metadataService.updateState({
+                 track: {
+                     title: `Ready for ${value.toUpperCase()}`,
+                     artist: 'Connect from your device',
+                     album: '',
+                     albumArtUrl: null
+                 }
+             });
+        }
+
         // We update the local state optimistically, the services might overwrite later
+        // This implicitly calls broadcastState to send to all OTHER connected clients (e.g. Remote -> Kiosk)
         metadataService.updateState({
            status: action === 'play' ? 'playing' : action === 'pause' ? 'paused' : currentState.status,
            volume: action === 'volume' ? value : currentState.volume,
            source: action === 'source' ? value : currentState.source,
            shuffle: action === 'shuffle' ? value : currentState.shuffle,
-           repeat: action === 'repeat' ? value : currentState.repeat,
-           lastInteraction: Date.now() // Force a wake event across all clients
+           repeat: action === 'repeat' ? value : currentState.repeat
         });
-      }
-
-      if (data.type === 'wake') {
-         metadataService.updateState({ lastInteraction: Date.now() });
       }
     } catch (e) {
       console.error('Error parsing WS message:', e);
@@ -114,6 +123,18 @@ app.post('/api/action', (req, res) => {
     if (action === 'next') mpdClient.next();
     if (action === 'previous') mpdClient.previous();
     if (action === 'volume') mpdClient.setVolume(value);
+  }
+
+  if (action === 'source' && value !== 'mpd') {
+      mpdClient.pause();
+      metadataService.updateState({
+          track: {
+              title: `Ready for ${value.toUpperCase()}`,
+              artist: 'Connect from your device',
+              album: '',
+              albumArtUrl: null
+          }
+      });
   }
 
   metadataService.updateState({

@@ -10,9 +10,6 @@ function updateMetadataWebhook(req, res) {
     if (source) updates.source = source;
     if (status) updates.status = status;
 
-    // Every time an external streaming service pushes data (play/pause/change), force device wake
-    updates.lastInteraction = Date.now();
-
     // Check if there are track updates
     if (title || artist || album || albumArtUrl) {
       const currentState = metadataService.getState();

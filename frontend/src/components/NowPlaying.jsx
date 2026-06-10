@@ -1,54 +1,57 @@
 export default function NowPlaying({ track, status }) {
-  // Simple string hasher for generative art fallback
+  // Generative art fallback
   const hashString = (str) => {
     let hash = 0;
     for (let i = 0; i < str.length; i++) hash = str.charCodeAt(i) + ((hash << 5) - hash);
     return Math.abs(hash);
   };
 
-  // Generate fallback gradients if no album art exists
   const isFallback = !track.albumArtUrl;
   const hash1 = isFallback ? hashString(track.artist || 'Artist') % 360 : 0;
   const hash2 = isFallback ? hashString(track.title || 'Title') % 360 : 0;
-  const fallbackGradient = `linear-gradient(135deg, hsl(${hash1}, 60%, 40%), hsl(${hash2}, 70%, 30%))`;
+  const fallbackGradient = `linear-gradient(135deg, hsl(${hash1}, 60%, 20%), hsl(${hash2}, 70%, 10%))`;
 
   return (
-    <div className="relative flex flex-col items-center text-center w-full max-w-2xl h-full justify-center">
-      {/* Blurred background image for premium look */}
-      <div
-        className="absolute inset-0 -z-10 bg-cover bg-center opacity-30 blur-3xl scale-110 pointer-events-none transition-all duration-1000"
-        style={{
-           backgroundImage: track.albumArtUrl ? `url(${track.albumArtUrl})` : 'none',
-           background: isFallback ? fallbackGradient : undefined
-        }}
-      ></div>
+    <div className="flex flex-row items-center w-full h-full gap-8 z-10">
 
+      {/* Square Album Art (exactly sized for 320px screen height with margins) */}
       <div
-        className="w-64 h-64 mb-8 bg-black/40 rounded-2xl shadow-2xl overflow-hidden flex items-center justify-center border border-white/10 ring-1 ring-white/5 transition-all duration-1000"
+        className="relative w-[260px] h-[260px] rounded-lg overflow-hidden shrink-0 shadow-2xl border border-white/10"
         style={{ background: isFallback ? fallbackGradient : undefined }}
       >
          {track.albumArtUrl ? (
            <img src={track.albumArtUrl} alt="Album Art" className="w-full h-full object-cover" />
          ) : (
-           <div className="flex items-center justify-center w-full h-full mix-blend-overlay opacity-50">
+           <div className="flex items-center justify-center w-full h-full mix-blend-overlay opacity-30">
               <span className="text-white text-6xl font-bold uppercase">{track.title?.charAt(0) || '?'}</span>
            </div>
          )}
+         {/* Subtle inner gloss to mimic glass */}
+         <div className="absolute inset-0 bg-gradient-to-tr from-white/10 to-transparent pointer-events-none"></div>
       </div>
 
-      <h1 className="text-5xl font-bold text-[var(--text-main)] truncate w-full px-4 tracking-tight drop-shadow-md">
-        {track.title}
-      </h1>
-      <h2 className="text-3xl text-[var(--accent)] mt-3 truncate max-w-full font-medium drop-shadow-sm">
-        {track.artist}
-      </h2>
-      <h3 className="text-xl text-[var(--text-muted)] mt-2 truncate max-w-full">
-        {track.album}
-      </h3>
+      {/* Track Info */}
+      <div className="flex flex-col justify-center gap-1 overflow-hidden">
+        <div className="flex items-center gap-3 mb-2">
+           <span className="px-2 py-0.5 rounded text-[10px] uppercase tracking-widest font-bold bg-[#007aff]/20 text-[#007aff] border border-[#007aff]/30">
+             {status}
+           </span>
+           <span className="text-[10px] text-white/40 font-mono tracking-widest">
+             Hi-Res Audio
+           </span>
+        </div>
 
-      <div className="mt-6 px-4 py-1.5 glass-panel rounded-full text-sm font-bold tracking-widest uppercase text-[var(--text-main)]">
-        {status}
+        <h1 className="text-5xl font-bold text-white truncate w-full tracking-tight mb-1" style={{ fontFamily: 'Inter, sans-serif' }}>
+          {track.title}
+        </h1>
+        <h2 className="text-2xl text-[#ffb800] truncate max-w-full font-medium" style={{ fontFamily: 'Inter, sans-serif' }}>
+          {track.artist}
+        </h2>
+        <h3 className="text-lg text-white/50 mt-1 truncate max-w-full">
+          {track.album}
+        </h3>
       </div>
+
     </div>
   );
 }
