@@ -14,9 +14,13 @@ echo "   Designed for Ubuntu Server 24.04 LTS (Raspberry Pi)"
 echo "========================================================="
 
 # 1. Install Core Dependencies
-echo ">> Updating system and checking for core tools (Git, Nano)..."
+echo ">> Updating system and checking for core tools (Git, Nano, SSH)..."
 apt-get update
-apt-get install -y git nano curl wget software-properties-common
+apt-get install -y git nano curl wget software-properties-common openssh-server
+
+echo ">> Enabling SSH Service for remote access..."
+systemctl enable ssh
+systemctl start ssh
 
 # 2. Clone the repository into the final destination
 TARGET_DIR="/opt/hifi-streamer"

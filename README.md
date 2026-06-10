@@ -32,29 +32,55 @@ A complete DIY High-Fidelity Audio Streamer architecture built for the **Raspber
 - **Backend API**: Node.js, Express, WebSockets, SQLite (for presets/themes). Protected via `helmet` and `express-rate-limit`.
 - **System**: Debian/Raspberry Pi OS, NGINX (Reverse proxy on port 80), Openbox (Window Manager), Chromium (Kiosk mode).
 
-## 🚀 Installation & Setup
+## 🚀 Installation & Setup (Step-by-Step Guide)
 
-1. Assemble the Raspberry Pi 4 with the Ian Canada DAC and Purifi amplifier.
-2. Flash a fresh Raspberry Pi OS (Debian Lite is fine, the script installs X11).
-3. Clone this repository to `/home/pi/EnzoOS`.
-4. Run the automated deployment script with `sudo`:
+EnzoOS is designed to be a "Plug & Play" firmware for the Raspberry Pi 4, but it can also be tested on a standard Virtual Machine running Ubuntu Server 24.04 LTS.
 
+### 🔌 Phase 1: Hardware & Base OS Preparation
+
+**If using a Raspberry Pi 4:**
+1. Use the [Raspberry Pi Imager](https://www.raspberrypi.com/software/) tool.
+2. Choose **Ubuntu Server 24.04 LTS (64-bit)** (or Debian/Raspberry Pi OS Lite 64-bit) as the Operating System.
+3. Before writing to the SD card, click the **Settings (gear icon)**:
+   - Enable SSH.
+   - Set the default username to `pi` and pick a password.
+   - Configure your local Wi-Fi settings.
+4. Flash the SD Card, insert it into the Pi, connect your Ian Canada DAC and Purifi amplifier, and power it on.
+
+**If testing on a Virtual Machine (VM):**
+1. Download the [Ubuntu Server 24.04 LTS ISO](https://ubuntu.com/download/server).
+2. Install it in VirtualBox / VMware / Proxmox.
+3. During installation, create a user named `pi` and explicitly check the box to **"Install OpenSSH Server"**.
+
+### 💻 Phase 2: The One-Line Installer
+
+Once the OS has booted, connect to it from your main computer using SSH.
+Open your terminal and type:
 ```bash
-cd EnzoOS
-sudo chmod +x scripts/setup_pi.sh
-sudo ./scripts/setup_pi.sh
+ssh pi@<IP_DO_RASPBERRY_PI_OU_VM>
 ```
 
-**What the script does:**
-- Updates `apt` dependencies and installs `mpd`, `shairport-sync`, `upmpdcli`, `network-manager`, and X11 packages.
-- Downloads the `aarch64` CamillaDSP binary from GitHub.
-- Installs the Roon Bridge installer.
-- Configures `snd-aloop` kernel module.
-- Generates `/etc/xdg/openbox/autostart` to launch Chromium in `--kiosk` mode and hide the cursor with `unclutter`.
-- Configures auto-login for the `pi` user on `tty1` to immediately `startx`.
-- Injects `.conf` ALSA routing for services and installs `.service` background daemons.
+Now, simply execute the EnzoOS One-Line Installer:
+```bash
+wget -qO- https://raw.githubusercontent.com/YourUser/EnzoOS/main/install.sh | sudo bash
+```
+*(Note: Change the URL above to match your actual GitHub repository URL once pushed).*
 
-5. **Reboot the Raspberry Pi**. It will automatically boot into the EnzoOS touch interface!
+**What the installer does automatically:**
+- Installs all core dependencies (Git, Node.js, NGINX, MPD, Shairport-Sync, OpenSSH).
+- Downloads the `aarch64` CamillaDSP audio engine binaries.
+- Sets up ALSA loopback routing (`snd-aloop`) for Bit-Perfect DSP streaming.
+- Installs the X11 graphical server and configures the Pi to Auto-login and boot Chromium in Kiosk Mode on the attached touch screen.
+- Configures the SQLite Database and React Frontend.
+- **Enables OverlayFS**: Locks the SD card into a Read-Only state to prevent corruption on power-cuts (user presets are safely symlinked to the boot partition).
+
+### 📱 Phase 3: Enjoy & Control
+
+1. **Reboot the device**: `sudo reboot`
+2. **Kiosk Display**: The device will immediately boot into the beautiful EnzoOS landscape touch interface.
+3. **Mobile Remote**: On your smartphone, open a browser and go to `http://<IP_DO_RASPBERRY_PI>/remote`.
+   - **Login**: `enzoOS`
+   - **Password**: `enzoOS`
 
 ---
-*(Note: To integrate Spotify Connect completely, ensure you compile or install `librespot` natively on the Pi if `apt` fails to find it).*
+*Note for Spotify Connect: If `librespot` is not available via `apt` on your specific Linux distribution, you may need to compile it manually using Rust/Cargo.*
