@@ -9,11 +9,15 @@ const mpdClient = require('./services/mpdService');
 const dspClient = require('./dspClient');
 const metadataService = require('./services/metadataService');
 const apiRoutes = require('./routes/api');
+const enforceLocalNetwork = require('./middlewares/localNetwork');
 
 const app = express();
 
 // Required so that rate-limiting accurately resolves IPs behind Nginx reverse proxy
 app.set('trust proxy', 1);
+
+// Enforce local network access (blocks requests coming from public WAN IPs)
+app.use(enforceLocalNetwork);
 
 // Connect to local MPD daemon
 mpdClient.connect();

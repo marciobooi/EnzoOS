@@ -5,6 +5,7 @@ import NetworkSettings from './components/NetworkSettings';
 import SystemSettings from './components/SystemSettings';
 import ClockMode from './components/ClockMode';
 import RadioBrowser from './components/RadioBrowser';
+import Login from './components/Login';
 import KioskView from './views/KioskView';
 import MobileView from './views/MobileView';
 
@@ -29,6 +30,13 @@ function AppContent() {
   const [theme, setTheme] = useState('dark-minimalist');
   const [vuStyle, setVuStyle] = useState('digital');
   const [isClockMode, setIsClockMode] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+
+  useEffect(() => {
+    if (localStorage.getItem('enzoOS_auth') === 'authenticated') {
+       setIsAuthenticated(true);
+    }
+  }, []);
 
   useEffect(() => {
     // Load theme immediately to prevent flash
@@ -71,6 +79,7 @@ function AppContent() {
     return () => {
       socket.close();
     };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const sendAction = (action, value = null) => {
@@ -138,7 +147,11 @@ function AppContent() {
         {/* Mobile View is forced into the clean 'dark-minimalist' theme */}
         <Route path="/remote" element={
           <div data-theme="dark-minimalist" className="w-full h-full text-[var(--text-main)] transition-colors duration-500 bg-[var(--bg-main)]">
-             <MobileView {...viewProps} />
+             {isAuthenticated ? (
+               <MobileView {...viewProps} />
+             ) : (
+               <Login onLoginSuccess={() => setIsAuthenticated(true)} />
+             )}
           </div>
         } />
       </Routes>

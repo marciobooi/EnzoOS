@@ -11,18 +11,13 @@ export default function NetworkSettings({ onClose }) {
 
   const apiBase = `${window.location.protocol}//${window.location.hostname}${window.location.port ? `:${window.location.port}` : ''}/api`;
 
-  useEffect(() => {
-    fetchStatus();
-    fetchNetworks();
-  }, []);
-
   const fetchStatus = async () => {
     try {
       const res = await fetch(`${apiBase}/network/status`);
       const data = await res.json();
       if (data.success) setStatus(data.status);
-    } catch (e) {
-      console.error('Failed to fetch network status', e);
+    } catch (err) {
+      console.error('Failed to fetch network status', err);
     }
   };
 
@@ -32,11 +27,17 @@ export default function NetworkSettings({ onClose }) {
       const res = await fetch(`${apiBase}/network/scan`);
       const data = await res.json();
       if (data.success) setNetworks(data.networks);
-    } catch (e) {
-      console.error('Failed to fetch networks', e);
+    } catch (err) {
+      console.error('Failed to fetch networks', err);
     }
     setLoading(false);
   };
+
+  useEffect(() => {
+    fetchStatus();
+    fetchNetworks();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleConnect = async () => {
     setIsConnecting(true);
@@ -55,7 +56,7 @@ export default function NetworkSettings({ onClose }) {
       } else {
         alert(data.error);
       }
-    } catch (e) {
+    } catch (err) {
       alert('Connection attempt failed');
     }
     setIsConnecting(false);
