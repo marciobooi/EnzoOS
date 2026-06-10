@@ -125,12 +125,22 @@ function AppContent() {
   }, [state.status]);
 
   return (
-    <div data-theme={theme} className="w-full h-full text-[var(--text-main)] transition-colors duration-500">
-      {isClockMode && <ClockMode onWake={() => setIsClockMode(false)} />}
-
+    <div className="w-full h-full">
       <Routes>
-        <Route path="/" element={<KioskView {...viewProps} />} />
-        <Route path="/remote" element={<MobileView {...viewProps} />} />
+        {/* Kiosk View gets the dynamic theme applied to it */}
+        <Route path="/" element={
+          <div data-theme={theme} className="w-full h-full text-[var(--text-main)] transition-colors duration-500 bg-[var(--bg-main)]">
+            {isClockMode && <ClockMode onWake={() => setIsClockMode(false)} />}
+            <KioskView {...viewProps} />
+          </div>
+        } />
+
+        {/* Mobile View is forced into the clean 'dark-minimalist' theme */}
+        <Route path="/remote" element={
+          <div data-theme="dark-minimalist" className="w-full h-full text-[var(--text-main)] transition-colors duration-500 bg-[var(--bg-main)]">
+             <MobileView {...viewProps} />
+          </div>
+        } />
       </Routes>
 
       {showWizard && <DspWizard onClose={() => setShowWizard(false)} />}
