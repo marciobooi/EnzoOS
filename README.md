@@ -62,9 +62,8 @@ ssh pi@<IP_DO_RASPBERRY_PI_OU_VM>
 
 Now, simply execute the EnzoOS One-Line Installer:
 ```bash
-wget -qO- https://raw.githubusercontent.com/YourUser/EnzoOS/main/install.sh | sudo bash
+wget -qO- https://raw.githubusercontent.com/marciobooi/EnzoOS/main/install.sh | sudo bash
 ```
-*(Note: Change the URL above to match your actual GitHub repository URL once pushed).*
 
 **What the installer does automatically:**
 - Installs all core dependencies (Git, Node.js, NGINX, MPD, Shairport-Sync, OpenSSH).

@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # EnzoOS Hi-Fi Streamer - One-Line Installer
-# Usage: wget -qO- https://raw.githubusercontent.com/YourUser/EnzoOS/main/install.sh | sudo bash
+# Usage: wget -qO- https://raw.githubusercontent.com/marciobooi/EnzoOS/main/install.sh | sudo bash
 
 if [ "$EUID" -ne 0 ]; then
   echo "ERROR: This installer must be run as root. Try 'sudo bash'."
@@ -31,8 +31,7 @@ if [ -d "$TARGET_DIR" ]; then
     cd $TARGET_DIR
     git pull origin main
 else
-    # Replace URL with actual user repo when deployed
-    git clone https://github.com/YourUser/EnzoOS.git $TARGET_DIR
+    git clone https://github.com/marciobooi/EnzoOS.git $TARGET_DIR
 fi
 
 # 3. Secure permissions
