@@ -1,8 +1,10 @@
+import { HardDrive, MonitorSpeaker, Radio, Airplay } from 'lucide-react';
+
 const SOURCES = [
-  { id: 'mpd', name: 'Local / MPD' },
-  { id: 'spotify', name: 'Spotify' },
-  { id: 'airplay', name: 'AirPlay' },
-  { id: 'tidal', name: 'TIDAL' },
+  { id: 'mpd', name: 'Local / MPD', Icon: HardDrive },
+  { id: 'spotify', name: 'Spotify', Icon: MonitorSpeaker },
+  { id: 'airplay', name: 'AirPlay', Icon: Airplay },
+  { id: 'tidal', name: 'TIDAL', Icon: Radio },
 ];
 
 export default function SourceSelect({ currentSource, onChange }) {
@@ -13,13 +15,14 @@ export default function SourceSelect({ currentSource, onChange }) {
         <button
           key={source.id}
           onClick={() => onChange(source.id)}
-          className={`px-4 py-3 rounded text-left transition-colors font-medium ${
+          className={`px-4 py-3 flex items-center space-x-3 rounded-xl border transition-all font-medium ${
             currentSource === source.id
-              ? 'bg-accent text-white shadow-md'
-              : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
+              ? 'border-[var(--accent)] bg-[var(--accent)] text-white shadow-[0_0_15px_var(--accent)]'
+              : 'border-white/10 bg-black/30 text-[var(--text-muted)] hover:border-white/30 hover:text-[var(--text-main)]'
           }`}
         >
-          {source.name}
+          <source.Icon size={18} />
+          <span>{source.name}</span>
         </button>
       ))}
     </div>

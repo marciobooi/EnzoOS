@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { X, Wifi } from 'lucide-react';
 
 export default function NetworkSettings({ onClose }) {
   const [status, setStatus] = useState(null);
@@ -66,9 +67,12 @@ export default function NetworkSettings({ onClose }) {
 
         {/* Header */}
         <div className="flex justify-between items-center mb-6">
-          <h2 className="text-2xl font-bold text-white">Network Settings</h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-white">
-             <svg className="w-8 h-8" fill="currentColor" viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+          <h2 className="text-2xl font-bold text-white flex items-center gap-3">
+             <Wifi size={28} className="text-[var(--accent)]" />
+             <span>Network Settings</span>
+          </h2>
+          <button onClick={onClose} className="text-gray-400 hover:text-white transition-colors p-2 bg-white/5 hover:bg-white/10 rounded-full">
+             <X size={24} />
           </button>
         </div>
 

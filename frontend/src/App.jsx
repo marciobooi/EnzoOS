@@ -13,6 +13,8 @@ function AppContent() {
     status: 'paused',
     volume: 50,
     source: 'mpd',
+    shuffle: false,
+    repeat: false,
     track: { title: 'Unknown', artist: 'Unknown', album: 'Unknown' },
     vuMeters: { left: -60, right: -60 }
   });
@@ -79,6 +81,8 @@ function AppContent() {
       if (action === 'pause') newState.status = 'paused';
       if (action === 'volume') newState.volume = value;
       if (action === 'source') newState.source = value;
+      if (action === 'shuffle') newState.shuffle = value;
+      if (action === 'repeat') newState.repeat = value;
       return newState;
     });
 

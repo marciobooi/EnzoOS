@@ -1,30 +1,48 @@
-export default function Controls({ status, onPlay, onPause }) {
+import { Play, Pause, SkipForward, SkipBack, Shuffle, Repeat } from 'lucide-react';
+
+export default function Controls({ status, shuffle, repeat, onPlay, onPause, onNext, onPrevious, onToggleShuffle, onToggleRepeat }) {
   return (
     <div className="flex flex-col items-center justify-center pt-4">
-      <div className="flex space-x-6">
-        <button className="text-gray-400 hover:text-white transition-colors">
-          <svg className="w-12 h-12" fill="currentColor" viewBox="0 0 24 24"><path d="M15.41 16.59L10.83 12l4.58-4.59L14 6l-6 6 6 6 1.41-1.41z"/></svg>
+      <div className="flex items-center space-x-6">
+
+        <button
+          onClick={onToggleShuffle}
+          className={`transition-colors ${shuffle ? 'text-[var(--accent)]' : 'text-[var(--text-muted)] hover:text-[var(--text-main)]'}`}
+        >
+          <Shuffle size={24} />
+        </button>
+
+        <button onClick={onPrevious} className="text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors">
+          <SkipBack size={36} fill="currentColor" />
         </button>
 
         {status === 'playing' ? (
           <button
             onClick={onPause}
-            className="w-16 h-16 flex items-center justify-center bg-accent text-white rounded-full hover:bg-blue-600 transition-colors shadow-lg"
+            className="w-16 h-16 flex items-center justify-center bg-[var(--accent)] text-white rounded-full hover:brightness-110 transition-colors shadow-[0_0_15px_var(--accent)]"
           >
-            <svg className="w-8 h-8" fill="currentColor" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
+            <Pause size={32} fill="currentColor" />
           </button>
         ) : (
           <button
             onClick={onPlay}
-            className="w-16 h-16 flex items-center justify-center bg-accent text-white rounded-full hover:bg-blue-600 transition-colors shadow-lg"
+            className="w-16 h-16 flex items-center justify-center bg-[var(--accent)] text-white rounded-full hover:brightness-110 transition-colors shadow-[0_0_15px_var(--accent)]"
           >
-            <svg className="w-8 h-8 pl-1" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+            <Play size={32} fill="currentColor" className="ml-1" />
           </button>
         )}
 
-        <button className="text-gray-400 hover:text-white transition-colors">
-          <svg className="w-12 h-12" fill="currentColor" viewBox="0 0 24 24"><path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6-1.41-1.41z"/></svg>
+        <button onClick={onNext} className="text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors">
+          <SkipForward size={36} fill="currentColor" />
         </button>
+
+        <button
+          onClick={onToggleRepeat}
+          className={`transition-colors ${repeat ? 'text-[var(--accent)]' : 'text-[var(--text-muted)] hover:text-[var(--text-main)]'}`}
+        >
+          <Repeat size={24} />
+        </button>
+
       </div>
     </div>
   );

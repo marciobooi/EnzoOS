@@ -71,13 +71,17 @@ wss.on('connection', (ws) => {
             if (action === 'next') mpdClient.next();
             if (action === 'previous') mpdClient.previous();
             if (action === 'volume') mpdClient.setVolume(value);
+            if (action === 'shuffle') mpdClient.toggleShuffle(value);
+            if (action === 'repeat') mpdClient.toggleRepeat(value);
         }
 
         // We update the local state optimistically, the services might overwrite later
         metadataService.updateState({
            status: action === 'play' ? 'playing' : action === 'pause' ? 'paused' : currentState.status,
            volume: action === 'volume' ? value : currentState.volume,
-           source: action === 'source' ? value : currentState.source
+           source: action === 'source' ? value : currentState.source,
+           shuffle: action === 'shuffle' ? value : currentState.shuffle,
+           repeat: action === 'repeat' ? value : currentState.repeat
         });
       }
     } catch (e) {

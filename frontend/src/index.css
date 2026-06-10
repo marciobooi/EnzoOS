@@ -1,3 +1,4 @@
+@import url('https://fonts.googleapis.com/css2?family=Doto:wght@400;700&display=swap');
 @import "tailwindcss";
 
 @theme {
@@ -32,6 +33,25 @@
   --accent: #22c55e; /* Classic green glow */
   --text-main: #22c55e;
   --text-muted: #166534;
+}
+
+[data-theme="dot-matrix"] {
+  --bg-main: #111111;
+  --bg-card: #181818;
+  --bg-panel: rgba(24, 24, 24, 0.8);
+  --accent: #f59e0b; /* Amber / Orange */
+  --text-main: #fcd34d;
+  --text-muted: #92400e;
+  font-family: 'Doto', monospace;
+}
+
+[data-theme="ocean-breeze"] {
+  --bg-main: #082f49; /* Sky 900 */
+  --bg-card: #0c4a6e;
+  --bg-panel: rgba(12, 74, 110, 0.8);
+  --accent: #38bdf8;
+  --text-main: #e0f2fe;
+  --text-muted: #7dd3fc;
 }
 
 body {

@@ -1,6 +1,7 @@
 import NowPlaying from '../components/NowPlaying';
 import Controls from '../components/Controls';
 import SourceSelect from '../components/SourceSelect';
+import { Settings, SlidersHorizontal, Radio as RadioIcon } from 'lucide-react';
 
 // Dedicated layout for Portrait (Mobile / Remote Control)
 export default function MobileView({ state, sendAction, onOpenWizard, onOpenSystem, onOpenRadio }) {
@@ -10,19 +11,29 @@ export default function MobileView({ state, sendAction, onOpenWizard, onOpenSyst
       {/* Header */}
       <div className="flex justify-between items-center mb-8">
         <h1 className="text-xl font-bold tracking-widest uppercase">Hi-Fi Remote</h1>
-        <button onClick={onOpenSystem} className="p-2 glass-panel rounded-full">
-           <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+        <button onClick={onOpenSystem} className="p-2 glass-panel rounded-full hover:bg-white/10 transition-colors text-[var(--text-muted)] hover:text-white">
+           <Settings size={24} />
         </button>
       </div>
 
       {/* Now Playing Area (Scaled down for portrait) */}
-      <div className="flex-1 flex flex-col justify-center items-center py-8">
+      <div className="flex-1 flex flex-col justify-center items-center py-8 scale-90">
         <NowPlaying track={state.track} status={state.status} />
       </div>
 
       {/* Playback Controls */}
-      <div className="mb-8">
-        <Controls status={state.status} onPlay={() => sendAction('play')} onPause={() => sendAction('pause')} />
+      <div className="mb-8 w-full max-w-sm mx-auto">
+        <Controls
+          status={state.status}
+          shuffle={state.shuffle}
+          repeat={state.repeat}
+          onPlay={() => sendAction('play')}
+          onPause={() => sendAction('pause')}
+          onNext={() => sendAction('next')}
+          onPrevious={() => sendAction('previous')}
+          onToggleShuffle={() => sendAction('shuffle', !state.shuffle)}
+          onToggleRepeat={() => sendAction('repeat', !state.repeat)}
+        />
       </div>
 
       {/* Volume Slider */}
@@ -48,15 +59,15 @@ export default function MobileView({ state, sendAction, onOpenWizard, onOpenSyst
         <div className="flex space-x-3 mt-4">
           <button
             onClick={onOpenWizard}
-            className="flex-1 py-4 glass-panel border border-[var(--accent)] text-[var(--text-main)] rounded-xl font-bold shadow-lg"
+            className="flex-1 flex justify-center items-center space-x-2 py-4 glass-panel border border-[var(--accent)] text-[var(--text-main)] rounded-xl font-bold shadow-lg hover:bg-[var(--accent)] transition-colors"
           >
-            Audio DSP
+            <SlidersHorizontal size={20} /> <span>Audio DSP</span>
           </button>
           <button
             onClick={onOpenRadio}
-            className="flex-1 py-4 glass-panel border border-[var(--accent)] text-[var(--text-main)] rounded-xl font-bold shadow-lg"
+            className="flex-1 flex justify-center items-center space-x-2 py-4 glass-panel border border-[var(--accent)] text-[var(--text-main)] rounded-xl font-bold shadow-lg hover:bg-[var(--accent)] transition-colors"
           >
-            Web Radio
+            <RadioIcon size={20} /> <span>Web Radio</span>
           </button>
         </div>
       </div>

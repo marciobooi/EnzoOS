@@ -43,6 +43,8 @@ class MPDService {
         source: 'mpd',
         status: status.state, // 'play', 'pause', 'stop'
         volume: status.volume,
+        shuffle: status.random, // boolean
+        repeat: status.repeat,  // boolean
         track: { title, artist, album, albumArtUrl }
       };
 
@@ -88,6 +90,14 @@ class MPDService {
   next() { if (this.isConnected) this.mpc.playback.next(); }
   previous() { if (this.isConnected) this.mpc.playback.previous(); }
   setVolume(vol) { if (this.isConnected) this.mpc.playback.setVol(vol); }
+
+  async toggleShuffle(enable) {
+    if (this.isConnected) await this.mpc.playbackOptions.setRandom(enable);
+  }
+
+  async toggleRepeat(enable) {
+    if (this.isConnected) await this.mpc.playbackOptions.setRepeat(enable);
+  }
 
   async playStream(url) {
     if (this.isConnected) {

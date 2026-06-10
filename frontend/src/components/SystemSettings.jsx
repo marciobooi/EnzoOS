@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { X, Settings, DownloadCloud } from 'lucide-react';
 
 export default function SystemSettings({ onClose, onThemeChange }) {
   const [theme, setTheme] = useState('dark-minimalist');
@@ -62,9 +63,12 @@ export default function SystemSettings({ onClose, onThemeChange }) {
 
         {/* Header */}
         <div className="flex justify-between items-center mb-8 border-b border-white/10 pb-4">
-          <h2 className="text-3xl font-bold text-[var(--text-main)] tracking-wide">System OS Settings</h2>
-          <button onClick={onClose} className="text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors">
-             <svg className="w-10 h-10" fill="currentColor" viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+          <h2 className="text-3xl font-bold text-[var(--text-main)] tracking-wide flex items-center gap-3">
+            <Settings size={32} className="text-[var(--accent)]" />
+            <span>System OS Settings</span>
+          </h2>
+          <button onClick={onClose} className="text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors p-2 bg-white/5 hover:bg-white/10 rounded-full">
+             <X size={28} />
           </button>
         </div>
 
@@ -74,7 +78,7 @@ export default function SystemSettings({ onClose, onThemeChange }) {
           <section>
             <h3 className="text-[var(--accent)] text-lg font-semibold uppercase tracking-widest mb-4">Appearance Theme</h3>
             <div className="grid grid-cols-3 gap-4">
-              {['dark-minimalist', 'rose-gold', 'mcintosh'].map(t => (
+              {['dark-minimalist', 'rose-gold', 'mcintosh', 'dot-matrix', 'ocean-breeze'].map(t => (
                 <button
                   key={t}
                   onClick={() => saveSettings(t, vuStyle)}
@@ -120,9 +124,10 @@ export default function SystemSettings({ onClose, onThemeChange }) {
               <button
                 onClick={handleOTAUpdate}
                 disabled={isUpdating}
-                className="px-8 py-3 bg-[var(--accent)] hover:brightness-110 text-white font-bold rounded-xl transition-all shadow-lg disabled:opacity-50"
+                className="px-8 py-3 flex items-center gap-2 bg-[var(--accent)] hover:brightness-110 text-white font-bold rounded-xl transition-all shadow-lg disabled:opacity-50"
               >
-                {isUpdating ? 'Updating OS...' : 'Check for Updates'}
+                <DownloadCloud size={20} />
+                <span>{isUpdating ? 'Updating OS...' : 'Check for Updates'}</span>
               </button>
             </div>
           </section>
