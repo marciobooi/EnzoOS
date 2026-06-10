@@ -4,6 +4,7 @@ import DspWizard from './components/DspWizard';
 import NetworkSettings from './components/NetworkSettings';
 import SystemSettings from './components/SystemSettings';
 import ClockMode from './components/ClockMode';
+import RadioBrowser from './components/RadioBrowser';
 import KioskView from './views/KioskView';
 import MobileView from './views/MobileView';
 
@@ -20,6 +21,7 @@ function AppContent() {
   const [showWizard, setShowWizard] = useState(false);
   const [showNetwork, setShowNetwork] = useState(false);
   const [showSystem, setShowSystem] = useState(false);
+  const [showRadio, setShowRadio] = useState(false);
 
   // Theming state
   const [theme, setTheme] = useState('dark-minimalist');
@@ -107,7 +109,8 @@ function AppContent() {
     vuStyle,
     onOpenWizard: () => setShowWizard(true),
     onOpenNetwork: () => setShowNetwork(true),
-    onOpenSystem: () => setShowSystem(true)
+    onOpenSystem: () => setShowSystem(true),
+    onOpenRadio: () => setShowRadio(true)
   };
 
   // Wake up if the user interacts or music starts playing
@@ -128,6 +131,7 @@ function AppContent() {
 
       {showWizard && <DspWizard onClose={() => setShowWizard(false)} />}
       {showNetwork && <NetworkSettings onClose={() => setShowNetwork(false)} />}
+      {showRadio && <RadioBrowser onClose={() => setShowRadio(false)} />}
       {showSystem && (
         <SystemSettings
           onClose={() => setShowSystem(false)}

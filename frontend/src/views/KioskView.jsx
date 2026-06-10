@@ -3,13 +3,21 @@ import Controls from '../components/Controls';
 import SourceSelect from '../components/SourceSelect';
 import VUMeter from '../components/VUMeter';
 
-export default function KioskView({ state, sendAction, vuStyle, onOpenWizard, onOpenNetwork, onOpenSystem }) {
+export default function KioskView({ state, sendAction, vuStyle, onOpenWizard, onOpenNetwork, onOpenSystem, onOpenRadio }) {
   return (
     <div className="w-full h-screen flex flex-row items-center p-4">
 
       {/* LEFT COLUMN: Source & Menus */}
       <div className="flex-1 flex flex-col justify-between h-full pr-6 border-r border-white/10">
-        <SourceSelect currentSource={state.source} onChange={(src) => sendAction('source', src)} />
+        <div className="space-y-4">
+          <SourceSelect currentSource={state.source} onChange={(src) => sendAction('source', src)} />
+          <button
+            onClick={onOpenRadio}
+            className="w-full py-3 glass-panel border border-[var(--accent)] text-[var(--text-main)] rounded-xl font-bold shadow-lg"
+          >
+            📻 Explore Web Radio
+          </button>
+        </div>
 
         <div className="mt-4 flex flex-col space-y-3">
           <div className="flex space-x-2">

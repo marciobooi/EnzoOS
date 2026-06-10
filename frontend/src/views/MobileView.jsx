@@ -3,7 +3,7 @@ import Controls from '../components/Controls';
 import SourceSelect from '../components/SourceSelect';
 
 // Dedicated layout for Portrait (Mobile / Remote Control)
-export default function MobileView({ state, sendAction, onOpenWizard, onOpenSystem }) {
+export default function MobileView({ state, sendAction, onOpenWizard, onOpenSystem, onOpenRadio }) {
   return (
     <div className="w-full min-h-screen flex flex-col p-6 overflow-y-auto">
 
@@ -44,12 +44,21 @@ export default function MobileView({ state, sendAction, onOpenWizard, onOpenSyst
       {/* Source Selection & DSP */}
       <div className="space-y-4">
         <SourceSelect currentSource={state.source} onChange={(src) => sendAction('source', src)} />
-        <button
-          onClick={onOpenWizard}
-          className="w-full py-4 glass-panel border border-[var(--accent)] text-[var(--text-main)] rounded-xl font-bold shadow-lg mt-4"
-        >
-          Configure Audio DSP
-        </button>
+
+        <div className="flex space-x-3 mt-4">
+          <button
+            onClick={onOpenWizard}
+            className="flex-1 py-4 glass-panel border border-[var(--accent)] text-[var(--text-main)] rounded-xl font-bold shadow-lg"
+          >
+            Audio DSP
+          </button>
+          <button
+            onClick={onOpenRadio}
+            className="flex-1 py-4 glass-panel border border-[var(--accent)] text-[var(--text-main)] rounded-xl font-bold shadow-lg"
+          >
+            Web Radio
+          </button>
+        </div>
       </div>
 
     </div>

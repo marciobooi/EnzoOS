@@ -5,6 +5,7 @@ const dspController = require('../controllers/dspController');
 const networkController = require('../controllers/networkController');
 const stateController = require('../controllers/stateController');
 const systemController = require('../controllers/systemController');
+const radioController = require('../controllers/radioController');
 
 // Webhook to receive metadata updates from external services (Spotify/AirPlay)
 router.post('/metadata/webhook', stateController.updateMetadataWebhook);
@@ -22,5 +23,9 @@ router.post('/network/connect', networkController.connectWifi);
 router.post('/system/update', systemController.triggerOTAUpdate);
 router.get('/system/settings', systemController.getSettings);
 router.post('/system/settings', systemController.updateSettings);
+
+// Web Radio routes
+router.get('/radio/search', radioController.searchRadio);
+router.post('/radio/play', radioController.playRadio);
 
 module.exports = router;

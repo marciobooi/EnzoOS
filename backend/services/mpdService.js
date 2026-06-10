@@ -88,6 +88,18 @@ class MPDService {
   next() { if (this.isConnected) this.mpc.playback.next(); }
   previous() { if (this.isConnected) this.mpc.playback.previous(); }
   setVolume(vol) { if (this.isConnected) this.mpc.playback.setVol(vol); }
+
+  async playStream(url) {
+    if (this.isConnected) {
+       try {
+         await this.mpc.currentPlaylist.clear();
+         await this.mpc.currentPlaylist.add(url);
+         await this.mpc.playback.play();
+       } catch (e) {
+         console.error('Error playing web stream:', e);
+       }
+    }
+  }
 }
 
 module.exports = new MPDService();
