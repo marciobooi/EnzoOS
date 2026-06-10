@@ -85,8 +85,13 @@ wss.on('connection', (ws) => {
            volume: action === 'volume' ? value : currentState.volume,
            source: action === 'source' ? value : currentState.source,
            shuffle: action === 'shuffle' ? value : currentState.shuffle,
-           repeat: action === 'repeat' ? value : currentState.repeat
+           repeat: action === 'repeat' ? value : currentState.repeat,
+           lastInteraction: Date.now() // Force a wake event across all clients
         });
+      }
+
+      if (data.type === 'wake') {
+         metadataService.updateState({ lastInteraction: Date.now() });
       }
     } catch (e) {
       console.error('Error parsing WS message:', e);

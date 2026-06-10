@@ -140,12 +140,19 @@ function AppContent() {
     onOpenRadio: () => setShowRadio(true)
   };
 
-  // Wake up if the user interacts or music starts playing
+  // Wake up if the user interacts, music starts playing, or external webhook signals activity
   useEffect(() => {
-    if (state.status === 'playing') {
+    if (state.status === 'playing' || state.lastInteraction) {
       setIsClockMode(false);
     }
-  }, [state.status]);
+  }, [state.status, state.lastInteraction]);
+
+  // If Mobile View is opened, forcefully emit a wake signal to the Kiosk screen via WS
+  useEffect(() => {
+    if (window.location.pathname === '/remote' && ws && ws.readyState === WebSocket.OPEN) {
+       ws.send(JSON.stringify({ type: 'wake' }));
+    }
+  }, [ws, window.location.pathname]);
 
   return (
     <div
