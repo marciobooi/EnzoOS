@@ -15,7 +15,7 @@ echo "========================================================="
 # 1. System Updates & Essential Packages
 echo ">> Updating system and installing dependencies..."
 apt-get update
-apt-get install -y mpd mpc upmpdcli shairport-sync nginx curl wget tar alsa-utils network-manager jq
+apt-get install -y mpd mpc upmpdcli shairport-sync nginx curl wget tar alsa-utils network-manager jq i2c-tools
 
 # Kiosk Mode GUI packages
 echo ">> Installing GUI and Kiosk mode packages..."
@@ -91,7 +91,15 @@ else
     exit 1
 fi
 
-# 5. Configuring GUI Kiosk Mode
+# 5. SD Card Protection (tmpfs)
+echo ">> Configuring tmpfs in /etc/fstab to protect SD Card..."
+if ! grep -q "tmpfs /var/log" /etc/fstab; then
+    echo "tmpfs /var/log tmpfs defaults,noatime,nosuid,mode=0755,size=50m 0 0" >> /etc/fstab
+    echo "tmpfs /tmp tmpfs defaults,noatime,nosuid,size=100m 0 0" >> /etc/fstab
+    echo "tmpfs /var/tmp tmpfs defaults,noatime,nosuid,size=50m 0 0" >> /etc/fstab
+fi
+
+# 6. Configuring GUI Kiosk Mode
 echo ">> Configuring Openbox and Chromium Kiosk Mode..."
 mkdir -p /etc/xdg/openbox
 cat <<EOF > /etc/xdg/openbox/autostart
@@ -104,7 +112,8 @@ xset -dpms
 unclutter -idle 0.5 -root &
 
 # Start Chromium in Kiosk mode
-chromium-browser --noerrdialogs --disable-infobars --kiosk http://localhost &
+# Note: Hardware acceleration flags used to ensure smooth 60fps React/CSS animations on Pi4
+chromium-browser --noerrdialogs --disable-infobars --kiosk --enable-gpu-rasterization --enable-zero-copy --ignore-gpu-blocklist http://localhost &
 EOF
 chmod +x /etc/xdg/openbox/autostart
 
@@ -138,15 +147,13 @@ chmod 0440 /etc/sudoers.d/hifi_permissions
 
 chmod +x $REPO_PATH/scripts/spotify_event.sh
 
-# 6. Installing Node Modules & Building Frontend
+# 7. Installing Node Modules & Building Frontend
 echo ">> Building application..."
-cd $REPO_PATH/backend && npm install
-cd $REPO_PATH/frontend && npm install && npm run build
-mkdir -p /opt/hifi-streamer
-cp -r $REPO_PATH/* /opt/hifi-streamer/
+cd /opt/hifi-streamer/backend && npm install
+cd /opt/hifi-streamer/frontend && npm install && npm run build
 chown -R pi:pi /opt/hifi-streamer
 
-# 7. Enable and Start Services
+# 8. Enable and Start Services
 echo ">> Enabling and starting systemd services..."
 systemctl daemon-reload
 
@@ -166,8 +173,45 @@ for SERVICE in "${SERVICES[@]}"; do
     echo "Started $SERVICE"
 done
 
+# 9. Configure Hardware RTC (Real-Time Clock)
+echo ">> Configuring Hardware RTC (DS3231) for Offline Clock Sync..."
+if ! grep -q "dtoverlay=i2c-rtc,ds3231" /boot/firmware/config.txt; then
+    echo "dtparam=i2c_arm=on" >> /boot/firmware/config.txt
+    echo "dtoverlay=i2c-rtc,ds3231" >> /boot/firmware/config.txt
+fi
+# Uninstall fake-hwclock to prevent conflicts with real RTC
+apt-get remove -y fake-hwclock
+update-rc.d -f fake-hwclock remove
+systemctl disable fake-hwclock
+
+# 10. Persistent Data Storage (Required for OverlayFS)
+echo ">> Setting up persistent data mounts for configs & database..."
+mkdir -p /boot/hifi_data
+chown -R pi:pi /boot/hifi_data
+
+# Symlink the database and configs to the boot partition (which is un-overlayed and read-write)
+if [ ! -f /boot/hifi_data/database.sqlite ]; then
+   # Move existing database if it was generated during build, else create empty
+   [ -f /opt/hifi-streamer/backend/db/database.sqlite ] && mv /opt/hifi-streamer/backend/db/database.sqlite /boot/hifi_data/ || touch /boot/hifi_data/database.sqlite
+fi
+ln -sf /boot/hifi_data/database.sqlite /opt/hifi-streamer/backend/db/database.sqlite
+chown pi:pi /boot/hifi_data/database.sqlite
+
+if [ ! -f /boot/hifi_data/camilladsp.yml ]; then
+   cp /opt/hifi-streamer/configs/camilladsp.yml /boot/hifi_data/
+fi
+ln -sf /boot/hifi_data/camilladsp.yml /opt/hifi-streamer/configs/camilladsp.yml
+chown pi:pi /boot/hifi_data/camilladsp.yml
+
+# 11. Enable OverlayFS (Immutable Root)
+echo ">> Enabling OverlayFS for SD Card Protection..."
+# This locks the root filesystem as Read-Only, changes are written to RAM
+# and lost on reboot. We linked the DB/Configs to /boot which ignores the overlay.
+raspi-config nonint enable_overlayfs
+
 echo "========================================================="
 echo " Installation Complete! "
 echo " Please reboot the Raspberry Pi to ensure ALSA initializes."
+echo " NOTE: OverlayFS is active. Your OS is now immutable."
 echo " Access the Web UI at http://<Raspberry-Pi-IP>"
 echo "========================================================="

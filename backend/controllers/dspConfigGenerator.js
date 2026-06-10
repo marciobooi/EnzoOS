@@ -25,8 +25,10 @@ function generateDSPConfig(answers) {
   const config = {
     devices: {
       samplerate: 44100,
-      chunksize: 1024,
+      chunksize: 512, // Lower chunksize for Zero-Latency feel
       queuelimit: 4,
+      enable_resampling: true, // Prevent pops/clicks across MPD and Shairport sample rates
+      resampler_type: 'Synchronous', // Fallback config, CamillaDSP uses best available
       capture: {
         type: 'Alsa',
         channels: 2,
@@ -37,7 +39,8 @@ function generateDSPConfig(answers) {
         type: 'Alsa',
         channels: 2,
         device: 'hw:IanCanadaDAC',
-        format: 'S32LE'
+        format: 'S32LE',
+        enable_dithering: true // Mask quantization distortion when volume is lowered digitally
       }
     },
     filters: {},

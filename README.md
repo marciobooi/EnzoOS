@@ -6,8 +6,9 @@ A complete DIY High-Fidelity Audio Streamer architecture built for the **Raspber
 - **Modern Hardware UI**: React + Tailwind CSS v4 running on Vite 8, featuring Glassmorphism, 1400x320 landscape Kiosk orientation, and CSS variables for theming (Rose Gold, McIntosh Green, Dark Minimalist).
 - **Dual-Mode OS**: Landscape UI for the touchscreen, and a specialized Mobile Portrait view (`/remote`) for controlling playback from a smartphone.
 - **Zero-Latency Feel**: Employs Optimistic UI updates on WebSockets for instant playback control and volume adjustments.
-- **Real-Time VU Meters**: Directly connects to the CamillaDSP Engine's WebSocket to broadcast true playback RMS signals to dynamic digital bars or analog needles on the display.
-- **Dynamic DSP Engine**: Features an 11-step configuration wizard allowing users to generate complex audio pipelines (Highpass crossovers, Night mode, L/R Balancing, and a 10-Band Graphic EQ).
+- **Real-Time VU Meters (Canvas Physics)**: Directly connects to the CamillaDSP Engine's WebSocket to broadcast true playback RMS signals. Analog needles are drawn natively on the HTML5 Canvas using a 60 FPS requestAnimationFrame loop with full ballistic physics (damping, spring tension, and overshoot).
+- **Dynamic DSP Engine**: Features an 11-step configuration wizard allowing users to generate complex audio pipelines (Highpass crossovers, Night mode, L/R Balancing, and a 10-Band Graphic EQ). The engine automatically processes Shaped Dither and Asynchronous Resampling for Bit-Perfect playback.
+- **Hardware-Level Stability**: Utilizes SQLite Write-Ahead Logging (WAL) alongside an Immutable OS via **OverlayFS** and `tmpfs` RAM logs, making the Streamer 100% resilient to forced power cuts without SD Card corruption.
 - **Smart Metadata**: Integrates natively with the MPD daemon and scrapes MusicBrainz for high-res album covers. Also supports webhooks for Spotify Connect to sync track events.
 - **OTA Updates**: Triggers Over-The-Air system updates directly from the touchscreen to fetch the latest code from GitHub and restart the background services.
 - **Clock / Screensaver**: Dimmed, burn-in protected Nixie-style clock screen that activates after 5 minutes of inactivity.

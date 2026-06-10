@@ -16,6 +16,14 @@ async function getDb() {
     driver: sqlite3.Database
   });
 
+  // Enable Write-Ahead Logging to reduce disk I/O and protect the SD card
+  await dbInstance.exec('PRAGMA journal_mode = WAL;');
+
+  // High availability memory optimizations
+  await dbInstance.exec('PRAGMA synchronous = NORMAL;');
+  await dbInstance.exec('PRAGMA cache_size = -10000;'); // 10MB memory cache
+  await dbInstance.exec('PRAGMA temp_store = MEMORY;');
+
   await initializeTables(dbInstance);
 
   return dbInstance;

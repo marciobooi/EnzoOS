@@ -32,6 +32,20 @@ function AppContent() {
   const [isClockMode, setIsClockMode] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
+  // Pixel Shifting state for OLED burn-in protection
+  const [pixelShift, setPixelShift] = useState({ x: 0, y: 0 });
+
+  useEffect(() => {
+    // Pixel shift every 10 minutes: random translation between -2px and 2px
+    const shiftInterval = setInterval(() => {
+      setPixelShift({
+        x: Math.floor(Math.random() * 5) - 2,
+        y: Math.floor(Math.random() * 5) - 2
+      });
+    }, 10 * 60 * 1000);
+    return () => clearInterval(shiftInterval);
+  }, []);
+
   useEffect(() => {
     if (localStorage.getItem('enzoOS_auth') === 'authenticated') {
        setIsAuthenticated(true);
@@ -134,11 +148,14 @@ function AppContent() {
   }, [state.status]);
 
   return (
-    <div className="w-full h-full">
+    <div
+      className="w-full h-full transition-transform duration-[5000ms] ease-in-out"
+      style={{ transform: `translate(${pixelShift.x}px, ${pixelShift.y}px)` }}
+    >
       <Routes>
         {/* Kiosk View gets the dynamic theme applied to it */}
         <Route path="/" element={
-          <div data-theme={theme} className="w-full h-full text-[var(--text-main)] transition-colors duration-500 bg-[var(--bg-main)]">
+          <div data-theme={theme} className="w-full h-full text-[var(--text-main)] transition-colors duration-500 bg-[var(--bg-main)] overflow-hidden">
             {isClockMode && <ClockMode onWake={() => setIsClockMode(false)} />}
             <KioskView {...viewProps} />
           </div>
