@@ -79,10 +79,15 @@ echo -e "\n${GREEN}[2/7] Updating system package repositories...${NC}"
 apt-get update
 apt-get install -y ca-certificates curl gnupg git build-essential
 
-# 5. Clone repository if needed
+# 5. Clone or Update repository
 if [ ! -d "$PROJECT_DIR" ]; then
   echo -e "\n${GREEN}[3/7] Cloning EnzoOS repository into $PROJECT_DIR...${NC}"
   sudo -u $TARGET_USER git clone https://github.com/marciobooi/EnzoOS.git "$PROJECT_DIR"
+else
+  echo -e "\n${GREEN}[3/7] Updating existing EnzoOS repository in $PROJECT_DIR...${NC}"
+  cd "$PROJECT_DIR"
+  sudo -u $TARGET_USER git fetch origin main
+  sudo -u $TARGET_USER git reset --hard origin/main
 fi
 
 # 6. Install Node.js (v20)
