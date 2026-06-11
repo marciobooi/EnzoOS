@@ -1,0 +1,48 @@
+#!/bin/bash
+
+# Exit immediately if a command exits with a non-zero status
+set -e
+
+# Logging colors
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+RED='\033[0;31m'
+NC='\033[0m'
+
+echo -e "${YELLOW}Starting Resonance HiFi OTA Update...${NC}"
+
+# Find absolute path of the project directory (one level up from scripts/)
+PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$PROJECT_DIR"
+
+echo -e "Project directory: $PROJECT_DIR"
+
+# Clean any local changes to prevent conflicts
+echo -e "${YELLOW}Clearing local modifications...${NC}"
+git reset --hard HEAD
+git clean -fd
+
+# Fetch changes from GitHub
+echo -e "${YELLOW}Fetching latest modifications from GitHub...${NC}"
+git fetch origin main
+
+# Reset local main branch to remote main branch
+echo -e "${YELLOW}Syncing repository with origin/main...${NC}"
+git reset --hard origin/main
+
+# Install dependencies (incorporating package.json updates)
+echo -e "${YELLOW}Installing npm dependencies...${NC}"
+npm install
+
+# Rebuild frontend bundles
+echo -e "${YELLOW}Rebuilding frontend bundle...${NC}"
+npm run build
+
+echo -e "${GREEN}OTA Update completed successfully!${NC}"
+echo -e "${YELLOW}Triggering disowned PM2 daemon restart...${NC}"
+
+# Restart the PM2 service in the background and disown it so this script can exit cleanly
+nohup pm2 restart resonance-api > /dev/null 2>&1 &
+
+echo -e "${GREEN}Update sequence complete. Server restarting.${NC}"
+exit 0

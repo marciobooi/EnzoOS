@@ -4,6 +4,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import http from 'http';
 import { WebSocketServer, WebSocket } from 'ws';
+import updateRouter from './update.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -16,6 +17,9 @@ app.use(express.json());
 
 // Serve static assets from Vite's production build folder
 app.use(express.static(path.join(__dirname, '../dist')));
+
+// System OTA Update Router API Integration
+app.use('/api/system/update', updateRouter);
 
 // Fallback all non-API requests to index.html for Single Page App client routing
 app.use((req, res, next) => {

@@ -205,5 +205,41 @@ export const api = {
       }
     });
     return handleResponse(response);
+  },
+
+  /**
+   * Fetches the system OTA update status.
+   */
+  async getUpdateStatus() {
+    const response = await fetch('/api/system/update/status');
+    let data;
+    try {
+      data = await response.json();
+    } catch (err) {
+      throw new Error('Failed to parse update status.');
+    }
+    if (!response.ok) {
+      throw new Error(data?.error || 'System update status request failed.');
+    }
+    return data;
+  },
+
+  /**
+   * Triggers the system OTA update execution.
+   */
+  async triggerUpdate() {
+    const response = await fetch('/api/system/update', {
+      method: 'POST'
+    });
+    let data;
+    try {
+      data = await response.json();
+    } catch (err) {
+      throw new Error('Failed to parse update command response.');
+    }
+    if (!response.ok) {
+      throw new Error(data?.error || 'Failed to trigger OTA update.');
+    }
+    return data;
   }
 };

@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Sliders, Terminal, LogOut, RefreshCw, Speaker, Smartphone, Laptop, Check, AlertCircle } from 'lucide-react';
+import { api } from '../api';
 import TrackSearch from './TrackSearch';
 
 export default function DefinitionsMenu({
@@ -14,6 +15,42 @@ export default function DefinitionsMenu({
   onRefreshDevices,
   onPlayTrack
 }) {
+  // OTA states
+  const [updateStatus, setUpdateStatus] = useState(null); // null, 'checking', 'error', 'no-update', 'available', 'updating'
+  const [localCommit, setLocalCommit] = useState('');
+  const [remoteCommit, setRemoteCommit] = useState('');
+  const [errorMessage, setErrorMessage] = useState('');
+
+  // OTA logic
+  const checkUpdates = async () => {
+    try {
+      setUpdateStatus('checking');
+      const data = await api.getUpdateStatus();
+      if (data.updateAvailable) {
+        setUpdateStatus('available');
+      } else {
+        setUpdateStatus('no-update');
+      }
+      setLocalCommit(data.localCommit || '');
+      setRemoteCommit(data.remoteCommit || '');
+    } catch (err) {
+      console.error('[OTA] Failed to check for system updates:', err);
+      setUpdateStatus('error');
+      setErrorMessage(err.message || 'Failed to check updates.');
+    }
+  };
+
+  const triggerOtaUpdate = async () => {
+    try {
+      setUpdateStatus('updating');
+      await api.triggerUpdate();
+    } catch (err) {
+      console.error('[OTA] Failed to trigger update installation:', err);
+      setUpdateStatus('error');
+      setErrorMessage(err.message || 'Failed to start update.');
+    }
+  };
+
   // Render device icon helper
   const getDeviceIcon = (type) => {
     switch (type?.toLowerCase()) {
@@ -76,7 +113,7 @@ export default function DefinitionsMenu({
                 Mount Custom Token
               </button>
             </form>
-            <div className="text-[9px] text-zinc-600 flex items-start gap-1.5 p-2 rounded bg-zinc-950/40 border border-zinc-950 mt-1 leading-normal">
+            <div className="text-[9px] text-zinc-650 flex items-start gap-1.5 p-2 rounded bg-zinc-950/40 border border-zinc-950 mt-1 leading-normal">
               <Terminal className="h-3.5 w-3.5 text-zinc-600 shrink-0 mt-0.5" />
               <span>
                 Need a key? Copy a temp token from Spotify's{' '}
@@ -131,8 +168,8 @@ export default function DefinitionsMenu({
         </div>
 
         {!token ? (
-          <div className="text-center py-4 text-zinc-600 text-[10px] border border-dashed border-zinc-900 rounded-lg select-none flex flex-col items-center gap-1">
-            <AlertCircle className="h-4 w-4 text-zinc-700" />
+          <div className="text-center py-4 text-zinc-650 text-[10px] border border-dashed border-zinc-900 rounded-lg select-none flex flex-col items-center gap-1">
+            <AlertCircle className="h-4 w-4 text-zinc-750" />
             <span>AUTHORIZE KEYWAY TO LOCATE AUDIBLE CHANNELS</span>
           </div>
         ) : (
@@ -152,7 +189,7 @@ export default function DefinitionsMenu({
                     }`}
                   >
                     <div className="flex items-center gap-2.5 min-w-0">
-                      <span className={device.is_active ? 'text-[#ff8e00]' : 'text-zinc-600'}>
+                      <span className={device.is_active ? 'text-[#ff8e00]' : 'text-zinc-650'}>
                         {getDeviceIcon(device.type)}
                       </span>
                       <div className="min-w-0">
@@ -164,7 +201,7 @@ export default function DefinitionsMenu({
                             </span>
                           )}
                         </div>
-                        <p className="text-[8px] text-zinc-600 uppercase font-mono mt-0.5">
+                        <p className="text-[8px] text-zinc-650 uppercase font-mono mt-0.5">
                           Type: {device.type || 'Speaker'} // Vol: {device.volume_percent}%
                         </p>
                       </div>
@@ -185,9 +222,9 @@ export default function DefinitionsMenu({
                 );
               })
             ) : (
-              <div className="text-center py-4 text-zinc-500 text-[10px] border border-dashed border-zinc-900 rounded-lg select-none">
+              <div className="text-center py-4 text-zinc-650 text-[10px] border border-dashed border-zinc-900 rounded-lg select-none">
                 NO DEVICES DETECTED ON CLIENT SUBNET.
-                <p className="text-[8.5px] text-zinc-600 mt-1 uppercase">
+                <p className="text-[8.5px] text-zinc-700 mt-1 uppercase">
                   Verify Librespot is running or launch Spotify on another device.
                 </p>
               </div>
@@ -196,11 +233,102 @@ export default function DefinitionsMenu({
         )}
       </section>
 
-      {/* 3. SOURCE SEARCH & LOAD */}
+      {/* 3. SYSTEM OTA UPDATES */}
+      <section className="p-4 rounded-xl border border-zinc-900 bg-zinc-950/20 flex flex-col gap-3">
+        <div className="flex items-center justify-between">
+          <span className="text-[10px] font-bold tracking-wider text-zinc-400 uppercase">
+            [03] System OTA Updates
+          </span>
+          <span className="text-[8px] bg-zinc-900 border border-zinc-800 text-zinc-600 px-2 py-0.5 rounded font-bold uppercase tracking-wider">
+            GIT BRANCH
+          </span>
+        </div>
+
+        <div className="flex flex-col gap-2.5 mt-1">
+          {updateStatus === null && (
+            <button
+              onClick={checkUpdates}
+              className="w-full py-2 px-3 rounded-lg bg-zinc-900 hover:bg-zinc-850 text-xs text-zinc-350 border border-zinc-800 hover:text-white transition-colors cursor-pointer flex items-center justify-center gap-2 active:scale-95 uppercase font-bold tracking-wider"
+            >
+              Check for Updates
+            </button>
+          )}
+
+          {updateStatus === 'checking' && (
+            <div className="text-center py-2 text-zinc-650 text-[10px] flex items-center justify-center gap-2">
+              <RefreshCw className="h-3.5 w-3.5 animate-spin text-[#ff8e00]" />
+              <span>FETCHING LATEST GIT COMMITS...</span>
+            </div>
+          )}
+
+          {updateStatus === 'no-update' && (
+            <div className="flex flex-col gap-2">
+              <div className="p-2.5 rounded bg-emerald-950/20 border border-emerald-900/40 text-emerald-450 text-[10px] font-mono leading-relaxed">
+                <p className="font-bold text-emerald-400">✓ SYSTEM IS UP TO DATE</p>
+                <p className="text-[8.5px] text-zinc-550 mt-0.5">CURRENT COMMIT: {localCommit}</p>
+              </div>
+              <button
+                onClick={checkUpdates}
+                className="w-full py-2 px-3 rounded-lg bg-zinc-950 hover:bg-zinc-900 text-[10px] text-zinc-450 border border-zinc-900 hover:text-zinc-350 transition-colors cursor-pointer active:scale-95 uppercase font-bold tracking-wider"
+              >
+                Re-check commits
+              </button>
+            </div>
+          )}
+
+          {updateStatus === 'available' && (
+            <div className="flex flex-col gap-2.5">
+              <div className="p-2.5 rounded bg-amber-950/20 border border-amber-900/40 text-amber-450 text-[10px] font-mono leading-normal">
+                <p className="font-bold text-amber-400">⚠️ UPDATE DETECTED ON ORIGIN</p>
+                <p className="text-[8.5px] text-zinc-550 mt-1">LOCAL: {localCommit} // REMOTE: {remoteCommit}</p>
+              </div>
+              <button
+                onClick={triggerOtaUpdate}
+                className="w-full py-2 px-3 rounded-lg bg-[#ff8e00] hover:bg-[#ff8e00]/80 active:scale-95 text-xs text-black font-extrabold uppercase tracking-wider transition-all cursor-pointer"
+              >
+                Deploy OTA Update
+              </button>
+            </div>
+          )}
+
+          {updateStatus === 'updating' && (
+            <div className="p-3 rounded bg-zinc-950 border border-zinc-900 text-center flex flex-col items-center gap-2">
+              <RefreshCw className="h-5 w-5 animate-spin text-[#ff8e00]" />
+              <div className="text-[10px] font-bold text-white uppercase tracking-wider">INSTALLING SYSTEM DIRECTIVES</div>
+              <p className="text-[9px] text-zinc-600 leading-normal uppercase">
+                Pulling commits, resolving node packages, compiling assets, and restarting server daemon. The connection will drop shortly.
+              </p>
+            </div>
+          )}
+
+          {updateStatus === 'error' && (
+            <div className="flex flex-col gap-2">
+              <div className="p-2.5 rounded bg-rose-950/20 border border-rose-900/40 text-rose-450 text-[10px] font-mono leading-normal">
+                <p className="font-bold text-rose-400">❌ UPDATE ATTEMPT FAILED</p>
+                <p className="text-[8.5px] text-zinc-550 mt-1">{errorMessage}</p>
+              </div>
+              <button
+                onClick={checkUpdates}
+                className="w-full py-2 px-3 rounded-lg bg-zinc-900 hover:bg-zinc-850 text-xs text-zinc-350 border border-zinc-800 hover:text-white transition-colors cursor-pointer active:scale-95"
+              >
+                Retry update check
+              </button>
+            </div>
+          )}
+        </div>
+      </section>
+
+      {/* 4. SOURCE SEARCH & LOAD */}
       <section className="flex-grow flex flex-col">
+        <div className="flex items-center gap-2 pb-2 mb-3 border-b border-zinc-900">
+          <span className="text-[10px] font-bold tracking-wider text-zinc-400 uppercase">
+            [04] Source Catalog Search
+          </span>
+        </div>
+        
         {!token ? (
           <div className="p-4 rounded-xl border border-zinc-900 bg-zinc-950/20 text-center py-6 text-zinc-650 text-[10px] border-dashed select-none flex flex-col items-center gap-1.5">
-            <AlertCircle className="h-4 w-4 text-zinc-700" />
+            <AlertCircle className="h-4 w-4 text-zinc-750" />
             <span>AUTHORIZE KEYWAY TO ACTIVATE SERVICE SEARCH</span>
           </div>
         ) : (
