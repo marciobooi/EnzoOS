@@ -67,6 +67,7 @@ cp "$PROJECT_DIR/scripts/openbox_rc.xml" "$HOME/.config/openbox/rc.xml"
 # Sync Avahi configuration if running with root privileges
 if [ "$EUID" -eq 0 ]; then
   echo -e "${YELLOW}Syncing Avahi service discovery config...${NC}"
+  mkdir -p /etc/avahi/services
   cp "$PROJECT_DIR/scripts/resonance.service" /etc/avahi/services/resonance.service
   chmod 644 /etc/avahi/services/resonance.service
   systemctl restart avahi-daemon || true
