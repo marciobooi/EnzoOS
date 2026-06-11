@@ -61,6 +61,14 @@ export default function RemoteControl() {
   const [volume, setVolume] = useState(50);
   const [isMuted, setIsMuted] = useState(false);
 
+  // OTA states
+  const [updateStatus, setUpdateStatus] = useState(null);
+  const [localCommit, setLocalCommit] = useState('');
+  const [remoteCommit, setRemoteCommit] = useState('');
+  const [errorMessage, setErrorMessage] = useState('');
+  const [otaProgress, setOtaProgress] = useState([]);
+  const [otaPercent, setOtaPercent] = useState(0);
+
   const ws = useRef(null);
   const progressInterval = useRef(null);
   const volumeApiTimeout = useRef(null);
@@ -110,6 +118,13 @@ export default function RemoteControl() {
             if (payload.repeat_state !== undefined) setRepeatState(payload.repeat_state);
             if (payload.volume !== undefined) setVolume(payload.volume);
             if (payload.is_muted !== undefined) setIsMuted(payload.is_muted);
+          }
+
+          if (type === 'UPDATE_PROGRESS') {
+            setOtaProgress(prev => [...prev, payload.text].slice(-30));
+            if (payload.percent !== undefined && payload.percent !== null) {
+              setOtaPercent(payload.percent);
+            }
           }
 
           if (type === 'SET_TOKEN') {
@@ -235,6 +250,37 @@ export default function RemoteControl() {
       }
     } catch (err) {
       console.warn('Local state fetch failed:', err);
+    }
+  };
+
+  const checkUpdates = async () => {
+    try {
+      setUpdateStatus('checking');
+      const data = await api.getUpdateStatus();
+      if (data.updateAvailable) {
+        setUpdateStatus('available');
+      } else {
+        setUpdateStatus('no-update');
+      }
+      setLocalCommit(data.localCommit || '');
+      setRemoteCommit(data.remoteCommit || '');
+    } catch (err) {
+      console.error('[OTA] Failed to check for system updates:', err);
+      setUpdateStatus('error');
+      setErrorMessage(err.message || 'Failed to check updates.');
+    }
+  };
+
+  const triggerOtaUpdate = async () => {
+    try {
+      setOtaProgress([]);
+      setOtaPercent(0);
+      setUpdateStatus('updating');
+      await api.triggerUpdate();
+    } catch (err) {
+      console.error('[OTA] Failed to trigger update installation:', err);
+      setUpdateStatus('error');
+      setErrorMessage(err.message || 'Failed to start update.');
     }
   };
 
@@ -578,6 +624,88 @@ export default function RemoteControl() {
                   ))
                 ) : (
                   <div className="text-[10px] text-zinc-650 italic text-center py-2">No audio players detected on network</div>
+                )}
+              </div>
+            </div>
+
+            <div className="border-t border-white/5 pt-4 flex flex-col gap-3">
+              <div className="flex justify-between items-center text-[10px] uppercase tracking-wider text-[#8695a7] font-semibold">
+                <span>System Updates</span>
+                <span className="text-[8px] bg-white/5 border border-white/10 px-1.5 py-0.5 rounded text-white">OTA</span>
+              </div>
+              
+              <div className="flex flex-col gap-2">
+                {updateStatus === null && (
+                  <button
+                    onClick={checkUpdates}
+                    className="w-full py-2.5 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 active:scale-95 transition-all text-xs font-bold uppercase tracking-wider text-white"
+                  >
+                    Check for Updates
+                  </button>
+                )}
+
+                {updateStatus === 'checking' && (
+                  <div className="w-full py-2.5 rounded-xl border border-white/10 bg-white/5 flex justify-center items-center gap-2 text-xs font-bold uppercase tracking-wider text-white">
+                    <RefreshCw className="h-4 w-4 animate-spin" />
+                    Checking...
+                  </div>
+                )}
+
+                {updateStatus === 'no-update' && (
+                  <div className="flex flex-col gap-2">
+                    <div className="p-3 rounded-xl border border-emerald-500/20 bg-emerald-500/5 text-emerald-500 text-[10px] font-mono leading-normal text-center">
+                      ✓ System is up to date
+                    </div>
+                    <button
+                      onClick={checkUpdates}
+                      className="w-full py-2 rounded-xl text-xs font-bold uppercase tracking-wider text-[#8695a7] hover:text-white transition-all"
+                    >
+                      Check Again
+                    </button>
+                  </div>
+                )}
+
+                {updateStatus === 'available' && (
+                  <div className="flex flex-col gap-2">
+                    <div className="p-3 rounded-xl border border-amber-500/20 bg-amber-500/5 text-amber-500 text-[10px] font-mono leading-normal text-center">
+                      ⚠️ Update Available
+                    </div>
+                    <button
+                      onClick={triggerOtaUpdate}
+                      className="w-full py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 active:scale-95 transition-all text-xs font-bold uppercase tracking-wider text-black"
+                    >
+                      Install Update
+                    </button>
+                  </div>
+                )}
+
+                {updateStatus === 'updating' && (
+                  <div className="p-3 rounded-xl border border-white/10 bg-black/40 flex flex-col gap-3">
+                    <div className="flex justify-between items-center text-[10px] text-white font-bold uppercase">
+                      <span>Installing</span>
+                      <span>{otaPercent}%</span>
+                    </div>
+                    <div className="w-full h-1.5 bg-white/10 rounded-full overflow-hidden">
+                      <div className="h-full bg-white transition-all" style={{ width: `${otaPercent}%` }} />
+                    </div>
+                    <div className="h-20 overflow-y-auto text-[8px] font-mono text-[#8695a7] flex flex-col gap-0.5 custom-scrollbar">
+                      {otaProgress.map((line, i) => <div key={i}>{line}</div>)}
+                    </div>
+                  </div>
+                )}
+
+                {updateStatus === 'error' && (
+                  <div className="flex flex-col gap-2">
+                    <div className="p-3 rounded-xl border border-rose-500/20 bg-rose-500/5 text-rose-500 text-[10px] font-mono leading-normal text-center">
+                      Update Failed
+                    </div>
+                    <button
+                      onClick={checkUpdates}
+                      className="w-full py-2 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 active:scale-95 transition-all text-xs font-bold uppercase tracking-wider text-white"
+                    >
+                      Retry
+                    </button>
+                  </div>
                 )}
               </div>
             </div>

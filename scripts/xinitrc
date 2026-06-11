@@ -80,9 +80,9 @@ export DBUS_SESSION_BUS_ADDRESS=autolaunch:
 # ── Kiosk restart loop ────────────────────────────────────────────────────────
 while true; do
   "$CHROMIUM_BIN" \
-    --app=http://localhost:5000 \
-    --window-size=1400,320 \
-    --window-position=0,0 \
+    --kiosk \
+    --app=http://localhost:5000/kiosk \
+    --window-size=800,480 \
     --autoplay-policy=no-user-gesture-required \
     --noerrdialogs \
     --disable-infobars \
@@ -93,7 +93,7 @@ while true; do
     --check-for-update-interval=31536000 \
     --no-sandbox \
     --test-type \
-    2>/tmp/resonance_chromium.log
+    2> /tmp/resonance_chromium.log
 
   echo "[Resonance] Chromium exited (code $?). Restarting in 2s..."
   sleep 2
