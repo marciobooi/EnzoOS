@@ -48,51 +48,36 @@ done
 echo "[Resonance] Server ready."
 
 # ── chromium crash recovery ───────────────────────────────────────────────────
-# Force clear any stale hardware profile locks
+# Clean up both standard and snap-specific hardware profile locks
 rm -f "$HOME/.config/chromium/SingletonLock"
+rm -f "$HOME/snap/chromium/common/chromium/SingletonLock"
 rm -f "$HOME/.config/chromium/Default/Preferences.lock"
 
-# Note the uppercase 'Default/Preferences' (Ubuntu paths are case-sensitive)
-prefs_file="$HOME/snap/chromium/current/.config/chromium/Default/Preferences"
-if [ -f "$prefs_file" ]; then
-    sed -i 's/"exit_type":"Crashed"/"exit_type":"Normal"/' "$prefs_file"
-    sed -i 's/"exited_cleanly":false/"exited_cleanly":true/' "$prefs_file"
-fi
-
-# ── launch chromium ───────────────────────────────────────────────────────────
-# Export the database variables needed for Snap application sub-layers
-export DBUS_SESSION_BUS_ADDRESS=autolaunch:
-
-# Run Chromium with required flags to bypass sandboxing limits in raw X11
-chromium-browser --kiosk \
-  --no-sandbox \
-  --test-type \
-  --no-first-run \
-  --simulate-outdated-no-buttons \
-  --disable-infobars \
-  http://localhost:5000
+# Fix preferences across both standard and snap configuration files
+for prefs_file in "$HOME/.config/chromium/Default/Preferences" "$HOME/snap/chromium/current/.config/chromium/Default/Preferences"; do
+  if [ -f "$prefs_file" ]; then
+      sed -i 's/"exit_type":"Crashed"/"exit_type":"Normal"/' "$prefs_file"
+      sed -i 's/"exited_cleanly":false/"exited_cleanly":true/' "$prefs_file"
+  fi
+done
 
 # ── Detect Chromium binary name ───────────────────────────────────────────────
 
-# Raspberry Pi OS uses "chromium-browser"; Debian/Ubuntu may use "chromium"
 if command -v chromium-browser &>/dev/null; then
   CHROMIUM_BIN="chromium-browser"
 elif command -v chromium &>/dev/null; then
   CHROMIUM_BIN="chromium"
 else
   echo "[Resonance] ERROR: No Chromium binary found. Install chromium-browser or chromium."
-  # Keep X alive so the error can be read on screen via openbox
   while true; do sleep 60; done
 fi
 
 echo "[Resonance] Using browser: $CHROMIUM_BIN"
 
-# ── Kiosk restart loop ────────────────────────────────────────────────────────
-# Chromium runs as the foreground process that keeps xinit/X alive.
-# Wrapping it in `while true` means:
-#   - OTA updates can `pkill chromium` and the kiosk auto-relaunches
-#   - Any crash recovers without a reboot
+# CRITICAL UBUNTU 24.04 SNAP REQUIREMENT
+export DBUS_SESSION_BUS_ADDRESS=autolaunch:
 
+# ── Kiosk restart loop ────────────────────────────────────────────────────────
 while true; do
   "$CHROMIUM_BIN" \
     --app=http://localhost:5000 \
@@ -106,6 +91,8 @@ while true; do
     --disable-component-update \
     --no-first-run \
     --check-for-update-interval=31536000 \
+    --no-sandbox \
+    --test-type \
     2>/tmp/resonance_chromium.log
 
   echo "[Resonance] Chromium exited (code $?). Restarting in 2s..."
