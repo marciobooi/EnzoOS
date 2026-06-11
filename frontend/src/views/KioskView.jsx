@@ -3,9 +3,12 @@ import Controls from '../components/Controls';
 import SourceSelect from '../components/SourceSelect';
 import VUMeter from '../components/VUMeter';
 
+import { Radio as RadioIcon } from 'lucide-react';
+
 export default function KioskView({ state, sendAction, vuStyle, onOpenWizard, onOpenNetwork, onOpenSystem, onOpenRadio }) {
   return (
-    <div className="w-full h-screen max-h-[320px] flex flex-row items-stretch select-none bg-black">
+    <div className="w-full h-full bg-black flex flex-col items-center justify-center select-none overflow-hidden">
+      <div className="w-full h-[320px] max-h-[320px] flex flex-row items-stretch bg-[#050505] relative shadow-2xl">
 
       {/* LEFT COLUMN: Source & Menus (300px fixed) */}
       <div className="w-[300px] h-full bg-[#0a0a0a]/80 backdrop-blur-xl border-r border-white/5 flex flex-col shrink-0">
@@ -15,6 +18,12 @@ export default function KioskView({ state, sendAction, vuStyle, onOpenWizard, on
         <div className="flex-1 p-2">
           <SourceSelect currentSource={state.source} onChange={(src) => sendAction('source', src)} />
         </div>
+        <button
+          onClick={onOpenRadio}
+          className="mx-2 mb-2 py-2 flex items-center justify-center space-x-2 bg-black/40 border border-[#007aff]/30 text-[#007aff] hover:bg-[#007aff]/10 rounded-lg text-[10px] uppercase tracking-widest transition-all"
+        >
+          <RadioIcon size={14} /> <span>Web Radio</span>
+        </button>
         <div className="h-[64px] flex border-t border-white/5">
            <button onClick={onOpenWizard} className="flex-1 flex items-center justify-center text-[10px] uppercase tracking-widest text-white/50 hover:text-[#ffb800] hover:bg-white/5 transition-all">
              DSP
@@ -74,6 +83,7 @@ export default function KioskView({ state, sendAction, vuStyle, onOpenWizard, on
         </div>
       </div>
 
+      </div>
     </div>
   );
 }
