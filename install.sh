@@ -144,6 +144,12 @@ cp "$PROJECT_DIR/scripts/xinitrc" "$USER_HOME/.xinitrc"
 chmod +x "$USER_HOME/.xinitrc"
 chown $TARGET_USER:$TARGET_USER "$USER_HOME/.xinitrc"
 
+# Deploy Openbox configuration to remove window decorations
+echo -e "${YELLOW}Deploying Openbox config to disable window decorations...${NC}"
+mkdir -p "$USER_HOME/.config/openbox"
+cp "$PROJECT_DIR/scripts/openbox_rc.xml" "$USER_HOME/.config/openbox/rc.xml"
+chown -R $TARGET_USER:$TARGET_USER "$USER_HOME/.config"
+
 # Automatically trigger X server when logging in on TTY1 console
 AUTOSTART_X_BLOCK=$(cat <<'EOF'
 

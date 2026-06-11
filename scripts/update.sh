@@ -59,6 +59,11 @@ echo -e "${YELLOW}Syncing user kiosk startup config (.xinitrc)...${NC}"
 cp "$PROJECT_DIR/scripts/xinitrc" "$HOME/.xinitrc"
 chmod +x "$HOME/.xinitrc"
 
+# Sync Openbox configuration to ensure window decorations are disabled
+echo -e "${YELLOW}Syncing Openbox config...${NC}"
+mkdir -p "$HOME/.config/openbox"
+cp "$PROJECT_DIR/scripts/openbox_rc.xml" "$HOME/.config/openbox/rc.xml"
+
 echo -e "${GREEN}OTA Update completed successfully!${NC}"
 echo "[PROGRESS: 95]"
 echo -e "${YELLOW}Triggering disowned PM2 daemon restart...${NC}"

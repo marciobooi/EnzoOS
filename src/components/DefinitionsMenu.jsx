@@ -327,19 +327,19 @@ export default function DefinitionsMenu({
 
               <div 
                 ref={consoleRef}
-                className="bg-black/85 rounded border border-zinc-900 p-2 text-left h-36 overflow-y-auto text-[8px] text-zinc-400 select-text custom-scrollbar flex flex-col gap-0.5 leading-normal"
+                className="bg-black/85 rounded border border-zinc-900 p-2 text-left h-36 overflow-y-auto text-[8px] text-white select-text custom-scrollbar flex flex-col gap-0.5 leading-normal"
               >
                 {otaProgress && otaProgress.length > 0 ? (
                   otaProgress.map((line, idx) => (
-                    <div key={idx} className="whitespace-pre-wrap break-all text-zinc-300">
+                    <div key={idx} className="whitespace-pre-wrap break-all text-white font-medium">
                       {line}
                     </div>
                   ))
                 ) : (
-                  <div className="text-zinc-650 animate-pulse uppercase">Initiating secure socket pipeline...</div>
+                  <div className="text-white/60 animate-pulse uppercase font-medium">Initiating secure socket pipeline...</div>
                 )}
               </div>
-              <p className="text-[7.5px] text-zinc-600 leading-normal uppercase">
+              <p className="text-[7.5px] text-zinc-400 leading-normal uppercase">
                 The connection will drop and reconnect automatically once compile finishes.
               </p>
             </div>
