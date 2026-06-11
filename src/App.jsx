@@ -48,21 +48,29 @@ export default function App() {
 
   useEffect(() => {
     const handleResize = () => {
+      // Skip if window dimensions haven't been reported yet (Chromium startup race)
+      if (window.innerWidth === 0 || window.innerHeight === 0) return;
+
       // Calculate target scale based on 1400x320 design dimensions
       const containerWidth = window.innerWidth - 48;
       const containerHeight = window.innerHeight - 48;
-      
+
       const scaleX = containerWidth / 1400;
       const scaleY = containerHeight / 320;
-      
-      const targetScale = Math.min(scaleX, scaleY);
+
+      // Clamp to a safe minimum so we never get a zero or negative scale
+      const targetScale = Math.max(0.1, Math.min(scaleX, scaleY));
       setScale(targetScale);
     };
 
     window.addEventListener('resize', handleResize);
-    handleResize();
+    // Delay the initial calculation to let Chromium finish painting the window
+    const initialTimer = setTimeout(handleResize, 100);
 
-    return () => window.removeEventListener('resize', handleResize);
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      clearTimeout(initialTimer);
+    };
   }, []);
 
   // WebSocket reference
