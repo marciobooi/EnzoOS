@@ -68,6 +68,15 @@ fi
 echo -e "${YELLOW}Syncing user kiosk startup config (.xinitrc)...${NC}"
 cp "$PROJECT_DIR/scripts/xinitrc" "$HOME/.xinitrc" && chmod +x "$HOME/.xinitrc" || true
 
+# Patch profile: upgrade legacy 'exec startx' to a restart loop so X recovers
+# automatically after OTA updates kill Chromium (and therefore xinit)
+for PROFILE_FILE in "$HOME/.bash_profile" "$HOME/.profile" "$HOME/.bashrc"; do
+  if [ -f "$PROFILE_FILE" ] && grep -q "exec startx" "$PROFILE_FILE"; then
+    echo -e "${YELLOW}Patching $PROFILE_FILE: replacing 'exec startx' with restart loop...${NC}"
+    sed -i 's/exec startx/while true; do\n    startx -- -nocursor 2>\/tmp\/resonance_startx.log\n    echo "[Resonance] X exited. Restarting in 3s..."\n    sleep 3\n  done/' "$PROFILE_FILE" || true
+  fi
+done
+
 # Sync Openbox configuration to ensure window decorations are disabled
 echo -e "${YELLOW}Syncing Openbox config...${NC}"
 mkdir -p "$HOME/.config/openbox"

@@ -1,20 +1,24 @@
 #!/bin/bash
+# Resonance HiFi — Kiosk Startup Script
+# This file is managed by the project. Manual edits will be overwritten on OTA update.
 
-# Disable screen saver, screen blanking, and power management
+# ── Display tuning ──────────────────────────────────────────────────────────
+
+# Disable screensaver, blanking, DPMS power management
 xset s off
 xset s noblank
 xset -dpms
 
-# Hide mouse cursor for cleaner touchscreen kiosk experience
+# Hide mouse cursor after 0.1s of inactivity
 unclutter -idle 0.1 -root &
 
-# Dynamically detect the primary connected display output
-OUTPUT=$(xrandr | grep " connected " | awk '{print $1}' | head -n 1)
+# ── Resolution setup (skip gracefully on VMs / unsupported displays) ─────────
+
+OUTPUT=$(xrandr 2>/dev/null | grep " connected " | awk '{print $1}' | head -n 1)
 
 if [ -n "$OUTPUT" ]; then
-  # Try to generate modeline using cvt, or fallback to hardcoded mode for 1420x320@60Hz
   if command -v cvt &>/dev/null; then
-    MODELINE_GEN=$(cvt 1420 320 60 | grep "Modeline" | cut -d' ' -f2-)
+    MODELINE_GEN=$(cvt 1420 320 60 2>/dev/null | grep "Modeline" | cut -d' ' -f2-)
     MODE_NAME=$(echo "$MODELINE_GEN" | cut -d' ' -f1 | tr -d '"')
     MODELINE_VALS=$(echo "$MODELINE_GEN" | cut -d' ' -f2-)
   else
@@ -22,38 +26,59 @@ if [ -n "$OUTPUT" ]; then
     MODELINE_VALS="35.50  1420 1464 1592 1776  320 323 328 335 -hsync +vsync"
   fi
 
-  # Register and apply the custom resolution mode
+  # These commands all fail silently — VM or driver rejection is non-fatal
   xrandr --newmode "$MODE_NAME" $MODELINE_VALS 2>/dev/null || true
   xrandr --addmode "$OUTPUT" "$MODE_NAME" 2>/dev/null || true
   xrandr --output "$OUTPUT" --mode "$MODE_NAME" 2>/dev/null || true
 fi
 
-# Start Openbox window manager in background
-# NOTE: openbox (not openbox-session) is used here so we remain in control of
-# the foreground process and can keep the kiosk loop running below.
+# ── Window manager ──────────────────────────────────────────────────────────
+
+# Launch openbox (not openbox-session) in the background.
+# openbox-session takes over session management and exits prematurely inside
+# xinitrc, killing X. Plain `openbox` just starts the WM and returns control.
 openbox &
 
-# Wait for local Node server on port 5000 to spin up before opening Chromium.
-# This prevents "This site can't be reached" error screens on boot.
-echo "Waiting for Resonance server on :5000..."
-until curl -s http://localhost:5000 > /dev/null; do
+# ── Wait for the Node server ─────────────────────────────────────────────────
+
+echo "[Resonance] Waiting for server on :5000..."
+until curl -sf http://localhost:5000 > /dev/null 2>&1; do
   sleep 1
 done
-echo "Server ready. Launching kiosk."
+echo "[Resonance] Server ready."
 
-# Reset Chromium preferences exit state to prevent "Restore pages" bubble on boot
+# ── Chromium crash recovery ───────────────────────────────────────────────────
+
+# Clear any stale "Restore pages?" dialog state from previous sessions
 PREFS_FILE="$HOME/.config/chromium/Default/Preferences"
 if [ -f "$PREFS_FILE" ]; then
   sed -i 's/"exit_type":"Crashed"/"exit_type":"Normal"/g' "$PREFS_FILE" 2>/dev/null || true
   sed -i 's/"exited_cleanly":false/"exited_cleanly":true/g' "$PREFS_FILE" 2>/dev/null || true
 fi
 
-# Launch Chromium in a restart loop so that:
-#  - OTA updates can pkill chromium and the kiosk relaunches automatically
-#  - Any crash recovers without needing a reboot
-# --app mode opens a borderless window with no tab bar or address controls
+# ── Detect Chromium binary name ───────────────────────────────────────────────
+
+# Raspberry Pi OS uses "chromium-browser"; Debian/Ubuntu may use "chromium"
+if command -v chromium-browser &>/dev/null; then
+  CHROMIUM_BIN="chromium-browser"
+elif command -v chromium &>/dev/null; then
+  CHROMIUM_BIN="chromium"
+else
+  echo "[Resonance] ERROR: No Chromium binary found. Install chromium-browser or chromium."
+  # Keep X alive so the error can be read on screen via openbox
+  while true; do sleep 60; done
+fi
+
+echo "[Resonance] Using browser: $CHROMIUM_BIN"
+
+# ── Kiosk restart loop ────────────────────────────────────────────────────────
+# Chromium runs as the foreground process that keeps xinit/X alive.
+# Wrapping it in `while true` means:
+#   - OTA updates can `pkill chromium` and the kiosk auto-relaunches
+#   - Any crash recovers without a reboot
+
 while true; do
-  chromium-browser \
+  "$CHROMIUM_BIN" \
     --app=http://localhost:5000 \
     --window-size=1400,320 \
     --window-position=0,0 \
@@ -64,7 +89,9 @@ while true; do
     --disable-features=Translate \
     --disable-component-update \
     --no-first-run \
-    --check-for-update-interval=31536000
-  # Brief pause before restarting to avoid thrash-looping on hard crash
+    --check-for-update-interval=31536000 \
+    2>/tmp/resonance_chromium.log
+
+  echo "[Resonance] Chromium exited (code $?). Restarting in 2s..."
   sleep 2
 done

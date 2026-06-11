@@ -188,7 +188,11 @@ AUTOSTART_X_BLOCK=$(cat <<'EOF'
 
 # Resonance HiFi - Autostart X Server on TTY1 Boot
 if [ -z "$DISPLAY" ] && [ "$(tty)" = "/dev/tty1" ]; then
-  exec startx
+  while true; do
+    startx -- -nocursor 2>/tmp/resonance_startx.log
+    echo "[Resonance] X exited. Restarting in 3s..."
+    sleep 3
+  done
 fi
 EOF
 )
