@@ -71,6 +71,10 @@ echo -e "${YELLOW}Triggering disowned PM2 daemon restart...${NC}"
 # Restart the PM2 service in the background and disown it so this script can exit cleanly
 nohup pm2 restart resonance-api > /dev/null 2>&1 &
 
+# Restart the graphical kiosk session to apply any X11/Openbox window changes
+echo -e "${YELLOW}Restarting kiosk display session...${NC}"
+pkill -u "$USER" -f chromium-browser || true
+
 echo -e "${GREEN}Update sequence complete. Server restarting.${NC}"
 echo "[PROGRESS: 100]"
 exit 0
