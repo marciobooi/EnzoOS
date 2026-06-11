@@ -40,6 +40,7 @@ export default function App() {
   };
 
   const [otaProgress, setOtaProgress] = useState([]);
+  const [otaPercent, setOtaPercent] = useState(0);
 
   const [scale, setScale] = useState(1);
   const containerRef = useRef(null);
@@ -151,6 +152,9 @@ export default function App() {
 
           if (type === 'UPDATE_PROGRESS') {
             setOtaProgress(prev => [...prev, payload.text].slice(-30));
+            if (payload.percent !== undefined && payload.percent !== null) {
+              setOtaPercent(payload.percent);
+            }
           }
 
           if (type === 'SET_TOKEN') {
@@ -549,6 +553,8 @@ export default function App() {
             onThemeChange={handleThemeChange}
             otaProgress={otaProgress}
             setOtaProgress={setOtaProgress}
+            otaPercent={otaPercent}
+            setOtaPercent={setOtaPercent}
           />
         </div>
       </div>

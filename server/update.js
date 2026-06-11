@@ -59,8 +59,15 @@ router.post('/', (req, res) => {
     child.stdout.on('data', (data) => {
       const text = data.toString();
       fs.appendFileSync(logPath, text);
+      
+      let percent = null;
+      const match = text.match(/\[PROGRESS:\s*(\d+)\]/);
+      if (match) {
+        percent = parseInt(match[1], 10);
+      }
+      
       if (broadcast) {
-        broadcast({ type: 'UPDATE_PROGRESS', payload: { text } });
+        broadcast({ type: 'UPDATE_PROGRESS', payload: { text, percent } });
       }
     });
     

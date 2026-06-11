@@ -17,7 +17,9 @@ export default function DefinitionsMenu({
   theme,
   onThemeChange,
   otaProgress,
-  setOtaProgress
+  setOtaProgress,
+  otaPercent,
+  setOtaPercent
 }) {
   // OTA states
   const [updateStatus, setUpdateStatus] = useState(null); // null, 'checking', 'error', 'no-update', 'available', 'updating'
@@ -55,6 +57,7 @@ export default function DefinitionsMenu({
   const triggerOtaUpdate = async () => {
     try {
       if (setOtaProgress) setOtaProgress([]);
+      if (setOtaPercent) setOtaPercent(0);
       setUpdateStatus('updating');
       await api.triggerUpdate();
     } catch (err) {
@@ -305,11 +308,23 @@ export default function DefinitionsMenu({
           )}
 
           {updateStatus === 'updating' && (
-            <div className="p-3 rounded bg-zinc-950 border border-zinc-900 text-center flex flex-col items-stretch gap-2 font-mono">
-              <div className="flex items-center justify-center gap-2">
-                <RefreshCw className="h-4 w-4 animate-spin theme-text" />
-                <div className="text-[10px] font-bold text-white uppercase tracking-wider">Installing OTA Update</div>
+            <div className="p-3 rounded bg-zinc-950 border border-zinc-900 text-center flex flex-col items-stretch gap-2.5 font-mono">
+              <div className="flex items-center justify-between text-[10px] select-none">
+                <div className="flex items-center gap-2">
+                  <RefreshCw className="h-4 w-4 animate-spin theme-text" />
+                  <span className="font-bold text-white uppercase tracking-wider">Installing OTA Update</span>
+                </div>
+                <span className="theme-text font-extrabold font-mono text-[9px] bg-zinc-900 border border-zinc-800 px-1.5 py-0.5 rounded">{otaPercent}%</span>
               </div>
+              
+              {/* Progress Bar */}
+              <div className="w-full h-2 rounded bg-zinc-900 border border-zinc-850 overflow-hidden relative p-[1px]">
+                <div 
+                  className="h-full theme-bg transition-all duration-300 ease-out rounded shadow-[0_0_8px_var(--theme-color-glow)]"
+                  style={{ width: `${otaPercent}%` }}
+                />
+              </div>
+
               <div 
                 ref={consoleRef}
                 className="bg-black/85 rounded border border-zinc-900 p-2 text-left h-36 overflow-y-auto text-[8px] text-zinc-400 select-text custom-scrollbar flex flex-col gap-0.5 leading-normal"

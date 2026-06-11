@@ -10,6 +10,7 @@ RED='\033[0;31m'
 NC='\033[0m'
 
 echo -e "${YELLOW}Starting Resonance HiFi OTA Update...${NC}"
+echo "[PROGRESS: 5]"
 
 # Diagnostics
 echo "=== SYSTEM DIAGNOSTICS ==="
@@ -29,30 +30,37 @@ echo -e "Project directory: $PROJECT_DIR"
 
 # Clean any local changes to prevent conflicts
 echo -e "${YELLOW}Clearing local modifications...${NC}"
+echo "[PROGRESS: 15]"
 git reset --hard HEAD
 git clean -fd
 
 # Fetch changes from GitHub
 echo -e "${YELLOW}Fetching latest modifications from GitHub...${NC}"
+echo "[PROGRESS: 30]"
 git fetch origin main
 
 # Reset local main branch to remote main branch
 echo -e "${YELLOW}Syncing repository with origin/main...${NC}"
+echo "[PROGRESS: 45]"
 git reset --hard origin/main
 
 # Install dependencies (incorporating package.json updates)
 echo -e "${YELLOW}Installing npm dependencies...${NC}"
+echo "[PROGRESS: 60]"
 npm install
 
 # Rebuild frontend bundles
 echo -e "${YELLOW}Rebuilding frontend bundle...${NC}"
+echo "[PROGRESS: 80]"
 npm run build
 
 echo -e "${GREEN}OTA Update completed successfully!${NC}"
+echo "[PROGRESS: 95]"
 echo -e "${YELLOW}Triggering disowned PM2 daemon restart...${NC}"
 
 # Restart the PM2 service in the background and disown it so this script can exit cleanly
 nohup pm2 restart resonance-api > /dev/null 2>&1 &
 
 echo -e "${GREEN}Update sequence complete. Server restarting.${NC}"
+echo "[PROGRESS: 100]"
 exit 0
