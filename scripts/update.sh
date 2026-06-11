@@ -64,6 +64,14 @@ echo -e "${YELLOW}Syncing Openbox config...${NC}"
 mkdir -p "$HOME/.config/openbox"
 cp "$PROJECT_DIR/scripts/openbox_rc.xml" "$HOME/.config/openbox/rc.xml"
 
+# Sync Avahi configuration if running with root privileges
+if [ "$EUID" -eq 0 ]; then
+  echo -e "${YELLOW}Syncing Avahi service discovery config...${NC}"
+  cp "$PROJECT_DIR/scripts/resonance.service" /etc/avahi/services/resonance.service
+  chmod 644 /etc/avahi/services/resonance.service
+  systemctl restart avahi-daemon || true
+fi
+
 echo -e "${GREEN}OTA Update completed successfully!${NC}"
 echo "[PROGRESS: 95]"
 echo -e "${YELLOW}Triggering disowned PM2 daemon restart...${NC}"

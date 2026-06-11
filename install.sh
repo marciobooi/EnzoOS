@@ -91,7 +91,9 @@ apt-get install -y \
   alsa-utils \
   pulseaudio \
   openssh-server \
-  unclutter
+  unclutter \
+  avahi-daemon \
+  libnss-mdns
 
 echo -e "${YELLOW}Installing Raspotify repository and precompiled Librespot daemon...${NC}"
 # Install Raspotify repository and package (contains the precompiled /usr/bin/librespot binary)
@@ -134,6 +136,19 @@ cat <<EOF > /etc/systemd/system/getty@tty1.service.d/override.conf
 ExecStart=
 ExecStart=-/sbin/agetty --autologin $TARGET_USER --noclear %I \$TERM
 EOF
+
+# Configure friendly hostname for local mDNS resolution (resonance.local)
+echo -e "${YELLOW}Configuring system hostname to 'resonance'...${NC}"
+hostnamectl set-hostname resonance || true
+sed -i 's/127.0.1.1.*/127.0.1.1\tresonance/g' /etc/hosts || true
+
+# Deploy Avahi service discovery configuration
+echo -e "${YELLOW}Deploying Avahi service discovery configuration...${NC}"
+mkdir -p /etc/avahi/services
+cp "$PROJECT_DIR/scripts/resonance.service" /etc/avahi/services/resonance.service
+chmod 644 /etc/avahi/services/resonance.service
+systemctl enable avahi-daemon || true
+systemctl restart avahi-daemon || true
 
 # 8. Configure Kiosk startup scripts
 echo -e "\n${GREEN}[6/7] Configuring kiosk startup files...${NC}"
