@@ -21,6 +21,83 @@ app.use(express.static(path.join(__dirname, '../dist')));
 // System OTA Update Router API Integration
 app.use('/api/system/update', updateRouter);
 
+// Helper to detect if an IP address belongs to the same local area network (LAN)
+const isLocalIP = (ip) => {
+  if (!ip) return false;
+  
+  let normalizedIp = ip;
+  // Normalize IPv6 mapped IPv4 addresses
+  if (ip.startsWith('::ffff:')) {
+    normalizedIp = ip.substring(7);
+  }
+  
+  // Localhost / Loopback
+  if (normalizedIp === '127.0.0.1' || normalizedIp === '::1' || normalizedIp === 'localhost') {
+    return true;
+  }
+  
+  // Private IPv4 Address ranges:
+  // Class A: 10.0.0.0 - 10.255.255.255
+  if (normalizedIp.startsWith('10.')) {
+    return true;
+  }
+  // Class B: 172.16.0.0 - 172.31.255.255
+  if (normalizedIp.startsWith('172.')) {
+    const parts = normalizedIp.split('.');
+    if (parts.length >= 2) {
+      const secondPart = parseInt(parts[1], 10);
+      if (secondPart >= 16 && secondPart <= 31) {
+        return true;
+      }
+    }
+  }
+  // Class C: 192.168.0.0 - 192.168.255.255
+  if (normalizedIp.startsWith('192.168.')) {
+    return true;
+  }
+  
+  // Private IPv6 Address ranges: link-local, unique local
+  const lowerIp = normalizedIp.toLowerCase();
+  if (lowerIp.startsWith('fe80:') || lowerIp.startsWith('fc00:') || lowerIp.startsWith('fd00:')) {
+    return true;
+  }
+  
+  return false;
+};
+
+// Helper to extract client IP address
+const getClientIP = (req) => {
+  const forwarded = req.headers['x-forwarded-for'];
+  if (forwarded) {
+    return forwarded.split(',')[0].trim();
+  }
+  return req.socket.remoteAddress || req.ip;
+};
+
+// Restrict /remote route to devices on the same local network
+app.get('/remote', (req, res, next) => {
+  const clientIp = getClientIP(req);
+  if (!isLocalIP(clientIp)) {
+    console.warn(`[Resonance Access Denied] Blocked request to /remote from external IP: ${clientIp}`);
+    return res.status(403).send(`
+      <html>
+        <head>
+          <title>403 Forbidden</title>
+          <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        </head>
+        <body style="background-color: #090b0e; color: #f1f3f6; font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; padding: 24px; text-align: center; box-sizing: border-box;">
+          <div style="max-width: 400px; background-color: #13161c; border: 1px solid rgba(255, 255, 255, 0.05); padding: 32px; border-radius: 16px; box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);">
+            <h1 style="color: #ff3366; font-size: 1.5rem; margin-top: 0; margin-bottom: 8px; letter-spacing: 0.1em; font-weight: bold; text-transform: uppercase;">Access Denied</h1>
+            <p style="color: #8695a7; font-size: 0.85rem; line-height: 1.6; margin-bottom: 24px;">Resonance Remote Control is restricted. You must be connected to the same local area network (LAN) as the server.</p>
+            <div style="font-size: 0.75rem; color: #303643; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 16px; font-family: monospace;">Client IP: ${clientIp}</div>
+          </div>
+        </body>
+      </html>
+    `);
+  }
+  next();
+});
+
 // Fallback all non-API requests to index.html for Single Page App client routing
 app.use((req, res, next) => {
   if (req.method === 'GET') {
@@ -74,6 +151,11 @@ wss.on('connection', (ws) => {
         broadcast({ type: 'PLAYBACK_STATE', payload }, ws);
       }
 
+      if (type === 'REQUEST_SYNC') {
+        // Broadcast sync request to OTHER clients (typically the main player)
+        broadcast({ type: 'REQUEST_SYNC' }, ws);
+      }
+
       if (type === 'SET_TOKEN') {
         cachedToken = payload.token;
         console.log('[Resonance WS] Token cached. Syncing with other clients.');
@@ -100,6 +182,16 @@ server.on('upgrade', (request, socket, head) => {
   const { pathname } = new URL(request.url, `http://${request.headers.host}`);
 
   if (pathname === '/ws') {
+    const forwarded = request.headers['x-forwarded-for'];
+    const clientIp = forwarded ? forwarded.split(',')[0].trim() : request.socket.remoteAddress;
+
+    if (!isLocalIP(clientIp)) {
+      console.warn(`[Resonance WS Denied] Blocked WS upgrade from external IP: ${clientIp}`);
+      socket.write('HTTP/1.1 403 Forbidden\r\n\r\n');
+      socket.destroy();
+      return;
+    }
+
     wss.handleUpgrade(request, socket, head, (ws) => {
       wss.emit('connection', ws, request);
     });

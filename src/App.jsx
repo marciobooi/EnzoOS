@@ -6,6 +6,7 @@ import { api } from './api';
 // Subcomponents
 import RoseHiFiDisplay from './components/RoseHiFiDisplay';
 import DefinitionsMenu from './components/DefinitionsMenu';
+import RemoteControl from './components/RemoteControl';
 
 export default function App() {
   // Authentication states
@@ -148,6 +149,17 @@ export default function App() {
             if (payload.repeat_state !== undefined) {
               setRepeatState(payload.repeat_state);
             }
+            if (payload.volume !== undefined) {
+              setVolume(payload.volume);
+            }
+            if (payload.is_muted !== undefined) {
+              setIsMuted(payload.is_muted);
+            }
+          }
+
+          if (type === 'REQUEST_SYNC') {
+            console.log('[Resonance Client] Received sync request, syncing local state');
+            syncCurrentState();
           }
 
           if (type === 'UPDATE_PROGRESS') {
@@ -364,6 +376,8 @@ export default function App() {
           duration: state.item?.duration_ms || 0,
           shuffle_state: state.shuffle_state,
           repeat_state: state.repeat_state,
+          volume: state.device?.volume_percent !== undefined ? state.device.volume_percent : volume,
+          is_muted: state.device?.volume_percent !== undefined ? (state.device.volume_percent === 0) : isMuted,
           track_window: {
             current_track: {
               uri: state.item?.uri,
@@ -381,6 +395,10 @@ export default function App() {
         setTrackDuration(state.item?.duration_ms || 0);
         setShuffleState(state.shuffle_state);
         setRepeatState(state.repeat_state);
+        if (state.device && state.device.volume_percent !== undefined) {
+          setVolume(state.device.volume_percent);
+          setIsMuted(state.device.volume_percent === 0);
+        }
 
         // Broadcast current state to other connected clients via WebSocket
         if (ws.current && ws.current.readyState === WebSocket.OPEN) {
@@ -409,6 +427,19 @@ export default function App() {
     const vol = parseInt(e.target.value, 10);
     setVolume(vol);
     setIsMuted(vol === 0);
+
+    // Broadcast volume update immediately over WS for instant remote response
+    if (ws.current && ws.current.readyState === WebSocket.OPEN) {
+      ws.current.send(JSON.stringify({
+        type: 'BROADCAST_STATE',
+        payload: {
+          ...playbackState,
+          volume: vol,
+          is_muted: vol === 0
+        }
+      }));
+    }
+
     try {
       await api.setVolume(token, vol);
     } catch (err) {
@@ -420,6 +451,19 @@ export default function App() {
     const newMuteState = !isMuted;
     setIsMuted(newMuteState);
     const targetVolume = newMuteState ? 0 : volume;
+
+    // Broadcast mute update immediately over WS
+    if (ws.current && ws.current.readyState === WebSocket.OPEN) {
+      ws.current.send(JSON.stringify({
+        type: 'BROADCAST_STATE',
+        payload: {
+          ...playbackState,
+          volume: targetVolume,
+          is_muted: newMuteState
+        }
+      }));
+    }
+
     try {
       await api.setVolume(token, targetVolume);
     } catch (err) {
@@ -455,6 +499,11 @@ export default function App() {
     }
     toast.info('Session terminated.');
   };
+
+  // Pathname routing check for standalone mobile remote view
+  if (window.location.pathname === '/remote') {
+    return <RemoteControl />;
+  }
 
   // UI state variables
   const currentTrack = playbackState?.track_window?.current_track;

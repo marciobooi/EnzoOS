@@ -1,0 +1,779 @@
+import React, { useState, useEffect, useRef } from 'react';
+import { 
+  Play, 
+  Pause, 
+  SkipForward, 
+  SkipBack, 
+  Volume2, 
+  VolumeX, 
+  Shuffle, 
+  Repeat, 
+  Laptop, 
+  Wifi, 
+  WifiOff, 
+  Music, 
+  RefreshCw,
+  Settings,
+  ChevronRight,
+  LogOut
+} from 'lucide-react';
+import { api } from '../api';
+import { toast } from 'sonner';
+
+// Helper utilities for managing cookies
+const setCookie = (name, value, days = 365) => {
+  const date = new Date();
+  date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
+  document.cookie = `${name}=${value}; expires=${date.toUTCString()}; path=/`;
+};
+
+const getCookie = (name) => {
+  const value = `; ${document.cookie}`;
+  const parts = value.split(`; ${name}=`);
+  if (parts.length === 2) return parts.pop().split(';').shift();
+  return null;
+};
+
+const eraseCookie = (name) => {
+  document.cookie = `${name}=; Max-Age=-99999999; path=/`;
+};
+
+export default function RemoteControl() {
+  // Authentication states
+  const [isAuthenticated, setIsAuthenticated] = useState(getCookie('remote_auth') === 'true');
+  const [usernameInput, setUsernameInput] = useState('');
+  const [passwordInput, setPasswordInput] = useState('');
+
+  // Connection and token states
+  const [token, setToken] = useState(localStorage.getItem('spotify_access_token') || '');
+  const [isConnected, setIsConnected] = useState(false);
+  const [devices, setDevices] = useState([]);
+  const [isFetchingDevices, setIsFetchingDevices] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
+  const [manualTokenInput, setManualTokenInput] = useState('');
+
+  // Playback states
+  const [playbackState, setPlaybackState] = useState(null);
+  const [shuffleState, setShuffleState] = useState(false);
+  const [repeatState, setRepeatState] = useState('off');
+  const [trackPosition, setTrackPosition] = useState(0);
+  const [trackDuration, setTrackDuration] = useState(0);
+  const [volume, setVolume] = useState(50);
+  const [isMuted, setIsMuted] = useState(false);
+
+  const ws = useRef(null);
+  const progressInterval = useRef(null);
+  const volumeApiTimeout = useRef(null);
+
+  // Derived state
+  const currentTrack = playbackState?.track_window?.current_track;
+  const isPlaying = playbackState ? !playbackState.paused : false;
+  const trackName = currentTrack?.name || 'Ready to Stream';
+  const trackArtist = currentTrack?.artists?.map(a => a.name).join(', ') || 'No source active';
+  const albumImage = currentTrack?.album?.images?.[0]?.url;
+
+  // Active Device Info
+  const activeDevice = devices.find(d => d.is_active);
+  const resonanceDevice = devices.find(d => d.name === 'Resonance Connect');
+
+  // WebSocket Connection (only connects once authenticated)
+  useEffect(() => {
+    if (!isAuthenticated) return;
+
+    let socket;
+    let reconnectTimeout;
+
+    const connectWS = () => {
+      const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      const wsUrl = `${wsProtocol}//${window.location.host}/ws`;
+      socket = new WebSocket(wsUrl);
+      ws.current = socket;
+
+      socket.onopen = () => {
+        setIsConnected(true);
+        console.log('[Resonance Remote] Connected to WebSocket');
+        if (token) {
+          socket.send(JSON.stringify({ type: 'SET_TOKEN', payload: { token } }));
+        }
+        socket.send(JSON.stringify({ type: 'REQUEST_SYNC' }));
+      };
+
+      socket.onmessage = (event) => {
+        try {
+          const { type, payload } = JSON.parse(event.data);
+
+          if (type === 'PLAYBACK_STATE') {
+            setPlaybackState(payload);
+            setTrackPosition(payload.position);
+            setTrackDuration(payload.duration);
+            if (payload.shuffle_state !== undefined) setShuffleState(payload.shuffle_state);
+            if (payload.repeat_state !== undefined) setRepeatState(payload.repeat_state);
+            if (payload.volume !== undefined) setVolume(payload.volume);
+            if (payload.is_muted !== undefined) setIsMuted(payload.is_muted);
+          }
+
+          if (type === 'SET_TOKEN') {
+            const newToken = payload.token;
+            if (newToken && newToken !== localStorage.getItem('spotify_access_token')) {
+              localStorage.setItem('spotify_access_token', newToken);
+              setToken(newToken);
+              toast.success('Access token synced from main display');
+            }
+          }
+
+          if (type === 'CLEAR_TOKEN') {
+            localStorage.removeItem('spotify_access_token');
+            setToken('');
+            setPlaybackState(null);
+            setDevices([]);
+            toast.info('Session cleared from main display');
+          }
+
+          if (type === 'REQUEST_SYNC') {
+            localSync();
+          }
+        } catch (err) {
+          console.error('[Resonance Remote] Error parsing WS message:', err);
+        }
+      };
+
+      socket.onclose = () => {
+        setIsConnected(false);
+        reconnectTimeout = setTimeout(connectWS, 3000);
+      };
+
+      socket.onerror = () => {
+        socket.close();
+      };
+    };
+
+    connectWS();
+
+    return () => {
+      clearTimeout(reconnectTimeout);
+      if (socket) socket.close();
+      ws.current = null;
+    };
+  }, [token, isAuthenticated]);
+
+  // Sync token changes to WS
+  useEffect(() => {
+    if (isAuthenticated && token && ws.current && ws.current.readyState === WebSocket.OPEN) {
+      ws.current.send(JSON.stringify({ type: 'SET_TOKEN', payload: { token } }));
+    }
+  }, [token, isAuthenticated]);
+
+  // Poll devices & state from Spotify Web API
+  useEffect(() => {
+    if (!isAuthenticated || !token) return;
+
+    fetchDevices();
+    localSync();
+
+    const intervalId = setInterval(() => {
+      fetchDevices();
+      localSync();
+    }, 10000);
+
+    return () => clearInterval(intervalId);
+  }, [token, isAuthenticated]);
+
+  // Track progress position bar
+  useEffect(() => {
+    if (isAuthenticated && playbackState && isPlaying) {
+      progressInterval.current = setInterval(() => {
+        setTrackPosition(prev => {
+          if (prev + 1000 >= trackDuration) {
+            clearInterval(progressInterval.current);
+            return trackDuration;
+          }
+          return prev + 1000;
+        });
+      }, 1000);
+    } else {
+      clearInterval(progressInterval.current);
+    }
+
+    return () => clearInterval(progressInterval.current);
+  }, [playbackState, isPlaying, trackDuration, isAuthenticated]);
+
+  // Spotify Operations
+  const localSync = async () => {
+    if (!token) return;
+    try {
+      const state = await api.getPlaybackState(token);
+      if (state) {
+        const newState = {
+          paused: !state.is_playing,
+          position: state.progress_ms,
+          duration: state.item?.duration_ms || 0,
+          shuffle_state: state.shuffle_state,
+          repeat_state: state.repeat_state,
+          volume: state.device?.volume_percent !== undefined ? state.device.volume_percent : volume,
+          is_muted: state.device?.volume_percent !== undefined ? (state.device.volume_percent === 0) : isMuted,
+          track_window: {
+            current_track: {
+              uri: state.item?.uri,
+              name: state.item?.name,
+              album: {
+                name: state.item?.album?.name,
+                images: state.item?.album?.images || []
+              },
+              artists: state.item?.artists || []
+            }
+          }
+        };
+        setPlaybackState(newState);
+        setTrackPosition(state.progress_ms);
+        setTrackDuration(state.item?.duration_ms || 0);
+        setShuffleState(state.shuffle_state);
+        setRepeatState(state.repeat_state);
+        if (state.device?.volume_percent !== undefined) {
+          setVolume(state.device.volume_percent);
+          setIsMuted(state.device.volume_percent === 0);
+        }
+      }
+    } catch (err) {
+      console.warn('Local state fetch failed:', err);
+    }
+  };
+
+  const fetchDevices = async () => {
+    if (!token) return;
+    try {
+      setIsFetchingDevices(true);
+      const data = await api.getDevices(token);
+      setDevices(data.devices || []);
+    } catch (err) {
+      console.error('Error fetching cast devices:', err);
+    } finally {
+      setIsFetchingDevices(false);
+    }
+  };
+
+  const requestWSStateSync = () => {
+    if (ws.current && ws.current.readyState === WebSocket.OPEN) {
+      ws.current.send(JSON.stringify({ type: 'REQUEST_SYNC' }));
+    }
+  };
+
+  const handlePlayPause = async () => {
+    if (!token) return;
+    try {
+      if (isPlaying) {
+        await api.pause(token);
+      } else {
+        const targetId = activeDevice?.id || resonanceDevice?.id || null;
+        await api.play(token, targetId);
+      }
+      requestWSStateSync();
+    } catch (err) {
+      toast.error(`Control failed: ${err.message}`);
+    }
+  };
+
+  const handleNext = async () => {
+    if (!token) return;
+    try {
+      await api.skipNext(token);
+      requestWSStateSync();
+    } catch (err) {
+      toast.error(`Skip next failed: ${err.message}`);
+    }
+  };
+
+  const handlePrevious = async () => {
+    if (!token) return;
+    try {
+      await api.skipPrevious(token);
+      requestWSStateSync();
+    } catch (err) {
+      toast.error(`Skip previous failed: ${err.message}`);
+    }
+  };
+
+  const handleShuffle = async () => {
+    if (!token) return;
+    const nextShuffle = !shuffleState;
+    setShuffleState(nextShuffle);
+    try {
+      await api.setShuffle(token, nextShuffle);
+      requestWSStateSync();
+    } catch (err) {
+      setShuffleState(!nextShuffle);
+      toast.error(`Shuffle failed: ${err.message}`);
+    }
+  };
+
+  const handleRepeat = async () => {
+    if (!token) return;
+    const cycles = { 'off': 'context', 'context': 'track', 'track': 'off' };
+    const nextRepeat = cycles[repeatState] || 'off';
+    setRepeatState(nextRepeat);
+    try {
+      await api.setRepeat(token, nextRepeat);
+      requestWSStateSync();
+    } catch (err) {
+      setRepeatState(repeatState);
+      toast.error(`Repeat failed: ${err.message}`);
+    }
+  };
+
+  const handleSeek = async (e) => {
+    if (!token) return;
+    const seekMs = parseInt(e.target.value, 10);
+    setTrackPosition(seekMs);
+    try {
+      await api.seek(token, seekMs);
+      requestWSStateSync();
+    } catch (err) {
+      console.error('Seek error:', err);
+    }
+  };
+
+  // Instant volume changes synchronized via WebSocket
+  const handleVolumeChange = (e) => {
+    const newVol = parseInt(e.target.value, 10);
+    setVolume(newVol);
+    setIsMuted(newVol === 0);
+
+    if (ws.current && ws.current.readyState === WebSocket.OPEN) {
+      ws.current.send(JSON.stringify({
+        type: 'BROADCAST_STATE',
+        payload: {
+          ...playbackState,
+          volume: newVol,
+          is_muted: newVol === 0
+        }
+      }));
+    }
+
+    if (volumeApiTimeout.current) {
+      clearTimeout(volumeApiTimeout.current);
+    }
+
+    volumeApiTimeout.current = setTimeout(async () => {
+      if (!token) return;
+      try {
+        await api.setVolume(token, newVol);
+      } catch (err) {
+        console.error('Spotify volume API failed:', err);
+      }
+    }, 180);
+  };
+
+  const handleMuteToggle = async () => {
+    const newMute = !isMuted;
+    setIsMuted(newMute);
+    const targetVol = newMute ? 0 : (volume || 50);
+
+    if (ws.current && ws.current.readyState === WebSocket.OPEN) {
+      ws.current.send(JSON.stringify({
+        type: 'BROADCAST_STATE',
+        payload: {
+          ...playbackState,
+          volume: targetVol,
+          is_muted: newMute
+        }
+      }));
+    }
+
+    try {
+      await api.setVolume(token, targetVol);
+    } catch (err) {
+      console.error('Spotify volume mute failed:', err);
+    }
+  };
+
+  const handleCast = async (deviceId) => {
+    try {
+      await api.transferPlayback(token, deviceId);
+      toast.success('Casting output target transferred.');
+      setTimeout(fetchDevices, 800);
+      requestWSStateSync();
+    } catch (err) {
+      toast.error(`Cast failed: ${err.message}`);
+    }
+  };
+
+  const applyManualToken = (e) => {
+    e.preventDefault();
+    if (!manualTokenInput.trim()) return;
+    localStorage.setItem('spotify_access_token', manualTokenInput.trim());
+    setToken(manualTokenInput.trim());
+    setManualTokenInput('');
+    setShowSettings(false);
+    toast.success('Access Token updated locally');
+  };
+
+  const handleLoginSubmit = (e) => {
+    e.preventDefault();
+    if (usernameInput === 'enzo' && passwordInput === 'enzoOS') {
+      setCookie('remote_auth', 'true', 365);
+      setIsAuthenticated(true);
+      toast.success('Access Authorized');
+    } else {
+      toast.error('Invalid credentials');
+    }
+  };
+
+  const handleRemoteLogout = () => {
+    eraseCookie('remote_auth');
+    setIsAuthenticated(false);
+    setShowSettings(false);
+    toast.info('De-authorized Remote connection');
+  };
+
+  const formatTime = (ms) => {
+    if (!ms || isNaN(ms)) return '0:00';
+    const totalSecs = Math.floor(ms / 1000);
+    const mins = Math.floor(totalSecs / 60);
+    const secs = totalSecs % 60;
+    return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
+  };
+
+  // 1. Render Login Form if not authorized
+  if (!isAuthenticated) {
+    return (
+      <div className="w-full min-h-screen bg-[#090b0e] text-[#f1f3f6] font-sans flex flex-col items-center justify-center p-6 relative overflow-hidden select-none">
+        
+        {/* Background Ambience Glow */}
+        <div className="absolute top-[-20%] left-1/2 -translate-x-1/2 w-[120%] aspect-square rounded-full bg-gradient-to-b from-[#2e3746]/10 to-transparent blur-3xl pointer-events-none" />
+
+        <div className="w-full max-w-sm bg-[#13161c] border border-white/5 rounded-2xl p-8 shadow-2xl flex flex-col gap-6 z-10">
+          <div className="text-center flex flex-col gap-2">
+            <h2 className="text-lg font-bold text-white uppercase tracking-[0.2em] drop-shadow-[0_0_15px_rgba(255,255,255,0.08)]">Resonance</h2>
+            <p className="text-[10px] font-semibold text-[#8695a7] uppercase tracking-wider">Remote Control Access</p>
+          </div>
+
+          <form onSubmit={handleLoginSubmit} className="flex flex-col gap-4">
+            <div className="flex flex-col gap-1.5">
+              <label className="text-[9px] uppercase tracking-wider text-[#8695a7] font-bold">Username</label>
+              <input
+                type="text"
+                value={usernameInput}
+                onChange={(e) => setUsernameInput(e.target.value)}
+                placeholder="Enter username"
+                className="w-full bg-black/40 border border-white/5 rounded-xl px-4 py-3 text-xs text-white placeholder:text-zinc-700 focus:outline-none focus:border-white/10"
+                required
+              />
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <label className="text-[9px] uppercase tracking-wider text-[#8695a7] font-bold">Password</label>
+              <input
+                type="password"
+                value={passwordInput}
+                onChange={(e) => setPasswordInput(e.target.value)}
+                placeholder="Enter password"
+                className="w-full bg-black/40 border border-white/5 rounded-xl px-4 py-3 text-xs text-white placeholder:text-zinc-700 focus:outline-none focus:border-white/10"
+                required
+              />
+            </div>
+
+            <button
+              type="submit"
+              className="w-full py-3 rounded-xl bg-white text-black font-extrabold text-xs uppercase tracking-wider active:scale-95 transition-all cursor-pointer hover:bg-zinc-200 mt-2"
+            >
+              Authorize Device
+            </button>
+          </form>
+        </div>
+      </div>
+    );
+  }
+
+  // 2. Render normal remote dashboard if authenticated
+  return (
+    <div className="w-full min-h-screen bg-[#090b0e] text-[#f1f3f6] font-sans flex flex-col items-center justify-between pb-10 pt-6 px-6 relative overflow-hidden select-none">
+      
+      {/* Background Ambience Glow */}
+      <div className="absolute top-[-20%] left-1/2 -translate-x-1/2 w-[120%] aspect-square rounded-full bg-gradient-to-b from-[#2e3746]/10 to-transparent blur-3xl pointer-events-none" />
+
+      {/* Header */}
+      <header className="w-full max-w-md flex items-center justify-between z-10">
+        <div className="flex items-center gap-2">
+          <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500'}`} />
+          <span className="text-[11px] font-bold tracking-[0.2em] text-[#8695a7] uppercase">
+            Resonance Control
+          </span>
+        </div>
+        <div className="flex items-center gap-2">
+          <button 
+            onClick={fetchDevices}
+            disabled={!token}
+            className="p-2 rounded-full hover:bg-white/5 active:scale-90 transition-all text-[#8695a7] hover:text-white cursor-pointer disabled:opacity-35"
+            title="Refresh devices"
+          >
+            <RefreshCw className={`h-4 w-4 ${isFetchingDevices ? 'animate-spin text-white' : ''}`} />
+          </button>
+          <button 
+            onClick={() => setShowSettings(!showSettings)}
+            className="p-2 rounded-full hover:bg-white/5 active:scale-90 transition-all text-[#8695a7] hover:text-white cursor-pointer"
+          >
+            <Settings className="h-4 w-4" />
+          </button>
+        </div>
+      </header>
+
+      {/* Settings / Token Section */}
+      {showSettings && (
+        <div className="absolute inset-0 bg-[#090b0e]/95 z-20 flex flex-col justify-center items-center p-6 backdrop-blur-md">
+          <div className="w-full max-w-sm bg-[#13161c] border border-white/5 rounded-2xl p-6 shadow-2xl flex flex-col gap-5">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-bold text-white uppercase tracking-wider">Control Configuration</h3>
+              <button 
+                onClick={() => setShowSettings(false)}
+                className="text-xs text-[#8695a7] hover:text-white font-bold"
+              >
+                Close
+              </button>
+            </div>
+            
+            <form onSubmit={applyManualToken} className="flex flex-col gap-2">
+              <label className="text-[10px] uppercase tracking-wider text-[#8695a7] font-semibold">Spotify Developer Token</label>
+              <textarea
+                value={manualTokenInput}
+                onChange={(e) => setManualTokenInput(e.target.value)}
+                placeholder="Paste new OAuth Access Token..."
+                rows={3}
+                className="w-full bg-black/40 border border-white/5 rounded-xl p-3 text-[10px] text-white font-mono placeholder:text-zinc-700 focus:outline-none focus:border-white/20 resize-none"
+              />
+              <button
+                type="submit"
+                className="w-full py-2.5 rounded-xl bg-white text-black font-extrabold text-xs uppercase tracking-wider active:scale-95 transition-all cursor-pointer hover:bg-zinc-200"
+              >
+                Sync Token Locally
+              </button>
+            </form>
+
+            <div className="border-t border-white/5 pt-4 flex flex-col gap-3">
+              <div className="flex justify-between items-center text-[10px] uppercase tracking-wider text-[#8695a7] font-semibold">
+                <span>Cast Active Devices</span>
+                <span className="text-[8px] bg-white/5 border border-white/10 px-1.5 py-0.5 rounded text-white">{devices.length} Found</span>
+              </div>
+              <div className="flex flex-col gap-1.5 max-h-32 overflow-y-auto pr-1">
+                {devices.length > 0 ? (
+                  devices.map(device => (
+                    <button
+                      key={device.id}
+                      onClick={() => handleCast(device.id)}
+                      className={`w-full p-2 rounded-xl border flex items-center justify-between text-left transition-all active:scale-98 cursor-pointer ${
+                        device.is_active 
+                          ? 'bg-white/5 border-white/10 text-white font-bold' 
+                          : 'bg-transparent border-transparent text-[#8695a7] hover:bg-white/2 hover:text-white'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2">
+                        <Laptop className="h-3.5 w-3.5 shrink-0" />
+                        <span className="text-[11px] truncate max-w-[150px]">{device.name}</span>
+                      </div>
+                      <div className="flex items-center gap-0.5">
+                        <span className="text-[8px] uppercase tracking-wider text-[#8695a7]">
+                          {device.is_active ? 'Active' : 'Cast'}
+                        </span>
+                        <ChevronRight className="h-3 w-3 text-[#8695a7]" />
+                      </div>
+                    </button>
+                  ))
+                ) : (
+                  <div className="text-[10px] text-zinc-650 italic text-center py-2">No audio players detected on network</div>
+                )}
+              </div>
+            </div>
+
+            <div className="border-t border-white/5 pt-4 flex flex-col gap-2">
+              <button
+                onClick={handleRemoteLogout}
+                className="w-full py-2.5 rounded-xl border border-rose-500/20 text-rose-500 bg-rose-500/5 hover:bg-rose-500/10 active:scale-95 transition-all text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer"
+              >
+                <LogOut className="h-4 w-4" />
+                <span>De-authorize Remote</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Main Controller Content */}
+      <main className="w-full max-w-md flex-grow flex flex-col justify-center gap-8 z-10 mt-4">
+        
+        {/* Album Artwork Panel */}
+        <div className="w-full flex justify-center">
+          <div className="w-[75vw] max-w-[280px] aspect-square rounded-[2rem] bg-[#12151b] border border-white/5 overflow-hidden shadow-[0_25px_60px_-15px_rgba(0,0,0,0.8)] flex items-center justify-center relative group">
+            {albumImage ? (
+              <img 
+                src={albumImage} 
+                alt={trackName} 
+                className="w-full h-full object-cover select-none pointer-events-none scale-100 transition-all duration-700" 
+              />
+            ) : (
+              <div className="flex flex-col items-center gap-3 text-zinc-700">
+                <Music className="h-12 w-12 stroke-[1.25] text-[#2c3441]" />
+                <span className="text-[9px] uppercase tracking-widest font-extrabold text-[#2c3441]">Resonance</span>
+              </div>
+            )}
+            
+            {/* Ambient artwork shadow/glow under art */}
+            {albumImage && (
+              <div 
+                className="absolute inset-0 -z-10 scale-95 opacity-50 blur-2xl transition-all duration-700"
+                style={{ backgroundImage: `url(${albumImage})`, backgroundSize: 'cover' }}
+              />
+            )}
+          </div>
+        </div>
+
+        {/* Track Title and Artist details */}
+        <div className="w-full text-center flex flex-col gap-1.5 px-4">
+          <h2 className="text-lg font-bold text-white tracking-tight leading-snug truncate">
+            {trackName}
+          </h2>
+          <p className="text-[12px] font-semibold text-[#8695a7] tracking-normal truncate">
+            {trackArtist}
+          </p>
+          {activeDevice && (
+            <div className="inline-flex items-center gap-1.5 justify-center mt-1 text-[9px] font-bold text-[#c788ff] uppercase tracking-[0.15em] bg-white/2 border border-white/5 px-2.5 py-1 rounded-full self-center">
+              <Laptop className="h-3 w-3" />
+              <span>Playing on: {activeDevice.name}</span>
+            </div>
+          )}
+        </div>
+
+        {/* Auth status block when token is missing */}
+        {!token && (
+          <div className="mx-4 p-4 rounded-2xl bg-amber-500/5 border border-amber-500/20 text-center flex flex-col gap-2.5">
+            <p className="text-[10px] text-amber-250 font-medium leading-relaxed">
+              Remote Control is not authenticated to Spotify. Connect a client or enter a token in settings.
+            </p>
+            <button
+              onClick={() => setShowSettings(true)}
+              className="py-1.5 px-4 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-extrabold text-[9px] uppercase tracking-wider self-center active:scale-95 transition-all cursor-pointer"
+            >
+              Configure Token
+            </button>
+          </div>
+        )}
+
+        {/* Position / Progress Bar Slider */}
+        <div className="w-full px-2 flex flex-col gap-2">
+          <input
+            type="range"
+            min="0"
+            max={trackDuration}
+            value={trackPosition}
+            onChange={handleSeek}
+            disabled={!token || !trackDuration}
+            className="w-full h-1 bg-white/5 hover:bg-white/10 rounded-lg appearance-none cursor-pointer accent-white transition-all focus:outline-none"
+            style={{
+              background: `linear-gradient(to right, #ffffff 0%, #ffffff ${
+                trackDuration ? (trackPosition / trackDuration) * 100 : 0
+              }%, rgba(255, 255, 255, 0.05) ${
+                trackDuration ? (trackPosition / trackDuration) * 100 : 0
+              }%, rgba(255, 255, 255, 0.05) 100%)`
+            }}
+          />
+          <div className="flex justify-between items-center text-[10px] text-[#8695a7] font-semibold font-mono">
+            <span>{formatTime(trackPosition)}</span>
+            <span>{formatTime(trackDuration)}</span>
+          </div>
+        </div>
+
+        {/* Media Playback Controls Row */}
+        <div className="w-full flex items-center justify-between px-6">
+          <button
+            onClick={handleShuffle}
+            disabled={!token}
+            className={`p-2 rounded-full transition-all active:scale-90 cursor-pointer disabled:opacity-20 ${
+              shuffleState ? 'text-[#c788ff] drop-shadow-[0_0_8px_rgba(199,136,255,0.4)]' : 'text-[#8695a7] hover:text-white'
+            }`}
+          >
+            <Shuffle className="h-4.5 w-4.5" />
+          </button>
+
+          <button
+            onClick={handlePrevious}
+            disabled={!token}
+            className="p-2.5 rounded-full hover:bg-white/5 text-[#f1f3f6] active:scale-90 transition-all cursor-pointer disabled:opacity-20"
+          >
+            <SkipBack className="h-5.5 w-5.5 fill-current" />
+          </button>
+
+          {/* Large circular Play/Pause Button */}
+          <button
+            onClick={handlePlayPause}
+            disabled={!token}
+            className="h-16 w-16 rounded-full bg-white text-black flex items-center justify-center shadow-lg active:scale-90 transition-all cursor-pointer hover:bg-zinc-150 disabled:opacity-50"
+          >
+            {isPlaying ? (
+              <Pause className="h-6.5 w-6.5 fill-current text-black" />
+            ) : (
+              <Play className="h-6.5 w-6.5 fill-current text-black ml-1" />
+            )}
+          </button>
+
+          <button
+            onClick={handleNext}
+            disabled={!token}
+            className="p-2.5 rounded-full hover:bg-white/5 text-[#f1f3f6] active:scale-90 transition-all cursor-pointer disabled:opacity-20"
+          >
+            <SkipForward className="h-5.5 w-5.5 fill-current" />
+          </button>
+
+          <button
+            onClick={handleRepeat}
+            disabled={!token}
+            className={`p-2 rounded-full transition-all active:scale-90 cursor-pointer disabled:opacity-20 ${
+              repeatState !== 'off' ? 'text-[#c788ff] drop-shadow-[0_0_8px_rgba(199,136,255,0.4)]' : 'text-[#8695a7] hover:text-white'
+            }`}
+          >
+            <Repeat className="h-4.5 w-4.5" />
+            {repeatState === 'track' && (
+              <span className="absolute text-[6px] font-extrabold bg-[#c788ff] text-black rounded-full px-0.5 bottom-0 right-0">1</span>
+            )}
+          </button>
+        </div>
+
+      </main>
+
+      {/* Sleek bottom Volume control bar */}
+      <footer className="w-full max-w-md z-10 px-4 mt-4">
+        <div className="bg-[#12151b] border border-white/5 rounded-2xl px-4 py-3 flex items-center gap-3.5 shadow-xl">
+          <button 
+            onClick={handleMuteToggle}
+            disabled={!token}
+            className="text-[#8695a7] hover:text-white active:scale-90 transition-all cursor-pointer disabled:opacity-25"
+          >
+            {isMuted || volume === 0 ? (
+              <VolumeX className="h-4 w-4" />
+            ) : (
+              <Volume2 className="h-4 w-4" />
+            )}
+          </button>
+          
+          <input
+            type="range"
+            min="0"
+            max="100"
+            value={isMuted ? 0 : volume}
+            onChange={handleVolumeChange}
+            disabled={!token}
+            className="flex-grow h-1 bg-white/5 hover:bg-white/10 rounded-lg appearance-none cursor-pointer accent-white transition-all focus:outline-none"
+            style={{
+              background: `linear-gradient(to right, #ffffff 0%, #ffffff ${
+                isMuted ? 0 : volume
+              }%, rgba(255, 255, 255, 0.05) ${
+                isMuted ? 0 : volume
+              }%, rgba(255, 255, 255, 0.05) 100%)`
+            }}
+          />
+          
+          <span className="text-[10px] text-[#8695a7] font-semibold font-mono w-7 text-right">
+            {isMuted ? 0 : volume}%
+          </span>
+        </div>
+      </footer>
+
+    </div>
+  );
+}
