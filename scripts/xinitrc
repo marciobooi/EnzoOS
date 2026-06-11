@@ -47,11 +47,8 @@ until curl -sf http://localhost:5000 > /dev/null 2>&1; do
 done
 echo "[Resonance] Server ready."
 
-# ── chromium crash recovery ───────────────────────────────────────────────────
 # Clean up both standard and snap-specific hardware profile locks
-rm -f "$HOME/.config/chromium/SingletonLock"
-rm -f "$HOME/snap/chromium/common/chromium/SingletonLock"
-rm -f "$HOME/.config/chromium/Default/Preferences.lock"
+find "$HOME/.config/chromium" "$HOME/snap/chromium" -name "*Lock" -exec rm -f {} + 2>/dev/null || true
 
 # Fix preferences across both standard and snap configuration files
 for prefs_file in "$HOME/.config/chromium/Default/Preferences" "$HOME/snap/chromium/current/.config/chromium/Default/Preferences"; do
