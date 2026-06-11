@@ -97,11 +97,6 @@ echo -e "${YELLOW}Installing Raspotify repository and precompiled Librespot daem
 # Install Raspotify repository and package (contains the precompiled /usr/bin/librespot binary)
 curl -sL https://dtcooper.github.io/raspotify/install.sh | sh
 
-# Disable default Raspotify daemon to avoid service name or port conflicts
-echo -e "${YELLOW}Disabling default Raspotify service (will use custom systemd daemon)...${NC}"
-systemctl stop raspotify || true
-systemctl disable raspotify || true
-
 # Assign hardware permissions to the target user
 echo -e "${YELLOW}Adding user '$TARGET_USER' to audio/video groups...${NC}"
 usermod -aG audio,video,dialout $TARGET_USER
@@ -111,28 +106,21 @@ echo -e "${YELLOW}Configuring SSH daemon...${NC}"
 systemctl enable ssh
 systemctl start ssh
 
-# Configure and start Librespot Spotify Connect background daemon
-echo -e "${YELLOW}Creating Librespot systemd service...${NC}"
-cat <<EOF > /etc/systemd/system/librespot.service
-[Unit]
-Description=Librespot Spotify Connect Daemon
-After=network.target sound.target
-
-[Service]
-Type=simple
-User=$TARGET_USER
-ExecStart=/usr/bin/librespot --name "Resonance Connect" --bitrate 320 --backend alsa --initial-volume 50 --enable-volume-normalisation
-Restart=always
-RestartSec=10
-
-[Install]
-WantedBy=multi-user.target
+# Configure Raspotify system settings in its standard Linux configuration file
+echo -e "${YELLOW}Configuring Raspotify settings in /etc/default/raspotify...${NC}"
+cat <<EOF > /etc/default/raspotify
+# Resonance HiFi - Raspotify Configuration
+DEVICE_NAME="Resonance Connect"
+BITRATE="320"
+OPTIONS="--backend alsa --initial-volume 50 --enable-volume-normalisation"
 EOF
 
+# Enable and start native Raspotify systemd daemon
+echo -e "${YELLOW}Enabling and starting Raspotify service...${NC}"
 systemctl daemon-reload
-systemctl enable librespot
-systemctl restart librespot
-echo -e "${GREEN}Librespot Spotify Connect service configured and started.${NC}"
+systemctl enable raspotify
+systemctl restart raspotify
+echo -e "${GREEN}Raspotify Spotify Connect service configured and started.${NC}"
 
 # Configure Xwrapper to run X server without root restrictions
 echo -e "${YELLOW}Configuring Xwrapper...${NC}"

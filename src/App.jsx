@@ -425,7 +425,7 @@ export default function App() {
   const trackArtist = currentTrack?.artists?.map(a => a.name).join(', ') || 'No Source Loaded';
 
   return (
-    <div className="w-screen h-screen bg-[#050505] flex items-center justify-between relative overflow-hidden p-6 select-none font-sans selection:bg-[#ff8e00]/30 selection:text-[#ff8e00]">
+    <div className="w-screen h-screen bg-[#050505] flex items-center justify-center relative overflow-hidden p-6 select-none font-sans selection:bg-[#ff8e00]/30 selection:text-[#ff8e00]">
       
       {/* Subtle retro glowing background spots */}
       <div className="absolute top-[-30%] left-[-20%] w-[70%] h-[70%] rounded-full bg-[#ff8e00]/5 blur-[150px] pointer-events-none" />

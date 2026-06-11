@@ -67,21 +67,21 @@ export default function RoseHiFiDisplay({
   const trackAlbumName = currentTrack?.album?.name || 'No Album Loaded';
 
   return (
-    <article className="music-player-matrix" aria-label="Music player">
+    <article className="music-player" aria-label="Music player">
       
       {/* 1. Album Column */}
-      <section className="album-column-matrix" aria-label="Album artwork">
-        <div className="album-art-matrix" aria-label="Dot matrix album art">
+      <section className="album-column" aria-label="Album artwork">
+        <div className="album-art" aria-label="Dot matrix album art">
           <img src={albumImage} alt="Album art" />
         </div>
       </section>
 
       {/* 2. Details and Controls Column */}
-      <section className="details-column-matrix" aria-label="Track details and playback controls">
+      <section className="details-column" aria-label="Track details and playback controls">
         
         {/* Topline Readout & Audio Router */}
         <div className="track-details">
-          <div className="matrix-topline">
+          <div className="hifi-topline">
             <button 
               onClick={onTransferPlayback}
               className={`status-pill cursor-pointer transition-colors ${
@@ -115,7 +115,7 @@ export default function RoseHiFiDisplay({
             </div>
 
             {/* Dot Matrix Animated Visualizer */}
-            <div className="matrix-visualizer shrink-0" aria-hidden="true">
+            <div className="hifi-visualizer shrink-0" aria-hidden="true">
               {[...Array(8)].map((_, i) => (
                 <span 
                   key={i} 
@@ -123,7 +123,7 @@ export default function RoseHiFiDisplay({
                     animationPlayState: isPlaying ? 'running' : 'paused',
                     height: isPlaying ? undefined : '3px'
                   }} 
-                />
+                  />
               ))}
             </div>
           </div>
@@ -212,7 +212,7 @@ export default function RoseHiFiDisplay({
       </section>
 
       {/* 3. System Sidebar Column */}
-      <aside className="controls-column-matrix" aria-label="System controls">
+      <aside className="controls-column" aria-label="System controls">
         <button 
           onClick={onToggleMenu}
           className={`icon-button menu ${!hasToken ? 'border-[#ff8e00] text-[#ff8e00] active animate-pulse' : ''}`} 
