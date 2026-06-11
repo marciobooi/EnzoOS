@@ -12,8 +12,8 @@ devices:
   playback:
     type: Alsa
     channels: 2
-    device: hw:IanCanadaDAC
-    format: S32LE
+    device: default
+    format: S16LE
     enable_dithering: true
 filters:
   hp_crossover:

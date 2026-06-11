@@ -38,8 +38,8 @@ function generateDSPConfig(answers) {
       playback: {
         type: 'Alsa',
         channels: 2,
-        device: 'hw:IanCanadaDAC',
-        format: 'S32LE',
+        device: 'default',
+        format: 'S16LE',
         enable_dithering: true // Mask quantization distortion when volume is lowered digitally
       }
     },
