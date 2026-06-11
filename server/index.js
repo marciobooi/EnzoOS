@@ -61,9 +61,16 @@ const isLocalIP = (ip) => {
     return true;
   }
   
-  // Private IPv6 Address ranges: link-local, unique local
+  // Private IPv6 Address ranges: link-local (fe80::/10), unique local (fc00::/7)
   const lowerIp = normalizedIp.toLowerCase();
-  if (lowerIp.startsWith('fe80:') || lowerIp.startsWith('fc00:') || lowerIp.startsWith('fd00:')) {
+  if (
+    lowerIp.startsWith('fe8') || 
+    lowerIp.startsWith('fe9') || 
+    lowerIp.startsWith('fea') || 
+    lowerIp.startsWith('feb') || 
+    lowerIp.startsWith('fc') || 
+    lowerIp.startsWith('fd')
+  ) {
     return true;
   }
   
