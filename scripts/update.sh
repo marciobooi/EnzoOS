@@ -54,6 +54,11 @@ echo -e "${YELLOW}Rebuilding frontend bundle...${NC}"
 echo "[PROGRESS: 80]"
 npm run build
 
+# Sync user kiosk startup config (.xinitrc)
+echo -e "${YELLOW}Syncing user kiosk startup config (.xinitrc)...${NC}"
+cp "$PROJECT_DIR/scripts/xinitrc" "$HOME/.xinitrc"
+chmod +x "$HOME/.xinitrc"
+
 echo -e "${GREEN}OTA Update completed successfully!${NC}"
 echo "[PROGRESS: 95]"
 echo -e "${YELLOW}Triggering disowned PM2 daemon restart...${NC}"

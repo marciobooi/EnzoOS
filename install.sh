@@ -138,69 +138,9 @@ EOF
 # 8. Configure Kiosk startup scripts
 echo -e "\n${GREEN}[6/7] Configuring kiosk startup files...${NC}"
 
-# Create .xinitrc in the target user home directory
-cat <<EOF > "$USER_HOME/.xinitrc"
-#!/bin/bash
-
-# Disable screen saver, screen blanking, and power management
-xset s off
-xset s noblank
-xset -dpms
-
-# Hide mouse cursor for cleaner touchscreen kiosk experience
-unclutter -idle 0.1 -root &
-
-# Dynamically detect the primary connected display output
-OUTPUT=\$(xrandr | grep " connected " | awk '{print \$1}' | head -n 1)
-
-if [ -n "\$OUTPUT" ]; then
-  # Try to generate modeline using cvt, or fallback to hardcoded mode for 1420x320@60Hz
-  if command -v cvt &>/dev/null; then
-    MODELINE_GEN=\$(cvt 1420 320 60 | grep "Modeline" | cut -d' ' -f2-)
-    MODE_NAME=\$(echo "\$MODELINE_GEN" | cut -d' ' -f1 | tr -d '"')
-    MODELINE_VALS=\$(echo "\$MODELINE_GEN" | cut -d' ' -f2-)
-  else
-    MODE_NAME="1420x320_60.00"
-    MODELINE_VALS="35.50  1420 1464 1592 1776  320 323 328 335 -hsync +vsync"
-  fi
-  
-  # Register and apply the custom resolution mode
-  xrandr --newmode "\$MODE_NAME" \$MODELINE_VALS 2>/dev/null || true
-  xrandr --addmode "\$OUTPUT" "\$MODE_NAME" 2>/dev/null || true
-  xrandr --output "\$OUTPUT" --mode "\$MODE_NAME" 2>/dev/null || true
-fi
-
-# Start Openbox window manager in background
-openbox-session &
-
-# Wait for local Node server on port 5000 to spin up before opening Chromium.
-# This prevents "This site can't be reached" error screens on boot.
-while ! curl -s http://localhost:5000 >/dev/null; do
-  sleep 1
-done
-
-# Reset Chromium preferences exit state to prevent "Restore pages" bubble on boot
-PREFS_FILE="\$HOME/.config/chromium/Default/Preferences"
-if [ -f "\$PREFS_FILE" ]; then
-  sed -i 's/"exit_type":"Crashed"/"exit_type":"Normal"/g' "\$PREFS_FILE" 2>/dev/null || true
-  sed -i 's/"exited_cleanly":false/"exited_cleanly":true/g' "\$PREFS_FILE" 2>/dev/null || true
-fi
-
-# Launch Chromium browser pointing to local port 5000
-# --app mode opens a borderless window with no tab bar or address controls
-# To switch to fullscreen kiosk mode later, replace --app=... and window flags with --kiosk http://localhost:5000
-chromium-browser \\
-  --app=http://localhost:5000 \\
-  --window-size=1400,320 \\
-  --window-position=0,0 \\
-  --autoplay-policy=no-user-gesture-required \\
-  --noerrdialogs \\
-  --disable-infobars \\
-  --disable-session-crashed-bubble \\
-  --disable-features=Translate \\
-  --check-for-update-interval=31536000
-EOF
-
+# Deploy .xinitrc from the repository to the target user home directory
+echo -e "${YELLOW}Deploying kiosk startup xinitrc config...${NC}"
+cp "$PROJECT_DIR/scripts/xinitrc" "$USER_HOME/.xinitrc"
 chmod +x "$USER_HOME/.xinitrc"
 chown $TARGET_USER:$TARGET_USER "$USER_HOME/.xinitrc"
 
