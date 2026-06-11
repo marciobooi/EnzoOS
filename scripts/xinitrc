@@ -47,8 +47,9 @@ until curl -sf http://localhost:5000 > /dev/null 2>&1; do
 done
 echo "[Resonance] Server ready."
 
-# Clean up both standard and snap-specific hardware profile locks
-find "$HOME/.config/chromium" "$HOME/snap/chromium" -name "*Lock" -exec rm -f {} + 2>/dev/null || true
+# Clean up both standard and snap-specific hardware profile locks safely
+[ -d "$HOME/.config" ] && find "$HOME/.config" -name "*[lL]ock" -delete 2>/dev/null || true
+[ -d "$HOME/snap" ] && find "$HOME/snap" -name "*[lL]ock" -delete 2>/dev/null || true
 
 # Fix preferences across both standard and snap configuration files
 for prefs_file in "$HOME/.config/chromium/Default/Preferences" "$HOME/snap/chromium/current/.config/chromium/Default/Preferences"; do
