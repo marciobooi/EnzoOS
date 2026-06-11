@@ -154,12 +154,18 @@ unclutter -idle 0.1 -root &
 OUTPUT=\$(xrandr | grep " connected " | awk '{print \$1}' | head -n 1)
 
 if [ -n "\$OUTPUT" ]; then
-  # Generate CVT modeline for custom widescreen 1420x320 resolution @ 60Hz
-  MODELINE=\$(cvt 1420 320 60 | grep "Modeline" | cut -d' ' -f2-)
-  MODE_NAME=\$(echo "\$MODELINE" | cut -d' ' -f1 | tr -d '"')
+  # Try to generate modeline using cvt, or fallback to hardcoded mode for 1420x320@60Hz
+  if command -v cvt &>/dev/null; then
+    MODELINE_GEN=\$(cvt 1420 320 60 | grep "Modeline" | cut -d' ' -f2-)
+    MODE_NAME=\$(echo "\$MODELINE_GEN" | cut -d' ' -f1 | tr -d '"')
+    MODELINE_VALS=\$(echo "\$MODELINE_GEN" | cut -d' ' -f2-)
+  else
+    MODE_NAME="1420x320_60.00"
+    MODELINE_VALS="35.50  1420 1464 1592 1776  320 323 328 335 -hsync +vsync"
+  fi
   
   # Register and apply the custom resolution mode
-  xrandr --newmode \$MODELINE 2>/dev/null || true
+  xrandr --newmode "\$MODE_NAME" \$MODELINE_VALS 2>/dev/null || true
   xrandr --addmode "\$OUTPUT" "\$MODE_NAME" 2>/dev/null || true
   xrandr --output "\$OUTPUT" --mode "\$MODE_NAME" 2>/dev/null || true
 fi
@@ -173,11 +179,12 @@ while ! curl -s http://localhost:5000 >/dev/null; do
   sleep 1
 done
 
-# Launch Chromium browser in fullscreen kiosk mode pointing to local port 5000
-# --autoplay-policy=no-user-gesture-required guarantees audio starts automatically
-# --noerrdialogs & --disable-infobars prevent crash bubbles or update prompts
+# Launch Chromium browser pointing to local port 5000
+# For testing on VMs/square screens, we open a window of exactly 1400x320.
+# To switch to fullscreen kiosk mode later, swap --window-size/position with --kiosk.
 chromium-browser \\
-  --kiosk \\
+  --window-size=1400,320 \\
+  --window-position=0,0 \\
   --autoplay-policy=no-user-gesture-required \\
   --noerrdialogs \\
   --disable-infobars \\
@@ -230,7 +237,7 @@ npm install -g pm2
 
 # Clear existing instances & start the backend as the target user
 sudo -u $TARGET_USER pm2 delete resonance-api &>/dev/null || true
-sudo -u $TARGET_USER pm2 start "$PROJECT_DIR/server/index.js" --name "resonance-api" --watch --env PORT=5000
+sudo -u $TARGET_USER pm2 start "$PROJECT_DIR/server/index.js" --name "resonance-api" --env PORT=5000
 sudo -u $TARGET_USER pm2 save
 
 # Setup PM2 server boot startup configuration

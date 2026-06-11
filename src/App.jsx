@@ -32,6 +32,34 @@ export default function App() {
   const [isMuted, setIsMuted] = useState(false);
 
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [theme, setTheme] = useState(localStorage.getItem('resonance_theme') || 'amber');
+
+  const handleThemeChange = (newTheme) => {
+    setTheme(newTheme);
+    localStorage.setItem('resonance_theme', newTheme);
+  };
+
+  const [scale, setScale] = useState(1);
+  const containerRef = useRef(null);
+
+  useEffect(() => {
+    const handleResize = () => {
+      // Calculate target scale based on 1400x320 design dimensions
+      const containerWidth = window.innerWidth - 48;
+      const containerHeight = window.innerHeight - 48;
+      
+      const scaleX = containerWidth / 1400;
+      const scaleY = containerHeight / 320;
+      
+      const targetScale = Math.min(scaleX, scaleY);
+      setScale(targetScale);
+    };
+
+    window.addEventListener('resize', handleResize);
+    handleResize();
+
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   // WebSocket reference
   const ws = useRef(null);
@@ -425,36 +453,50 @@ export default function App() {
   const trackArtist = currentTrack?.artists?.map(a => a.name).join(', ') || 'No Source Loaded';
 
   return (
-    <div className="w-screen h-screen bg-[#050505] flex items-center justify-center relative overflow-hidden p-6 select-none font-sans selection:bg-[#ff8e00]/30 selection:text-[#ff8e00]">
+    <div data-theme={theme} className="w-screen h-screen bg-[#050505] flex items-center justify-center relative overflow-hidden p-6 select-none font-sans">
       
       {/* Subtle retro glowing background spots */}
-      <div className="absolute top-[-30%] left-[-20%] w-[70%] h-[70%] rounded-full bg-[#ff8e00]/5 blur-[150px] pointer-events-none" />
+      <div className="absolute top-[-30%] left-[-20%] w-[70%] h-[70%] rounded-full theme-bg-glow blur-[150px] pointer-events-none" />
       <div className="absolute bottom-[-30%] right-[-20%] w-[70%] h-[70%] rounded-full bg-emerald-950/5 blur-[150px] pointer-events-none" />
 
-      <RoseHiFiDisplay
-        isPlaying={isPlaying}
-        isLocalDeviceActive={isLocalDeviceActive}
-        trackName={trackName}
-        trackArtist={trackArtist}
-        trackPosition={trackPosition}
-        trackDuration={trackDuration}
-        volume={volume}
-        isMuted={isMuted}
-        shuffleState={shuffleState}
-        repeatState={repeatState}
-        handlePrevious={handlePrevious}
-        handlePlayPause={handlePlayPause}
-        handleNext={handleNext}
-        handleSeek={handleSeek}
-        handleVolumeChange={handleVolumeChange}
-        handleToggleMute={handleToggleMute}
-        handleToggleShuffle={handleToggleShuffle}
-        handleToggleRepeat={handleToggleRepeat}
-        playbackState={playbackState}
-        onToggleMenu={() => setIsMenuOpen(!isMenuOpen)}
-        onTransferPlayback={handleTransferToLocal}
-        hasToken={!!token}
-      />
+      <div 
+        ref={containerRef}
+        style={{
+          transform: `scale(${scale})`,
+          transformOrigin: 'center center',
+          width: '1400px',
+          height: '320px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          flexShrink: 0
+        }}
+      >
+        <RoseHiFiDisplay
+          isPlaying={isPlaying}
+          isLocalDeviceActive={isLocalDeviceActive}
+          trackName={trackName}
+          trackArtist={trackArtist}
+          trackPosition={trackPosition}
+          trackDuration={trackDuration}
+          volume={volume}
+          isMuted={isMuted}
+          shuffleState={shuffleState}
+          repeatState={repeatState}
+          handlePrevious={handlePrevious}
+          handlePlayPause={handlePlayPause}
+          handleNext={handleNext}
+          handleSeek={handleSeek}
+          handleVolumeChange={handleVolumeChange}
+          handleToggleMute={handleToggleMute}
+          handleToggleShuffle={handleToggleShuffle}
+          handleToggleRepeat={handleToggleRepeat}
+          playbackState={playbackState}
+          onToggleMenu={() => setIsMenuOpen(!isMenuOpen)}
+          onTransferPlayback={handleTransferToLocal}
+          hasToken={!!token}
+        />
+      </div>
 
       {/* SIDE PANEL DRAWER (SYSTEM DEFINITIONS MENU) */}
       {/* Backdrop overlay */}
@@ -497,6 +539,8 @@ export default function App() {
               handlePlayTrack(uri);
               setIsMenuOpen(false);
             }}
+            theme={theme}
+            onThemeChange={handleThemeChange}
           />
         </div>
       </div>

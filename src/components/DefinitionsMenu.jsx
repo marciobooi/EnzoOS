@@ -13,7 +13,9 @@ export default function DefinitionsMenu({
   isFetchingDevices,
   onTransferPlayback,
   onRefreshDevices,
-  onPlayTrack
+  onPlayTrack,
+  theme,
+  onThemeChange
 }) {
   // OTA states
   const [updateStatus, setUpdateStatus] = useState(null); // null, 'checking', 'error', 'no-update', 'available', 'updating'
@@ -69,7 +71,7 @@ export default function DefinitionsMenu({
       
       {/* Header */}
       <div className="flex items-center gap-2 pb-3 border-b border-zinc-900">
-        <Sliders className="h-5 w-5 text-[#ff8e00] animate-pulse" />
+        <Sliders className="h-5 w-5 theme-text animate-pulse" />
         <div>
           <h3 className="text-xs font-bold text-white tracking-widest uppercase">System Definitions</h3>
           <p className="text-[9px] text-zinc-500 uppercase mt-0.5">Control center and resource configuration</p>
@@ -104,11 +106,11 @@ export default function DefinitionsMenu({
                 placeholder="INPUT ACCESS TOKEN KEY..." 
                 value={manualTokenInput}
                 onChange={e => setManualTokenInput(e.target.value)}
-                className="w-full py-2 px-3 rounded-lg bg-zinc-950 border border-zinc-900 text-[#ff8e00] placeholder-zinc-800 text-xs focus:outline-none focus:border-[#ff8e00]/40 transition-colors tracking-wide text-center"
+                className="w-full py-2 px-3 rounded-lg bg-zinc-950 border border-zinc-900 theme-text placeholder-zinc-800 text-xs focus:outline-none focus:border-zinc-850 transition-colors tracking-wide text-center"
               />
               <button 
                 type="submit"
-                className="w-full py-2 px-3 rounded-lg bg-[#ff8e00] hover:bg-[#ff8e00]/80 active:scale-95 text-xs text-black font-extrabold uppercase tracking-wider transition-all cursor-pointer"
+                className="w-full py-2 px-3 rounded-lg theme-bg hover:opacity-90 active:scale-95 text-xs text-black font-extrabold uppercase tracking-wider transition-all cursor-pointer"
               >
                 Mount Custom Token
               </button>
@@ -121,7 +123,7 @@ export default function DefinitionsMenu({
                   href="https://developer.spotify.com/documentation/web-api/reference/get-users-profile" 
                   target="_blank" 
                   rel="noreferrer" 
-                  className="text-[#ff8e00]/70 hover:text-[#ff8e00] hover:underline font-bold"
+                  className="theme-text opacity-70 hover:opacity-100 hover:underline font-bold"
                 >
                   portal
                 </a>.
@@ -159,10 +161,10 @@ export default function DefinitionsMenu({
             <button
               onClick={onRefreshDevices}
               disabled={isFetchingDevices}
-              className="p-1 rounded hover:bg-zinc-900 text-zinc-500 hover:text-[#ff8e00] transition-colors cursor-pointer disabled:opacity-50"
+              className="p-1 rounded hover:bg-zinc-900 text-zinc-500 hover:text-[var(--theme-color)] transition-colors cursor-pointer disabled:opacity-50"
               title="Refresh Devices"
             >
-              <RefreshCw className={`h-3.5 w-3.5 ${isFetchingDevices ? 'animate-spin text-[#ff8e00]' : ''}`} />
+              <RefreshCw className={`h-3.5 w-3.5 ${isFetchingDevices ? 'animate-spin theme-text' : ''}`} />
             </button>
           )}
         </div>
@@ -184,19 +186,19 @@ export default function DefinitionsMenu({
                     disabled={device.is_active}
                     className={`w-full p-2.5 rounded-lg border text-left transition-all flex items-center justify-between gap-3 text-xs ${
                       device.is_active
-                        ? 'bg-[#ff8e00]/5 border-[#ff8e00]/30 text-white font-bold cursor-default'
+                        ? 'theme-bg-glow theme-border-glow text-white font-bold cursor-default'
                         : 'bg-zinc-950/40 border-zinc-900 text-zinc-400 hover:border-zinc-800 hover:text-zinc-200 cursor-pointer active:scale-[0.99]'
                     }`}
                   >
                     <div className="flex items-center gap-2.5 min-w-0">
-                      <span className={device.is_active ? 'text-[#ff8e00]' : 'text-zinc-650'}>
+                      <span className={device.is_active ? 'theme-text' : 'text-zinc-650'}>
                         {getDeviceIcon(device.type)}
                       </span>
                       <div className="min-w-0">
                         <div className="truncate font-mono tracking-wide">
                           {device.name}
                           {isResonance && (
-                            <span className="ml-1.5 text-[8px] px-1 rounded bg-[#ff8e00]/10 border border-[#ff8e00]/20 text-[#ff8e00]">
+                            <span className="ml-1.5 text-[8px] px-1 rounded theme-bg-glow theme-border-glow theme-text">
                               DAEMON
                             </span>
                           )}
@@ -209,7 +211,7 @@ export default function DefinitionsMenu({
 
                     <div className="flex items-center shrink-0">
                       {device.is_active ? (
-                        <span className="flex items-center gap-1 text-[8.5px] font-bold text-[#ff8e00] tracking-widest">
+                        <span className="flex items-center gap-1 text-[8.5px] font-bold theme-text tracking-widest">
                           <Check className="h-3 w-3" /> ACTIVE
                         </span>
                       ) : (
@@ -256,7 +258,7 @@ export default function DefinitionsMenu({
 
           {updateStatus === 'checking' && (
             <div className="text-center py-2 text-zinc-650 text-[10px] flex items-center justify-center gap-2">
-              <RefreshCw className="h-3.5 w-3.5 animate-spin text-[#ff8e00]" />
+              <RefreshCw className="h-3.5 w-3.5 animate-spin theme-text" />
               <span>FETCHING LATEST GIT COMMITS...</span>
             </div>
           )}
@@ -284,7 +286,7 @@ export default function DefinitionsMenu({
               </div>
               <button
                 onClick={triggerOtaUpdate}
-                className="w-full py-2 px-3 rounded-lg bg-[#ff8e00] hover:bg-[#ff8e00]/80 active:scale-95 text-xs text-black font-extrabold uppercase tracking-wider transition-all cursor-pointer"
+                className="w-full py-2 px-3 rounded-lg theme-bg hover:opacity-90 active:scale-95 text-xs text-black font-extrabold uppercase tracking-wider transition-all cursor-pointer"
               >
                 Deploy OTA Update
               </button>
@@ -293,7 +295,7 @@ export default function DefinitionsMenu({
 
           {updateStatus === 'updating' && (
             <div className="p-3 rounded bg-zinc-950 border border-zinc-900 text-center flex flex-col items-center gap-2">
-              <RefreshCw className="h-5 w-5 animate-spin text-[#ff8e00]" />
+              <RefreshCw className="h-5 w-5 animate-spin theme-text" />
               <div className="text-[10px] font-bold text-white uppercase tracking-wider">INSTALLING SYSTEM DIRECTIVES</div>
               <p className="text-[9px] text-zinc-600 leading-normal uppercase">
                 Pulling commits, resolving node packages, compiling assets, and restarting server daemon. The connection will drop shortly.
@@ -315,6 +317,41 @@ export default function DefinitionsMenu({
               </button>
             </div>
           )}
+        </div>
+      </section>
+
+      {/* 5. SYSTEM THEMES */}
+      <section className="p-4 rounded-xl border border-zinc-900 bg-zinc-950/20 flex flex-col gap-3">
+        <div className="flex items-center justify-between">
+          <span className="text-[10px] font-bold tracking-wider text-zinc-400 uppercase">
+            [05] System Themes
+          </span>
+          <span className="text-[8px] bg-zinc-900 border border-zinc-800 text-zinc-550 px-2 py-0.5 rounded font-bold uppercase tracking-wider">
+            {theme?.toUpperCase() || 'AMBER'}
+          </span>
+        </div>
+
+        <div className="grid grid-cols-5 gap-1.5 mt-1">
+          {[
+            { id: 'amber', name: 'Amber', colorClass: 'bg-[#ff8e00]' },
+            { id: 'emerald', name: 'Emerald', colorClass: 'bg-[#00ff66]' },
+            { id: 'cyan', name: 'Cyan', colorClass: 'bg-[#00ffff]' },
+            { id: 'amethyst', name: 'Amethyst', colorClass: 'bg-[#a855f7]' },
+            { id: 'ruby', name: 'Ruby', colorClass: 'bg-[#ff3366]' }
+          ].map((t) => (
+            <button
+              key={t.id}
+              onClick={() => onThemeChange(t.id)}
+              className={`py-2 px-1 rounded-lg border text-center transition-all cursor-pointer flex flex-col items-center gap-1 active:scale-95 ${
+                theme === t.id
+                  ? 'bg-zinc-900 border-zinc-700 text-white font-bold'
+                  : 'bg-zinc-950/40 border-zinc-950 text-zinc-500 hover:border-zinc-900 hover:text-zinc-350'
+              }`}
+            >
+              <span className={`w-3 h-3 rounded-full ${t.colorClass} border border-black/20 shrink-0`} />
+              <span className="text-[7.5px] uppercase tracking-wider truncate w-full">{t.name}</span>
+            </button>
+          ))}
         </div>
       </section>
 

@@ -28,7 +28,7 @@ export default function TrackSearch({ token, onPlayTrack, isDrawer = false }) {
       {/* Header */}
       <div className="flex items-center justify-between mb-4 pb-2.5 border-b border-zinc-900/60">
         <h3 className="text-xs font-bold text-white tracking-widest uppercase flex items-center gap-2">
-          <Search className="h-4 w-4 text-[#ff8e00]" />
+          <Search className="h-4 w-4 theme-text" />
           Source Catalogue Search
         </h3>
       </div>
@@ -40,7 +40,7 @@ export default function TrackSearch({ token, onPlayTrack, isDrawer = false }) {
           placeholder="SEARCH TRACK / ARTIST..." 
           value={query}
           onChange={e => setQuery(e.target.value)}
-          className="flex-grow py-2 px-3 rounded-lg bg-zinc-950 border border-zinc-900 text-[#ff8e00] placeholder-zinc-800 text-xs focus:outline-none focus:border-[#ff8e00]/40 transition-colors uppercase tracking-wider font-semibold animate-none"
+          className="flex-grow py-2 px-3 rounded-lg bg-zinc-950 border border-zinc-900 theme-text placeholder-zinc-800 text-xs focus:outline-none focus:border-zinc-850 transition-colors uppercase tracking-wider font-semibold animate-none"
         />
         <button 
           type="submit"
@@ -84,7 +84,7 @@ export default function TrackSearch({ token, onPlayTrack, isDrawer = false }) {
             {/* Play trigger */}
             <button 
               onClick={() => onPlayTrack(track.uri)}
-              className="p-2 rounded-lg bg-[#ff8e00] hover:bg-[#ffa733] text-black hover:scale-105 active:scale-95 transition-all cursor-pointer flex items-center justify-center shrink-0 shadow-md shadow-[#ff8e00]/10"
+              className="p-2 rounded-lg theme-bg hover:opacity-90 text-black hover:scale-105 active:scale-95 transition-all cursor-pointer flex items-center justify-center shrink-0 shadow-md"
               title="PLAY SOURCE CHANNEL"
             >
               <Play className="h-3.5 w-3.5 fill-current" />

@@ -1,6 +1,12 @@
 import express from 'express';
-import { exec } from 'child_process';
+import { exec, spawn } from 'child_process';
 import { promisify } from 'util';
+import path from 'path';
+import fs from 'fs';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const execPromise = promisify(exec);
 const router = express.Router();
@@ -34,22 +40,49 @@ router.get('/status', async (req, res) => {
 router.post('/', (req, res) => {
   console.log('[Resonance Server] Initiating OTA Update...');
   
-  // Execute update.sh disowned / asynchronously
-  exec('bash scripts/update.sh', (err, stdout, stderr) => {
-    if (err) {
-      console.error('[Resonance Server] OTA Update failed:', err);
-      console.error('Stdout:', stdout);
-      console.error('Stderr:', stderr);
-      return;
+  try {
+    const scriptPath = path.resolve(__dirname, '../scripts/update.sh');
+    const logPath = path.resolve(__dirname, '../ota_update.log');
+    
+    // Reset/truncate log file and write initiation header
+    fs.writeFileSync(logPath, `=== OTA UPDATE TRIGGERED AT ${new Date().toISOString()} ===\n`, 'utf8');
+    
+    const out = fs.openSync(logPath, 'a');
+    const err = fs.openSync(logPath, 'a');
+    
+    // Spawn detached child process to run update.sh
+    const child = spawn('bash', [scriptPath], {
+      cwd: path.resolve(__dirname, '..'),
+      detached: true,
+      stdio: ['ignore', out, err]
+    });
+    
+    child.unref();
+    
+    res.json({
+      success: true,
+      message: 'OTA Update process started. The server will pull changes, compile and restart.'
+    });
+  } catch (err) {
+    console.error('[Resonance Server] Failed to trigger update script:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// GET /api/system/update/log -> Read update logs for real-time diagnostics
+router.get('/log', (req, res) => {
+  try {
+    const logPath = path.resolve(__dirname, '../ota_update.log');
+    if (fs.existsSync(logPath)) {
+      const content = fs.readFileSync(logPath, 'utf8');
+      res.json({ success: true, log: content });
+    } else {
+      res.json({ success: true, log: 'No update log found.' });
     }
-    console.log('[Resonance Server] OTA Update script executed successfully:');
-    console.log(stdout);
-  });
-  
-  res.json({
-    success: true,
-    message: 'OTA Update process started. The server will pull changes, compile and restart.'
-  });
+  } catch (err) {
+    console.error('[Resonance Server] Failed to read update log:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
 });
 
 export default router;

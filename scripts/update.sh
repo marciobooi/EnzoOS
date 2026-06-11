@@ -11,6 +11,16 @@ NC='\033[0m'
 
 echo -e "${YELLOW}Starting Resonance HiFi OTA Update...${NC}"
 
+# Diagnostics
+echo "=== SYSTEM DIAGNOSTICS ==="
+echo "Timestamp: $(date)"
+echo "Executing User: $(whoami)"
+echo "Shell Path: $PATH"
+echo "Node version: $(node -v 2>&1 || echo 'Not found')"
+echo "NPM version: $(npm -v 2>&1 || echo 'Not found')"
+echo "PM2 version: $(pm2 -v 2>&1 || echo 'Not found')"
+echo "=========================="
+
 # Find absolute path of the project directory (one level up from scripts/)
 PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$PROJECT_DIR"

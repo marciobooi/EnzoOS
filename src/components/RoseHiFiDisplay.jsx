@@ -87,11 +87,11 @@ export default function RoseHiFiDisplay({
               className={`status-pill cursor-pointer transition-colors ${
                 isLocalDeviceActive 
                   ? 'text-emerald-400 hover:text-emerald-300' 
-                  : 'text-[#ff8e00] hover:text-[#ffa733] animate-pulse'
+                  : 'theme-text hover:opacity-80 animate-pulse'
               }`}
               title={isLocalDeviceActive ? 'Spotify Connect Active' : 'Click to Route Audio to Resonance'}
             >
-              <span className={`status-dot ${isLocalDeviceActive ? 'bg-emerald-400' : 'bg-[#ff8e00]'}`}></span>
+              <span className={`status-dot ${isLocalDeviceActive ? 'bg-emerald-400' : 'theme-bg'}`}></span>
               {isLocalDeviceActive ? 'SPOTIFY CONNECT // ACTIVE' : 'ROUTE TO RESONANCE'}
             </button>
             <span className="system-readout">DOT MATRIX / 2026</span>
@@ -215,7 +215,7 @@ export default function RoseHiFiDisplay({
       <aside className="controls-column" aria-label="System controls">
         <button 
           onClick={onToggleMenu}
-          className={`icon-button menu ${!hasToken ? 'border-[#ff8e00] text-[#ff8e00] active animate-pulse' : ''}`} 
+          className={`icon-button menu ${!hasToken ? 'theme-border theme-text active animate-pulse' : ''}`} 
           type="button" 
           aria-label="System Definitions"
           title="Open System Definitions Menu"

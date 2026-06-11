@@ -28,7 +28,7 @@
 .dot-matrix-grid {
   position: absolute;
   inset: 0;
-  background-image: radial-gradient(var(--color-amber-matrix-dim) 20%, transparent 20%);
+  background-image: radial-gradient(var(--theme-color-dim) 20%, transparent 20%);
   background-size: 5px 5px;
   pointer-events: none;
   z-index: 2;
@@ -128,16 +128,105 @@
 
 /* Custom 2026 Dot Matrix Player Styles */
 :root {
-  --color-active: #f2f7ff;
-  --color-faded: #8f8f8f;
+  --theme-color: #ff8e00;
+  --theme-color-glow: rgba(255, 142, 0, 0.25);
+  --theme-color-dim: rgba(255, 142, 0, 0.05);
+  --color-active: #ffffff;
+  --color-faded: #ff8e00;
+}
+
+[data-theme="amber"] {
+  --theme-color: #ff8e00;
+  --theme-color-glow: rgba(255, 142, 0, 0.25);
+  --theme-color-dim: rgba(255, 142, 0, 0.05);
+  --color-active: #ffffff;
+  --color-faded: #ff8e00;
+}
+
+[data-theme="emerald"] {
+  --theme-color: #00ff66;
+  --theme-color-glow: rgba(0, 255, 102, 0.25);
+  --theme-color-dim: rgba(0, 255, 102, 0.05);
+  --color-active: #ffffff;
+  --color-faded: #00ff66;
+}
+
+[data-theme="cyan"] {
+  --theme-color: #00ffff;
+  --theme-color-glow: rgba(0, 255, 255, 0.25);
+  --theme-color-dim: rgba(0, 255, 255, 0.05);
+  --color-active: #ffffff;
+  --color-faded: #00ffff;
+}
+
+[data-theme="amethyst"] {
+  --theme-color: #a855f7;
+  --theme-color-glow: rgba(168, 85, 247, 0.25);
+  --theme-color-dim: rgba(168, 85, 247, 0.05);
+  --color-active: #ffffff;
+  --color-faded: #a855f7;
+}
+
+[data-theme="ruby"] {
+  --theme-color: #ff3366;
+  --theme-color-glow: rgba(255, 51, 102, 0.25);
+  --theme-color-dim: rgba(255, 51, 102, 0.05);
+  --color-active: #ffffff;
+  --color-faded: #ff3366;
+}
+
+/* Theme Utility Helper Classes */
+.theme-text {
+  color: var(--theme-color) !important;
+}
+.theme-bg {
+  background-color: var(--theme-color) !important;
+}
+.theme-border {
+  border-color: var(--theme-color) !important;
+}
+.theme-bg-glow {
+  background-color: var(--theme-color-dim) !important;
+}
+.theme-border-glow {
+  border-color: var(--theme-color-glow) !important;
+}
+
+/* selection styling per theme */
+div[data-theme="amber"] *::selection {
+  background-color: rgba(255, 142, 0, 0.3);
+  color: #ff8e00;
+}
+div[data-theme="emerald"] *::selection {
+  background-color: rgba(0, 255, 102, 0.3);
+  color: #00ff66;
+}
+div[data-theme="cyan"] *::selection {
+  background-color: rgba(0, 255, 255, 0.3);
+  color: #00ffff;
+}
+div[data-theme="amethyst"] *::selection {
+  background-color: rgba(168, 85, 247, 0.3);
+  color: #a855f7;
+}
+div[data-theme="ruby"] *::selection {
+  background-color: rgba(255, 51, 102, 0.3);
+  color: #ff3366;
+}
+
+@keyframes pulse-glow-theme {
+  0%, 100% { text-shadow: 0 0 4px var(--theme-color), 0 0 12px var(--theme-color-glow); }
+  50% { text-shadow: 0 0 6px var(--theme-color), 0 0 16px var(--theme-color-glow); }
+}
+
+.glow-text-theme {
+  color: var(--theme-color) !important;
+  animation: pulse-glow-theme 2s infinite ease-in-out;
 }
 
 .music-player {
-  width: 100%;
-  max-width: 1400px;
-  height: 100%;
-  max-height: 320px;
-  aspect-ratio: 1400 / 320;
+  width: 1400px;
+  height: 320px;
   display: grid;
   grid-template-columns: 240px minmax(0, 1fr) 124px;
   gap: 1.5rem;
@@ -147,6 +236,7 @@
   border: 1px solid rgba(255, 255, 255, 0.08);
   box-shadow: inset 0 0 32px rgba(0, 0, 0, 0.6);
   font-family: 'Doto', monospace;
+  flex-shrink: 0;
 }
 
 .album-column {
