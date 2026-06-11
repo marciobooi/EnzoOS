@@ -179,10 +179,18 @@ while ! curl -s http://localhost:5000 >/dev/null; do
   sleep 1
 done
 
+# Reset Chromium preferences exit state to prevent "Restore pages" bubble on boot
+PREFS_FILE="\$HOME/.config/chromium/Default/Preferences"
+if [ -f "\$PREFS_FILE" ]; then
+  sed -i 's/"exit_type":"Crashed"/"exit_type":"Normal"/g' "\$PREFS_FILE" 2>/dev/null || true
+  sed -i 's/"exited_cleanly":false/"exited_cleanly":true/g' "\$PREFS_FILE" 2>/dev/null || true
+fi
+
 # Launch Chromium browser pointing to local port 5000
-# For testing on VMs/square screens, we open a window of exactly 1400x320.
-# To switch to fullscreen kiosk mode later, swap --window-size/position with --kiosk.
+# --app mode opens a borderless window with no tab bar or address controls
+# To switch to fullscreen kiosk mode later, replace --app=... and window flags with --kiosk http://localhost:5000
 chromium-browser \\
+  --app=http://localhost:5000 \\
   --window-size=1400,320 \\
   --window-position=0,0 \\
   --autoplay-policy=no-user-gesture-required \\
@@ -190,8 +198,7 @@ chromium-browser \\
   --disable-infobars \\
   --disable-session-crashed-bubble \\
   --disable-features=Translate \\
-  --check-for-update-interval=31536000 \\
-  http://localhost:5000
+  --check-for-update-interval=31536000
 EOF
 
 chmod +x "$USER_HOME/.xinitrc"
