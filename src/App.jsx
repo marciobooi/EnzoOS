@@ -1,12 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { toast } from 'sonner';
-import { LogOut } from 'lucide-react';
+import { LogOut, Terminal } from 'lucide-react';
 import { api } from './api';
 
 // Subcomponents
-import AuthGuard from './components/AuthGuard';
 import RoseHiFiDisplay from './components/RoseHiFiDisplay';
-import TrackSearch from './components/TrackSearch';
+import DefinitionsMenu from './components/DefinitionsMenu';
 
 export default function App() {
   // Authentication states
@@ -32,7 +31,7 @@ export default function App() {
   const [volume, setVolume] = useState(50);
   const [isMuted, setIsMuted] = useState(false);
 
-  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   // WebSocket reference
   const ws = useRef(null);
@@ -88,8 +87,6 @@ export default function App() {
 
   // Set up WebSocket connection for real-time synchronization
   useEffect(() => {
-    if (!token) return;
-
     let socket;
     let reconnectTimeout;
 
@@ -101,7 +98,9 @@ export default function App() {
 
       socket.onopen = () => {
         console.log('[Resonance Client] Connected to WebSocket server');
-        socket.send(JSON.stringify({ type: 'SET_TOKEN', payload: { token } }));
+        if (token) {
+          socket.send(JSON.stringify({ type: 'SET_TOKEN', payload: { token } }));
+        }
       };
 
       socket.onmessage = (event) => {
@@ -117,6 +116,27 @@ export default function App() {
             }
             if (payload.repeat_state !== undefined) {
               setRepeatState(payload.repeat_state);
+            }
+          }
+
+          if (type === 'SET_TOKEN') {
+            const newToken = payload.token;
+            if (newToken && newToken !== localStorage.getItem('spotify_access_token')) {
+              localStorage.setItem('spotify_access_token', newToken);
+              setToken(newToken);
+              toast.success('System authentication token synchronized!');
+            }
+          }
+
+          if (type === 'CLEAR_TOKEN') {
+            if (localStorage.getItem('spotify_access_token')) {
+              localStorage.removeItem('spotify_access_token');
+              localStorage.removeItem('spotify_refresh_token');
+              setToken('');
+              setRefreshToken('');
+              setPlaybackState(null);
+              setDevices([]);
+              toast.info('System token cleared.');
             }
           }
 
@@ -148,6 +168,13 @@ export default function App() {
       }
       ws.current = null;
     };
+  }, []);
+
+  // Send token to WebSocket server when it changes locally
+  useEffect(() => {
+    if (token && ws.current && ws.current.readyState === WebSocket.OPEN) {
+      ws.current.send(JSON.stringify({ type: 'SET_TOKEN', payload: { token } }));
+    }
   }, [token]);
 
   // Track position slider polling (runs while music is playing)
@@ -293,7 +320,7 @@ export default function App() {
     try {
       const state = await api.getPlaybackState(token);
       if (state) {
-        setPlaybackState({
+        const newState = {
           paused: !state.is_playing,
           position: state.progress_ms,
           duration: state.item?.duration_ms || 0,
@@ -310,11 +337,17 @@ export default function App() {
               artists: state.item?.artists || []
             }
           }
-        });
+        };
+        setPlaybackState(newState);
         setTrackPosition(state.progress_ms);
         setTrackDuration(state.item?.duration_ms || 0);
         setShuffleState(state.shuffle_state);
         setRepeatState(state.repeat_state);
+
+        // Broadcast current state to other connected clients via WebSocket
+        if (ws.current && ws.current.readyState === WebSocket.OPEN) {
+          ws.current.send(JSON.stringify({ type: 'BROADCAST_STATE', payload: newState }));
+        }
       }
       fetchDevices();
     } catch (err) {
@@ -367,6 +400,7 @@ export default function App() {
     localStorage.setItem('spotify_access_token', manualTokenInput.trim());
     setToken(manualTokenInput.trim());
     setManualTokenInput('');
+    setIsMenuOpen(false);
     toast.success('Custom authentication token applied!');
   };
 
@@ -378,8 +412,8 @@ export default function App() {
     setRefreshToken('');
     setPlaybackState(null);
     setDevices([]);
-    if (ws.current) {
-      ws.current.close();
+    if (ws.current && ws.current.readyState === WebSocket.OPEN) {
+      ws.current.send(JSON.stringify({ type: 'CLEAR_TOKEN' }));
     }
     toast.info('Session terminated.');
   };
@@ -397,57 +431,50 @@ export default function App() {
       <div className="absolute top-[-30%] left-[-20%] w-[70%] h-[70%] rounded-full bg-[#ff8e00]/5 blur-[150px] pointer-events-none" />
       <div className="absolute bottom-[-30%] right-[-20%] w-[70%] h-[70%] rounded-full bg-emerald-950/5 blur-[150px] pointer-events-none" />
 
-      {!token ? (
-        <AuthGuard
-          manualTokenInput={manualTokenInput}
-          setManualTokenInput={setManualTokenInput}
-          handleApplyManualToken={handleApplyManualToken}
-        />
-      ) : (
-        <RoseHiFiDisplay
-          isPlaying={isPlaying}
-          isLocalDeviceActive={isLocalDeviceActive}
-          trackName={trackName}
-          trackArtist={trackArtist}
-          trackPosition={trackPosition}
-          trackDuration={trackDuration}
-          volume={volume}
-          isMuted={isMuted}
-          shuffleState={shuffleState}
-          repeatState={repeatState}
-          handlePrevious={handlePrevious}
-          handlePlayPause={handlePlayPause}
-          handleNext={handleNext}
-          handleSeek={handleSeek}
-          handleVolumeChange={handleVolumeChange}
-          handleToggleMute={handleToggleMute}
-          handleToggleShuffle={handleToggleShuffle}
-          handleToggleRepeat={handleToggleRepeat}
-          playbackState={playbackState}
-          onToggleSearch={() => setIsSearchOpen(!isSearchOpen)}
-          onTransferPlayback={handleTransferToLocal}
-        />
-      )}
+      <RoseHiFiDisplay
+        isPlaying={isPlaying}
+        isLocalDeviceActive={isLocalDeviceActive}
+        trackName={trackName}
+        trackArtist={trackArtist}
+        trackPosition={trackPosition}
+        trackDuration={trackDuration}
+        volume={volume}
+        isMuted={isMuted}
+        shuffleState={shuffleState}
+        repeatState={repeatState}
+        handlePrevious={handlePrevious}
+        handlePlayPause={handlePlayPause}
+        handleNext={handleNext}
+        handleSeek={handleSeek}
+        handleVolumeChange={handleVolumeChange}
+        handleToggleMute={handleToggleMute}
+        handleToggleShuffle={handleToggleShuffle}
+        handleToggleRepeat={handleToggleRepeat}
+        playbackState={playbackState}
+        onToggleMenu={() => setIsMenuOpen(!isMenuOpen)}
+        onTransferPlayback={handleTransferToLocal}
+        hasToken={!!token}
+      />
 
-      {/* SIDE PANEL DRAWER (SEARCH CATALOGUE) */}
+      {/* SIDE PANEL DRAWER (SYSTEM DEFINITIONS MENU) */}
       {/* Backdrop overlay */}
       <div 
-        onClick={() => setIsSearchOpen(false)}
+        onClick={() => setIsMenuOpen(false)}
         className={`fixed inset-0 bg-black/60 backdrop-blur-sm z-40 transition-opacity duration-300 ${
-          isSearchOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
+          isMenuOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
         }`}
       />
 
       {/* Drawer Container */}
       <div 
         className={`fixed top-0 right-0 h-full w-[450px] bg-gradient-to-b from-[#22252c] to-[#0f1013] border-l border-[#303643] shadow-2xl z-50 transform transition-transform duration-300 ease-in-out flex flex-col p-6 font-mono ${
-          isSearchOpen ? 'translate-x-0' : 'translate-x-full'
+          isMenuOpen ? 'translate-x-0' : 'translate-x-full'
         }`}
       >
         {/* Close Button Header */}
         <div className="flex justify-end mb-4 select-none shrink-0">
           <button 
-            onClick={() => setIsSearchOpen(false)}
+            onClick={() => setIsMenuOpen(false)}
             className="text-zinc-500 hover:text-white transition-colors cursor-pointer text-[10px] font-extrabold font-mono px-3.5 py-1.5 rounded-lg bg-zinc-950 border border-zinc-900 active:scale-95"
           >
             CLOSE [X]
@@ -456,16 +483,21 @@ export default function App() {
 
         {/* Drawer Scrollable Content */}
         <div className="flex-grow overflow-y-auto">
-          {token && (
-            <TrackSearch
-              token={token}
-              onPlayTrack={(uri) => {
-                handlePlayTrack(uri);
-                setIsSearchOpen(false);
-              }}
-              isDrawer={true}
-            />
-          )}
+          <DefinitionsMenu
+            token={token}
+            manualTokenInput={manualTokenInput}
+            setManualTokenInput={setManualTokenInput}
+            handleApplyManualToken={handleApplyManualToken}
+            handleLogout={handleLogout}
+            devices={devices}
+            isFetchingDevices={isFetchingDevices}
+            onTransferPlayback={transferPlayback}
+            onRefreshDevices={fetchDevices}
+            onPlayTrack={(uri) => {
+              handlePlayTrack(uri);
+              setIsMenuOpen(false);
+            }}
+          />
         </div>
       </div>
     </div>

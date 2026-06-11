@@ -33,6 +33,7 @@ const server = http.createServer(app);
 const wss = new WebSocketServer({ noServer: true });
 
 let cachedPlaybackState = null;
+let cachedToken = null;
 
 // Helper to broadcast messages to all connected WS clients
 const broadcast = (data, excludeWs = null) => {
@@ -52,6 +53,11 @@ wss.on('connection', (ws) => {
     ws.send(JSON.stringify({ type: 'PLAYBACK_STATE', payload: cachedPlaybackState }));
   }
 
+  // Send last cached token on connect
+  if (cachedToken) {
+    ws.send(JSON.stringify({ type: 'SET_TOKEN', payload: { token: cachedToken } }));
+  }
+
   ws.on('message', (messageStr) => {
     try {
       const { type, payload } = JSON.parse(messageStr);
@@ -60,6 +66,18 @@ wss.on('connection', (ws) => {
         cachedPlaybackState = payload;
         // Broadcast new state to all OTHER clients
         broadcast({ type: 'PLAYBACK_STATE', payload }, ws);
+      }
+
+      if (type === 'SET_TOKEN') {
+        cachedToken = payload.token;
+        console.log('[Resonance WS] Token cached. Syncing with other clients.');
+        broadcast({ type: 'SET_TOKEN', payload: { token: cachedToken } }, ws);
+      }
+
+      if (type === 'CLEAR_TOKEN') {
+        cachedToken = null;
+        console.log('[Resonance WS] Token cleared. Syncing with other clients.');
+        broadcast({ type: 'CLEAR_TOKEN' }, ws);
       }
     } catch (err) {
       console.error('[Resonance WS] Failed parsing client message:', err);
