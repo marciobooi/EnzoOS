@@ -463,6 +463,7 @@ export default function App() {
       await api.setVolume(token, vol);
     } catch (err) {
       console.error('Volume adjustment error:', err);
+      toast.error(`Volume change failed: ${err.message}`);
     }
   };
 

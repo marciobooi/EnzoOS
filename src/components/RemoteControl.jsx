@@ -404,6 +404,7 @@ export default function RemoteControl() {
         await api.setVolume(token, newVol);
       } catch (err) {
         console.error('Spotify volume API failed:', err);
+        toast.error(`Volume change failed: ${err.message}`);
       }
     }, 180);
   };
