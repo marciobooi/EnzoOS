@@ -67,6 +67,8 @@ export default function App() {
 
   // WebSocket reference
   const ws = useRef(null);
+  // Stable ref to syncCurrentState — prevents stale closure in WS onmessage handler
+  const syncCurrentStateRef = useRef(null);
 
   // Derived Librespot states
   const resonanceDevice = devices.find(d => d.name === 'Resonance Connect');
@@ -159,7 +161,10 @@ export default function App() {
 
           if (type === 'REQUEST_SYNC') {
             console.log('[Resonance Client] Received sync request, syncing local state');
-            syncCurrentState();
+            // Use the ref so we always call the latest version (avoids stale closure)
+            if (syncCurrentStateRef.current) {
+              syncCurrentStateRef.current();
+            }
           }
 
           if (type === 'UPDATE_PROGRESS') {
@@ -410,6 +415,12 @@ export default function App() {
       console.warn('Could not sync remote state:', err);
     }
   };
+
+  // Keep the ref always pointing to the latest syncCurrentState so the WS
+  // closure (which captures nothing from the render cycle) can still call it safely
+  useEffect(() => {
+    syncCurrentStateRef.current = syncCurrentState;
+  });
 
   // Manual Seek
   const handleSeek = async (e) => {
