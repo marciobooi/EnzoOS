@@ -39,6 +39,8 @@ export default function App() {
     localStorage.setItem('resonance_theme', newTheme);
   };
 
+  const [otaProgress, setOtaProgress] = useState([]);
+
   const [scale, setScale] = useState(1);
   const containerRef = useRef(null);
 
@@ -145,6 +147,10 @@ export default function App() {
             if (payload.repeat_state !== undefined) {
               setRepeatState(payload.repeat_state);
             }
+          }
+
+          if (type === 'UPDATE_PROGRESS') {
+            setOtaProgress(prev => [...prev, payload.text].slice(-30));
           }
 
           if (type === 'SET_TOKEN') {
@@ -541,6 +547,8 @@ export default function App() {
             }}
             theme={theme}
             onThemeChange={handleThemeChange}
+            otaProgress={otaProgress}
+            setOtaProgress={setOtaProgress}
           />
         </div>
       </div>

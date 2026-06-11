@@ -47,14 +47,29 @@ router.post('/', (req, res) => {
     // Reset/truncate log file and write initiation header
     fs.writeFileSync(logPath, `=== OTA UPDATE TRIGGERED AT ${new Date().toISOString()} ===\n`, 'utf8');
     
-    const out = fs.openSync(logPath, 'a');
-    const err = fs.openSync(logPath, 'a');
-    
-    // Spawn detached child process to run update.sh
+    // Spawn detached child process to run update.sh (pipe streams to read in Node)
     const child = spawn('bash', [scriptPath], {
       cwd: path.resolve(__dirname, '..'),
       detached: true,
-      stdio: ['ignore', out, err]
+      stdio: ['ignore', 'pipe', 'pipe']
+    });
+    
+    const broadcast = req.app.get('wssBroadcast');
+    
+    child.stdout.on('data', (data) => {
+      const text = data.toString();
+      fs.appendFileSync(logPath, text);
+      if (broadcast) {
+        broadcast({ type: 'UPDATE_PROGRESS', payload: { text } });
+      }
+    });
+    
+    child.stderr.on('data', (data) => {
+      const text = data.toString();
+      fs.appendFileSync(logPath, text);
+      if (broadcast) {
+        broadcast({ type: 'UPDATE_PROGRESS', payload: { text, isError: true } });
+      }
     });
     
     child.unref();

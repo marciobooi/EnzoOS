@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Sliders, Terminal, LogOut, RefreshCw, Speaker, Smartphone, Laptop, Check, AlertCircle } from 'lucide-react';
 import { api } from '../api';
 import TrackSearch from './TrackSearch';
@@ -15,7 +15,9 @@ export default function DefinitionsMenu({
   onRefreshDevices,
   onPlayTrack,
   theme,
-  onThemeChange
+  onThemeChange,
+  otaProgress,
+  setOtaProgress
 }) {
   // OTA states
   const [updateStatus, setUpdateStatus] = useState(null); // null, 'checking', 'error', 'no-update', 'available', 'updating'
@@ -42,8 +44,17 @@ export default function DefinitionsMenu({
     }
   };
 
+  const consoleRef = useRef(null);
+
+  useEffect(() => {
+    if (consoleRef.current) {
+      consoleRef.current.scrollTop = consoleRef.current.scrollHeight;
+    }
+  }, [otaProgress]);
+
   const triggerOtaUpdate = async () => {
     try {
+      if (setOtaProgress) setOtaProgress([]);
       setUpdateStatus('updating');
       await api.triggerUpdate();
     } catch (err) {
@@ -294,11 +305,27 @@ export default function DefinitionsMenu({
           )}
 
           {updateStatus === 'updating' && (
-            <div className="p-3 rounded bg-zinc-950 border border-zinc-900 text-center flex flex-col items-center gap-2">
-              <RefreshCw className="h-5 w-5 animate-spin theme-text" />
-              <div className="text-[10px] font-bold text-white uppercase tracking-wider">INSTALLING SYSTEM DIRECTIVES</div>
-              <p className="text-[9px] text-zinc-600 leading-normal uppercase">
-                Pulling commits, resolving node packages, compiling assets, and restarting server daemon. The connection will drop shortly.
+            <div className="p-3 rounded bg-zinc-950 border border-zinc-900 text-center flex flex-col items-stretch gap-2 font-mono">
+              <div className="flex items-center justify-center gap-2">
+                <RefreshCw className="h-4 w-4 animate-spin theme-text" />
+                <div className="text-[10px] font-bold text-white uppercase tracking-wider">Installing OTA Update</div>
+              </div>
+              <div 
+                ref={consoleRef}
+                className="bg-black/85 rounded border border-zinc-900 p-2 text-left h-36 overflow-y-auto text-[8px] text-zinc-400 select-text custom-scrollbar flex flex-col gap-0.5 leading-normal"
+              >
+                {otaProgress && otaProgress.length > 0 ? (
+                  otaProgress.map((line, idx) => (
+                    <div key={idx} className="whitespace-pre-wrap break-all text-zinc-300">
+                      {line}
+                    </div>
+                  ))
+                ) : (
+                  <div className="text-zinc-650 animate-pulse uppercase">Initiating secure socket pipeline...</div>
+                )}
+              </div>
+              <p className="text-[7.5px] text-zinc-600 leading-normal uppercase">
+                The connection will drop and reconnect automatically once compile finishes.
               </p>
             </div>
           )}

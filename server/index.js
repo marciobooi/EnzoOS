@@ -49,6 +49,8 @@ const broadcast = (data, excludeWs = null) => {
   });
 };
 
+app.set('wssBroadcast', broadcast);
+
 wss.on('connection', (ws) => {
   console.log('[Resonance WS] Client connected. Active clients:', wss.clients.size);
   
