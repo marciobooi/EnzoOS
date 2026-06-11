@@ -52,12 +52,25 @@ echo "[Resonance] Server ready."
 rm -f "$HOME/.config/chromium/SingletonLock"
 rm -f "$HOME/.config/chromium/Default/Preferences.lock"
 
-# Clear any stale "restore pages?" dialog state from previous sessions
-prefs_file="$HOME/.config/chromium/Default/Preferences"
+# Note the uppercase 'Default/Preferences' (Ubuntu paths are case-sensitive)
+prefs_file="$HOME/snap/chromium/current/.config/chromium/Default/Preferences"
 if [ -f "$prefs_file" ]; then
     sed -i 's/"exit_type":"Crashed"/"exit_type":"Normal"/' "$prefs_file"
     sed -i 's/"exited_cleanly":false/"exited_cleanly":true/' "$prefs_file"
 fi
+
+# ── launch chromium ───────────────────────────────────────────────────────────
+# Export the database variables needed for Snap application sub-layers
+export DBUS_SESSION_BUS_ADDRESS=autolaunch:
+
+# Run Chromium with required flags to bypass sandboxing limits in raw X11
+chromium-browser --kiosk \
+  --no-sandbox \
+  --test-type \
+  --no-first-run \
+  --simulate-outdated-no-buttons \
+  --disable-infobars \
+  http://localhost:5000
 
 # ── Detect Chromium binary name ───────────────────────────────────────────────
 
