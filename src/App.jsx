@@ -15,10 +15,7 @@ export default function App() {
   const [manualTokenInput, setManualTokenInput] = useState('');
 
   // Spotify Player states
-  const [player, setPlayer] = useState(null);
-  const [deviceId, setDeviceId] = useState('');
   const [playbackState, setPlaybackState] = useState(null);
-  const [isLocalDeviceActive, setIsLocalDeviceActive] = useState(false);
   const [shuffleState, setShuffleState] = useState(false);
   const [repeatState, setRepeatState] = useState('off');
 
@@ -39,9 +36,13 @@ export default function App() {
 
   // WebSocket reference
   const ws = useRef(null);
-  const isLocalDeviceActiveRef = useRef(isLocalDeviceActive);
 
-  // Keep ref in sync to avoid stale closures inside WebSockets
+  // Derived Librespot states
+  const resonanceDevice = devices.find(d => d.name === 'Resonance Connect');
+  const resonanceDeviceId = resonanceDevice?.id || '';
+  const isLocalDeviceActive = resonanceDevice?.is_active || false;
+
+  const isLocalDeviceActiveRef = useRef(isLocalDeviceActive);
   useEffect(() => {
     isLocalDeviceActiveRef.current = isLocalDeviceActive;
   }, [isLocalDeviceActive]);
@@ -69,111 +70,20 @@ export default function App() {
       window.history.replaceState({}, document.title, url.toString());
     }
   }, []);
-
-  // Set up Spotify Web Playback SDK
+  // Set up periodic device list and state fetching
   useEffect(() => {
     if (!token) return;
 
-    if (player) {
-      player.disconnect();
-    }
+    fetchDevices();
+    syncCurrentState();
 
-    window.onSpotifyWebPlaybackSDKReady = () => {
-      const newPlayer = new window.Spotify.Player({
-        name: 'Resonance Connect (Analog)',
-        getOAuthToken: cb => cb(token),
-        volume: volume / 100
-      });
+    // Poll every 8 seconds to track devices and playback state
+    const pollIntervalId = setInterval(() => {
+      fetchDevices();
+      syncCurrentState();
+    }, 8000);
 
-      newPlayer.addListener('initialization_error', ({ message }) => {
-        console.error('Initialization error:', message);
-        toast.error(`Player error: ${message}`);
-      });
-      newPlayer.addListener('authentication_error', ({ message }) => {
-        console.error('Authentication error:', message);
-        toast.error('Session expired. Please log in or update token.');
-        handleLogout();
-      });
-      newPlayer.addListener('account_error', ({ message }) => {
-        console.error('Account error:', message);
-        toast.error(`Premium subscription required for browser streaming.`);
-      });
-      newPlayer.addListener('playback_error', ({ message }) => {
-        console.error('Playback error:', message);
-      });
-
-      newPlayer.addListener('player_state_changed', state => {
-        if (!state) {
-          setIsLocalDeviceActive(false);
-          setPlaybackState(null);
-          return;
-        }
-
-        setIsLocalDeviceActive(true);
-        setPlaybackState(state);
-        setTrackPosition(state.position);
-        setTrackDuration(state.duration);
-
-        // Update shuffle and repeat states from local player
-        setShuffleState(state.shuffle);
-        const repeatMapping = { 0: 'off', 1: 'context', 2: 'track' };
-        setRepeatState(repeatMapping[state.repeat_mode] || 'off');
-
-        // Broadcast updated state to all other WebSocket connections
-        if (ws.current && ws.current.readyState === WebSocket.OPEN) {
-          const payload = {
-            paused: state.paused,
-            position: state.position,
-            duration: state.duration,
-            shuffle_state: state.shuffle,
-            repeat_state: repeatMapping[state.repeat_mode] || 'off',
-            track_window: {
-              current_track: {
-                uri: state.track_window.current_track.uri,
-                name: state.track_window.current_track.name,
-                album: {
-                  name: state.track_window.current_track.album.name,
-                  images: state.track_window.current_track.album.images
-                },
-                artists: state.track_window.current_track.artists
-              }
-            }
-          };
-          ws.current.send(JSON.stringify({ type: 'BROADCAST_STATE', payload }));
-        }
-      });
-
-      newPlayer.addListener('ready', ({ device_id }) => {
-        console.log('Ready with Device ID:', device_id);
-        setDeviceId(device_id);
-        setIsLocalDeviceActive(true);
-        fetchDevices();
-      });
-
-      newPlayer.addListener('not_ready', ({ device_id }) => {
-        console.log('Device ID has gone offline:', device_id);
-        setIsLocalDeviceActive(false);
-      });
-
-      newPlayer.connect();
-      setPlayer(newPlayer);
-    };
-
-    if (!document.getElementById('spotify-player-sdk')) {
-      const script = document.createElement('script');
-      script.id = 'spotify-player-sdk';
-      script.src = 'https://sdk.scdn.co/spotify-player.js';
-      script.async = true;
-      document.body.appendChild(script);
-    } else if (window.Spotify) {
-      window.onSpotifyWebPlaybackSDKReady();
-    }
-
-    return () => {
-      if (player) {
-        player.disconnect();
-      }
-    };
+    return () => clearInterval(pollIntervalId);
   }, [token]);
 
   // Set up WebSocket connection for real-time synchronization
@@ -199,16 +109,14 @@ export default function App() {
           const { type, payload } = JSON.parse(event.data);
 
           if (type === 'PLAYBACK_STATE') {
-            if (!isLocalDeviceActiveRef.current) {
-              setPlaybackState(payload);
-              setTrackPosition(payload.position);
-              setTrackDuration(payload.duration);
-              if (payload.shuffle_state !== undefined) {
-                setShuffleState(payload.shuffle_state);
-              }
-              if (payload.repeat_state !== undefined) {
-                setRepeatState(payload.repeat_state);
-              }
+            setPlaybackState(payload);
+            setTrackPosition(payload.position);
+            setTrackDuration(payload.duration);
+            if (payload.shuffle_state !== undefined) {
+              setShuffleState(payload.shuffle_state);
+            }
+            if (payload.repeat_state !== undefined) {
+              setRepeatState(payload.repeat_state);
             }
           }
 
@@ -286,11 +194,20 @@ export default function App() {
     }
   };
 
+  // Route audio to local Librespot device
+  const handleTransferToLocal = async () => {
+    if (resonanceDeviceId) {
+      await transferPlayback(resonanceDeviceId);
+    } else {
+      toast.error('Resonance Connect device not detected on Spotify network. Try starting the daemon.');
+      fetchDevices();
+    }
+  };
+
   // Play a searched track on the active device
   const handlePlayTrack = async (trackUri) => {
     try {
-      // Use this local player device ID or find the currently active device
-      const activeId = deviceId || (devices.find(d => d.is_active)?.id);
+      const activeId = resonanceDeviceId || (devices.find(d => d.is_active)?.id);
       await api.play(token, activeId, null, [trackUri]);
       toast.success('Track loaded successfully.');
       setTimeout(syncCurrentState, 800);
@@ -303,14 +220,11 @@ export default function App() {
   const handlePlayPause = async () => {
     if (!token) return;
     try {
-      if (isLocalDeviceActive && player) {
-        await player.togglePlay();
+      if (playbackState?.paused === false) {
+        await api.pause(token);
       } else {
-        if (playbackState?.paused === false) {
-          await api.pause(token);
-        } else {
-          await api.play(token);
-        }
+        const targetId = isLocalDeviceActive ? null : resonanceDeviceId;
+        await api.play(token, targetId);
       }
       setTimeout(syncCurrentState, 500);
     } catch (err) {
@@ -321,11 +235,7 @@ export default function App() {
   const handleNext = async () => {
     if (!token) return;
     try {
-      if (isLocalDeviceActive && player) {
-        await player.nextTrack();
-      } else {
-        await api.skipNext(token);
-      }
+      await api.skipNext(token);
       setTimeout(syncCurrentState, 500);
     } catch (err) {
       toast.error(`Skip next failed: ${err.message}`);
@@ -335,11 +245,7 @@ export default function App() {
   const handlePrevious = async () => {
     if (!token) return;
     try {
-      if (isLocalDeviceActive && player) {
-        await player.previousTrack();
-      } else {
-        await api.skipPrevious(token);
-      }
+      await api.skipPrevious(token);
       setTimeout(syncCurrentState, 500);
     } catch (err) {
       toast.error(`Skip back failed: ${err.message}`);
@@ -351,7 +257,7 @@ export default function App() {
     const nextShuffle = !shuffleState;
     setShuffleState(nextShuffle);
     try {
-      const activeId = deviceId || (devices.find(d => d.is_active)?.id);
+      const activeId = resonanceDeviceId || (devices.find(d => d.is_active)?.id);
       await api.setShuffle(token, nextShuffle, activeId);
       toast.success(`Shuffle ${nextShuffle ? 'activated' : 'deactivated'}`);
       setTimeout(syncCurrentState, 500);
@@ -371,7 +277,7 @@ export default function App() {
     const nextRepeat = repeatCycle[repeatState] || 'off';
     setRepeatState(nextRepeat);
     try {
-      const activeId = deviceId || (devices.find(d => d.is_active)?.id);
+      const activeId = resonanceDeviceId || (devices.find(d => d.is_active)?.id);
       await api.setRepeat(token, nextRepeat, activeId);
       toast.success(`Repeat mode set to: ${nextRepeat}`);
       setTimeout(syncCurrentState, 500);
@@ -421,11 +327,7 @@ export default function App() {
     const seekMs = parseInt(e.target.value, 10);
     setTrackPosition(seekMs);
     try {
-      if (isLocalDeviceActive && player) {
-        await player.seek(seekMs);
-      } else {
-        await api.seek(token, seekMs);
-      }
+      await api.seek(token, seekMs);
     } catch (err) {
       console.error('Seek error:', err);
     }
@@ -437,11 +339,7 @@ export default function App() {
     setVolume(vol);
     setIsMuted(vol === 0);
     try {
-      if (isLocalDeviceActive && player) {
-        await player.setVolume(vol / 100);
-      } else {
-        await api.setVolume(token, vol);
-      }
+      await api.setVolume(token, vol);
     } catch (err) {
       console.error('Volume adjustment error:', err);
     }
@@ -452,20 +350,12 @@ export default function App() {
     setIsMuted(newMuteState);
     const targetVolume = newMuteState ? 0 : volume;
     try {
-      if (isLocalDeviceActive && player) {
-        await player.setVolume(targetVolume / 100);
-      } else {
-        await api.setVolume(token, targetVolume);
-      }
+      await api.setVolume(token, targetVolume);
     } catch (err) {
       console.error('Mute error:', err);
     }
   };
 
-  // Spotify login redirect
-  const handleLogin = () => {
-    window.location.href = '/api/login';
-  };
 
   // Set manual token fallback
   const handleApplyManualToken = (e) => {
@@ -488,14 +378,9 @@ export default function App() {
     setRefreshToken('');
     setPlaybackState(null);
     setDevices([]);
-    setDeviceId('');
     if (ws.current) {
       ws.current.close();
     }
-    if (player) {
-      player.disconnect();
-    }
-    setPlayer(null);
     toast.info('Session terminated.');
   };
 
@@ -516,7 +401,6 @@ export default function App() {
         <AuthGuard
           manualTokenInput={manualTokenInput}
           setManualTokenInput={setManualTokenInput}
-          handleLogin={handleLogin}
           handleApplyManualToken={handleApplyManualToken}
         />
       ) : (
@@ -541,6 +425,7 @@ export default function App() {
           handleToggleRepeat={handleToggleRepeat}
           playbackState={playbackState}
           onToggleSearch={() => setIsSearchOpen(!isSearchOpen)}
+          onTransferPlayback={handleTransferToLocal}
         />
       )}
 

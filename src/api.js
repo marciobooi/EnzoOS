@@ -23,26 +23,6 @@ async function handleResponse(response) {
 }
 
 export const api = {
-  /**
-   * Refreshes the Spotify access token via the local Express proxy.
-   * @param {string} refreshToken 
-   */
-  async refreshToken(refreshToken) {
-    const response = await fetch('/api/refresh', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ refresh_token: refreshToken }),
-    });
-
-    if (!response.ok) {
-      const errData = await response.json().catch(() => ({}));
-      throw new Error(errData.error || 'Failed to refresh token');
-    }
-
-    return response.json();
-  },
 
   /**
    * Fetches active Spotify Connect devices.

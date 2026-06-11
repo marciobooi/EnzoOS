@@ -4,8 +4,7 @@
 # Resonance HiFi - Ubuntu Kiosk Installer Script
 # ==============================================================================
 # Target: Ubuntu Server (VM, x86_64, Raspberry Pi 4, etc.)
-# Description: Automates package installation, kiosk display stack setup,
-#              sound configurations, systemd auto-login, and PM2 backend daemon.
+# Invocation: wget -qO- https://raw.githubusercontent.com/marciobooi/EnzoOS/main/install.sh | sudo bash
 # ==============================================================================
 
 # Exit immediately if a command exits with a non-zero status
@@ -22,79 +21,68 @@ echo -e "${BLUE}================================================================
 echo -e "${GREEN}          Resonance HiFi - Ubuntu Kiosk Installer Script           ${NC}"
 echo -e "${BLUE}====================================================================${NC}"
 
-# 1. Check Root Privileges
-if [ "$EUID" -eq 0 ]; then
-  echo -e "${RED}Error: Do not run this script as root directly using sudo.${NC}"
-  echo -e "${YELLOW}Please run as a normal user with sudo privileges: ./install.sh${NC}"
+# 1. Verify Root Privileges (Must be run as root/sudo)
+if [ "$EUID" -ne 0 ]; then
+  echo -e "${RED}Error: This installer must be run with root privileges (sudo).${NC}"
+  echo -e "${YELLOW}Please run as: wget -qO- ... | sudo bash   OR   sudo ./install.sh${NC}"
   exit 1
 fi
 
-TARGET_USER=$USER
-USER_HOME=$HOME
-PROJECT_DIR=$(pwd)
-
-echo -e "${GREEN}[1/8] Verifying environment and user privileges...${NC}"
-echo -e "Target User: $TARGET_USER"
-echo -e "Home Directory: $USER_HOME"
-echo -e "Project Directory: $PROJECT_DIR"
-
-# Ensure we are inside the project root directory
-if [ ! -f "$PROJECT_DIR/package.json" ]; then
-  echo -e "${RED}Error: package.json not found in current directory.${NC}"
-  echo -e "${YELLOW}Please run this script from the root of the resonance directory.${NC}"
-  exit 1
-fi
-
-# 2. Collect Spotify Credentials
-echo -e "\n${GREEN}[2/8] Configuring Spotify Credentials...${NC}"
-if [ -f "$PROJECT_DIR/.env" ]; then
-  echo -e "${YELLOW}An existing .env file was found.${NC}"
-  read -p "Do you want to overwrite it with new credentials? (y/N): " OVERWRITE_ENV
-  OVERWRITE_ENV=${OVERWRITE_ENV:-n}
+# 2. Detect original non-root user who invoked sudo
+if [ -n "$SUDO_USER" ] && [ "$SUDO_USER" != "root" ]; then
+  TARGET_USER=$SUDO_USER
+  USER_HOME=$(getent passwd "$SUDO_USER" | cut -d: -f6)
 else
-  OVERWRITE_ENV="y"
+  # Fallback if run directly from a root shell
+  echo -e "${YELLOW}Warning: Running directly from root shell. We need to identify the kiosk user.${NC}"
+  read -p "Enter the username of the user who will auto-login to the kiosk: " TARGET_USER
+  USER_HOME=$(getent passwd "$TARGET_USER" | cut -d: -f6)
+  if [ -z "$USER_HOME" ]; then
+    echo -e "${RED}Error: User '$TARGET_USER' does not exist on this system.${NC}"
+    exit 1
+  fi
 fi
 
-if [ "$OVERWRITE_ENV" = "y" ] || [ "$OVERWRITE_ENV" = "Y" ]; then
-  read -p "Enter Spotify Client ID: " SPOTIFY_CLIENT_ID
-  read -p "Enter Spotify Client Secret: " SPOTIFY_CLIENT_SECRET
-  read -p "Enter Spotify Redirect URI (default: http://localhost:5000/api/callback): " SPOTIFY_REDIRECT_URI
-  SPOTIFY_REDIRECT_URI=${SPOTIFY_REDIRECT_URI:-http://localhost:5000/api/callback}
-  PORT=5000
+echo -e "${GREEN}[1/7] Target Environment Configured:${NC}"
+echo -e "  Kiosk User: $TARGET_USER"
+echo -e "  User Home:  $USER_HOME"
 
-  # Write out .env file
-  cat <<EOF > "$PROJECT_DIR/.env"
-PORT=$PORT
-SPOTIFY_CLIENT_ID=$SPOTIFY_CLIENT_ID
-SPOTIFY_CLIENT_SECRET=$SPOTIFY_CLIENT_SECRET
-SPOTIFY_REDIRECT_URI=$SPOTIFY_REDIRECT_URI
-EOF
-  echo -e "${GREEN}Created .env configuration file.${NC}"
+# 3. Setup Project Directory (Clone if run via wget pipe)
+if [ -f "./package.json" ]; then
+  PROJECT_DIR=$(pwd)
+  echo -e "  Project Dir: $PROJECT_DIR (Using current directory)"
 else
-  echo -e "${YELLOW}Skipping .env creation. Using existing credentials.${NC}"
+  PROJECT_DIR="$USER_HOME/EnzoOS"
+  echo -e "  Project Dir: $PROJECT_DIR (Cloning repository)"
 fi
 
-# 3. Update System Packages
-echo -e "\n${GREEN}[3/8] Updating system package repositories...${NC}"
-sudo apt-get update
+# 4. System Updates & Prerequisites
+echo -e "\n${GREEN}[2/7] Updating system package repositories...${NC}"
+apt-get update
+apt-get install -y ca-certificates curl gnupg git build-essential
 
-# 4. Install Node.js (v20)
-echo -e "\n${GREEN}[4/8] Installing Node.js & npm...${NC}"
+# 5. Clone repository if needed
+if [ ! -d "$PROJECT_DIR" ]; then
+  echo -e "\n${GREEN}[3/7] Cloning EnzoOS repository into $PROJECT_DIR...${NC}"
+  sudo -u $TARGET_USER git clone https://github.com/marciobooi/EnzoOS.git "$PROJECT_DIR"
+fi
+
+# 6. Install Node.js (v20)
+echo -e "\n${GREEN}[4/7] Installing Node.js & npm...${NC}"
 if ! command -v node &> /dev/null; then
   echo -e "${YELLOW}Node.js not detected. Adding NodeSource v20 repository...${NC}"
-  sudo apt-get install -y ca-certificates curl gnupg
-  sudo mkdir -p /etc/apt/keyrings
-  curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | sudo gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg
-  echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_20.x nodistro main" | sudo tee /etc/apt/sources.list.d/nodesource.list
-  sudo apt-get update
-  sudo apt-get install -y nodejs
+  mkdir -p /etc/apt/keyrings
+  curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg
+  echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_20.x nodistro main" | tee /etc/apt/sources.list.d/nodesource.list
+  apt-get update
+  apt-get install -y nodejs
 else
   echo -e "${YELLOW}Node.js $(node -v) already installed.${NC}"
 fi
 
-# 5. Install GUI & Kiosk Stack (Xorg, Openbox, Chromium, Sound Utilities)
-echo -e "\n${GREEN}[5/8] Installing display server, window manager, and browser...${NC}"
-sudo apt-get install -y \
+# 7. Install GUI, Kiosk Display Stack, Audio, SSH, and Librespot
+echo -e "\n${GREEN}[5/7] Installing display server, window manager, browser, audio, SSH, and Librespot...${NC}"
+apt-get install -y \
   xserver-xorg \
   xinit \
   x11-xserver-utils \
@@ -102,31 +90,59 @@ sudo apt-get install -y \
   chromium-browser \
   alsa-utils \
   pulseaudio \
-  git \
-  build-essential
+  openssh-server \
+  librespot \
+  unclutter
 
-# Add user to audio and video groups for hardware access
+# Assign hardware permissions to the target user
 echo -e "${YELLOW}Adding user '$TARGET_USER' to audio/video groups...${NC}"
-sudo usermod -aG audio,video,dialout $TARGET_USER
+usermod -aG audio,video,dialout $TARGET_USER
 
-# Configure X11 Wrapper to allow non-root users to start X
+# Enable and start SSH service
+echo -e "${YELLOW}Configuring SSH daemon...${NC}"
+systemctl enable ssh
+systemctl start ssh
+
+# Configure and start Librespot Spotify Connect background daemon
+echo -e "${YELLOW}Creating Librespot systemd service...${NC}"
+cat <<EOF > /etc/systemd/system/librespot.service
+[Unit]
+Description=Librespot Spotify Connect Daemon
+After=network.target sound.target
+
+[Service]
+Type=simple
+User=$TARGET_USER
+ExecStart=/usr/bin/librespot --name "Resonance Connect" --bitrate 320 --backend alsa --initial-volume 50 --enable-volume-normalisation
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+systemctl daemon-reload
+systemctl enable librespot
+systemctl restart librespot
+echo -e "${GREEN}Librespot Spotify Connect service configured and started.${NC}"
+
+# Configure Xwrapper to run X server without root restrictions
 echo -e "${YELLOW}Configuring Xwrapper...${NC}"
-echo "allowed_users=anybody" | sudo tee /etc/X11/Xwrapper.config
+echo "allowed_users=anybody" | tee /etc/X11/Xwrapper.config
 
-# 6. Configure Autologin on TTY1 (Console boot)
-echo -e "\n${GREEN}[6/8] Configuring automatic console login on boot...${NC}"
-sudo mkdir -p /etc/systemd/system/getty@tty1.service.d
-cat <<EOF | sudo tee /etc/systemd/system/getty@tty1.service.d/override.conf
+# Write systemd autologin config for TTY1 console
+echo -e "${YELLOW}Configuring systemd console auto-login...${NC}"
+mkdir -p /etc/systemd/system/getty@tty1.service.d
+cat <<EOF > /etc/systemd/system/getty@tty1.service.d/override.conf
 [Service]
 ExecStart=
 ExecStart=-/sbin/agetty --autologin $TARGET_USER --noclear %I \$TERM
 EOF
-echo -e "${GREEN}Autologin configured for user $TARGET_USER on TTY1.${NC}"
 
-# 7. Configure X11 Startup (.xinitrc) and Auto-start
-echo -e "\n${GREEN}[7/8] Configuring kiosk launch behaviors...${NC}"
+# 8. Configure Kiosk startup scripts
+echo -e "\n${GREEN}[6/7] Configuring kiosk startup files...${NC}"
 
-# Write .xinitrc to launch browser on X11 start
+# Create .xinitrc in the target user home directory
 cat <<EOF > "$USER_HOME/.xinitrc"
 #!/bin/bash
 
@@ -135,11 +151,35 @@ xset s off
 xset s noblank
 xset -dpms
 
+# Hide mouse cursor for cleaner touchscreen kiosk experience
+unclutter -idle 0.1 -root &
+
+# Dynamically detect the primary connected display output
+OUTPUT=\$(xrandr | grep " connected " | awk '{print \$1}' | head -n 1)
+
+if [ -n "\$OUTPUT" ]; then
+  # Generate CVT modeline for custom widescreen 1420x320 resolution @ 60Hz
+  MODELINE=\$(cvt 1420 320 60 | grep "Modeline" | cut -d' ' -f2-)
+  MODE_NAME=\$(echo "\$MODELINE" | cut -d' ' -f1 | tr -d '"')
+  
+  # Register and apply the custom resolution mode
+  xrandr --newmode \$MODELINE 2>/dev/null || true
+  xrandr --addmode "\$OUTPUT" "\$MODE_NAME" 2>/dev/null || true
+  xrandr --output "\$OUTPUT" --mode "\$MODE_NAME" 2>/dev/null || true
+fi
+
 # Start Openbox window manager in background
 openbox-session &
 
-# Run Chromium browser in fullscreen kiosk mode pointing to the local node server
-# --autoplay-policy=no-user-gesture-required ensures audio/playback starts automatically
+# Wait for local Node server on port 5000 to spin up before opening Chromium.
+# This prevents "This site can't be reached" error screens on boot.
+while ! curl -s http://localhost:5000 >/dev/null; do
+  sleep 1
+done
+
+# Launch Chromium browser in fullscreen kiosk mode pointing to local port 5000
+# --autoplay-policy=no-user-gesture-required guarantees audio starts automatically
+# --noerrdialogs & --disable-infobars prevent crash bubbles or update prompts
 chromium-browser \\
   --kiosk \\
   --autoplay-policy=no-user-gesture-required \\
@@ -152,9 +192,9 @@ chromium-browser \\
 EOF
 
 chmod +x "$USER_HOME/.xinitrc"
-echo -e "${GREEN}Created $USER_HOME/.xinitrc${NC}"
+chown $TARGET_USER:$TARGET_USER "$USER_HOME/.xinitrc"
 
-# Configure Bash profile to automatically start X when booting into TTY1 console
+# Automatically trigger X server when logging in on TTY1 console
 AUTOSTART_X_BLOCK=$(cat <<'EOF'
 
 # Resonance HiFi - Autostart X Server on TTY1 Boot
@@ -164,7 +204,6 @@ fi
 EOF
 )
 
-# Append to .bash_profile or .profile
 if [ -f "$USER_HOME/.bash_profile" ]; then
   PROFILE_FILE="$USER_HOME/.bash_profile"
 elif [ -f "$USER_HOME/.profile" ]; then
@@ -175,34 +214,31 @@ fi
 
 if ! grep -q "Autostart X Server on TTY1 Boot" "$PROFILE_FILE"; then
   echo "$AUTOSTART_X_BLOCK" >> "$PROFILE_FILE"
-  echo -e "${GREEN}Added auto-start block to $PROFILE_FILE.${NC}"
-else
-  echo -e "${YELLOW}Auto-start block already present in $PROFILE_FILE.${NC}"
+  chown $TARGET_USER:$TARGET_USER "$PROFILE_FILE"
 fi
 
-# 8. Setup Application Dependencies and PM2 daemon
-echo -e "\n${GREEN}[8/8] Building app and configuring daemon...${NC}"
+# 9. Install Node modules, build code and startup PM2
+echo -e "\n${GREEN}[7/7] Building application & setting up PM2 server daemon...${NC}"
 
-# Install project Node dependencies
-echo -e "${YELLOW}Installing project dependencies...${NC}"
-npm install
+# Build app under target user context (prevents folder permission bugs)
+cd "$PROJECT_DIR"
+echo -e "${YELLOW}Installing npm dependencies (running as $TARGET_USER)...${NC}"
+sudo -u $TARGET_USER npm install
 
-# Build the production frontend distribution
-echo -e "${YELLOW}Building frontend assets...${NC}"
-npm run build
+echo -e "${YELLOW}Compiling production assets (running as $TARGET_USER)...${NC}"
+sudo -u $TARGET_USER npm run build
 
-# Install PM2 process manager globally
-echo -e "${YELLOW}Installing and setting up PM2...${NC}"
-sudo npm install -g pm2
+# Install PM2 globally
+echo -e "${YELLOW}Installing PM2 process manager...${NC}"
+npm install -g pm2
 
-# Clear existing instances and start the Resonance backend server
-pm2 delete resonance-api &>/dev/null || true
-pm2 start "$PROJECT_DIR/server/index.js" --name "resonance-api" --watch --env PORT=5000
+# Clear existing instances & start the backend as the target user
+sudo -u $TARGET_USER pm2 delete resonance-api &>/dev/null || true
+sudo -u $TARGET_USER pm2 start "$PROJECT_DIR/server/index.js" --name "resonance-api" --watch --env PORT=5000
+sudo -u $TARGET_USER pm2 save
 
-# Save process list and configure startup hook
-pm2 save
-echo -e "${YELLOW}Generating PM2 system boot script...${NC}"
-# Run PM2 startup command and execute the printed command automatically
+# Setup PM2 server boot startup configuration
+echo -e "${YELLOW}Registering PM2 service with systemd...${NC}"
 PM2_STARTUP_CMD=$(pm2 startup systemd -u $TARGET_USER --hp $USER_HOME | grep "sudo env" || true)
 if [ -n "$PM2_STARTUP_CMD" ]; then
   eval "$PM2_STARTUP_CMD"
@@ -211,10 +247,14 @@ fi
 echo -e "\n${GREEN}====================================================================${NC}"
 echo -e "${GREEN}                 INSTALLATION COMPLETED SUCCESSFULLY                ${NC}"
 echo -e "${GREEN}====================================================================${NC}"
-echo -e "${YELLOW}To complete configuration and boot into your kiosk:${NC}"
-echo -e "1. Make sure your Spotify developer dashboard includes your redirect URI:"
-echo -e "   ${BLUE}http://<your-device-ip>:5000/api/callback${NC}"
-echo -e "2. Reboot the system: ${BLUE}sudo reboot${NC}"
-echo -e "\nThe system will boot automatically into console, log in as $TARGET_USER,"
-echo -e "start the graphical desktop frame, and open the fullscreen player interface."
+echo -e "${YELLOW}Rebooting system automatically in 5 seconds to launch the kiosk...${NC}"
+echo -e "Press Ctrl+C to cancel auto-reboot."
 echo -e "===================================================================="
+
+for i in {5..1}; do
+  echo -e "Rebooting in $i..."
+  sleep 1
+done
+
+echo -e "${GREEN}Rebooting now!${NC}"
+reboot

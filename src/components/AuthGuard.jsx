@@ -4,7 +4,6 @@ import { Radio, Terminal } from 'lucide-react';
 export default function AuthGuard({
   manualTokenInput,
   setManualTokenInput,
-  handleLogin,
   handleApplyManualToken
 }) {
   return (
@@ -33,28 +32,10 @@ export default function AuthGuard({
         </div>
       </div>
 
-      {/* RIGHT COMPONENT: Action Panel (Login & Manual Input Form) */}
-      <div className="flex-grow flex items-center justify-between gap-8 h-full relative z-20 pl-4">
+      {/* RIGHT COMPONENT: Action Panel (Manual Input Form) */}
+      <div className="flex-grow flex items-center justify-center h-full relative z-20 pl-4">
         
-        {/* Action Column 1: OAuth Direct Button */}
-        <div className="w-[280px] flex flex-col justify-center gap-3">
-          <span className="text-[9px] text-zinc-500 font-bold uppercase tracking-widest font-mono">OAuth Linkway</span>
-          <button 
-            onClick={handleLogin}
-            className="w-full py-4 px-6 rounded-xl bg-[#ff8e00] hover:bg-[#ffa733] active:scale-[0.98] text-black font-extrabold uppercase tracking-wider transition-all shadow-lg shadow-[#ff8e00]/10 cursor-pointer text-[11px] font-mono"
-          >
-            Connect Spotify Account
-          </button>
-          <p className="text-[10px] text-zinc-500 leading-normal font-mono">
-            Direct secure redirect to Spotify Authorization portal.
-          </p>
-        </div>
-
-        {/* Divider line */}
-        <div className="h-full w-[1px] bg-zinc-900/80" />
-
-        {/* Action Column 2: Manual Key Fallback Form */}
-        <form onSubmit={handleApplyManualToken} className="w-[340px] flex flex-col justify-center gap-2 font-mono">
+        <form onSubmit={handleApplyManualToken} className="w-[360px] flex flex-col justify-center gap-2 font-mono">
           <span className="text-[9px] text-zinc-500 font-bold uppercase tracking-widest font-mono">Developer Keyway</span>
           <input 
             type="text" 

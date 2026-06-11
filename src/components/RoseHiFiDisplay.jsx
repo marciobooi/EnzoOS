@@ -21,7 +21,8 @@ export default function RoseHiFiDisplay({
   handleToggleShuffle,
   handleToggleRepeat,
   playbackState,
-  onToggleSearch
+  onToggleSearch,
+  onTransferPlayback
 }) {
   const canvasRef = useRef(null);
   const [vuTheme, setVuTheme] = useState('amber'); // 'amber' | 'blue' | 'silver'
@@ -297,9 +298,17 @@ export default function RoseHiFiDisplay({
         </div>
 
         <div className="flex flex-col justify-center min-w-0 flex-grow">
-          <span className="text-[9px] uppercase font-bold tracking-[0.25em] text-[#ff8e00] mb-1.5 font-mono select-none">
-            {isLocalDeviceActive ? 'SPOTIFY CONNECT // ACTIVE' : 'REMOTE RECEIVER'}
-          </span>
+          <button 
+            onClick={onTransferPlayback}
+            className={`text-[9px] uppercase font-bold tracking-[0.25em] mb-1.5 font-mono text-left cursor-pointer transition-colors ${
+              isLocalDeviceActive 
+                ? 'text-emerald-500 hover:text-emerald-400' 
+                : 'text-[#ff8e00] hover:text-[#ffa733] animate-pulse'
+            }`}
+            title={isLocalDeviceActive ? 'Spotify Connect Active' : 'Click to Route Audio to Resonance HiFi'}
+          >
+            {isLocalDeviceActive ? 'SPOTIFY CONNECT // ACTIVE' : 'ROUTE AUDIO TO RESONANCE'}
+          </button>
 
           {/* Marquee title if length is long */}
           <div className="overflow-hidden relative w-full mb-1">
