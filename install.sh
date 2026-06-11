@@ -197,17 +197,16 @@ fi
 EOF
 )
 
-if [ -f "$USER_HOME/.bash_profile" ]; then
-  PROFILE_FILE="$USER_HOME/.bash_profile"
-elif [ -f "$USER_HOME/.profile" ]; then
-  PROFILE_FILE="$USER_HOME/.profile"
-else
-  PROFILE_FILE="$USER_HOME/.bashrc"
-fi
+# CRITICAL FIX: Target .bashrc exclusively. Ubuntu updates ignore .bash_profile 
+# during automated tty1 tty agetty logins.
+PROFILE_FILE="$USER_HOME/.bashrc"
 
 if ! grep -q "Autostart X Server on TTY1 Boot" "$PROFILE_FILE"; then
+  echo -e "${YELLOW}Injecting autostart loop into $PROFILE_FILE...${NC}"
   echo "$AUTOSTART_X_BLOCK" >> "$PROFILE_FILE"
   chown $TARGET_USER:$TARGET_USER "$PROFILE_FILE"
+else
+  echo -e "${YELLOW}Autostart loop already present in $PROFILE_FILE.${NC}"
 fi
 
 # 9. Install Node modules, build code and startup PM2
