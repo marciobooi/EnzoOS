@@ -81,7 +81,7 @@ else
 fi
 
 # 7. Install GUI, Kiosk Display Stack, Audio, SSH, and Librespot
-echo -e "\n${GREEN}[5/7] Installing display server, window manager, browser, audio, SSH, and Librespot...${NC}"
+echo -e "\n${GREEN}[5/7] Installing display server, window manager, browser, audio, SSH, and dependencies...${NC}"
 apt-get install -y \
   xserver-xorg \
   xinit \
@@ -91,8 +91,16 @@ apt-get install -y \
   alsa-utils \
   pulseaudio \
   openssh-server \
-  librespot \
   unclutter
+
+echo -e "${YELLOW}Installing Raspotify repository and precompiled Librespot daemon...${NC}"
+# Install Raspotify repository and package (contains the precompiled /usr/bin/librespot binary)
+curl -sL https://dtcooper.github.io/raspotify/install.sh | sh
+
+# Disable default Raspotify daemon to avoid service name or port conflicts
+echo -e "${YELLOW}Disabling default Raspotify service (will use custom systemd daemon)...${NC}"
+systemctl stop raspotify || true
+systemctl disable raspotify || true
 
 # Assign hardware permissions to the target user
 echo -e "${YELLOW}Adding user '$TARGET_USER' to audio/video groups...${NC}"
