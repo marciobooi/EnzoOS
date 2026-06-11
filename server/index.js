@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
 import path from 'path';
@@ -5,6 +6,7 @@ import { fileURLToPath } from 'url';
 import http from 'http';
 import { WebSocketServer, WebSocket } from 'ws';
 import updateRouter from './update.js';
+import spotifyAuthRouter, { getValidAccessToken } from './spotify-auth.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -20,6 +22,9 @@ app.use(express.static(path.join(__dirname, '../dist')));
 
 // System OTA Update Router API Integration
 app.use('/api/system/update', updateRouter);
+
+// Spotify OAuth routes
+app.use('/auth/spotify', spotifyAuthRouter);
 
 // Helper to detect if an IP address belongs to the same local area network (LAN)
 const isLocalIP = (ip) => {
@@ -114,7 +119,6 @@ const server = http.createServer(app);
 const wss = new WebSocketServer({ noServer: true });
 
 let cachedPlaybackState = null;
-let cachedToken = null;
 
 // Helper to broadcast messages to all connected WS clients
 const broadcast = (data, excludeWs = null) => {
@@ -128,7 +132,7 @@ const broadcast = (data, excludeWs = null) => {
 
 app.set('wssBroadcast', broadcast);
 
-wss.on('connection', (ws) => {
+wss.on('connection', async (ws) => {
   console.log('[Resonance WS] Client connected. Active clients:', wss.clients.size);
   
   // Send last cached playback state on connect
@@ -136,9 +140,10 @@ wss.on('connection', (ws) => {
     ws.send(JSON.stringify({ type: 'PLAYBACK_STATE', payload: cachedPlaybackState }));
   }
 
-  // Send last cached token on connect
-  if (cachedToken) {
-    ws.send(JSON.stringify({ type: 'SET_TOKEN', payload: { token: cachedToken } }));
+  // Send the server-managed access token (auto-refreshed if needed)
+  const serverToken = await getValidAccessToken();
+  if (serverToken) {
+    ws.send(JSON.stringify({ type: 'SET_TOKEN', payload: { token: serverToken } }));
   }
 
   ws.on('message', (messageStr) => {
@@ -157,14 +162,13 @@ wss.on('connection', (ws) => {
       }
 
       if (type === 'SET_TOKEN') {
-        cachedToken = payload.token;
-        console.log('[Resonance WS] Token cached. Syncing with other clients.');
-        broadcast({ type: 'SET_TOKEN', payload: { token: cachedToken } }, ws);
+        // Clients can still push tokens for cross-client sync (legacy path)
+        console.log('[Resonance WS] Token sync received from client.');
+        broadcast({ type: 'SET_TOKEN', payload }, ws);
       }
 
       if (type === 'CLEAR_TOKEN') {
-        cachedToken = null;
-        console.log('[Resonance WS] Token cleared. Syncing with other clients.');
+        console.log('[Resonance WS] Token clear received from client.');
         broadcast({ type: 'CLEAR_TOKEN' }, ws);
       }
     } catch (err) {

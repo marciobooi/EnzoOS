@@ -109,56 +109,34 @@ export default function DefinitionsMenu({
           )}
         </div>
 
-        {!token ? (
+      {!token ? (
           <div className="flex flex-col gap-3 mt-1">
             <p className="text-[10px] text-zinc-500 leading-relaxed">
-              Mount a developer access token to authorize API requests for search and playback synchronization.
+              Connect your Spotify account to enable track display, remote control and playback synchronization.
             </p>
-            <form onSubmit={handleApplyManualToken} className="flex flex-col gap-2">
-              <input 
-                type="text" 
-                placeholder="INPUT ACCESS TOKEN KEY..." 
-                value={manualTokenInput}
-                onChange={e => setManualTokenInput(e.target.value)}
-                className="w-full py-2 px-3 rounded-lg bg-zinc-950 border border-zinc-900 theme-text placeholder-zinc-800 text-xs focus:outline-none focus:border-zinc-850 transition-colors tracking-wide text-center"
-              />
-              <button 
-                type="submit"
-                className="w-full py-2 px-3 rounded-lg theme-bg hover:opacity-90 active:scale-95 text-xs text-black font-extrabold uppercase tracking-wider transition-all cursor-pointer"
-              >
-                Mount Custom Token
-              </button>
-            </form>
-            <div className="text-[9px] text-zinc-650 flex items-start gap-1.5 p-2 rounded bg-zinc-950/40 border border-zinc-950 mt-1 leading-normal">
-              <Terminal className="h-3.5 w-3.5 text-zinc-600 shrink-0 mt-0.5" />
-              <span>
-                Need a key? Copy a temp token from Spotify's{' '}
-                <a 
-                  href="https://developer.spotify.com/documentation/web-api/reference/get-users-profile" 
-                  target="_blank" 
-                  rel="noreferrer" 
-                  className="theme-text opacity-70 hover:opacity-100 hover:underline font-bold"
-                >
-                  portal
-                </a>.
-              </span>
-            </div>
+            <a
+              href="/auth/spotify/login"
+              className="w-full py-2.5 px-3 rounded-lg bg-[#1ed760] hover:bg-[#1fdf64] active:scale-95 text-xs text-black font-extrabold uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center gap-2 no-underline"
+            >
+              <svg viewBox="0 0 24 24" className="h-4 w-4 fill-black shrink-0"><path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm4.586 14.424a.622.622 0 01-.857.207c-2.348-1.435-5.304-1.76-8.785-.964a.622.622 0 01-.277-1.215c3.809-.87 7.077-.496 9.712 1.115a.622.622 0 01.207.857zm1.223-2.722a.779.779 0 01-1.07.257c-2.687-1.652-6.785-2.131-9.965-1.166a.78.78 0 01-.973-.519.781.781 0 01.519-.972c3.632-1.102 8.147-.568 11.233 1.33a.779.779 0 01.256 1.07zm.105-2.835C14.692 8.95 9.375 8.775 6.297 9.71a.935.935 0 11-.543-1.79c3.533-1.072 9.404-.866 13.115 1.338a.936.936 0 01-.955 1.609z"/></svg>
+              Login with Spotify
+            </a>
           </div>
         ) : (
           <div className="flex flex-col gap-2.5 mt-1">
             <div className="p-2.5 rounded bg-zinc-950 border border-zinc-900 flex items-center justify-between gap-4">
-              <div className="min-w-0">
-                <p className="text-[9px] text-zinc-500 uppercase tracking-widest">Active Client Token</p>
-                <p className="text-[10px] text-zinc-300 truncate w-[160px] font-mono">
-                  {token.substring(0, 10)}...{token.substring(token.length - 10)}
-                </p>
+              <div className="min-w-0 flex items-center gap-2">
+                <svg viewBox="0 0 24 24" className="h-4 w-4 fill-[#1ed760] shrink-0"><path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm4.586 14.424a.622.622 0 01-.857.207c-2.348-1.435-5.304-1.76-8.785-.964a.622.622 0 01-.277-1.215c3.809-.87 7.077-.496 9.712 1.115a.622.622 0 01.207.857zm1.223-2.722a.779.779 0 01-1.07.257c-2.687-1.652-6.785-2.131-9.965-1.166a.78.78 0 01-.973-.519.781.781 0 01.519-.972c3.632-1.102 8.147-.568 11.233 1.33a.779.779 0 01.256 1.07zm.105-2.835C14.692 8.95 9.375 8.775 6.297 9.71a.935.935 0 11-.543-1.79c3.533-1.072 9.404-.866 13.115 1.338a.936.936 0 01-.955 1.609z"/></svg>
+                <div>
+                  <p className="text-[9px] text-zinc-500 uppercase tracking-widest">Spotify Connected</p>
+                </div>
               </div>
               <button
                 onClick={handleLogout}
                 className="px-2.5 py-1.5 rounded bg-rose-950/40 hover:bg-rose-900/60 text-rose-400 hover:text-rose-300 text-[9px] uppercase font-bold transition-all border border-rose-900/50 flex items-center gap-1 active:scale-95 cursor-pointer shrink-0"
               >
                 <LogOut className="h-3 w-3" />
-                Deauthorize
+                Disconnect
               </button>
             </div>
           </div>

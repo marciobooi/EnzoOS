@@ -497,8 +497,11 @@ export default function App() {
     toast.success('Custom authentication token applied!');
   };
 
-  // Log out / clear authentication
-  const handleLogout = () => {
+  // Log out / disconnect Spotify
+  const handleLogout = async () => {
+    try {
+      await fetch('/auth/spotify/logout', { method: 'POST' });
+    } catch (_) {}
     localStorage.removeItem('spotify_access_token');
     localStorage.removeItem('spotify_refresh_token');
     setToken('');
@@ -508,7 +511,7 @@ export default function App() {
     if (ws.current && ws.current.readyState === WebSocket.OPEN) {
       ws.current.send(JSON.stringify({ type: 'CLEAR_TOKEN' }));
     }
-    toast.info('Session terminated.');
+    toast.info('Spotify disconnected.');
   };
 
   // Pathname routing check for standalone mobile remote view
