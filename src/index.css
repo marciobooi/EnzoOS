@@ -359,38 +359,28 @@ div[data-theme="ruby"] *::selection {
 }
 
 .hifi-visualizer {
-  display: flex;
-  gap: 8px;
-  background: #141414;
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  border-radius: 12px;
-  padding: 6px;
-  align-items: stretch;
-  box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.6), 0 4px 10px rgba(0, 0, 0, 0.3);
-  width: 200px;
-  height: 58px;
+background: #141414;
+    align-items: stretch;
+    gap: 8px;
+    width: 216px;
+    height: 67px;
+    padding: 6px;
+    display: flex;
 }
 
 .vu-channel-box {
   flex: 1;
-  background: #1a1a1a;
-  border: 1px solid rgba(255, 255, 255, 0.04);
-  border-radius: 8px;
   overflow: hidden;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
   padding: 4px;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
 }
 
 .vu-dial-area {
   position: relative;
   width: 100%;
   height: 30px;
-  background: #0a0a0a;
-  border: 1px solid rgba(255, 255, 255, 0.03);
-  border-radius: 4px;
   overflow: hidden;
 }
 
@@ -399,7 +389,7 @@ div[data-theme="ruby"] *::selection {
   inset: 0;
   background-image: radial-gradient(circle, var(--theme-color) 0.6px, transparent 0.6px);
   background-size: 3.5px 3.5px;
-  opacity: 0.35;
+  opacity: 0.5;
   pointer-events: none;
 }
 
