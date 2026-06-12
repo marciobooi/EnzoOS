@@ -359,9 +359,8 @@ div[data-theme="ruby"] *::selection {
 }
 
 .hifi-visualizer {
-background: #141414;
     align-items: stretch;
-    gap: 8px;
+    gap: 15px;
     width: 216px;
     height: 67px;
     padding: 6px;
