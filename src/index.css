@@ -360,92 +360,120 @@ div[data-theme="ruby"] *::selection {
 
 .hifi-visualizer {
   display: flex;
-  gap: 6px;
-  background: rgba(0, 0, 0, 0.45);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 8px;
-  padding: 3px 6px;
-  align-items: center;
-  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.8);
+  gap: 8px;
+  background: #141414;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 12px;
+  padding: 6px;
+  align-items: stretch;
+  box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.6), 0 4px 10px rgba(0, 0, 0, 0.3);
+  width: 200px;
+  height: 58px;
 }
 
 .vu-channel-box {
-  width: 48px;
-  height: 28px;
-  position: relative;
-  background: #0d0f14;
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  border-radius: 4px;
+  flex: 1;
+  background: #1a1a1a;
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  border-radius: 8px;
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  justify-content: flex-end;
-  align-items: center;
-  padding-bottom: 2px;
-  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.9);
+  justify-content: space-between;
+  padding: 4px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
 }
 
-.vu-dial-scale {
+.vu-dial-area {
+  position: relative;
+  width: 100%;
+  height: 30px;
+  background: #0a0a0a;
+  border: 1px solid rgba(255, 255, 255, 0.03);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.vu-dot-grid {
   position: absolute;
   inset: 0;
-  border-radius: 50% 50% 0 0 / 100% 100% 0 0;
-  border: 1px dashed rgba(255, 255, 255, 0.15);
-  border-bottom: none;
-  transform: scale(0.85) translateY(4px);
+  background-image: radial-gradient(circle, var(--theme-color) 0.6px, transparent 0.6px);
+  background-size: 3.5px 3.5px;
+  opacity: 0.35;
   pointer-events: none;
 }
 
-.vu-dial-label {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 6px;
-  color: rgba(255, 255, 255, 0.3);
+.vu-glow-overlay {
   position: absolute;
-  top: 2px;
-  width: 100%;
-  text-align: center;
-  letter-spacing: 0.05em;
+  inset: 0;
+  background: radial-gradient(circle at 50% 100%, var(--theme-color-glow), transparent 70%);
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+.vu-scale-marks {
+  position: absolute;
+  inset-x: 2px;
+  top: 1px;
+  display: flex;
+  justify-content: space-between;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 5px;
+  color: var(--theme-color);
+  opacity: 0.4;
   font-weight: 700;
   pointer-events: none;
 }
 
 .vu-needle {
   width: 1px;
-  height: 20px;
+  height: 26px;
   background-color: var(--theme-color);
   position: absolute;
   bottom: 0;
   left: 50%;
   transform-origin: 50% 100%;
   transform: translateX(-50%) rotate(-45deg);
-  transition: transform 0.1s ease-out;
+  transition: transform 0.08s ease-out;
+  box-shadow: 0 0 3px var(--theme-color-glow);
 }
 
 .vu-needle.active-l {
-  animation: vu-needle-bounce-left 0.4s infinite alternate ease-in-out;
+  animation: vu-needle-bounce-left 0.35s infinite alternate ease-in-out;
 }
 
 .vu-needle.active-r {
-  animation: vu-needle-bounce-right 0.45s infinite alternate ease-in-out;
+  animation: vu-needle-bounce-right 0.4s infinite alternate ease-in-out;
+}
+
+.vu-readout-line {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 6.5px;
+  letter-spacing: 0.02em;
+  margin-top: 2px;
+  padding: 0 2px;
+  font-weight: 700;
 }
 
 @keyframes vu-needle-bounce-left {
-  0% { transform: translateX(-50%) rotate(-42deg); }
-  15% { transform: translateX(-50%) rotate(-20deg); }
-  30% { transform: translateX(-50%) rotate(-38deg); }
-  50% { transform: translateX(-50%) rotate(-5deg); }
-  70% { transform: translateX(-50%) rotate(-30deg); }
-  90% { transform: translateX(-50%) rotate(-12deg); }
-  100% { transform: translateX(-50%) rotate(-18deg); }
+  0% { transform: translateX(-50%) rotate(-40deg); }
+  20% { transform: translateX(-50%) rotate(-18deg); }
+  40% { transform: translateX(-50%) rotate(-35deg); }
+  60% { transform: translateX(-50%) rotate(-4deg); }
+  80% { transform: translateX(-50%) rotate(-28deg); }
+  100% { transform: translateX(-50%) rotate(-12deg); }
 }
 
 @keyframes vu-needle-bounce-right {
-  0% { transform: translateX(-50%) rotate(-40deg); }
-  20% { transform: translateX(-50%) rotate(-10deg); }
-  45% { transform: translateX(-50%) rotate(-35deg); }
-  60% { transform: translateX(-50%) rotate(-3deg); }
-  75% { transform: translateX(-50%) rotate(-28deg); }
-  90% { transform: translateX(-50%) rotate(-8deg); }
-  100% { transform: translateX(-50%) rotate(-15deg); }
+  0% { transform: translateX(-50%) rotate(-38deg); }
+  25% { transform: translateX(-50%) rotate(-12deg); }
+  50% { transform: translateX(-50%) rotate(-32deg); }
+  70% { transform: translateX(-50%) rotate(-2deg); }
+  85% { transform: translateX(-50%) rotate(-25deg); }
+  100% { transform: translateX(-50%) rotate(-8deg); }
 }
 
 .music-controls {

@@ -30,6 +30,26 @@ export default function RoseHiFiDisplay({
 }) {
   const [showVolumeFeedback, setShowVolumeFeedback] = useState(false);
   const feedbackTimeout = useRef(null);
+  const [dbValues, setDbValues] = useState({ left: '-45.0', right: '-45.0' });
+
+  // Simulate dynamic VU meter levels
+  useEffect(() => {
+    if (!isPlaying) {
+      setDbValues({ left: '-45.0', right: '-45.0' });
+      return;
+    }
+
+    const interval = setInterval(() => {
+      const leftVal = (Math.random() * 18 - 16.5).toFixed(1);
+      const rightVal = (Math.random() * 18 - 16.5).toFixed(1);
+      setDbValues({
+        left: `${Number(leftVal) > 0 ? '+' : ''}${leftVal}`,
+        right: `${Number(rightVal) > 0 ? '+' : ''}${rightVal}`
+      });
+    }, 120);
+
+    return () => clearInterval(interval);
+  }, [isPlaying]);
 
   // Trigger volume feedback pop-up on change
   useEffect(() => {
@@ -126,30 +146,52 @@ export default function RoseHiFiDisplay({
 
           {/* Metadata & Mini Visualizer */}
           <div className="metadata-row mt-1.5">
-            <div className="truncate w-[75%]">
+            <div className="truncate w-[60%]">
               <div className="track-artist truncate">{trackArtist}</div>
               <div className="track-album truncate">{trackAlbumName}</div>
             </div>
 
-            {/* Dot Matrix Animated Visualizer */}
+            {/* Precision Mechanical VU Meters (Click to Open EQ) */}
             <button
               onClick={onToggleEqualizer}
-              className="hifi-visualizer shrink-0 cursor-pointer hover:opacity-85 transition-opacity bg-transparent border-0 p-0"
-              title="Open EQ / Resonance Frequency Scheme"
+              className="hifi-visualizer shrink-0 cursor-pointer hover:opacity-90 transition-opacity bg-transparent border-0 p-0"
+              title="Open Parametric Equalizer"
               type="button"
             >
-              {/* Left Channel Mini VU Meter */}
+              {/* Left Channel Mechanical VU */}
               <div className="vu-channel-box">
-                <div className="vu-dial-scale" />
-                <span className="vu-dial-label">CH L</span>
-                <div className={`vu-needle ${isPlaying ? 'active-l' : ''}`} />
+                <div className="vu-dial-area">
+                  <div className="vu-dot-grid" />
+                  <div className="vu-glow-overlay" />
+                  <div className="vu-scale-marks">
+                    <span>-20dB</span>
+                    <span>-10dB</span>
+                    <span>0dB</span>
+                  </div>
+                  <div className={`vu-needle ${isPlaying ? 'active-l' : ''}`} />
+                </div>
+                <div className="vu-readout-line">
+                  <span className="text-zinc-400">LINE LEVEL L</span>
+                  <span className="text-[var(--theme-color)]">{dbValues.left} DB</span>
+                </div>
               </div>
 
-              {/* Right Channel Mini VU Meter */}
+              {/* Right Channel Mechanical VU */}
               <div className="vu-channel-box">
-                <div className="vu-dial-scale" />
-                <span className="vu-dial-label">CH R</span>
-                <div className={`vu-needle ${isPlaying ? 'active-r' : ''}`} />
+                <div className="vu-dial-area">
+                  <div className="vu-dot-grid" />
+                  <div className="vu-glow-overlay" />
+                  <div className="vu-scale-marks">
+                    <span>-20dB</span>
+                    <span>-10dB</span>
+                    <span>0dB</span>
+                  </div>
+                  <div className={`vu-needle ${isPlaying ? 'active-r' : ''}`} />
+                </div>
+                <div className="vu-readout-line">
+                  <span className="text-zinc-400">LINE LEVEL R</span>
+                  <span className="text-[var(--theme-color)]">{dbValues.right} DB</span>
+                </div>
               </div>
             </button>
           </div>
