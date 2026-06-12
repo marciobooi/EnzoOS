@@ -335,5 +335,17 @@ export const api = {
       throw new Error(data?.error || 'Failed to update credentials.');
     }
     return data;
+  },
+
+  /**
+   * Play web radio stream.
+   */
+  async localPlayRadio(url, name) {
+    const response = await fetch('/api/player/play-radio', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url, name })
+    });
+    return response.json();
   }
 };

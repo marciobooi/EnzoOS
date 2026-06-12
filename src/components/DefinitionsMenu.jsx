@@ -1,6 +1,15 @@
 import React from 'react';
-import { Sliders, Music, Download, LogOut } from 'lucide-react';
+import { Sliders, Music, Download, LogOut, Radio } from 'lucide-react';
+import { toast } from 'sonner';
 import { api } from '../api';
+
+const RADIO_STATIONS = [
+  { name: 'SomaFM: Groove Salad', url: 'http://ice1.somafm.com/groovesalad-128-mp3' },
+  { name: 'SomaFM: DEF CON Radio', url: 'http://ice1.somafm.com/defcon-128-mp3' },
+  { name: 'Lofi Girl Ambient', url: 'http://play.stream.lofigirl.com/lofi' },
+  { name: 'Chilltrax Ambient', url: 'https://chilltrax.dnshosting.net/chilltrax.mp3' },
+  { name: 'Jazz Radio Classic', url: 'http://jazzradio.ice.infomaniak.ch/jazzradio-high.mp3' }
+];
 
 export default function DefinitionsMenu({
   token,
@@ -185,6 +194,46 @@ export default function DefinitionsMenu({
           </div>
         </button>
       )}
+
+      {/* 5. WEB RADIO CARD */}
+      <div
+        className="w-[180px] shrink-0 p-5 rounded-2xl text-left flex flex-col justify-between transition-all duration-300 relative group overflow-hidden menu-card hover:scale-[1.01]"
+      >
+        <span className="text-[9px] font-extrabold tracking-widest text-zinc-400 uppercase">WEB RADIO</span>
+        
+        <div className="my-auto flex flex-col items-center py-2 w-full gap-2.5">
+          <Radio 
+            className="h-12 w-12 text-zinc-500 group-hover:text-[var(--theme-color)] transition-colors"
+          />
+          <select
+            onChange={async (e) => {
+              const selected = RADIO_STATIONS.find(s => s.url === e.target.value);
+              if (selected) {
+                try {
+                  await api.localPlayRadio(selected.url, selected.name);
+                  if (spotify) onToggleSource();
+                  toast.success(`Playing Radio: ${selected.name}`);
+                } catch (err) {
+                  toast.error(`Failed to play radio: ${err.message}`);
+                }
+              }
+            }}
+            className="w-full bg-zinc-950/80 border border-white/10 rounded-lg px-2 py-1 font-mono text-[9px] text-zinc-300 focus:outline-none focus:border-[var(--theme-color)] cursor-pointer"
+            defaultValue=""
+          >
+            <option value="" disabled className="bg-zinc-950 text-zinc-500">SELECT STATION</option>
+            {RADIO_STATIONS.map((s) => (
+              <option key={s.url} value={s.url} className="bg-zinc-950 text-zinc-100">
+                {s.name}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div className="text-[9px] font-bold uppercase tracking-wider text-zinc-400 text-center w-full">
+          LIVE STREAMING
+        </div>
+      </div>
 
     </div>
   );
