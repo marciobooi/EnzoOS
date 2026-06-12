@@ -15,7 +15,8 @@ import {
   RefreshCw,
   Settings,
   ChevronRight,
-  LogOut
+  LogOut,
+  Radio
 } from 'lucide-react';
 import { api } from '../api';
 import { toast, Toaster } from 'sonner';
@@ -39,17 +40,32 @@ const eraseCookie = (name) => {
   document.cookie = `${name}=; Max-Age=-99999999; path=/`;
 };
 
+const RADIO_STATIONS = [
+  { name: 'SomaFM: Groove Salad', url: 'http://ice1.somafm.com/groovesalad-128-mp3' },
+  { name: 'SomaFM: DEF CON Radio', url: 'http://ice1.somafm.com/defcon-128-mp3' },
+  { name: 'Lofi Girl Ambient', url: 'http://play.stream.lofigirl.com/lofi' },
+  { name: 'Chilltrax Ambient', url: 'https://chilltrax.dnshosting.net/chilltrax.mp3' },
+  { name: 'Jazz Radio Classic', url: 'http://jazzradio.ice.infomaniak.ch/jazzradio-high.mp3' }
+];
+
 export default function RemoteControl() {
   // Authentication states
   const [isAuthenticated, setIsAuthenticated] = useState(getCookie('remote_auth') === 'true');
   const [usernameInput, setUsernameInput] = useState('');
   const [passwordInput, setPasswordInput] = useState('');
 
+  // Active Navigation Tab
+  const [activeTab, setActiveTab] = useState('player'); // 'player', 'radio', 'settings'
+
+  // Web Radio states
+  const [radioSearch, setRadioSearch] = useState('');
+  const [stationsList, setStationsList] = useState(RADIO_STATIONS);
+  const [isSearching, setIsSearching] = useState(false);
+
   // Connection and token states
   const [token, setToken] = useState('');
   const [devices, setDevices] = useState([]);
   const [isFetchingDevices, setIsFetchingDevices] = useState(false);
-  const [showSettings, setShowSettings] = useState(false);
 
   // Playback states
   const [playbackState, setPlaybackState] = useState(null);
@@ -112,6 +128,34 @@ export default function RemoteControl() {
     setSpotify(nextSpotify);
     sendUpdate('SET_SOURCE', { spotify: nextSpotify });
     toast.success(`Source set to: ${nextSpotify ? 'Spotify' : 'Local Media'}`);
+  };
+
+  const handleRadioSearch = async () => {
+    const query = radioSearch.trim();
+    if (!query) {
+      setStationsList(RADIO_STATIONS);
+      return;
+    }
+    try {
+      setIsSearching(true);
+      const res = await fetch(`https://de1.api.radio-browser.info/json/stations/byname/${encodeURIComponent(query)}?limit=25&hidebroken=true`);
+      const data = await res.json();
+      const formatted = data.map(s => ({
+        name: s.name.length > 30 ? s.name.substring(0, 27) + '...' : s.name,
+        url: s.url_resolved || s.url
+      }));
+      if (formatted.length === 0) {
+        toast.error('No stations found.');
+        setStationsList(RADIO_STATIONS);
+      } else {
+        setStationsList(formatted);
+        toast.success(`Found ${formatted.length} stations!`);
+      }
+    } catch (err) {
+      toast.error('Failed to search stations.');
+    } finally {
+      setIsSearching(false);
+    }
   };
 
   // Derived state
@@ -485,7 +529,7 @@ export default function RemoteControl() {
   const handleRemoteLogout = () => {
     eraseCookie('remote_auth');
     setIsAuthenticated(false);
-    setShowSettings(false);
+    setActiveTab('player');
     toast.info('De-authorized Remote connection');
   };
 
@@ -554,7 +598,7 @@ export default function RemoteControl() {
   // 2. Render normal remote dashboard if authenticated
     return (
       <>
-        <div className="w-full min-h-screen text-zinc-800 font-sans flex flex-col items-center justify-between pb-10 pt-6 px-6 relative overflow-hidden select-none">
+        <div className="w-full min-h-screen text-zinc-800 font-sans flex flex-col items-center justify-between pb-6 pt-6 px-6 relative overflow-hidden select-none">
           
           {/* Background Ambience Glow */}
           <div className="absolute top-[-20%] left-1/2 -translate-x-1/2 w-[120%] aspect-square rounded-full bg-gradient-to-b from-zinc-100 to-transparent blur-3xl pointer-events-none" />
@@ -576,27 +620,225 @@ export default function RemoteControl() {
               >
                 <RefreshCw className={`h-4 w-4 ${isFetchingDevices ? 'animate-spin text-zinc-900' : ''}`} />
               </button>
-              <button 
-                onClick={() => setShowSettings(!showSettings)}
-                className="p-2 rounded-full hover:bg-zinc-100 active:scale-90 transition-all text-zinc-500 hover:text-zinc-900 cursor-pointer"
-              >
-                <Settings className="h-4 w-4" />
-              </button>
             </div>
           </header>
 
-          {/* Settings / Token Section */}
-          {showSettings && (
-            <div className="absolute inset-0 bg-white/95 z-20 flex flex-col justify-center items-center p-6 backdrop-blur-md">
-              <div className="w-full max-w-sm bg-white border border-zinc-100 rounded-2xl p-6 shadow-2xl flex flex-col gap-5 text-zinc-800">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-sm font-bold text-zinc-950 uppercase tracking-wider">Control Configuration</h3>
-                  <button 
-                    onClick={() => setShowSettings(false)}
-                    className="text-xs text-zinc-500 hover:text-zinc-900 font-bold"
+          {/* Main Content Area (Tab Swapping) */}
+          <main className="w-full max-w-md flex-grow flex flex-col justify-center gap-6 z-10 mt-4 overflow-y-auto max-h-[calc(100vh-190px)] custom-scrollbar pb-2">
+            
+            {/* TAB 1: PLAYER */}
+            {activeTab === 'player' && (
+              <div className="flex flex-col gap-6 w-full justify-center">
+                {/* Album Artwork Panel */}
+                <div className="w-full flex justify-center">
+                  <div className="w-[60vw] max-w-[240px] aspect-square rounded-[2rem] bg-white border border-zinc-100 overflow-hidden shadow-lg flex items-center justify-center relative group">
+                    {albumImage ? (
+                      <img 
+                        src={albumImage} 
+                        alt={trackName} 
+                        className="w-full h-full object-cover select-none pointer-events-none scale-100 transition-all duration-700" 
+                      />
+                    ) : (
+                      <div className="flex flex-col items-center gap-2 text-zinc-400">
+                        <Music className="h-10 w-10 stroke-[1.25] text-zinc-350" />
+                        <span className="text-[8px] uppercase tracking-widest font-extrabold text-zinc-350">Resonance</span>
+                      </div>
+                    )}
+                    
+                    {/* Ambient artwork shadow/glow under art */}
+                    {albumImage && (
+                      <div 
+                        className="absolute inset-0 -z-10 scale-95 opacity-20 blur-2xl transition-all duration-700"
+                        style={{ backgroundImage: `url(${albumImage})`, backgroundSize: 'cover' }}
+                      />
+                    )}
+                  </div>
+                </div>
+
+                {/* Track Title and Artist details */}
+                <div className="w-full text-center flex flex-col gap-1 px-4">
+                  <h2 className="text-base font-bold text-zinc-900 tracking-tight leading-snug truncate">
+                    {trackName}
+                  </h2>
+                  <p className="text-[11px] font-semibold text-zinc-500 tracking-normal truncate">
+                    {trackArtist}
+                  </p>
+                  {activeDevice && (
+                    <div className="inline-flex items-center gap-1 justify-center mt-1 text-[8px] font-bold text-zinc-650 uppercase tracking-[0.15em] bg-zinc-50 border border-zinc-200 px-2.5 py-0.5 rounded-full self-center">
+                      <Laptop className="h-2.5 w-2.5" />
+                      <span>Playing on: {activeDevice.name}</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Auth status block when token is missing */}
+                {spotify && !token && (
+                  <div className="mx-4 p-4 rounded-2xl bg-amber-500/5 border border-amber-500/20 text-center flex flex-col gap-3">
+                    <p className="text-[10px] text-amber-600 font-medium leading-relaxed">
+                      Resonance is not authenticated to Spotify. Connect your account to synchronize playback.
+                    </p>
+                    <a
+                      href="/auth/spotify/login?from=remote"
+                      className="w-full py-2.5 px-3 rounded-xl bg-[#1ed760] hover:bg-[#1fdf64] active:scale-95 text-xs text-black font-extrabold uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center gap-2 no-underline"
+                    >
+                      <svg viewBox="0 0 24 24" className="h-4 w-4 fill-black shrink-0"><path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm4.586 14.424a.622.622 0 01-.857.207c-2.348-1.435-5.304-1.76-8.785-.964a.622.622 0 01-.277-1.215c3.809-.87 7.077-.496 9.712 1.115a.622.622 0 01.207.857zm1.223-2.722a.779.779 0 01-1.07.257c-2.687-1.652-6.785-2.131-9.965-1.166a.78.78 0 01-.973-.519.781.781 0 01.519-.972c3.632-1.102 8.147-.568 11.233 1.33a.779.779 0 01.256 1.07zm.105-2.835C14.692 8.95 9.375 8.775 6.297 9.71a.935.935 0 11-.543-1.79c3.533-1.072 9.404-.866 13.115 1.338a.936.936 0 01-.955 1.609z"/></svg>
+                      Login with Spotify
+                    </a>
+                  </div>
+                )}
+
+                {/* Position / Progress Bar Slider */}
+                <div className="w-full px-2 flex flex-col gap-1.5">
+                  <input
+                    type="range"
+                    min="0"
+                    max={trackDuration}
+                    value={trackPosition}
+                    onChange={handleSeek}
+                    disabled={spotify ? (!token || !trackDuration) : !trackDuration}
+                    className="w-full h-1 bg-zinc-200 hover:bg-zinc-300 rounded-lg appearance-none cursor-pointer accent-zinc-900 transition-all focus:outline-none"
+                    style={{
+                      background: `linear-gradient(to right, #18181b 0%, #18181b ${
+                        trackDuration ? (trackPosition / trackDuration) * 100 : 0
+                      }%, rgba(0, 0, 0, 0.06) ${
+                        trackDuration ? (trackPosition / trackDuration) * 100 : 0
+                      }%, rgba(0, 0, 0, 0.06) 100%)`
+                    }}
+                  />
+                  <div className="flex justify-between items-center text-[10px] text-zinc-500 font-semibold font-mono">
+                    <span>{formatTime(trackPosition)}</span>
+                    <span>{formatTime(trackDuration)}</span>
+                  </div>
+                </div>
+
+                {/* Media Playback Controls Row */}
+                <div className="w-full flex items-center justify-between px-6 mt-1">
+                  <button
+                    onClick={handleShuffle}
+                    disabled={spotify ? !token : true}
+                    className={`p-2 rounded-full transition-all active:scale-90 cursor-pointer disabled:opacity-20 ${
+                      shuffleState ? 'text-zinc-800 font-bold drop-shadow-[0_0_8px_rgba(0,0,0,0.1)]' : 'text-zinc-400 hover:text-zinc-700'
+                    }`}
                   >
-                    Close
+                    <Shuffle className="h-4 w-4" />
                   </button>
+
+                  <button
+                    onClick={handlePrevious}
+                    disabled={spotify ? !token : false}
+                    className="p-2 rounded-full hover:bg-zinc-100 text-zinc-700 active:scale-90 transition-all cursor-pointer disabled:opacity-20"
+                  >
+                    <SkipBack className="h-5 w-5 fill-current" />
+                  </button>
+
+                  {/* Large circular Play/Pause Button */}
+                  <button
+                    onClick={handlePlayPause}
+                    disabled={spotify ? !token : false}
+                    className="h-14 w-14 rounded-full bg-zinc-900 text-white flex items-center justify-center shadow-lg active:scale-90 transition-all cursor-pointer hover:bg-zinc-800 disabled:opacity-50"
+                  >
+                    {isPlaying ? (
+                      <Pause className="h-5 w-5 fill-current text-white" />
+                    ) : (
+                      <Play className="h-5 w-5 fill-current text-white ml-0.5" />
+                    )}
+                  </button>
+
+                  <button
+                    onClick={handleNext}
+                    disabled={spotify ? !token : false}
+                    className="p-2 rounded-full hover:bg-zinc-100 text-zinc-700 active:scale-90 transition-all cursor-pointer disabled:opacity-20"
+                  >
+                    <SkipForward className="h-5 w-5 fill-current" />
+                  </button>
+
+                  <button
+                    onClick={handleRepeat}
+                    disabled={spotify ? !token : true}
+                    className={`p-2 rounded-full transition-all active:scale-90 cursor-pointer disabled:opacity-20 ${
+                      repeatState !== 'off' ? 'text-zinc-800 font-bold drop-shadow-[0_0_8px_rgba(0,0,0,0.1)]' : 'text-zinc-400 hover:text-zinc-700'
+                    }`}
+                  >
+                    <Repeat className="h-4 w-4" />
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* TAB 2: WEB RADIO */}
+            {activeTab === 'radio' && (
+              <div className="w-full flex flex-col gap-4 text-left px-1">
+                <div className="flex flex-col gap-0.5">
+                  <h3 className="text-sm font-extrabold text-zinc-900 uppercase tracking-wider">Web Radio Search</h3>
+                  <p className="text-[9px] text-zinc-400 uppercase tracking-wider font-extrabold">Tune into global streams</p>
+                </div>
+
+                {/* Search field */}
+                <div className="flex gap-2 w-full">
+                  <input
+                    type="text"
+                    placeholder="Search (e.g. Jazz, BBC, Lofi)..."
+                    value={radioSearch}
+                    onChange={(e) => setRadioSearch(e.target.value)}
+                    onKeyDown={async (e) => {
+                      if (e.key === 'Enter') {
+                        handleRadioSearch();
+                      }
+                    }}
+                    className="flex-grow bg-zinc-50 border border-zinc-200 rounded-xl px-3 py-2.5 text-xs text-zinc-800 placeholder:text-zinc-400 focus:outline-none focus:border-zinc-300"
+                  />
+                  <button
+                    onClick={handleRadioSearch}
+                    disabled={isSearching}
+                    className="px-4 py-2.5 bg-zinc-900 hover:bg-zinc-800 text-white font-extrabold text-[10px] uppercase tracking-wider rounded-xl transition-all active:scale-95 cursor-pointer disabled:opacity-50"
+                  >
+                    {isSearching ? '...' : 'Search'}
+                  </button>
+                </div>
+
+                {/* Stations Results List */}
+                <div className="flex flex-col gap-2 overflow-y-auto max-h-[calc(100vh-270px)] pr-1 custom-scrollbar">
+                  {stationsList.map((station, idx) => (
+                    <button
+                      key={`${station.url}-${idx}`}
+                      onClick={async () => {
+                        try {
+                          await api.localPlayRadio(station.url, station.name);
+                          if (spotify) {
+                            setSpotify(false);
+                            sendUpdate('SET_SOURCE', { spotify: false });
+                          }
+                          toast.success(`Playing Radio: ${station.name}`);
+                        } catch (err) {
+                          toast.error(`Failed to play radio: ${err.message}`);
+                        }
+                      }}
+                      className="w-full p-3.5 rounded-2xl bg-white border border-zinc-100 hover:border-zinc-300 text-left flex items-center justify-between transition-all active:scale-[0.99] shadow-sm hover:shadow"
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="w-8 h-8 rounded-full bg-zinc-50 flex items-center justify-center border border-zinc-150 shrink-0">
+                          <Radio className="w-3.5 h-3.5 text-zinc-600" />
+                        </div>
+                        <div className="min-w-0">
+                          <span className="text-[11px] font-bold text-zinc-800 block truncate">{station.name}</span>
+                          <span className="text-[8px] font-mono text-zinc-400 block tracking-wider uppercase truncate">Live Stream</span>
+                        </div>
+                      </div>
+                      <span className="text-[8px] bg-zinc-50 border border-zinc-200 px-2 py-0.5 rounded font-extrabold text-zinc-600 uppercase tracking-wider shrink-0">
+                        PLAY
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* TAB 3: SETTINGS */}
+            {activeTab === 'settings' && (
+              <div className="w-full flex flex-col gap-4 text-left px-1">
+                <div className="flex flex-col gap-0.5">
+                  <h3 className="text-sm font-extrabold text-zinc-950 uppercase tracking-wider">Control Configuration</h3>
+                  <p className="text-[9px] text-zinc-400 uppercase tracking-wider font-extrabold">Device and cast parameters</p>
                 </div>
 
                 {/* Active Source Toggle */}
@@ -606,8 +848,8 @@ export default function RemoteControl() {
                     onClick={handleToggleSource}
                     className={`px-3 py-1.5 rounded-lg text-[9px] font-bold uppercase transition-all cursor-pointer ${
                       spotify 
-                        ? 'bg-emerald-500/10 border border-emerald-500/30 text-emerald-600' 
-                        : 'bg-amber-500/10 border border-amber-500/30 text-amber-600'
+                        ? 'bg-emerald-500/10 border border-emerald-500/30 text-emerald-650' 
+                        : 'bg-amber-500/10 border border-amber-500/30 text-amber-650'
                     }`}
                   >
                     {spotify ? 'Spotify' : 'Local Media'}
@@ -615,15 +857,15 @@ export default function RemoteControl() {
                 </div>
 
                 {/* Spotify Web Access Keyway */}
-                <div className="flex flex-col gap-2 border-t border-zinc-100 pt-3">
+                <div className="flex flex-col gap-2 bg-zinc-50/50 border border-zinc-100 p-3 rounded-xl">
                   <div className="flex justify-between items-center text-[10px] uppercase tracking-wider text-zinc-700 font-semibold">
                     <span>Spotify Web Access</span>
                     {token ? (
-                      <span className="text-[8px] bg-emerald-500/10 border border-emerald-500/30 text-emerald-600 px-2 py-0.5 rounded font-bold uppercase tracking-wider">
+                      <span className="text-[8px] bg-emerald-500/10 border border-emerald-500/30 text-emerald-650 px-2 py-0.5 rounded font-bold uppercase tracking-wider">
                         AUTHORIZED
                       </span>
                     ) : (
-                      <span className="text-[8px] bg-rose-500/10 border border-rose-500/30 text-rose-600 px-2 py-0.5 rounded font-bold uppercase tracking-wider animate-pulse">
+                      <span className="text-[8px] bg-rose-500/10 border border-rose-500/30 text-rose-650 px-2 py-0.5 rounded font-bold uppercase tracking-wider animate-pulse">
                         REQUIRED
                       </span>
                     )}
@@ -650,7 +892,7 @@ export default function RemoteControl() {
                           toast.error('Logout failed');
                         }
                       }}
-                      className="w-full py-2 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-600 font-bold text-xs uppercase tracking-wider active:scale-95 transition-all cursor-pointer hover:bg-rose-500/20"
+                      className="w-full py-2 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-600 font-bold text-xs uppercase tracking-wider active:scale-95 transition-all cursor-pointer hover:bg-rose-500/20 animate-none"
                     >
                       Disconnect Spotify Account
                     </button>
@@ -658,18 +900,18 @@ export default function RemoteControl() {
                 </div>
 
                 {/* Spotify Connect pairing instructions */}
-                <div className="flex flex-col gap-2 border-t border-zinc-100 pt-3 text-[10px] leading-relaxed text-zinc-650">
-                  <span className="text-[10px] uppercase tracking-wider text-zinc-700 font-semibold">Spotify Connect pairing</span>
-                  <div className="p-2.5 rounded bg-zinc-50 border border-zinc-100 text-[9px] text-zinc-650">
-                    To pair your account, just select and play to <strong className="text-zinc-900">"Resonance Connect"</strong> once from your official Spotify app (phone or computer) on this network. The daemon will cache your session automatically and allow full control.
-                  </div>
+                <div className="flex flex-col gap-1.5 p-3 rounded-xl bg-zinc-50 border border-zinc-100 text-[9px] text-zinc-600">
+                  <span className="text-[10px] uppercase tracking-wider text-zinc-700 font-bold">Spotify Connect pairing</span>
+                  <p className="leading-relaxed">
+                    To pair your account, just select and play to <strong className="text-zinc-900">"Resonance Connect"</strong> once from your official Spotify app on this network.
+                  </p>
                 </div>
 
-
-                <div className="border-t border-zinc-100 pt-4 flex flex-col gap-3">
+                {/* Cast Active Devices */}
+                <div className="border border-zinc-100 p-3 rounded-xl bg-zinc-50/50 flex flex-col gap-2">
                   <div className="flex justify-between items-center text-[10px] uppercase tracking-wider text-zinc-700 font-semibold">
                     <span>Cast Active Devices</span>
-                    <span className="text-[8px] bg-zinc-50 border border-zinc-200 px-1.5 py-0.5 rounded text-zinc-700">{devices.length} Found</span>
+                    <span className="text-[8px] bg-zinc-100 border border-zinc-200 px-1.5 py-0.5 rounded text-zinc-700">{devices.length} Found</span>
                   </div>
                   <div className="flex flex-col gap-1.5 max-h-32 overflow-y-auto pr-1">
                     {devices.length > 0 ? (
@@ -679,8 +921,8 @@ export default function RemoteControl() {
                           onClick={() => handleCast(device.id)}
                           className={`w-full p-2 rounded-xl border flex items-center justify-between text-left transition-all active:scale-98 cursor-pointer ${
                             device.is_active 
-                              ? 'bg-zinc-50 border-zinc-200 text-zinc-900 font-bold' 
-                              : 'bg-transparent border-transparent text-zinc-500 hover:bg-zinc-50 hover:text-zinc-900'
+                              ? 'bg-white border-zinc-300 text-zinc-900 font-bold' 
+                              : 'bg-transparent border-transparent text-zinc-500 hover:bg-zinc-150 hover:text-zinc-900'
                           }`}
                         >
                           <div className="flex items-center gap-2">
@@ -701,24 +943,25 @@ export default function RemoteControl() {
                   </div>
                 </div>
      
-                <div className="border-t border-zinc-100 pt-4 flex flex-col gap-3">
+                {/* System Updates */}
+                <div className="border border-zinc-100 p-3 rounded-xl bg-zinc-50/50 flex flex-col gap-2">
                   <div className="flex justify-between items-center text-[10px] uppercase tracking-wider text-zinc-700 font-semibold">
                     <span>System Updates</span>
-                    <span className="text-[8px] bg-zinc-50 border border-zinc-200 px-1.5 py-0.5 rounded text-zinc-700">OTA</span>
+                    <span className="text-[8px] bg-zinc-100 border border-zinc-200 px-1.5 py-0.5 rounded text-zinc-700">OTA</span>
                   </div>
                   
                   <div className="flex flex-col gap-2">
                     {updateStatus === null && (
                       <button
                         onClick={checkUpdates}
-                        className="w-full py-2.5 rounded-xl border border-zinc-200 bg-zinc-50 hover:bg-zinc-100 active:scale-95 transition-all text-xs font-bold uppercase tracking-wider text-zinc-750"
+                        className="w-full py-2.5 rounded-xl border border-zinc-200 bg-white hover:bg-zinc-50 active:scale-95 transition-all text-xs font-bold uppercase tracking-wider text-zinc-700"
                       >
                         Check for Updates
                       </button>
                     )}
 
                     {updateStatus === 'checking' && (
-                      <div className="w-full py-2.5 rounded-xl border border-zinc-200 bg-zinc-50 flex justify-center items-center gap-2 text-xs font-bold uppercase tracking-wider text-zinc-750">
+                      <div className="w-full py-2.5 rounded-xl border border-zinc-200 bg-white flex justify-center items-center gap-2 text-xs font-bold uppercase tracking-wider text-zinc-700">
                         <RefreshCw className="h-4 w-4 animate-spin" />
                         Checking...
                       </div>
@@ -753,7 +996,7 @@ export default function RemoteControl() {
                     )}
 
                     {updateStatus === 'updating' && (
-                      <div className="p-3 rounded-xl border border-zinc-200 bg-zinc-50 flex flex-col gap-3">
+                      <div className="p-3 rounded-xl border border-zinc-200 bg-white flex flex-col gap-3">
                         <div className="flex justify-between items-center text-[10px] text-zinc-900 font-bold uppercase">
                           <span>Installing</span>
                           <span>{otaPercent}%</span>
@@ -761,7 +1004,7 @@ export default function RemoteControl() {
                         <div className="w-full h-1.5 bg-zinc-200 rounded-full overflow-hidden">
                           <div className="h-full bg-zinc-900 transition-all" style={{ width: `${otaPercent}%` }} />
                         </div>
-                        <div className="h-20 overflow-y-auto text-[8px] font-mono text-zinc-650 flex flex-col gap-0.5 custom-scrollbar">
+                        <div className="h-20 overflow-y-auto text-[8px] font-mono text-zinc-600 flex flex-col gap-0.5 custom-scrollbar">
                           {otaProgress.map((line, i) => <div key={i}>{line}</div>)}
                         </div>
                       </div>
@@ -774,7 +1017,7 @@ export default function RemoteControl() {
                         </div>
                         <button
                           onClick={checkUpdates}
-                          className="w-full py-2 rounded-xl border border-zinc-200 bg-zinc-50 hover:bg-zinc-100 active:scale-95 transition-all text-xs font-bold uppercase tracking-wider text-zinc-700"
+                          className="w-full py-2 rounded-xl border border-zinc-200 bg-white hover:bg-zinc-50 active:scale-95 transition-all text-xs font-bold uppercase tracking-wider text-zinc-700"
                         >
                           Retry
                         </button>
@@ -783,7 +1026,7 @@ export default function RemoteControl() {
                   </div>
                 </div>
 
-                <div className="border-t border-zinc-100 pt-4 flex flex-col gap-2">
+                <div className="flex flex-col gap-2 pt-2">
                   <button
                     onClick={handleRemoteLogout}
                     className="w-full py-2.5 rounded-xl border border-rose-500/20 text-rose-600 bg-rose-500/5 hover:bg-rose-500/10 active:scale-95 transition-all text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer"
@@ -793,153 +1036,13 @@ export default function RemoteControl() {
                   </button>
                 </div>
               </div>
-            </div>
-          )}
-
-          {/* Main Controller Content */}
-          <main className="w-full max-w-md flex-grow flex flex-col justify-center gap-8 z-10 mt-4">
-            
-            {/* Album Artwork Panel */}
-            <div className="w-full flex justify-center">
-              <div className="w-[75vw] max-w-[280px] aspect-square rounded-[2rem] bg-zinc-50 border border-zinc-100 overflow-hidden shadow-lg flex items-center justify-center relative group">
-                {albumImage ? (
-                  <img 
-                    src={albumImage} 
-                    alt={trackName} 
-                    className="w-full h-full object-cover select-none pointer-events-none scale-100 transition-all duration-700" 
-                  />
-                ) : (
-                  <div className="flex flex-col items-center gap-3 text-zinc-400">
-                    <Music className="h-12 w-12 stroke-[1.25] text-zinc-350" />
-                    <span className="text-[9px] uppercase tracking-widest font-extrabold text-zinc-350">Resonance</span>
-                  </div>
-                )}
-                
-                {/* Ambient artwork shadow/glow under art */}
-                {albumImage && (
-                  <div 
-                    className="absolute inset-0 -z-10 scale-95 opacity-20 blur-2xl transition-all duration-700"
-                    style={{ backgroundImage: `url(${albumImage})`, backgroundSize: 'cover' }}
-                  />
-                )}
-              </div>
-            </div>
-
-            {/* Track Title and Artist details */}
-            <div className="w-full text-center flex flex-col gap-1.5 px-4">
-              <h2 className="text-lg font-bold text-zinc-900 tracking-tight leading-snug truncate">
-                {trackName}
-              </h2>
-              <p className="text-[12px] font-semibold text-zinc-500 tracking-normal truncate">
-                {trackArtist}
-              </p>
-              {activeDevice && (
-                <div className="inline-flex items-center gap-1.5 justify-center mt-1 text-[9px] font-bold text-purple-600 uppercase tracking-[0.15em] bg-purple-50 border border-purple-100 px-2.5 py-1 rounded-full self-center">
-                  <Laptop className="h-3 w-3" />
-                  <span>Playing on: {activeDevice.name}</span>
-                </div>
-              )}
-            </div>
-
-            {/* Auth status block when token is missing */}
-            {spotify && !token && (
-              <div className="mx-4 p-4 rounded-2xl bg-amber-500/5 border border-amber-500/20 text-center flex flex-col gap-3">
-                <p className="text-[10px] text-amber-600 font-medium leading-relaxed">
-                  Resonance is not authenticated to Spotify. Connect your account to synchronize playback.
-                </p>
-                <a
-                  href="/auth/spotify/login?from=remote"
-                  className="w-full py-2.5 px-3 rounded-xl bg-[#1ed760] hover:bg-[#1fdf64] active:scale-95 text-xs text-black font-extrabold uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center gap-2 no-underline"
-                >
-                  <svg viewBox="0 0 24 24" className="h-4 w-4 fill-black shrink-0"><path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm4.586 14.424a.622.622 0 01-.857.207c-2.348-1.435-5.304-1.76-8.785-.964a.622.622 0 01-.277-1.215c3.809-.87 7.077-.496 9.712 1.115a.622.622 0 01.207.857zm1.223-2.722a.779.779 0 01-1.07.257c-2.687-1.652-6.785-2.131-9.965-1.166a.78.78 0 01-.973-.519.781.781 0 01.519-.972c3.632-1.102 8.147-.568 11.233 1.33a.779.779 0 01.256 1.07zm.105-2.835C14.692 8.95 9.375 8.775 6.297 9.71a.935.935 0 11-.543-1.79c3.533-1.072 9.404-.866 13.115 1.338a.936.936 0 01-.955 1.609z"/></svg>
-                  Login with Spotify
-                </a>
-              </div>
             )}
-
-            {/* Position / Progress Bar Slider */}
-            <div className="w-full px-2 flex flex-col gap-2">
-              <input
-                type="range"
-                min="0"
-                max={trackDuration}
-                value={trackPosition}
-                onChange={handleSeek}
-                disabled={spotify ? (!token || !trackDuration) : !trackDuration}
-                className="w-full h-1 bg-zinc-200 hover:bg-zinc-300 rounded-lg appearance-none cursor-pointer accent-zinc-900 transition-all focus:outline-none"
-                style={{
-                  background: `linear-gradient(to right, #18181b 0%, #18181b ${
-                    trackDuration ? (trackPosition / trackDuration) * 100 : 0
-                  }%, rgba(0, 0, 0, 0.06) ${
-                    trackDuration ? (trackPosition / trackDuration) * 100 : 0
-                  }%, rgba(0, 0, 0, 0.06) 100%)`
-                }}
-              />
-              <div className="flex justify-between items-center text-[10px] text-zinc-500 font-semibold font-mono">
-                <span>{formatTime(trackPosition)}</span>
-                <span>{formatTime(trackDuration)}</span>
-              </div>
-            </div>
-
-            {/* Media Playback Controls Row */}
-            <div className="w-full flex items-center justify-between px-6">
-              <button
-                onClick={handleShuffle}
-                disabled={spotify ? !token : true}
-                className={`p-2 rounded-full transition-all active:scale-90 cursor-pointer disabled:opacity-20 ${
-                  shuffleState ? 'text-purple-600 drop-shadow-[0_0_8px_rgba(147,51,234,0.2)]' : 'text-zinc-400 hover:text-zinc-700'
-                }`}
-              >
-                <Shuffle className="h-4.5 w-4.5" />
-              </button>
-
-              <button
-                onClick={handlePrevious}
-                disabled={spotify ? !token : false}
-                className="p-2.5 rounded-full hover:bg-zinc-100 text-zinc-700 active:scale-90 transition-all cursor-pointer disabled:opacity-20"
-              >
-                <SkipBack className="h-5.5 w-5.5 fill-current" />
-              </button>
-
-              {/* Large circular Play/Pause Button */}
-              <button
-                onClick={handlePlayPause}
-                disabled={spotify ? !token : false}
-                className="h-16 w-16 rounded-full bg-zinc-900 text-white flex items-center justify-center shadow-lg active:scale-90 transition-all cursor-pointer hover:bg-zinc-800 disabled:opacity-50"
-              >
-                {isPlaying ? (
-                  <Pause className="h-6.5 w-6.5 fill-current text-white" />
-                ) : (
-                  <Play className="h-6.5 w-6.5 fill-current text-white ml-1" />
-                )}
-              </button>
-
-              <button
-                onClick={handleNext}
-                disabled={spotify ? !token : false}
-                className="p-2.5 rounded-full hover:bg-zinc-100 text-zinc-700 active:scale-90 transition-all cursor-pointer disabled:opacity-20"
-              >
-                <SkipForward className="h-5.5 w-5.5 fill-current" />
-              </button>
-
-              <button
-                onClick={handleRepeat}
-                disabled={spotify ? !token : true}
-                className={`p-2 rounded-full transition-all active:scale-90 cursor-pointer disabled:opacity-20 ${
-                  repeatState !== 'off' ? 'text-purple-600 drop-shadow-[0_0_8px_rgba(147,51,234,0.2)]' : 'text-zinc-400 hover:text-zinc-700'
-                }`}
-              >
-                <Repeat className="h-4.5 w-4.5" />
-                {repeatState === 'track' && (
-                  <span className="absolute text-[6px] font-extrabold bg-purple-600 text-white rounded-full px-1 bottom-0 right-0">1</span>
-                )}
-              </button>
-            </div>
 
           </main>
 
-          {/* Sleek bottom Volume control bar */}
-          <footer className="w-full max-w-md z-10 px-4 mt-4">
+          {/* Sleek bottom Volume control bar and Footer Tabs stacked */}
+          <footer className="w-full max-w-md z-10 px-2 mt-4 flex flex-col gap-3">
+            {/* Volume bar */}
             <div className="bg-white border border-zinc-100 rounded-2xl px-4 py-3 flex items-center gap-3.5 shadow-lg">
               <button 
                 onClick={handleMuteToggle}
@@ -973,6 +1076,39 @@ export default function RemoteControl() {
               <span className="text-[10px] text-zinc-600 font-semibold font-mono w-7 text-right">
                 {isMuted ? 0 : volume}%
               </span>
+            </div>
+
+            {/* Premium navigation bar */}
+            <div className="bg-white/95 border border-zinc-150 backdrop-blur-md rounded-2xl px-2 py-1.5 flex justify-around items-center shadow-lg">
+              <button
+                onClick={() => setActiveTab('player')}
+                className={`flex flex-col items-center justify-center py-1 flex-1 cursor-pointer transition-all active:scale-95 ${
+                  activeTab === 'player' ? 'text-zinc-900 font-bold' : 'text-zinc-400 hover:text-zinc-700'
+                }`}
+              >
+                <Music className="h-4 w-4 mb-0.5" />
+                <span className="text-[8px] uppercase tracking-wider font-extrabold font-sans">Player</span>
+              </button>
+
+              <button
+                onClick={() => setActiveTab('radio')}
+                className={`flex flex-col items-center justify-center py-1 flex-1 cursor-pointer transition-all active:scale-95 ${
+                  activeTab === 'radio' ? 'text-zinc-900 font-bold' : 'text-zinc-400 hover:text-zinc-700'
+                }`}
+              >
+                <Radio className="h-4 w-4 mb-0.5" />
+                <span className="text-[8px] uppercase tracking-wider font-extrabold font-sans">Radio</span>
+              </button>
+
+              <button
+                onClick={() => setActiveTab('settings')}
+                className={`flex flex-col items-center justify-center py-1 flex-1 cursor-pointer transition-all active:scale-95 ${
+                  activeTab === 'settings' ? 'text-zinc-900 font-bold' : 'text-zinc-400 hover:text-zinc-700'
+                }`}
+              >
+                <Settings className="h-4 w-4 mb-0.5" />
+                <span className="text-[8px] uppercase tracking-wider font-extrabold font-sans">Settings</span>
+              </button>
             </div>
           </footer>
 

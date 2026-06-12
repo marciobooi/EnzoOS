@@ -24,7 +24,8 @@ export default function DefinitionsMenu({
   setOtaPercent,
   setOtaProgress,
   errorMessage,
-  setErrorMessage
+  setErrorMessage,
+  onPlayRadio
 }) {
   const [radioSearch, setRadioSearch] = useState('');
   const [stationsList, setStationsList] = useState(RADIO_STATIONS);
@@ -251,12 +252,16 @@ export default function DefinitionsMenu({
             onChange={async (e) => {
               const selected = stationsList.find(s => s.url === e.target.value);
               if (selected) {
-                try {
-                  await api.localPlayRadio(selected.url, selected.name);
-                  if (spotify) onToggleSource();
-                  toast.success(`Playing Radio: ${selected.name}`);
-                } catch (err) {
-                  toast.error(`Failed to play radio: ${err.message}`);
+                if (onPlayRadio) {
+                  onPlayRadio(selected.url, selected.name);
+                } else {
+                  try {
+                    await api.localPlayRadio(selected.url, selected.name);
+                    if (spotify) onToggleSource();
+                    toast.success(`Playing Radio: ${selected.name}`);
+                  } catch (err) {
+                    toast.error(`Failed to play radio: ${err.message}`);
+                  }
                 }
               }
             }}

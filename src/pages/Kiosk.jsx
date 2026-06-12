@@ -614,6 +614,19 @@ export default function Kiosk() {
                 handlePlayTrack(uri);
                 setIsMenuOpen(false);
               }}
+              onPlayRadio={async (url, name) => {
+                try {
+                  await api.localPlayRadio(url, name);
+                  if (spotify) {
+                    setSpotify(false);
+                    sendUpdate('SET_SOURCE', { spotify: false });
+                  }
+                  setIsMenuOpen(false);
+                  toast.success(`Playing Radio: ${name}`);
+                } catch (err) {
+                  toast.error(`Failed to play radio: ${err.message}`);
+                }
+              }}
               theme={theme}
               onThemeChange={handleThemeChange}
               otaProgress={otaProgress}
