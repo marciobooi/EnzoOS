@@ -19,13 +19,42 @@ export default function DefinitionsMenu({
   otaProgress,
   setOtaProgress,
   otaPercent,
-  setOtaPercent
+  setOtaPercent,
+  spotify,
+  onToggleSource,
+  updateStatus,
+  setUpdateStatus,
+  errorMessage,
+  setErrorMessage
 }) {
-  // OTA states
-  const [updateStatus, setUpdateStatus] = useState(null); // null, 'checking', 'error', 'no-update', 'available', 'updating'
+  // Local Commit states
   const [localCommit, setLocalCommit] = useState('');
   const [remoteCommit, setRemoteCommit] = useState('');
-  const [errorMessage, setErrorMessage] = useState('');
+
+  // Spotify Daemon credentials states
+  const [daemonUsername, setDaemonUsername] = useState('');
+  const [daemonPassword, setDaemonPassword] = useState('');
+  const [isSavingDaemonCreds, setIsSavingDaemonCreds] = useState(false);
+
+  const handleSaveDaemonCredentials = async (e) => {
+    e.preventDefault();
+    if (!daemonUsername.trim() || !daemonPassword.trim()) {
+      alert('Username and password are required.');
+      return;
+    }
+    try {
+      setIsSavingDaemonCreds(true);
+      await api.setSpotifyCredentials(daemonUsername.trim(), daemonPassword.trim());
+      alert('Spotify Daemon configuration updated successfully! The daemon is restarting.');
+      setDaemonUsername('');
+      setDaemonPassword('');
+    } catch (err) {
+      console.error('Failed to update Spotify Daemon configuration:', err);
+      alert(`Configuration update failed: ${err.message}`);
+    } finally {
+      setIsSavingDaemonCreds(false);
+    }
+  };
 
   // OTA logic
   const checkUpdates = async () => {
@@ -91,6 +120,53 @@ export default function DefinitionsMenu({
           <p className="text-[9px] text-zinc-500 uppercase mt-0.5">Control center and resource configuration</p>
         </div>
       </div>
+
+      {/* 0. PLUGIN SOURCE SELECTOR & DAEMON CONFIG */}
+      <section className="p-4 rounded-xl border border-zinc-900 bg-zinc-950/20 flex flex-col gap-3">
+        <div className="flex items-center justify-between">
+          <span className="text-[10px] font-bold tracking-wider text-zinc-400 uppercase">
+            [00] Media Source & Daemon Config
+          </span>
+          <button
+            onClick={onToggleSource}
+            className={`px-2.5 py-1 rounded text-[8px] font-extrabold uppercase border transition-all cursor-pointer ${
+              spotify 
+                ? 'bg-emerald-950/60 border-emerald-900 text-emerald-400' 
+                : 'bg-amber-950/60 border-amber-900 text-amber-400'
+            }`}
+          >
+            Plugin: {spotify ? 'Spotify' : 'Local'}
+          </button>
+        </div>
+
+        {/* Credentials form for librespot daemon */}
+        <form onSubmit={handleSaveDaemonCredentials} className="flex flex-col gap-2 border-t border-zinc-900 pt-3">
+          <p className="text-[8.5px] text-zinc-500 uppercase font-bold tracking-wider">Configure Spotify Connect Daemon</p>
+          <div className="grid grid-cols-2 gap-2">
+            <input
+              type="text"
+              placeholder="Spotify Username"
+              value={daemonUsername}
+              onChange={(e) => setDaemonUsername(e.target.value)}
+              className="bg-zinc-950 border border-zinc-900 rounded p-1.5 text-[9px] text-white focus:outline-none focus:border-zinc-700"
+            />
+            <input
+              type="password"
+              placeholder="Spotify Password"
+              value={daemonPassword}
+              onChange={(e) => setDaemonPassword(e.target.value)}
+              className="bg-zinc-950 border border-zinc-900 rounded p-1.5 text-[9px] text-white focus:outline-none focus:border-zinc-700"
+            />
+          </div>
+          <button
+            type="submit"
+            disabled={isSavingDaemonCreds}
+            className="w-full py-1.5 bg-zinc-900 hover:bg-zinc-850 border border-zinc-800 hover:border-zinc-700 text-[9px] font-bold uppercase rounded text-white active:scale-95 transition-all cursor-pointer"
+          >
+            {isSavingDaemonCreds ? 'Configuring Daemon...' : 'Save & Restart Daemon'}
+          </button>
+        </form>
+      </section>
 
       {/* 1. SPOTIFY AUTHENTICATION KEYWAY */}
       <section className="p-4 rounded-xl border border-zinc-900 bg-zinc-950/20 flex flex-col gap-3">

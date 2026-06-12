@@ -23,7 +23,9 @@ export default function RoseHiFiDisplay({
   playbackState,
   onToggleMenu,
   onTransferPlayback,
-  hasToken
+  hasToken,
+  spotify,
+  onToggleSource
 }) {
   const [showVolumeFeedback, setShowVolumeFeedback] = useState(false);
   const feedbackTimeout = useRef(null);
@@ -83,17 +85,31 @@ export default function RoseHiFiDisplay({
         <div className="track-details">
           <div className="hifi-topline">
             <button 
-              onClick={onTransferPlayback}
-              className={`status-pill cursor-pointer transition-colors ${
-                isLocalDeviceActive 
-                  ? 'text-emerald-400 hover:text-emerald-300' 
-                  : 'theme-text hover:opacity-80 animate-pulse'
+              onClick={onToggleSource}
+              className={`status-pill cursor-pointer transition-colors border ${
+                spotify 
+                  ? 'text-emerald-400 border-emerald-500/20 bg-emerald-500/5' 
+                  : 'text-amber-500 border-amber-500/20 bg-amber-500/5'
               }`}
-              title={isLocalDeviceActive ? 'Spotify Connect Active' : 'Click to Route Audio to Resonance'}
+              title="Click to Switch Plugin Source"
             >
-              <span className={`status-dot ${isLocalDeviceActive ? 'bg-emerald-400' : 'theme-bg'}`}></span>
-              {isLocalDeviceActive ? 'SPOTIFY CONNECT // ACTIVE' : 'ROUTE TO RESONANCE'}
+              <span className={`status-dot ${spotify ? 'bg-emerald-400' : 'bg-amber-500'}`}></span>
+              PLUGIN: {spotify ? 'SPOTIFY' : 'LOCAL' }
             </button>
+            {spotify && (
+              <button 
+                onClick={onTransferPlayback}
+                className={`status-pill cursor-pointer transition-colors ${
+                  isLocalDeviceActive 
+                    ? 'text-emerald-400 hover:text-emerald-300' 
+                    : 'theme-text hover:opacity-80 animate-pulse'
+                }`}
+                title={isLocalDeviceActive ? 'Spotify Connect Active' : 'Click to Route Audio to Resonance'}
+              >
+                <span className={`status-dot ${isLocalDeviceActive ? 'bg-emerald-400' : 'theme-bg'}`}></span>
+                {isLocalDeviceActive ? 'SPOTIFY CONNECT // ACTIVE' : 'ROUTE TO RESONANCE'}
+              </button>
+            )}
             <span className="system-readout">DOT MATRIX / 2026</span>
           </div>
 

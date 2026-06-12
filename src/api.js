@@ -241,5 +241,88 @@ export const api = {
       throw new Error(data?.error || 'Failed to trigger OTA update.');
     }
     return data;
+  },
+
+  /**
+   * Play local media.
+   */
+  async localPlay() {
+    const response = await fetch('/api/player/play', { method: 'POST' });
+    if (response.status === 204) return { success: true };
+    return response.json();
+  },
+
+  /**
+   * Pause local media.
+   */
+  async localPause() {
+    const response = await fetch('/api/player/pause', { method: 'POST' });
+    if (response.status === 204) return { success: true };
+    return response.json();
+  },
+
+  /**
+   * Skip next local media.
+   */
+  async localNext() {
+    const response = await fetch('/api/player/next', { method: 'POST' });
+    if (response.status === 204) return { success: true };
+    return response.json();
+  },
+
+  /**
+   * Skip previous local media.
+   */
+  async localPrevious() {
+    const response = await fetch('/api/player/previous', { method: 'POST' });
+    if (response.status === 204) return { success: true };
+    return response.json();
+  },
+
+  /**
+   * Set volume of local media.
+   */
+  async localSetVolume(volume) {
+    const response = await fetch('/api/player/volume', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ volume })
+    });
+    if (response.status === 204) return { success: true };
+    return response.json();
+  },
+
+  /**
+   * Seek local media.
+   */
+  async localSeek(position) {
+    const response = await fetch('/api/player/seek', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ position })
+    });
+    if (response.status === 204) return { success: true };
+    return response.json();
+  },
+
+  /**
+   * Update Spotify daemon credentials.
+   */
+  async setSpotifyCredentials(username, password) {
+    const response = await fetch('/api/spotify/credentials', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password })
+    });
+    let data;
+    try {
+      data = await response.json();
+    } catch (err) {
+      throw new Error('Failed to parse credentials response.');
+    }
+    if (!response.ok) {
+      throw new Error(data?.error || 'Failed to update credentials.');
+    }
+    return data;
   }
 };

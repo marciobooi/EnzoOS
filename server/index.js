@@ -5,8 +5,12 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import http from 'http';
 import { WebSocketServer, WebSocket } from 'ws';
+import { exec } from 'child_process';
+import { promisify } from 'util';
 import updateRouter from './update.js';
 import spotifyAuthRouter, { getValidAccessToken } from './spotify-auth.js';
+
+const execPromise = promisify(exec);
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -110,6 +114,92 @@ app.get('/remote', (req, res, next) => {
   next();
 });
 
+// Local Player control endpoints (using mpc)
+app.post('/api/player/play', async (req, res) => {
+  try {
+    await execPromise('mpc play');
+    res.json({ success: true });
+  } catch (err) {
+    console.error('[Local Player] Play failed:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.post('/api/player/pause', async (req, res) => {
+  try {
+    await execPromise('mpc pause');
+    res.json({ success: true });
+  } catch (err) {
+    console.error('[Local Player] Pause failed:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.post('/api/player/next', async (req, res) => {
+  try {
+    await execPromise('mpc next');
+    res.json({ success: true });
+  } catch (err) {
+    console.error('[Local Player] Next failed:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.post('/api/player/previous', async (req, res) => {
+  try {
+    await execPromise('mpc prev');
+    res.json({ success: true });
+  } catch (err) {
+    console.error('[Local Player] Previous failed:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.post('/api/player/volume', async (req, res) => {
+  const { volume } = req.body;
+  try {
+    await execPromise(`mpc volume ${volume}`);
+    res.json({ success: true });
+  } catch (err) {
+    console.error('[Local Player] Volume failed:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.post('/api/player/seek', async (req, res) => {
+  const { position } = req.body;
+  try {
+    await execPromise(`mpc seek ${position}`);
+    res.json({ success: true });
+  } catch (err) {
+    console.error('[Local Player] Seek failed:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Spotify Daemon Credentials Configuration (write to /etc/default/raspotify)
+app.post('/api/spotify/credentials', async (req, res) => {
+  const { username, password } = req.body;
+  if (!username || !password) {
+    return res.status(400).json({ success: false, error: 'Username and password are required' });
+  }
+  try {
+    const configContent = `# Resonance HiFi - Raspotify Configuration
+DEVICE_NAME="Resonance Connect"
+BITRATE="320"
+OPTIONS="--backend alsa --initial-volume 50 --enable-volume-normalisation --username ${username} --password ${password}"
+`;
+    const escapedContent = configContent.replace(/'/g, "'\\''");
+    await execPromise(`echo '${escapedContent}' | sudo tee /etc/default/raspotify`);
+    await execPromise('sudo systemctl restart raspotify');
+    console.log(`[Resonance Server] Spotify daemon credentials updated for: ${username}`);
+    res.json({ success: true, message: 'Spotify daemon credentials updated and service restarted' });
+  } catch (err) {
+    console.error('[Resonance Server] Failed to update daemon credentials:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 // Fallback all non-API requests to index.html for Single Page App client routing
 app.use((req, res, next) => {
   if (req.method === 'GET') {
@@ -126,6 +216,7 @@ const server = http.createServer(app);
 const wss = new WebSocketServer({ noServer: true });
 
 let cachedPlaybackState = null;
+let cachedSourceState = { spotify: true };
 
 // Helper to broadcast messages to all connected WS clients
 const broadcast = (data, excludeWs = null) => {
@@ -147,6 +238,9 @@ wss.on('connection', async (ws) => {
     ws.send(JSON.stringify({ type: 'PLAYBACK_STATE', payload: cachedPlaybackState }));
   }
 
+  // Send the active source state on connect
+  ws.send(JSON.stringify({ type: 'SET_SOURCE', payload: cachedSourceState }));
+
   // Send the server-managed access token (auto-refreshed if needed)
   const serverToken = await getValidAccessToken();
   if (serverToken) {
@@ -166,6 +260,11 @@ wss.on('connection', async (ws) => {
       if (type === 'REQUEST_SYNC') {
         // Broadcast sync request to OTHER clients (typically the main player)
         broadcast({ type: 'REQUEST_SYNC' }, ws);
+      }
+
+      if (type === 'SET_SOURCE') {
+        cachedSourceState = payload;
+        broadcast({ type: 'SET_SOURCE', payload }, ws);
       }
 
       if (type === 'SET_TOKEN') {

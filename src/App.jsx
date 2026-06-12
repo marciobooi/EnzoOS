@@ -42,9 +42,21 @@ export default function App() {
 
   const [otaProgress, setOtaProgress] = useState([]);
   const [otaPercent, setOtaPercent] = useState(0);
+  const [updateStatus, setUpdateStatus] = useState(null);
+  const [errorMessage, setErrorMessage] = useState('');
+  const [spotify, setSpotify] = useState(true);
 
   const [scale, setScale] = useState(1);
   const containerRef = useRef(null);
+
+  const handleToggleSource = () => {
+    const nextSpotify = !spotify;
+    setSpotify(nextSpotify);
+    if (ws.current && ws.current.readyState === WebSocket.OPEN) {
+      ws.current.send(JSON.stringify({ type: 'SET_SOURCE', payload: { spotify: nextSpotify } }));
+    }
+    toast.success(`Source set to: ${nextSpotify ? 'Spotify' : 'Local Media'}`);
+  };
 
   useEffect(() => {
     const handleResize = () => {
@@ -176,10 +188,15 @@ export default function App() {
           }
 
           if (type === 'UPDATE_PROGRESS') {
+            setUpdateStatus('updating');
             setOtaProgress(prev => [...prev, payload.text].slice(-30));
             if (payload.percent !== undefined && payload.percent !== null) {
               setOtaPercent(payload.percent);
             }
+          }
+
+          if (type === 'SET_SOURCE') {
+            setSpotify(payload.spotify);
           }
 
           if (type === 'SET_TOKEN') {
@@ -308,6 +325,21 @@ export default function App() {
 
   // Playback Control Handlers
   const handlePlayPause = async () => {
+    if (!spotify) {
+      try {
+        const isPaused = playbackState ? playbackState.paused : true;
+        if (isPaused) {
+          await api.localPlay();
+          setPlaybackState(prev => ({ ...prev, paused: false }));
+        } else {
+          await api.localPause();
+          setPlaybackState(prev => ({ ...prev, paused: true }));
+        }
+      } catch (err) {
+        toast.error(`Local action failed: ${err.message}`);
+      }
+      return;
+    }
     if (!token) return;
     try {
       if (playbackState?.paused === false) {
@@ -323,6 +355,14 @@ export default function App() {
   };
 
   const handleNext = async () => {
+    if (!spotify) {
+      try {
+        await api.localNext();
+      } catch (err) {
+        toast.error(`Local skip failed: ${err.message}`);
+      }
+      return;
+    }
     if (!token) return;
     try {
       await api.skipNext(token);
@@ -333,6 +373,14 @@ export default function App() {
   };
 
   const handlePrevious = async () => {
+    if (!spotify) {
+      try {
+        await api.localPrevious();
+      } catch (err) {
+        toast.error(`Local back failed: ${err.message}`);
+      }
+      return;
+    }
     if (!token) return;
     try {
       await api.skipPrevious(token);
@@ -343,6 +391,7 @@ export default function App() {
   };
 
   const handleToggleShuffle = async () => {
+    if (!spotify) return;
     if (!token) return;
     const nextShuffle = !shuffleState;
     setShuffleState(nextShuffle);
@@ -358,6 +407,7 @@ export default function App() {
   };
 
   const handleToggleRepeat = async () => {
+    if (!spotify) return;
     if (!token) return;
     const repeatCycle = {
       'off': 'context',
@@ -379,6 +429,7 @@ export default function App() {
 
   // Sync state manually from Spotify Web API
   const syncCurrentState = async () => {
+    if (!spotify) return;
     if (!token) return;
     try {
       const state = await api.getPlaybackState(token);
@@ -434,6 +485,15 @@ export default function App() {
   const handleSeek = async (e) => {
     const seekMs = parseInt(e.target.value, 10);
     setTrackPosition(seekMs);
+    if (!spotify) {
+      try {
+        const percent = trackDuration ? Math.round((seekMs / trackDuration) * 100) : 0;
+        await api.localSeek(`${percent}%`);
+      } catch (err) {
+        console.error('Local seek error:', err);
+      }
+      return;
+    }
     try {
       await api.seek(token, seekMs);
     } catch (err) {
@@ -459,6 +519,14 @@ export default function App() {
       }));
     }
 
+    if (!spotify) {
+      try {
+        await api.localSetVolume(vol);
+      } catch (err) {
+        console.error('Local volume error:', err);
+      }
+      return;
+    }
     try {
       await api.setVolume(token, vol);
     } catch (err) {
@@ -577,6 +645,8 @@ export default function App() {
           onToggleMenu={() => setIsMenuOpen(!isMenuOpen)}
           onTransferPlayback={handleTransferToLocal}
           hasToken={!!token}
+          spotify={spotify}
+          onToggleSource={handleToggleSource}
         />
       </div>
 
@@ -627,6 +697,12 @@ export default function App() {
             setOtaProgress={setOtaProgress}
             otaPercent={otaPercent}
             setOtaPercent={setOtaPercent}
+            spotify={spotify}
+            onToggleSource={handleToggleSource}
+            updateStatus={updateStatus}
+            setUpdateStatus={setUpdateStatus}
+            errorMessage={errorMessage}
+            setErrorMessage={setErrorMessage}
           />
         </div>
       </div>

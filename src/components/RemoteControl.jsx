@@ -69,9 +69,43 @@ export default function RemoteControl() {
   const [otaProgress, setOtaProgress] = useState([]);
   const [otaPercent, setOtaPercent] = useState(0);
 
+  const [spotify, setSpotify] = useState(true);
+  const [daemonUsername, setDaemonUsername] = useState('');
+  const [daemonPassword, setDaemonPassword] = useState('');
+  const [isSavingDaemonCreds, setIsSavingDaemonCreds] = useState(false);
+
   const ws = useRef(null);
   const progressInterval = useRef(null);
   const volumeApiTimeout = useRef(null);
+
+  const handleSaveDaemonCredentials = async (e) => {
+    e.preventDefault();
+    if (!daemonUsername.trim() || !daemonPassword.trim()) {
+      toast.error('Username and password are required.');
+      return;
+    }
+    try {
+      setIsSavingDaemonCreds(true);
+      await api.setSpotifyCredentials(daemonUsername.trim(), daemonPassword.trim());
+      toast.success('Spotify Daemon credentials updated! Restarting service...');
+      setDaemonUsername('');
+      setDaemonPassword('');
+    } catch (err) {
+      console.error('Failed to save daemon credentials:', err);
+      toast.error(`Failed to update credentials: ${err.message}`);
+    } finally {
+      setIsSavingDaemonCreds(false);
+    }
+  };
+
+  const handleToggleSource = () => {
+    const nextSpotify = !spotify;
+    setSpotify(nextSpotify);
+    if (ws.current && ws.current.readyState === WebSocket.OPEN) {
+      ws.current.send(JSON.stringify({ type: 'SET_SOURCE', payload: { spotify: nextSpotify } }));
+    }
+    toast.success(`Source set to: ${nextSpotify ? 'Spotify' : 'Local Media'}`);
+  };
 
   // Derived state
   const currentTrack = playbackState?.track_window?.current_track;
@@ -121,10 +155,15 @@ export default function RemoteControl() {
           }
 
           if (type === 'UPDATE_PROGRESS') {
+            setUpdateStatus('updating');
             setOtaProgress(prev => [...prev, payload.text].slice(-30));
             if (payload.percent !== undefined && payload.percent !== null) {
               setOtaPercent(payload.percent);
             }
+          }
+
+          if (type === 'SET_SOURCE') {
+            setSpotify(payload.spotify);
           }
 
           if (type === 'SET_TOKEN') {
@@ -180,6 +219,7 @@ export default function RemoteControl() {
 
   // Poll devices & state from Spotify Web API
   useEffect(() => {
+    if (!spotify) return;
     if (!isAuthenticated || !token) return;
 
     fetchDevices();
@@ -191,7 +231,7 @@ export default function RemoteControl() {
     }, 10000);
 
     return () => clearInterval(intervalId);
-  }, [token, isAuthenticated]);
+  }, [token, isAuthenticated, spotify]);
 
   // Track progress position bar
   useEffect(() => {
@@ -214,6 +254,7 @@ export default function RemoteControl() {
 
   // Spotify Operations
   const localSync = async () => {
+    if (!spotify) return;
     if (!token) return;
     try {
       const state = await api.getPlaybackState(token);
@@ -304,6 +345,21 @@ export default function RemoteControl() {
   };
 
   const handlePlayPause = async () => {
+    if (!spotify) {
+      try {
+        const isPaused = playbackState ? playbackState.paused : true;
+        if (isPaused) {
+          await api.localPlay();
+          setPlaybackState(prev => ({ ...prev, paused: false }));
+        } else {
+          await api.localPause();
+          setPlaybackState(prev => ({ ...prev, paused: true }));
+        }
+      } catch (err) {
+        toast.error(`Local action failed: ${err.message}`);
+      }
+      return;
+    }
     if (!token) return;
     try {
       if (isPlaying) {
@@ -319,6 +375,14 @@ export default function RemoteControl() {
   };
 
   const handleNext = async () => {
+    if (!spotify) {
+      try {
+        await api.localNext();
+      } catch (err) {
+        toast.error(`Local skip failed: ${err.message}`);
+      }
+      return;
+    }
     if (!token) return;
     try {
       await api.skipNext(token);
@@ -329,6 +393,14 @@ export default function RemoteControl() {
   };
 
   const handlePrevious = async () => {
+    if (!spotify) {
+      try {
+        await api.localPrevious();
+      } catch (err) {
+        toast.error(`Local back failed: ${err.message}`);
+      }
+      return;
+    }
     if (!token) return;
     try {
       await api.skipPrevious(token);
@@ -339,6 +411,7 @@ export default function RemoteControl() {
   };
 
   const handleShuffle = async () => {
+    if (!spotify) return;
     if (!token) return;
     const nextShuffle = !shuffleState;
     setShuffleState(nextShuffle);
@@ -352,6 +425,7 @@ export default function RemoteControl() {
   };
 
   const handleRepeat = async () => {
+    if (!spotify) return;
     if (!token) return;
     const cycles = { 'off': 'context', 'context': 'track', 'track': 'off' };
     const nextRepeat = cycles[repeatState] || 'off';
@@ -366,9 +440,18 @@ export default function RemoteControl() {
   };
 
   const handleSeek = async (e) => {
-    if (!token) return;
     const seekMs = parseInt(e.target.value, 10);
     setTrackPosition(seekMs);
+    if (!spotify) {
+      try {
+        const percent = trackDuration ? Math.round((seekMs / trackDuration) * 100) : 0;
+        await api.localSeek(`${percent}%`);
+      } catch (err) {
+        console.error('Local seek error:', err);
+      }
+      return;
+    }
+    if (!token) return;
     try {
       await api.seek(token, seekMs);
       requestWSStateSync();
@@ -399,6 +482,14 @@ export default function RemoteControl() {
     }
 
     volumeApiTimeout.current = setTimeout(async () => {
+      if (!spotify) {
+        try {
+          await api.localSetVolume(newVol);
+        } catch (err) {
+          console.error('Local volume failed:', err);
+        }
+        return;
+      }
       if (!token) return;
       try {
         await api.setVolume(token, newVol);
@@ -576,6 +667,49 @@ export default function RemoteControl() {
                 Close
               </button>
             </div>
+
+            {/* Active Source Toggle */}
+            <div className="flex justify-between items-center bg-white/2 border border-white/5 p-3 rounded-xl">
+              <span className="text-[10px] uppercase tracking-wider text-[#8695a7] font-semibold">Active Plugin Source</span>
+              <button
+                onClick={handleToggleSource}
+                className={`px-3 py-1.5 rounded-lg text-[9px] font-bold uppercase transition-all cursor-pointer ${
+                  spotify 
+                    ? 'bg-emerald-500/10 border border-emerald-500/30 text-emerald-400' 
+                    : 'bg-amber-500/10 border border-amber-500/30 text-amber-400'
+                }`}
+              >
+                {spotify ? 'Spotify' : 'Local Media'}
+              </button>
+            </div>
+
+            {/* Spotify Daemon Credentials Form */}
+            <form onSubmit={handleSaveDaemonCredentials} className="flex flex-col gap-2 border-t border-white/5 pt-3">
+              <span className="text-[10px] uppercase tracking-wider text-[#8695a7] font-semibold">Spotify Daemon Config</span>
+              <div className="flex flex-col gap-1.5">
+                <input
+                  type="text"
+                  placeholder="Spotify Username"
+                  value={daemonUsername}
+                  onChange={(e) => setDaemonUsername(e.target.value)}
+                  className="w-full bg-black/40 border border-white/5 rounded-xl px-3 py-2 text-xs text-white placeholder:text-zinc-700 focus:outline-none focus:border-white/10"
+                />
+                <input
+                  type="password"
+                  placeholder="Spotify Password"
+                  value={daemonPassword}
+                  onChange={(e) => setDaemonPassword(e.target.value)}
+                  className="w-full bg-black/40 border border-white/5 rounded-xl px-3 py-2 text-xs text-white placeholder:text-zinc-700 focus:outline-none focus:border-white/10"
+                />
+              </div>
+              <button
+                type="submit"
+                disabled={isSavingDaemonCreds}
+                className="w-full py-2 rounded-xl bg-white/5 border border-white/10 text-white font-bold text-xs uppercase tracking-wider active:scale-95 transition-all cursor-pointer hover:bg-white/10"
+              >
+                {isSavingDaemonCreds ? 'Saving...' : 'Save & Restart Daemon'}
+              </button>
+            </form>
             
             <form onSubmit={applyManualToken} className="flex flex-col gap-2">
               <label className="text-[10px] uppercase tracking-wider text-[#8695a7] font-semibold">Spotify Developer Token</label>
@@ -770,7 +904,7 @@ export default function RemoteControl() {
         </div>
 
         {/* Auth status block when token is missing */}
-        {!token && (
+        {spotify && !token && (
           <div className="mx-4 p-4 rounded-2xl bg-amber-500/5 border border-amber-500/20 text-center flex flex-col gap-2.5">
             <p className="text-[10px] text-amber-250 font-medium leading-relaxed">
               Remote Control is not authenticated to Spotify. Connect a client or enter a token in settings.
@@ -792,7 +926,7 @@ export default function RemoteControl() {
             max={trackDuration}
             value={trackPosition}
             onChange={handleSeek}
-            disabled={!token || !trackDuration}
+            disabled={spotify ? (!token || !trackDuration) : !trackDuration}
             className="w-full h-1 bg-white/5 hover:bg-white/10 rounded-lg appearance-none cursor-pointer accent-white transition-all focus:outline-none"
             style={{
               background: `linear-gradient(to right, #ffffff 0%, #ffffff ${
@@ -812,7 +946,7 @@ export default function RemoteControl() {
         <div className="w-full flex items-center justify-between px-6">
           <button
             onClick={handleShuffle}
-            disabled={!token}
+            disabled={spotify ? !token : true}
             className={`p-2 rounded-full transition-all active:scale-90 cursor-pointer disabled:opacity-20 ${
               shuffleState ? 'text-[#c788ff] drop-shadow-[0_0_8px_rgba(199,136,255,0.4)]' : 'text-[#8695a7] hover:text-white'
             }`}
@@ -822,7 +956,7 @@ export default function RemoteControl() {
 
           <button
             onClick={handlePrevious}
-            disabled={!token}
+            disabled={spotify ? !token : false}
             className="p-2.5 rounded-full hover:bg-white/5 text-[#f1f3f6] active:scale-90 transition-all cursor-pointer disabled:opacity-20"
           >
             <SkipBack className="h-5.5 w-5.5 fill-current" />
@@ -831,7 +965,7 @@ export default function RemoteControl() {
           {/* Large circular Play/Pause Button */}
           <button
             onClick={handlePlayPause}
-            disabled={!token}
+            disabled={spotify ? !token : false}
             className="h-16 w-16 rounded-full bg-white text-black flex items-center justify-center shadow-lg active:scale-90 transition-all cursor-pointer hover:bg-zinc-150 disabled:opacity-50"
           >
             {isPlaying ? (
@@ -843,7 +977,7 @@ export default function RemoteControl() {
 
           <button
             onClick={handleNext}
-            disabled={!token}
+            disabled={spotify ? !token : false}
             className="p-2.5 rounded-full hover:bg-white/5 text-[#f1f3f6] active:scale-90 transition-all cursor-pointer disabled:opacity-20"
           >
             <SkipForward className="h-5.5 w-5.5 fill-current" />
@@ -851,7 +985,7 @@ export default function RemoteControl() {
 
           <button
             onClick={handleRepeat}
-            disabled={!token}
+            disabled={spotify ? !token : true}
             className={`p-2 rounded-full transition-all active:scale-90 cursor-pointer disabled:opacity-20 ${
               repeatState !== 'off' ? 'text-[#c788ff] drop-shadow-[0_0_8px_rgba(199,136,255,0.4)]' : 'text-[#8695a7] hover:text-white'
             }`}
@@ -870,7 +1004,7 @@ export default function RemoteControl() {
         <div className="bg-[#12151b] border border-white/5 rounded-2xl px-4 py-3 flex items-center gap-3.5 shadow-xl">
           <button 
             onClick={handleMuteToggle}
-            disabled={!token}
+            disabled={spotify ? !token : false}
             className="text-[#8695a7] hover:text-white active:scale-90 transition-all cursor-pointer disabled:opacity-25"
           >
             {isMuted || volume === 0 ? (
@@ -886,7 +1020,7 @@ export default function RemoteControl() {
             max="100"
             value={isMuted ? 0 : volume}
             onChange={handleVolumeChange}
-            disabled={!token}
+            disabled={spotify ? !token : false}
             className="flex-grow h-1 bg-white/5 hover:bg-white/10 rounded-lg appearance-none cursor-pointer accent-white transition-all focus:outline-none"
             style={{
               background: `linear-gradient(to right, #ffffff 0%, #ffffff ${
