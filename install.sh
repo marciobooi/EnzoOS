@@ -67,8 +67,8 @@ echo -e ""
 echo -e "${YELLOW}In your app settings, add this Redirect URI:${NC}"
 echo -e "${GREEN}  http://resonance.local:5000/auth/spotify/callback${NC}"
 echo -e ""
-read -p "Enter your Spotify Client ID:     " SPOTIFY_CLIENT_ID
-read -p "Enter your Spotify Client Secret: " SPOTIFY_CLIENT_SECRET
+read -p "Enter your Spotify Client ID:     " SPOTIFY_CLIENT_ID < /dev/tty
+read -p "Enter your Spotify Client Secret: " SPOTIFY_CLIENT_SECRET < /dev/tty
 
 if [ -z "$SPOTIFY_CLIENT_ID" ] || [ -z "$SPOTIFY_CLIENT_SECRET" ]; then
   echo -e "${YELLOW}Warning: No Spotify credentials entered. You can add them later in the .env file.${NC}"
