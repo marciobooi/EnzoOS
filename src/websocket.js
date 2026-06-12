@@ -57,6 +57,10 @@ export function useResonanceWS({
         setIsConnected(true);
         console.log(`[Resonance Client] Connected to WebSocket. Remote: ${isRemote}`);
         
+        if (setUpdateStatus) {
+          setUpdateStatus(null);
+        }
+
         if (tokenRef.current) {
           socket.send(JSON.stringify({ type: 'SET_TOKEN', payload: { token: tokenRef.current } }));
         }
