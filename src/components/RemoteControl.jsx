@@ -501,7 +501,7 @@ export default function RemoteControl() {
   if (!isAuthenticated) {
     return (
       <>
-        <div className="w-full min-h-screen bg-[#090b0e] text-[#f1f3f6] font-sans flex flex-col items-center justify-center p-6 relative overflow-hidden select-none">
+        <div className="w-full min-h-screen text-[#f1f3f6] font-sans flex flex-col items-center justify-center p-6 relative overflow-hidden select-none">
           
           {/* Background Ambience Glow */}
           <div className="absolute top-[-20%] left-1/2 -translate-x-1/2 w-[120%] aspect-square rounded-full bg-gradient-to-b from-[#2e3746]/10 to-transparent blur-3xl pointer-events-none" />
