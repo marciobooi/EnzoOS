@@ -653,33 +653,13 @@ export default function RemoteControl() {
               )}
             </div>
 
-            {/* Spotify Daemon Credentials Form */}
-            <form onSubmit={handleSaveDaemonCredentials} className="flex flex-col gap-2 border-t border-white/5 pt-3">
-              <span className="text-[10px] uppercase tracking-wider text-[#8695a7] font-semibold">Spotify Daemon Config</span>
-              <div className="flex flex-col gap-1.5">
-                <input
-                  type="text"
-                  placeholder="Spotify Username"
-                  value={daemonUsername}
-                  onChange={(e) => setDaemonUsername(e.target.value)}
-                  className="w-full bg-black/40 border border-white/5 rounded-xl px-3 py-2 text-xs text-white placeholder:text-zinc-700 focus:outline-none focus:border-white/10"
-                />
-                <input
-                  type="password"
-                  placeholder="Spotify Password"
-                  value={daemonPassword}
-                  onChange={(e) => setDaemonPassword(e.target.value)}
-                  className="w-full bg-black/40 border border-white/5 rounded-xl px-3 py-2 text-xs text-white placeholder:text-zinc-700 focus:outline-none focus:border-white/10"
-                />
+            {/* Spotify Connect pairing instructions */}
+            <div className="flex flex-col gap-2 border-t border-white/5 pt-3 text-[10px] leading-relaxed text-[#8695a7]">
+              <span className="text-[10px] uppercase tracking-wider text-[#8695a7] font-semibold">Spotify Connect pairing</span>
+              <div className="p-2.5 rounded bg-black/40 border border-white/5 text-[9px] text-[#8695a7]">
+                To pair your account, just select and play to <strong className="text-white">"Resonance Connect"</strong> once from your official Spotify app (phone or computer) on this network. The daemon will cache your session automatically and allow full control.
               </div>
-              <button
-                type="submit"
-                disabled={isSavingDaemonCreds}
-                className="w-full py-2 rounded-xl bg-white/5 border border-white/10 text-white font-bold text-xs uppercase tracking-wider active:scale-95 transition-all cursor-pointer hover:bg-white/10"
-              >
-                {isSavingDaemonCreds ? 'Saving...' : 'Save & Restart Daemon'}
-              </button>
-            </form>
+            </div>
 
 
             <div className="border-t border-white/5 pt-4 flex flex-col gap-3">

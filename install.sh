@@ -117,14 +117,22 @@ echo -e "${YELLOW}Configuring SSH daemon...${NC}"
 systemctl enable ssh
 systemctl start ssh
 
+# Disable conflicting custom librespot service if it exists
+if [ -f "/etc/systemd/system/librespot.service" ]; then
+  echo -e "${YELLOW}Disabling conflicting custom librespot service...${NC}"
+  systemctl stop librespot || true
+  systemctl disable librespot || true
+  rm -f /etc/systemd/system/librespot.service
+  systemctl daemon-reload
+fi
+
 # Configure Raspotify system settings in its standard Linux configuration file
-echo -e "${YELLOW}Configuring Raspotify settings in /etc/default/raspotify...${NC}"
-cat <<EOF > /etc/default/raspotify
-# Resonance HiFi - Raspotify Configuration
-DEVICE_NAME="Resonance Connect"
-BITRATE="320"
-OPTIONS="--backend alsa --initial-volume 50 --enable-volume-normalisation"
-EOF
+echo -e "${YELLOW}Configuring Raspotify settings in /etc/raspotify/conf...${NC}"
+sed -i 's/#LIBRESPOT_NAME="Librespot"/LIBRESPOT_NAME="Resonance Connect"/g' /etc/raspotify/conf
+sed -i 's/#LIBRESPOT_BITRATE=160/LIBRESPOT_BITRATE=320/g' /etc/raspotify/conf
+sed -i 's/LIBRESPOT_DISABLE_CREDENTIAL_CACHE=/#LIBRESPOT_DISABLE_CREDENTIAL_CACHE=/g' /etc/raspotify/conf
+sed -i 's/#LIBRESPOT_INITIAL_VOLUME=50/LIBRESPOT_INITIAL_VOLUME=50/g' /etc/raspotify/conf
+sed -i 's/#LIBRESPOT_BACKEND=/LIBRESPOT_BACKEND=alsa/g' /etc/raspotify/conf
 
 # Enable and start native Raspotify systemd daemon
 echo -e "${YELLOW}Enabling and starting Raspotify service...${NC}"
@@ -133,10 +141,10 @@ systemctl enable raspotify
 systemctl restart raspotify
 echo -e "${GREEN}Raspotify Spotify Connect service configured and started.${NC}"
 
-# Configure passwordless sudo for Spotify configuration updates
+# Configure passwordless sudo for Spotify daemon management
 echo -e "${YELLOW}Configuring sudo permissions for Spotify daemon management...${NC}"
 cat <<EOF > /etc/sudoers.d/resonance
-$TARGET_USER ALL=(ALL) NOPASSWD: /usr/bin/tee /etc/default/raspotify, /bin/tee /etc/default/raspotify, /usr/bin/systemctl restart raspotify, /bin/systemctl restart raspotify
+$TARGET_USER ALL=(ALL) NOPASSWD: /usr/bin/tee /etc/raspotify/conf, /bin/tee /etc/raspotify/conf, /usr/bin/systemctl restart raspotify, /bin/systemctl restart raspotify
 EOF
 chmod 440 /etc/sudoers.d/resonance
 

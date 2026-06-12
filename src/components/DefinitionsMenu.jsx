@@ -136,33 +136,13 @@ export default function DefinitionsMenu({
           </button>
         </div>
 
-        {/* Credentials form for librespot daemon */}
-        <form onSubmit={handleSaveDaemonCredentials} className="flex flex-col gap-2 border-t border-zinc-900 pt-3">
-          <p className="text-[8.5px] text-zinc-500 uppercase font-bold tracking-wider">Configure Spotify Connect Daemon</p>
-          <div className="grid grid-cols-2 gap-2">
-            <input
-              type="text"
-              placeholder="Spotify Username"
-              value={daemonUsername}
-              onChange={(e) => setDaemonUsername(e.target.value)}
-              className="bg-zinc-950 border border-zinc-900 rounded p-1.5 text-[9px] text-white focus:outline-none focus:border-zinc-700"
-            />
-            <input
-              type="password"
-              placeholder="Spotify Password"
-              value={daemonPassword}
-              onChange={(e) => setDaemonPassword(e.target.value)}
-              className="bg-zinc-950 border border-zinc-900 rounded p-1.5 text-[9px] text-white focus:outline-none focus:border-zinc-700"
-            />
+        {/* Spotify Connect pairing instructions */}
+        <div className="flex flex-col gap-2 border-t border-zinc-900 pt-3 text-[10px] leading-relaxed text-zinc-400">
+          <p className="text-[8.5px] text-zinc-500 uppercase font-bold tracking-wider">Spotify Connect pairing</p>
+          <div className="p-2.5 rounded bg-zinc-950 border border-zinc-900 text-[9px] text-zinc-500">
+            To pair your account, just select and play to <strong className="text-white">"Resonance Connect"</strong> once from your official Spotify app (phone or computer) on this network. The daemon will cache your session automatically and allow full control.
           </div>
-          <button
-            type="submit"
-            disabled={isSavingDaemonCreds}
-            className="w-full py-1.5 bg-zinc-900 hover:bg-zinc-850 border border-zinc-800 hover:border-zinc-700 text-[9px] font-bold uppercase rounded text-white active:scale-95 transition-all cursor-pointer"
-          >
-            {isSavingDaemonCreds ? 'Configuring Daemon...' : 'Save & Restart Daemon'}
-          </button>
-        </form>
+        </div>
       </section>
 
       {/* 1. SPOTIFY AUTHENTICATION KEYWAY */}

@@ -11,6 +11,9 @@ async function handleResponse(response) {
 
   const text = await response.text();
   if (!text) {
+    if (!response.ok) {
+      throw new Error(`Spotify API failed with status ${response.status}`);
+    }
     return { success: true };
   }
 
@@ -18,7 +21,10 @@ async function handleResponse(response) {
   try {
     data = JSON.parse(text);
   } catch (err) {
-    throw new Error('Could not parse response from Spotify API.');
+    if (!response.ok) {
+      throw new Error(`Spotify API failed with status ${response.status}`);
+    }
+    return { success: true };
   }
 
   if (!response.ok) {
