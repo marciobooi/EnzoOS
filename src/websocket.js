@@ -34,6 +34,12 @@ export function useResonanceWS({
     onRequestSyncRef.current = onRequestSync;
   }, [onRequestSync]);
 
+  // Keep token in a ref to avoid reconnecting when token changes
+  const tokenRef = useRef(token);
+  useEffect(() => {
+    tokenRef.current = token;
+  }, [token]);
+
   useEffect(() => {
     if (!isAuthenticated) return;
 
@@ -51,8 +57,8 @@ export function useResonanceWS({
         setIsConnected(true);
         console.log(`[Resonance Client] Connected to WebSocket. Remote: ${isRemote}`);
         
-        if (token) {
-          socket.send(JSON.stringify({ type: 'SET_TOKEN', payload: { token } }));
+        if (tokenRef.current) {
+          socket.send(JSON.stringify({ type: 'SET_TOKEN', payload: { token: tokenRef.current } }));
         }
         
         if (isRemote) {
@@ -105,7 +111,7 @@ export function useResonanceWS({
 
           if (type === 'SET_TOKEN') {
             const newToken = payload.token;
-            if (newToken && newToken !== token) {
+            if (newToken && newToken !== tokenRef.current) {
               if (setToken) setToken(newToken);
               toast.success(
                 isRemote 
@@ -155,7 +161,14 @@ export function useResonanceWS({
       }
       ws.current = null;
     };
-  }, [token, isAuthenticated, isRemote]);
+  }, [isAuthenticated, isRemote]);
+
+  // Send token updates to WebSocket server when it changes locally
+  useEffect(() => {
+    if (isAuthenticated && token && ws.current && ws.current.readyState === WebSocket.OPEN) {
+      ws.current.send(JSON.stringify({ type: 'SET_TOKEN', payload: { token } }));
+    }
+  }, [token, isAuthenticated]);
 
   // Send updates to websocket
   const sendUpdate = (type, payload) => {
