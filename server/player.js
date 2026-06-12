@@ -1,6 +1,7 @@
 import express from 'express';
 import { exec } from 'child_process';
 import { promisify } from 'util';
+import { getFavoriteRadios, addFavoriteRadio, deleteFavoriteRadioByUrl } from './db.js';
 
 const execPromise = promisify(exec);
 const router = express.Router();
@@ -107,6 +108,44 @@ router.post('/play-radio', async (req, res) => {
   } catch (err) {
     console.error('[Local Player] Play radio failed:', err);
     res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// GET /api/player/radios -> Get saved favorite radios
+router.get('/radios', async (req, res) => {
+  try {
+    const list = await getFavoriteRadios();
+    res.json(list);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/player/radios -> Add favorite radio
+router.post('/radios', async (req, res) => {
+  const { name, url, favicon, country, tags } = req.body;
+  if (!name || !url) {
+    return res.status(400).json({ error: 'Name and URL are required' });
+  }
+  try {
+    const saved = await addFavoriteRadio(name, url, favicon, country, tags);
+    res.json(saved);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// DELETE /api/player/radios -> Delete favorite radio
+router.delete('/radios', async (req, res) => {
+  const { url } = req.body;
+  if (!url) {
+    return res.status(400).json({ error: 'URL is required' });
+  }
+  try {
+    await deleteFavoriteRadioByUrl(url);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 });
 

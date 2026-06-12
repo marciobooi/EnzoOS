@@ -16,7 +16,7 @@ const db = new sqlite3.Database(dbPath, (err) => {
   }
 });
 
-// Setup settings table
+// Setup tables
 db.serialize(() => {
   db.run(`
     CREATE TABLE IF NOT EXISTS settings (
@@ -30,7 +30,77 @@ db.serialize(() => {
       console.log('[Resonance DB] Settings table initialized.');
     }
   });
+
+  db.run(`
+    CREATE TABLE IF NOT EXISTS favorite_radios (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL,
+      url TEXT NOT NULL UNIQUE,
+      favicon TEXT,
+      country TEXT,
+      tags TEXT
+    )
+  `, (err) => {
+    if (err) {
+      console.error('[Resonance DB] Error creating favorite_radios table:', err.message);
+    } else {
+      console.log('[Resonance DB] Favorite radios table initialized.');
+    }
+  });
 });
+
+/**
+ * Fetch all favorite radios.
+ * @returns {Promise<Array>}
+ */
+export const getFavoriteRadios = () => {
+  return new Promise((resolve, reject) => {
+    db.all('SELECT * FROM favorite_radios ORDER BY name ASC', [], (err, rows) => {
+      if (err) {
+        console.error('[Resonance DB] getFavoriteRadios Error:', err.message);
+        reject(err);
+      } else {
+        resolve(rows);
+      }
+    });
+  });
+};
+
+/**
+ * Save or replace a favorite radio station.
+ */
+export const addFavoriteRadio = (name, url, favicon, country, tags) => {
+  return new Promise((resolve, reject) => {
+    db.run(
+      'INSERT OR REPLACE INTO favorite_radios (name, url, favicon, country, tags) VALUES (?, ?, ?, ?, ?)',
+      [name, url, favicon || '', country || '', tags || ''],
+      function (err) {
+        if (err) {
+          console.error('[Resonance DB] addFavoriteRadio Error:', err.message);
+          reject(err);
+        } else {
+          resolve({ id: this.lastID, name, url, favicon, country, tags });
+        }
+      }
+    );
+  });
+};
+
+/**
+ * Delete a favorite radio by URL.
+ */
+export const deleteFavoriteRadioByUrl = (url) => {
+  return new Promise((resolve, reject) => {
+    db.run('DELETE FROM favorite_radios WHERE url = ?', [url], (err) => {
+      if (err) {
+        console.error('[Resonance DB] deleteFavoriteRadio Error:', err.message);
+        reject(err);
+      } else {
+        resolve();
+      }
+    });
+  });
+};
 
 /**
  * Fetch a setting value by key.

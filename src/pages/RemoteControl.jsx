@@ -16,7 +16,8 @@ import {
   Settings,
   ChevronRight,
   LogOut,
-  Radio
+  Radio,
+  Heart
 } from 'lucide-react';
 import { api } from '../api';
 import { toast, Toaster } from 'sonner';
@@ -117,6 +118,76 @@ export default function RemoteControl() {
     setIsMuted(muted);
   };
 
+  const [favoriteStations, setFavoriteStations] = useState([]);
+
+  const fetchFavorites = async () => {
+    try {
+      const favs = await api.getFavoriteRadios();
+      setFavoriteStations(favs || []);
+      if (!radioSearch.trim()) {
+        setStationsList(favs && favs.length > 0 ? favs : RADIO_STATIONS);
+      }
+    } catch (err) {
+      console.warn('Failed to load favorite stations on remote:', err);
+    }
+  };
+
+  useEffect(() => {
+    fetchFavorites();
+  }, []);
+
+  const handleToggleFavoriteRadio = async (station) => {
+    const isFavorite = favoriteStations.some(s => s.url === station.url);
+    try {
+      if (isFavorite) {
+        await api.deleteFavoriteRadio(station.url);
+        toast.success(`Removed from favorites: ${station.name}`);
+      } else {
+        await api.addFavoriteRadio({
+          name: station.name,
+          url: station.url,
+          favicon: station.favicon,
+          country: station.country,
+          tags: station.tags
+        });
+        toast.success(`Added to favorites: ${station.name}`);
+      }
+      await fetchFavorites();
+    } catch (err) {
+      toast.error(`Favorite operation failed: ${err.message}`);
+    }
+  };
+
+  const handleRadioSearch = async () => {
+    const query = radioSearch.trim();
+    if (!query) {
+      setStationsList(favoriteStations.length > 0 ? favoriteStations : RADIO_STATIONS);
+      return;
+    }
+    try {
+      setIsSearching(true);
+      const res = await fetch(`https://de1.api.radio-browser.info/json/stations/byname/${encodeURIComponent(query)}?limit=25&hidebroken=true`);
+      const data = await res.json();
+      const formatted = data.map(s => ({
+        name: s.name.length > 22 ? s.name.substring(0, 20) + '...' : s.name,
+        url: s.url_resolved || s.url,
+        favicon: s.favicon,
+        country: s.country,
+        tags: s.tags
+      }));
+      if (formatted.length === 0) {
+        toast.error('No stations found.');
+      } else {
+        setStationsList(formatted);
+        toast.success(`Found ${formatted.length} stations!`);
+      }
+    } catch (err) {
+      toast.error('Failed to search stations.');
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
   const handleSaveDaemonCredentials = async (e) => {
     e.preventDefault();
     if (!daemonUsername.trim() || !daemonPassword.trim()) {
@@ -151,36 +222,7 @@ export default function RemoteControl() {
     toast.success(`Source set to: ${sourceNames[nextSource]}`);
   };
 
-  const handleRadioSearch = async () => {
-    const query = radioSearch.trim();
-    if (!query) {
-      setStationsList(RADIO_STATIONS);
-      return;
-    }
-    try {
-      setIsSearching(true);
-      const res = await fetch(`https://de1.api.radio-browser.info/json/stations/byname/${encodeURIComponent(query)}?limit=25&hidebroken=true`);
-      const data = await res.json();
-      const formatted = data.map(s => ({
-        name: s.name.length > 30 ? s.name.substring(0, 27) + '...' : s.name,
-        url: s.url_resolved || s.url,
-        favicon: s.favicon,
-        country: s.country,
-        tags: s.tags
-      }));
-      if (formatted.length === 0) {
-        toast.error('No stations found.');
-        setStationsList(RADIO_STATIONS);
-      } else {
-        setStationsList(formatted);
-        toast.success(`Found ${formatted.length} stations!`);
-      }
-    } catch (err) {
-      toast.error('Failed to search stations.');
-    } finally {
-      setIsSearching(false);
-    }
-  };
+
 
   // Derived state
   const currentTrack = playbackState?.track_window?.current_track;
@@ -713,48 +755,58 @@ export default function RemoteControl() {
                 )}
 
                 {/* Position / Progress Bar Slider */}
-                <div className="w-full px-2 flex flex-col gap-1.5">
-                  <input
-                    type="range"
-                    min="0"
-                    max={trackDuration}
-                    value={trackPosition}
-                    onChange={handleSeek}
-                    disabled={spotify ? (!token || !trackDuration) : !trackDuration}
-                    className="w-full h-1 bg-zinc-200 hover:bg-zinc-300 rounded-lg appearance-none cursor-pointer accent-zinc-900 transition-all focus:outline-none"
-                    style={{
-                      background: `linear-gradient(to right, #18181b 0%, #18181b ${
-                        trackDuration ? (trackPosition / trackDuration) * 100 : 0
-                      }%, rgba(0, 0, 0, 0.06) ${
-                        trackDuration ? (trackPosition / trackDuration) * 100 : 0
-                      }%, rgba(0, 0, 0, 0.06) 100%)`
-                    }}
-                  />
-                  <div className="flex justify-between items-center text-[10px] text-zinc-500 font-semibold font-mono">
-                    <span>{formatTime(trackPosition)}</span>
-                    <span>{formatTime(trackDuration)}</span>
+                {source !== 'radio' && (
+                  <div className="w-full px-2 flex flex-col gap-1.5">
+                    <input
+                      type="range"
+                      min="0"
+                      max={trackDuration}
+                      value={trackPosition}
+                      onChange={handleSeek}
+                      disabled={spotify ? (!token || !trackDuration) : !trackDuration}
+                      className="w-full h-1 bg-zinc-200 hover:bg-zinc-300 rounded-lg appearance-none cursor-pointer accent-zinc-900 transition-all focus:outline-none"
+                      style={{
+                        background: `linear-gradient(to right, #18181b 0%, #18181b ${
+                          trackDuration ? (trackPosition / trackDuration) * 100 : 0
+                        }%, rgba(0, 0, 0, 0.06) ${
+                          trackDuration ? (trackPosition / trackDuration) * 100 : 0
+                        }%, rgba(0, 0, 0, 0.06) 100%)`
+                      }}
+                    />
+                    <div className="flex justify-between items-center text-[10px] text-zinc-500 font-semibold font-mono">
+                      <span>{formatTime(trackPosition)}</span>
+                      <span>{formatTime(trackDuration)}</span>
+                    </div>
                   </div>
-                </div>
+                )}
 
                 {/* Media Playback Controls Row */}
                 <div className="w-full flex items-center justify-between px-6 mt-1">
-                  <button
-                    onClick={handleShuffle}
-                    disabled={spotify ? !token : true}
-                    className={`p-2 rounded-full transition-all active:scale-90 cursor-pointer disabled:opacity-20 ${
-                      shuffleState ? 'text-zinc-800 font-bold drop-shadow-[0_0_8px_rgba(0,0,0,0.1)]' : 'text-zinc-400 hover:text-zinc-700'
-                    }`}
-                  >
-                    <Shuffle className="h-4 w-4" />
-                  </button>
+                  {source !== 'radio' ? (
+                    <button
+                      onClick={handleShuffle}
+                      disabled={spotify ? !token : true}
+                      className={`p-2 rounded-full transition-all active:scale-90 cursor-pointer disabled:opacity-20 ${
+                        shuffleState ? 'text-zinc-800 font-bold drop-shadow-[0_0_8px_rgba(0,0,0,0.1)]' : 'text-zinc-400 hover:text-zinc-700'
+                      }`}
+                    >
+                      <Shuffle className="h-4 w-4" />
+                    </button>
+                  ) : (
+                    <div className="w-8" />
+                  )}
 
-                  <button
-                    onClick={handlePrevious}
-                    disabled={spotify ? !token : false}
-                    className="p-2 rounded-full hover:bg-zinc-100 text-zinc-700 active:scale-90 transition-all cursor-pointer disabled:opacity-20"
-                  >
-                    <SkipBack className="h-5 w-5 fill-current" />
-                  </button>
+                  {source !== 'radio' ? (
+                    <button
+                      onClick={handlePrevious}
+                      disabled={spotify ? !token : false}
+                      className="p-2 rounded-full hover:bg-zinc-100 text-zinc-700 active:scale-90 transition-all cursor-pointer disabled:opacity-20"
+                    >
+                      <SkipBack className="h-5 w-5 fill-current" />
+                    </button>
+                  ) : (
+                    <div className="w-8" />
+                  )}
 
                   {/* Large circular Play/Pause Button */}
                   <button
@@ -769,23 +821,31 @@ export default function RemoteControl() {
                     )}
                   </button>
 
-                  <button
-                    onClick={handleNext}
-                    disabled={spotify ? !token : false}
-                    className="p-2 rounded-full hover:bg-zinc-100 text-zinc-700 active:scale-90 transition-all cursor-pointer disabled:opacity-20"
-                  >
-                    <SkipForward className="h-5 w-5 fill-current" />
-                  </button>
+                  {source !== 'radio' ? (
+                    <button
+                      onClick={handleNext}
+                      disabled={spotify ? !token : false}
+                      className="p-2 rounded-full hover:bg-zinc-100 text-zinc-700 active:scale-90 transition-all cursor-pointer disabled:opacity-20"
+                    >
+                      <SkipForward className="h-5 w-5 fill-current" />
+                    </button>
+                  ) : (
+                    <div className="w-8" />
+                  )}
 
-                  <button
-                    onClick={handleRepeat}
-                    disabled={spotify ? !token : true}
-                    className={`p-2 rounded-full transition-all active:scale-90 cursor-pointer disabled:opacity-20 ${
-                      repeatState !== 'off' ? 'text-zinc-800 font-bold drop-shadow-[0_0_8px_rgba(0,0,0,0.1)]' : 'text-zinc-400 hover:text-zinc-700'
-                    }`}
-                  >
-                    <Repeat className="h-4 w-4" />
-                  </button>
+                  {source !== 'radio' ? (
+                    <button
+                      onClick={handleRepeat}
+                      disabled={spotify ? !token : true}
+                      className={`p-2 rounded-full transition-all active:scale-90 cursor-pointer disabled:opacity-20 ${
+                        repeatState !== 'off' ? 'text-zinc-800 font-bold drop-shadow-[0_0_8px_rgba(0,0,0,0.1)]' : 'text-zinc-400 hover:text-zinc-700'
+                      }`}
+                    >
+                      <Repeat className="h-4 w-4" />
+                    </button>
+                  ) : (
+                    <div className="w-8" />
+                  )}
                 </div>
               </div>
             )}
@@ -823,47 +883,78 @@ export default function RemoteControl() {
 
                 {/* Stations Results List */}
                 <div className="flex flex-col gap-2 overflow-y-auto max-h-[calc(100vh-270px)] pr-1 custom-scrollbar">
-                  {stationsList.map((station, idx) => (
-                    <button
-                      key={`${station.url}-${idx}`}
-                      onClick={async () => {
-                        try {
-                          await api.localPlayRadio(station.url, station.name);
-                          if (spotify) {
-                            setSpotify(false);
-                            sendUpdate('SET_SOURCE', { spotify: false });
-                          }
-                          toast.success(`Playing Radio: ${station.name}`);
-                        } catch (err) {
-                          toast.error(`Failed to play radio: ${err.message}`);
-                        }
-                      }}
-                      className="w-full p-3.5 rounded-2xl bg-white border border-zinc-100 hover:border-zinc-300 text-left flex items-center justify-between transition-all active:scale-[0.99] shadow-sm hover:shadow"
-                    >
-                      <div className="flex items-center gap-3 min-w-0">
-                        <div className="w-8 h-8 rounded-full bg-zinc-50 flex items-center justify-center border border-zinc-150 shrink-0 overflow-hidden">
-                          {station.favicon ? (
-                            <img 
-                              src={station.favicon} 
-                              alt="" 
-                              className="w-full h-full object-cover"
-                              onError={(e) => { e.target.style.display = 'none'; }}
-                            />
-                          ) : null}
-                          <Radio className="w-3.5 h-3.5 text-zinc-650 shrink-0 absolute" style={{ zIndex: -1 }} />
-                        </div>
-                        <div className="min-w-0 flex flex-col">
-                          <span className="text-[11px] font-bold text-zinc-800 truncate">{station.name}</span>
-                          <span className="text-[8px] font-mono text-zinc-400 tracking-wider uppercase truncate">
-                            {station.country ? `${station.country}` : 'Global'}{station.tags ? ` • ${station.tags.split(',')[0]}` : ''}
-                          </span>
+                  {stationsList.map((station, idx) => {
+                    const isFavorite = favoriteStations.some(s => s.url === station.url);
+                    return (
+                      <div
+                        key={`${station.url}-${idx}`}
+                        className="w-full p-3.5 rounded-2xl bg-white border border-zinc-100 hover:border-zinc-300 text-left flex items-center justify-between transition-all shadow-sm hover:shadow group"
+                      >
+                        <button
+                          onClick={async () => {
+                            try {
+                              await api.localPlayRadio(station.url, station.name);
+                              if (spotify) {
+                                setSpotify(false);
+                                sendUpdate('SET_SOURCE', { spotify: false });
+                              }
+                              toast.success(`Playing Radio: ${station.name}`);
+                            } catch (err) {
+                              toast.error(`Failed to play radio: ${err.message}`);
+                            }
+                          }}
+                          className="flex items-center gap-3 min-w-0 flex-grow text-left cursor-pointer bg-transparent border-none p-0 outline-none"
+                        >
+                          <div className="w-8 h-8 rounded-full bg-zinc-50 flex items-center justify-center border border-zinc-150 shrink-0 overflow-hidden relative">
+                            {station.favicon ? (
+                              <img 
+                                src={station.favicon} 
+                                alt="" 
+                                className="w-full h-full object-cover"
+                                onError={(e) => { e.target.style.display = 'none'; }}
+                              />
+                            ) : null}
+                            <Radio className="w-3.5 h-3.5 text-zinc-650 shrink-0 absolute" style={{ zIndex: -1 }} />
+                          </div>
+                          <div className="min-w-0 flex flex-col">
+                            <span className="text-[11px] font-bold text-zinc-800 truncate">{station.name}</span>
+                            <span className="text-[8px] font-mono text-zinc-400 tracking-wider uppercase truncate">
+                              {station.country ? `${station.country}` : 'Global'}{station.tags ? ` • ${station.tags.split(',')[0]}` : ''}
+                            </span>
+                          </div>
+                        </button>
+                        <div className="flex items-center gap-2 shrink-0 ml-3">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleToggleFavoriteRadio(station);
+                            }}
+                            className="p-2 rounded-full hover:bg-zinc-50 text-zinc-400 hover:text-rose-500 transition-colors cursor-pointer"
+                            title={isFavorite ? "Remove from favorites" : "Add to favorites"}
+                          >
+                            <Heart className={`w-3.5 h-3.5 ${isFavorite ? 'text-rose-500 fill-rose-500' : ''}`} />
+                          </button>
+                          <button
+                            onClick={async () => {
+                              try {
+                                await api.localPlayRadio(station.url, station.name);
+                                if (spotify) {
+                                  setSpotify(false);
+                                  sendUpdate('SET_SOURCE', { spotify: false });
+                                }
+                                toast.success(`Playing Radio: ${station.name}`);
+                              } catch (err) {
+                                toast.error(`Failed to play radio: ${err.message}`);
+                              }
+                            }}
+                            className="text-[8px] bg-zinc-50 border border-zinc-200 px-2 py-0.5 rounded font-extrabold text-zinc-600 hover:bg-zinc-900 hover:text-white hover:border-zinc-900 transition-all uppercase tracking-wider cursor-pointer"
+                          >
+                            PLAY
+                          </button>
                         </div>
                       </div>
-                      <span className="text-[8px] bg-zinc-50 border border-zinc-200 px-2 py-0.5 rounded font-extrabold text-zinc-600 uppercase tracking-wider shrink-0">
-                        PLAY
-                      </span>
-                    </button>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             )}

@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Play, Pause, SkipForward, SkipBack, Shuffle, Repeat, Volume2, VolumeX, Home, Volume1, Sliders, Radio } from 'lucide-react';
+import { Play, Pause, SkipForward, SkipBack, Shuffle, Repeat, Volume2, VolumeX, Home, Volume1, Sliders, Radio, Heart } from 'lucide-react';
 
 export default function RoseHiFiDisplay({
   isPlaying,
@@ -33,7 +33,9 @@ export default function RoseHiFiDisplay({
   stationsList,
   isSearching,
   handleRadioSearch,
-  onPlayRadio
+  onPlayRadio,
+  favoriteStations = [],
+  onToggleFavoriteRadio
 }) {
   const [showVolumeFeedback, setShowVolumeFeedback] = useState(false);
   const [showSearch, setShowSearch] = useState(true);
@@ -162,39 +164,54 @@ export default function RoseHiFiDisplay({
 
             {/* Scrollable list of stations */}
             <div className="flex-grow overflow-y-auto pr-1.5 mt-2 custom-scrollbar grid grid-cols-2 gap-2 max-h-[145px]">
-              {stationsList.map((station, idx) => (
-                <button
-                  key={`${station.url}-${idx}`}
-                  onClick={() => {
-                    onPlayRadio(station.url, station.name);
-                    setShowSearch(false);
-                  }}
-                  className="p-2.5 rounded-xl bg-white/5 border border-white/10 hover:border-[var(--theme-color)] text-left flex items-center justify-between transition-all active:scale-[0.98] cursor-pointer group"
-                >
-                  <div className="flex items-center gap-2 min-w-0">
-                    <div className="w-7 h-7 rounded-full bg-black/20 flex items-center justify-center border border-white/10 shrink-0 overflow-hidden relative">
-                      {station.favicon ? (
-                        <img 
-                          src={station.favicon} 
-                          alt="" 
-                          className="w-full h-full object-cover"
-                          onError={(e) => { e.target.style.display = 'none'; }}
-                        />
-                      ) : null}
-                      <Radio className="w-3.5 h-3.5 text-zinc-400 absolute" style={{ zIndex: -1 }} />
+              {stationsList.map((station, idx) => {
+                const isFavorite = favoriteStations.some(s => s.url === station.url);
+                return (
+                  <button
+                    key={`${station.url}-${idx}`}
+                    onClick={() => {
+                      onPlayRadio(station.url, station.name);
+                      setShowSearch(false);
+                    }}
+                    className="p-2.5 rounded-xl bg-white/5 border border-white/10 hover:border-[var(--theme-color)] text-left flex items-center justify-between transition-all active:scale-[0.98] cursor-pointer group"
+                  >
+                    <div className="flex items-center gap-2 min-w-0">
+                      <div className="w-7 h-7 rounded-full bg-black/20 flex items-center justify-center border border-white/10 shrink-0 overflow-hidden relative">
+                        {station.favicon ? (
+                          <img 
+                            src={station.favicon} 
+                            alt="" 
+                            className="w-full h-full object-cover"
+                            onError={(e) => { e.target.style.display = 'none'; }}
+                          />
+                        ) : null}
+                        <Radio className="w-3.5 h-3.5 text-zinc-400 absolute" style={{ zIndex: -1 }} />
+                      </div>
+                      <div className="min-w-0 flex flex-col">
+                        <span className="text-[10px] font-bold text-white truncate group-hover:text-[var(--theme-color)]">{station.name}</span>
+                        <span className="text-[8px] font-mono text-zinc-400 tracking-wider uppercase truncate">
+                          {station.country ? station.country : 'Global'}{station.tags ? ` • ${station.tags.split(',')[0]}` : ''}
+                        </span>
+                      </div>
                     </div>
-                    <div className="min-w-0 flex flex-col">
-                      <span className="text-[10px] font-bold text-white truncate group-hover:text-[var(--theme-color)]">{station.name}</span>
-                      <span className="text-[8px] font-mono text-zinc-400 tracking-wider uppercase truncate">
-                        {station.country ? station.country : 'Global'}{station.tags ? ` • ${station.tags.split(',')[0]}` : ''}
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onToggleFavoriteRadio(station);
+                        }}
+                        className="p-1 rounded hover:bg-white/10 text-zinc-400 hover:text-rose-500 transition-colors cursor-pointer"
+                        title={isFavorite ? "Remove from favorites" : "Add to favorites"}
+                      >
+                        <Heart className={`w-3.5 h-3.5 ${isFavorite ? 'text-rose-500 fill-rose-500' : ''}`} />
+                      </button>
+                      <span className="text-[8px] bg-white/5 border border-white/10 group-hover:border-[var(--theme-color)] group-hover:text-black group-hover:bg-[var(--theme-color)] px-2 py-0.5 rounded font-extrabold text-zinc-350 uppercase tracking-wider shrink-0 transition-colors">
+                        PLAY
                       </span>
                     </div>
-                  </div>
-                  <span className="text-[8px] bg-white/5 border border-white/10 group-hover:border-[var(--theme-color)] group-hover:text-black group-hover:bg-[var(--theme-color)] px-2 py-0.5 rounded font-extrabold text-zinc-350 uppercase tracking-wider shrink-0 transition-colors">
-                    PLAY
-                  </span>
-                </button>
-              ))}
+                  </button>
+                );
+              })}
             </div>
           </div>
         </section>
@@ -307,24 +324,28 @@ export default function RoseHiFiDisplay({
 
           {/* Playback Dotted Controls */}
           <div className="music-controls" aria-label="Playback controls">
-            <button 
-              onClick={handleToggleRepeat}
-              className={`icon-button repeat ${repeatState !== 'off' ? 'active' : ''}`}
-              type="button" 
-              aria-label="Repeat"
-              title={`Repeat: ${repeatState}`}
-            >
-              <Repeat className="h-5 w-5" />
-            </button>
+            {source !== 'radio' && (
+              <button 
+                onClick={handleToggleRepeat}
+                className={`icon-button repeat ${repeatState !== 'off' ? 'active' : ''}`}
+                type="button" 
+                aria-label="Repeat"
+                title={`Repeat: ${repeatState}`}
+              >
+                <Repeat className="h-5 w-5" />
+              </button>
+            )}
             
-            <button 
-              onClick={handlePrevious}
-              className="icon-button prev" 
-              type="button" 
-              aria-label="Previous track"
-            >
-              <SkipBack className="h-5 w-5 fill-current" />
-            </button>
+            {source !== 'radio' && (
+              <button 
+                onClick={handlePrevious}
+                className="icon-button prev" 
+                type="button" 
+                aria-label="Previous track"
+              >
+                <SkipBack className="h-5 w-5 fill-current" />
+              </button>
+            )}
             
             <button 
               onClick={handlePlayPause}
@@ -339,51 +360,57 @@ export default function RoseHiFiDisplay({
               )}
             </button>
             
-            <button 
-              onClick={handleNext}
-              className="icon-button next" 
-              type="button" 
-              aria-label="Next track"
-            >
-              <SkipForward className="h-5 w-5 fill-current" />
-            </button>
+            {source !== 'radio' && (
+              <button 
+                onClick={handleNext}
+                className="icon-button next" 
+                type="button" 
+                aria-label="Next track"
+              >
+                <SkipForward className="h-5 w-5 fill-current" />
+              </button>
+            )}
             
-            <button 
-              onClick={handleToggleShuffle}
-              className={`icon-button shuffle ${shuffleState ? 'active' : ''}`}
-              type="button" 
-              aria-label="Shuffle"
-            >
-              <Shuffle className="h-5 w-5" />
-            </button>
+            {source !== 'radio' && (
+              <button 
+                onClick={handleToggleShuffle}
+                className={`icon-button shuffle ${shuffleState ? 'active' : ''}`}
+                type="button" 
+                aria-label="Shuffle"
+              >
+                <Shuffle className="h-5 w-5" />
+              </button>
+            )}
           </div>
 
           {/* Interactive Seek Area */}
-          <div className="progress-area" aria-label="Track progress">
-            <div className="relative w-full h-3.5 group">
-              {/* Custom Dot Matrix Progress Bar background & fill */}
-              <div className="progress-bar-dots absolute inset-0">
-                <div 
-                  className="progress-fill-dots" 
-                  style={{ width: `${(trackPosition / (trackDuration || 1)) * 100}%` }} 
+          {source !== 'radio' && (
+            <div className="progress-area" aria-label="Track progress">
+              <div className="relative w-full h-3.5 group">
+                {/* Custom Dot Matrix Progress Bar background & fill */}
+                <div className="progress-bar-dots absolute inset-0">
+                  <div 
+                    className="progress-fill-dots" 
+                    style={{ width: `${(trackPosition / (trackDuration || 1)) * 100}%` }} 
+                  />
+                </div>
+                {/* Transparent input slider on top */}
+                <input 
+                  type="range"
+                  min={0}
+                  max={trackDuration || 0}
+                  value={trackPosition || 0}
+                  onChange={handleSeek}
+                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                 />
               </div>
-              {/* Transparent input slider on top */}
-              <input 
-                type="range"
-                min={0}
-                max={trackDuration || 0}
-                value={trackPosition || 0}
-                onChange={handleSeek}
-                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-              />
-            </div>
 
-            <div className="progress-times">
-              <span className="time-elapsed">{formatTime(trackPosition)}</span>
-              <span className="time-total">{formatTime(trackDuration)}</span>
+              <div className="progress-times">
+                <span className="time-elapsed">{formatTime(trackPosition)}</span>
+                <span className="time-total">{formatTime(trackDuration)}</span>
+              </div>
             </div>
-          </div>
+          )}
         </section>
       )}
 

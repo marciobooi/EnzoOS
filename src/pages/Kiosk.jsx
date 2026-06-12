@@ -90,8 +90,34 @@ export default function Kiosk() {
     localStorage.setItem('resonance_eq_preset', 'Custom');
   };
 
+  const DEFAULT_STATIONS = [
+    { name: 'SomaFM: Groove Salad', url: 'http://ice1.somafm.com/groovesalad-128-mp3', favicon: 'https://somafm.com/img/somafm120.png', country: 'USA', tags: 'ambient, chillout' },
+    { name: 'SomaFM: DEF CON Radio', url: 'http://ice1.somafm.com/defcon-128-mp3', favicon: 'https://somafm.com/img/defcon120.png', country: 'USA', tags: 'ambient, electronic' },
+    { name: 'Lofi Girl Ambient', url: 'http://play.stream.lofigirl.com/lofi', favicon: 'https://lofigirl.com/wp-content/uploads/2023/02/lofi-girl-logo.png', country: 'France', tags: 'lofi, ambient' },
+    { name: 'Chilltrax Ambient', url: 'https://chilltrax.dnshosting.net/chilltrax.mp3', favicon: '', country: 'USA', tags: 'chillout' },
+    { name: 'Jazz Radio Classic', url: 'http://jazzradio.ice.infomaniak.ch/jazzradio-high.mp3', favicon: '', country: 'France', tags: 'jazz' }
+  ];
+
   const [theme, setTheme] = useState(localStorage.getItem('resonance_theme') || 'amber');
   const lastVolumeChangeTime = useRef(0);
+  const [favoriteStations, setFavoriteStations] = useState([]);
+
+  const fetchFavorites = async () => {
+    try {
+      const favs = await api.getFavoriteRadios();
+      setFavoriteStations(favs || []);
+      // If not currently searching, show favorites or defaults as default list
+      if (!radioSearch.trim()) {
+        setStationsList(favs && favs.length > 0 ? favs : DEFAULT_STATIONS);
+      }
+    } catch (err) {
+      console.warn('Failed to load favorite stations:', err);
+    }
+  };
+
+  useEffect(() => {
+    fetchFavorites();
+  }, []);
 
   const setVolumeWithLock = (vol) => {
     if (Date.now() - lastVolumeChangeTime.current < 2500) return;
@@ -116,13 +142,7 @@ export default function Kiosk() {
   const [source, setSource] = useState('spotify'); // 'spotify' | 'local' | 'radio'
 
   const [radioSearch, setRadioSearch] = useState('');
-  const [stationsList, setStationsList] = useState([
-    { name: 'SomaFM: Groove Salad', url: 'http://ice1.somafm.com/groovesalad-128-mp3', favicon: 'https://somafm.com/img/somafm120.png', country: 'USA', tags: 'ambient, chillout' },
-    { name: 'SomaFM: DEF CON Radio', url: 'http://ice1.somafm.com/defcon-128-mp3', favicon: 'https://somafm.com/img/defcon120.png', country: 'USA', tags: 'ambient, electronic' },
-    { name: 'Lofi Girl Ambient', url: 'http://play.stream.lofigirl.com/lofi', favicon: 'https://lofigirl.com/wp-content/uploads/2023/02/lofi-girl-logo.png', country: 'France', tags: 'lofi, ambient' },
-    { name: 'Chilltrax Ambient', url: 'https://chilltrax.dnshosting.net/chilltrax.mp3', favicon: '', country: 'USA', tags: 'chillout' },
-    { name: 'Jazz Radio Classic', url: 'http://jazzradio.ice.infomaniak.ch/jazzradio-high.mp3', favicon: '', country: 'France', tags: 'jazz' }
-  ]);
+  const [stationsList, setStationsList] = useState([]);
   const [isSearching, setIsSearching] = useState(false);
 
   // Synchronize spotify & source states for backward-compatible rendering/api calls
@@ -195,16 +215,32 @@ export default function Kiosk() {
     toast.success(`Source set to: ${sourceNames[nextSource]}`);
   };
 
+  const handleToggleFavoriteRadio = async (station) => {
+    const isFavorite = favoriteStations.some(s => s.url === station.url);
+    try {
+      if (isFavorite) {
+        await api.deleteFavoriteRadio(station.url);
+        toast.success(`Removed from favorites: ${station.name}`);
+      } else {
+        await api.addFavoriteRadio({
+          name: station.name,
+          url: station.url,
+          favicon: station.favicon,
+          country: station.country,
+          tags: station.tags
+        });
+        toast.success(`Added to favorites: ${station.name}`);
+      }
+      await fetchFavorites();
+    } catch (err) {
+      toast.error(`Favorite operation failed: ${err.message}`);
+    }
+  };
+
   const handleRadioSearch = async () => {
     const query = radioSearch.trim();
     if (!query) {
-      setStationsList([
-        { name: 'SomaFM: Groove Salad', url: 'http://ice1.somafm.com/groovesalad-128-mp3', favicon: 'https://somafm.com/img/somafm120.png', country: 'USA', tags: 'ambient, chillout' },
-        { name: 'SomaFM: DEF CON Radio', url: 'http://ice1.somafm.com/defcon-128-mp3', favicon: 'https://somafm.com/img/defcon120.png', country: 'USA', tags: 'ambient, electronic' },
-        { name: 'Lofi Girl Ambient', url: 'http://play.stream.lofigirl.com/lofi', favicon: 'https://lofigirl.com/wp-content/uploads/2023/02/lofi-girl-logo.png', country: 'France', tags: 'lofi, ambient' },
-        { name: 'Chilltrax Ambient', url: 'https://chilltrax.dnshosting.net/chilltrax.mp3', favicon: '', country: 'USA', tags: 'chillout' },
-        { name: 'Jazz Radio Classic', url: 'http://jazzradio.ice.infomaniak.ch/jazzradio-high.mp3', favicon: '', country: 'France', tags: 'jazz' }
-      ]);
+      setStationsList(favoriteStations.length > 0 ? favoriteStations : DEFAULT_STATIONS);
       return;
     }
     try {
@@ -648,6 +684,8 @@ export default function Kiosk() {
           isSearching={isSearching}
           handleRadioSearch={handleRadioSearch}
           onPlayRadio={handlePlayRadio}
+          favoriteStations={favoriteStations}
+          onToggleFavoriteRadio={handleToggleFavoriteRadio}
         />
 
         {/* Full-Screen Horizontal Equalizer Control Overlay */}

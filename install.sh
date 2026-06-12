@@ -108,10 +108,23 @@ apt-get install -y \
   sqlite3 \
   libsqlite3-dev
 
+# Configure MPD software volume control
+if ! grep -q "ALSA Software Volume" /etc/mpd.conf; then
+  echo -e "${YELLOW}Configuring software volume mixer for MPD...${NC}"
+  cat <<EOF >> /etc/mpd.conf
+
+audio_output {
+    type            "alsa"
+    name            "ALSA Software Volume"
+    mixer_type      "software"
+}
+EOF
+fi
+
 # Enable and start MPD service
 echo -e "${YELLOW}Enabling and starting Media Player Daemon (MPD)...${NC}"
 systemctl enable mpd
-systemctl start mpd
+systemctl restart mpd
 
 
 echo -e "${YELLOW}Installing Raspotify repository and precompiled Librespot daemon...${NC}"
