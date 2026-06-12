@@ -76,8 +76,13 @@ export function setupWebSocket(server, app, isLocalIP) {
   });
 
   server.on('upgrade', (request, socket, head) => {
-    // Avoid URL parsing errors with IPv6 hostnames by splitting request.url directly
-    const pathname = request.url ? request.url.split('?')[0] : '';
+    // Safely extract pathname using URL constructor with a fixed base (avoids IPv6 host errors)
+    let pathname = '';
+    try {
+      pathname = new URL(request.url, 'http://localhost').pathname;
+    } catch (err) {
+      pathname = request.url ? request.url.split('?')[0] : '';
+    }
 
     if (pathname === '/ws') {
       wss.handleUpgrade(request, socket, head, (ws) => {
