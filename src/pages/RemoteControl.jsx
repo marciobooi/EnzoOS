@@ -41,11 +41,11 @@ const eraseCookie = (name) => {
 };
 
 const RADIO_STATIONS = [
-  { name: 'SomaFM: Groove Salad', url: 'http://ice1.somafm.com/groovesalad-128-mp3' },
-  { name: 'SomaFM: DEF CON Radio', url: 'http://ice1.somafm.com/defcon-128-mp3' },
-  { name: 'Lofi Girl Ambient', url: 'http://play.stream.lofigirl.com/lofi' },
-  { name: 'Chilltrax Ambient', url: 'https://chilltrax.dnshosting.net/chilltrax.mp3' },
-  { name: 'Jazz Radio Classic', url: 'http://jazzradio.ice.infomaniak.ch/jazzradio-high.mp3' }
+  { name: 'SomaFM: Groove Salad', url: 'http://ice1.somafm.com/groovesalad-128-mp3', favicon: 'https://somafm.com/img/somafm120.png', country: 'USA', tags: 'ambient, chillout' },
+  { name: 'SomaFM: DEF CON Radio', url: 'http://ice1.somafm.com/defcon-128-mp3', favicon: 'https://somafm.com/img/defcon120.png', country: 'USA', tags: 'ambient, electronic' },
+  { name: 'Lofi Girl Ambient', url: 'http://play.stream.lofigirl.com/lofi', favicon: 'https://lofigirl.com/wp-content/uploads/2023/02/lofi-girl-logo.png', country: 'France', tags: 'lofi, ambient' },
+  { name: 'Chilltrax Ambient', url: 'https://chilltrax.dnshosting.net/chilltrax.mp3', favicon: '', country: 'USA', tags: 'chillout' },
+  { name: 'Jazz Radio Classic', url: 'http://jazzradio.ice.infomaniak.ch/jazzradio-high.mp3', favicon: '', country: 'France', tags: 'jazz' }
 ];
 
 export default function RemoteControl() {
@@ -142,7 +142,10 @@ export default function RemoteControl() {
       const data = await res.json();
       const formatted = data.map(s => ({
         name: s.name.length > 30 ? s.name.substring(0, 27) + '...' : s.name,
-        url: s.url_resolved || s.url
+        url: s.url_resolved || s.url,
+        favicon: s.favicon,
+        country: s.country,
+        tags: s.tags
       }));
       if (formatted.length === 0) {
         toast.error('No stations found.');
@@ -816,12 +819,22 @@ export default function RemoteControl() {
                       className="w-full p-3.5 rounded-2xl bg-white border border-zinc-100 hover:border-zinc-300 text-left flex items-center justify-between transition-all active:scale-[0.99] shadow-sm hover:shadow"
                     >
                       <div className="flex items-center gap-3 min-w-0">
-                        <div className="w-8 h-8 rounded-full bg-zinc-50 flex items-center justify-center border border-zinc-150 shrink-0">
-                          <Radio className="w-3.5 h-3.5 text-zinc-600" />
+                        <div className="w-8 h-8 rounded-full bg-zinc-50 flex items-center justify-center border border-zinc-150 shrink-0 overflow-hidden">
+                          {station.favicon ? (
+                            <img 
+                              src={station.favicon} 
+                              alt="" 
+                              className="w-full h-full object-cover"
+                              onError={(e) => { e.target.style.display = 'none'; }}
+                            />
+                          ) : null}
+                          <Radio className="w-3.5 h-3.5 text-zinc-650 shrink-0 absolute" style={{ zIndex: -1 }} />
                         </div>
-                        <div className="min-w-0">
-                          <span className="text-[11px] font-bold text-zinc-800 block truncate">{station.name}</span>
-                          <span className="text-[8px] font-mono text-zinc-400 block tracking-wider uppercase truncate">Live Stream</span>
+                        <div className="min-w-0 flex flex-col">
+                          <span className="text-[11px] font-bold text-zinc-800 truncate">{station.name}</span>
+                          <span className="text-[8px] font-mono text-zinc-400 tracking-wider uppercase truncate">
+                            {station.country ? `${station.country}` : 'Global'}{station.tags ? ` • ${station.tags.split(',')[0]}` : ''}
+                          </span>
                         </div>
                       </div>
                       <span className="text-[8px] bg-zinc-50 border border-zinc-200 px-2 py-0.5 rounded font-extrabold text-zinc-600 uppercase tracking-wider shrink-0">

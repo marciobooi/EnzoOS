@@ -4,11 +4,11 @@ import { toast } from 'sonner';
 import { api } from '../api';
 
 const RADIO_STATIONS = [
-  { name: 'SomaFM: Groove Salad', url: 'http://ice1.somafm.com/groovesalad-128-mp3' },
-  { name: 'SomaFM: DEF CON Radio', url: 'http://ice1.somafm.com/defcon-128-mp3' },
-  { name: 'Lofi Girl Ambient', url: 'http://play.stream.lofigirl.com/lofi' },
-  { name: 'Chilltrax Ambient', url: 'https://chilltrax.dnshosting.net/chilltrax.mp3' },
-  { name: 'Jazz Radio Classic', url: 'http://jazzradio.ice.infomaniak.ch/jazzradio-high.mp3' }
+  { name: 'SomaFM: Groove Salad', url: 'http://ice1.somafm.com/groovesalad-128-mp3', favicon: 'https://somafm.com/img/somafm120.png', country: 'USA', tags: 'ambient, chillout' },
+  { name: 'SomaFM: DEF CON Radio', url: 'http://ice1.somafm.com/defcon-128-mp3', favicon: 'https://somafm.com/img/defcon120.png', country: 'USA', tags: 'ambient, electronic' },
+  { name: 'Lofi Girl Ambient', url: 'http://play.stream.lofigirl.com/lofi', favicon: 'https://lofigirl.com/wp-content/uploads/2023/02/lofi-girl-logo.png', country: 'France', tags: 'lofi, ambient' },
+  { name: 'Chilltrax Ambient', url: 'https://chilltrax.dnshosting.net/chilltrax.mp3', favicon: '', country: 'USA', tags: 'chillout' },
+  { name: 'Jazz Radio Classic', url: 'http://jazzradio.ice.infomaniak.ch/jazzradio-high.mp3', favicon: '', country: 'France', tags: 'jazz' }
 ];
 
 export default function DefinitionsMenu({
@@ -228,7 +228,10 @@ export default function DefinitionsMenu({
                     const data = await res.json();
                     const formatted = data.map(s => ({
                       name: s.name.length > 22 ? s.name.substring(0, 20) + '...' : s.name,
-                      url: s.url_resolved || s.url
+                      url: s.url_resolved || s.url,
+                      favicon: s.favicon,
+                      country: s.country,
+                      tags: s.tags
                     }));
                     if (formatted.length === 0) {
                       toast.error('No stations found.');
@@ -273,7 +276,7 @@ export default function DefinitionsMenu({
             </option>
             {stationsList.map((s, idx) => (
               <option key={`${s.url}-${idx}`} value={s.url} className="bg-zinc-950 text-zinc-100">
-                {s.name}
+                {s.name} ({s.country ? s.country.substring(0, 3).toUpperCase() : 'GLO'}{s.tags ? ` - ${s.tags.split(',')[0].substring(0, 8)}` : ''})
               </option>
             ))}
           </select>
