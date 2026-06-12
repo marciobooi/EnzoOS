@@ -25,7 +25,8 @@ export default function RoseHiFiDisplay({
   onTransferPlayback,
   hasToken,
   spotify,
-  onToggleSource
+  onToggleSource,
+  onToggleEqualizer
 }) {
   const [showVolumeFeedback, setShowVolumeFeedback] = useState(false);
   const feedbackTimeout = useRef(null);
@@ -131,7 +132,12 @@ export default function RoseHiFiDisplay({
             </div>
 
             {/* Dot Matrix Animated Visualizer */}
-            <div className="hifi-visualizer shrink-0" aria-hidden="true">
+            <button
+              onClick={onToggleEqualizer}
+              className="hifi-visualizer shrink-0 cursor-pointer hover:opacity-85 transition-opacity bg-transparent border-0 p-0"
+              title="Open EQ / Resonance Frequency Scheme"
+              type="button"
+            >
               {[...Array(8)].map((_, i) => (
                 <span 
                   key={i} 
@@ -141,7 +147,7 @@ export default function RoseHiFiDisplay({
                   }} 
                   />
               ))}
-            </div>
+            </button>
           </div>
         </div>
 

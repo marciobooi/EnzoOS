@@ -6,6 +6,7 @@ import { useResonanceWS } from '../websocket';
 // Subcomponents
 import RoseHiFiDisplay from '../components/RoseHiFiDisplay';
 import DefinitionsMenu from '../components/DefinitionsMenu';
+import EqualizerControl, { EQ_PRESETS } from '../components/EqualizerControl';
 
 export default function Kiosk() {
   // Authentication state (server-managed, synchronized via WebSocket)
@@ -30,6 +31,65 @@ export default function Kiosk() {
   const [isMuted, setIsMuted] = useState(false);
 
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isEqualizerOpen, setIsEqualizerOpen] = useState(false);
+  const [eqPreset, setEqPreset] = useState(() => localStorage.getItem('resonance_eq_preset') || 'Clinical Reference');
+  const [eqBands, setEqBands] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem('resonance_eq_bands')) || [0, 0, 0, 0, 0];
+    } catch {
+      return [0, 0, 0, 0, 0];
+    }
+  });
+  const [eqSaturation, setEqSaturation] = useState(() => Number(localStorage.getItem('resonance_eq_saturation')) || 0);
+  const [eqNoiseFloor, setEqNoiseFloor] = useState(() => Number(localStorage.getItem('resonance_eq_noise')) || 0);
+  const [eqPreAmp, setEqPreAmp] = useState(() => Number(localStorage.getItem('resonance_eq_preamp')) || 0.0);
+
+  const handleEqPresetChange = (presetName) => {
+    setEqPreset(presetName);
+    localStorage.setItem('resonance_eq_preset', presetName);
+    const found = EQ_PRESETS.find(p => p.name === presetName);
+    if (found) {
+      setEqBands(found.bands);
+      setEqSaturation(found.saturation);
+      setEqNoiseFloor(found.noiseFloor);
+      setEqPreAmp(found.preAmp);
+      localStorage.setItem('resonance_eq_bands', JSON.stringify(found.bands));
+      localStorage.setItem('resonance_eq_saturation', found.saturation);
+      localStorage.setItem('resonance_eq_noise', found.noiseFloor);
+      localStorage.setItem('resonance_eq_preamp', found.preAmp);
+    }
+  };
+
+  const handleBandChange = (index, val) => {
+    const nextBands = [...eqBands];
+    nextBands[index] = val;
+    setEqBands(nextBands);
+    localStorage.setItem('resonance_eq_bands', JSON.stringify(nextBands));
+    setEqPreset('Custom');
+    localStorage.setItem('resonance_eq_preset', 'Custom');
+  };
+
+  const handleSaturationChange = (val) => {
+    setEqSaturation(val);
+    localStorage.setItem('resonance_eq_saturation', val);
+    setEqPreset('Custom');
+    localStorage.setItem('resonance_eq_preset', 'Custom');
+  };
+
+  const handleNoiseFloorChange = (val) => {
+    setEqNoiseFloor(val);
+    localStorage.setItem('resonance_eq_noise', val);
+    setEqPreset('Custom');
+    localStorage.setItem('resonance_eq_preset', 'Custom');
+  };
+
+  const handlePreAmpChange = (val) => {
+    setEqPreAmp(val);
+    localStorage.setItem('resonance_eq_preamp', val);
+    setEqPreset('Custom');
+    localStorage.setItem('resonance_eq_preset', 'Custom');
+  };
+
   const [theme, setTheme] = useState(localStorage.getItem('resonance_theme') || 'amber');
   const lastVolumeChangeTime = useRef(0);
 
@@ -500,7 +560,29 @@ export default function Kiosk() {
           hasToken={!!token}
           spotify={spotify}
           onToggleSource={handleToggleSource}
+          onToggleEqualizer={() => setIsEqualizerOpen(!isEqualizerOpen)}
         />
+
+        {/* Full-Screen Horizontal Equalizer Control Overlay */}
+        <div 
+          className={`absolute inset-0 bg-[#0b0f19] border border-white/10 rounded-3xl shadow-2xl z-50 transform transition-all duration-300 ease-in-out flex flex-col p-1.5 font-sans ${
+            isEqualizerOpen ? 'opacity-100 scale-100 pointer-events-auto' : 'opacity-0 scale-95 pointer-events-none'
+          }`}
+        >
+          <EqualizerControl
+            currentPreset={eqPreset}
+            onPresetChange={handleEqPresetChange}
+            bands={eqBands}
+            onBandChange={handleBandChange}
+            saturation={eqSaturation}
+            onSaturationChange={handleSaturationChange}
+            noiseFloor={eqNoiseFloor}
+            onNoiseFloorChange={handleNoiseFloorChange}
+            preAmp={eqPreAmp}
+            onPreAmpChange={handlePreAmpChange}
+            onClose={() => setIsEqualizerOpen(false)}
+          />
+        </div>
 
         {/* Full-Screen Horizontal Definitions Menu Overlay */}
         <div 
