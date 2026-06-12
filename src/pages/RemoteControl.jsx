@@ -230,6 +230,7 @@ export default function RemoteControl() {
   const trackName = currentTrack?.name || 'Ready to Stream';
   const trackArtist = currentTrack?.artists?.map(a => a.name).join(', ') || 'No source active';
   const albumImage = currentTrack?.album?.images?.[0]?.url;
+  const isCurrentFavorite = currentTrack?.url ? favoriteStations.some(s => s.url === currentTrack.url) : false;
 
   // Active Device Info
   const activeDevice = devices.find(d => d.is_active);
@@ -792,6 +793,22 @@ export default function RemoteControl() {
                     >
                       <Shuffle className="h-4 w-4" />
                     </button>
+                  ) : currentTrack?.url ? (
+                    <button
+                      onClick={() => handleToggleFavoriteRadio({
+                        name: trackName,
+                        url: currentTrack.url,
+                        favicon: albumImage || '',
+                        country: '',
+                        tags: ''
+                      })}
+                      className={`p-2 rounded-full transition-all active:scale-90 cursor-pointer ${
+                        isCurrentFavorite ? 'text-rose-500 font-bold drop-shadow-[0_0_8px_rgba(251,113,133,0.2)]' : 'text-zinc-400 hover:text-zinc-700'
+                      }`}
+                      title={isCurrentFavorite ? "Remove from favorites" : "Add to favorites"}
+                    >
+                      <Heart className={`h-5 w-5 ${isCurrentFavorite ? 'fill-rose-500 text-rose-500' : ''}`} />
+                    </button>
                   ) : (
                     <div className="w-8" />
                   )}
@@ -844,7 +861,13 @@ export default function RemoteControl() {
                       <Repeat className="h-4 w-4" />
                     </button>
                   ) : (
-                    <div className="w-8" />
+                    <button
+                      onClick={() => setActiveTab('radio')}
+                      className="p-2 rounded-full transition-all active:scale-90 cursor-pointer text-zinc-400 hover:text-zinc-700"
+                      title="Search web radio"
+                    >
+                      <Radio className="h-5 w-5 text-amber-500" />
+                    </button>
                   )}
                 </div>
               </div>

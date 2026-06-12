@@ -108,6 +108,7 @@ export default function RoseHiFiDisplay({
   const currentTrack = playbackState?.track_window?.current_track;
   const albumImage = currentTrack?.album?.images?.[0]?.url || 'https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?q=80&w=300&auto=format&fit=crop';
   const trackAlbumName = currentTrack?.album?.name || 'No Album Loaded';
+  const isCurrentFavorite = currentTrack?.url ? favoriteStations.some(s => s.url === currentTrack.url) : false;
 
   return (
     <article className="music-player" aria-label="Music player">
@@ -233,15 +234,7 @@ export default function RoseHiFiDisplay({
                 <span className={`status-dot ${source === 'spotify' ? 'bg-emerald-400' : 'bg-amber-500'}`}></span>
                 PLUGIN: {source.toUpperCase()}
               </button>
-              {source === 'radio' && (
-                <button 
-                  onClick={() => setShowSearch(true)}
-                  className="status-pill cursor-pointer transition-all border border-amber-500/20 bg-amber-500/5 hover:bg-amber-500/10 px-2 py-0.5 rounded text-amber-500 font-sans"
-                  title="Search Web Radio"
-                >
-                  [🔍 SEARCH]
-                </button>
-              )}
+              <span className="system-readout">DOT MATRIX / 2026</span>
               {spotify && (
                 <button 
                   onClick={onTransferPlayback}
@@ -324,6 +317,24 @@ export default function RoseHiFiDisplay({
 
           {/* Playback Dotted Controls */}
           <div className="music-controls" aria-label="Playback controls">
+            {source === 'radio' && currentTrack?.url && (
+              <button 
+                onClick={() => onToggleFavoriteRadio({
+                  name: trackName,
+                  url: currentTrack.url,
+                  favicon: currentTrack.album?.images?.[0]?.url || '',
+                  country: '',
+                  tags: ''
+                })}
+                className={`icon-button heart ${isCurrentFavorite ? 'active text-rose-500 border-rose-500' : ''}`}
+                type="button" 
+                aria-label="Favorite"
+                title={isCurrentFavorite ? "Remove from favorites" : "Add to favorites"}
+              >
+                <Heart className={`h-5 w-5 ${isCurrentFavorite ? 'fill-rose-500 text-rose-500' : ''}`} />
+              </button>
+            )}
+
             {source !== 'radio' && (
               <button 
                 onClick={handleToggleRepeat}
@@ -379,6 +390,18 @@ export default function RoseHiFiDisplay({
                 aria-label="Shuffle"
               >
                 <Shuffle className="h-5 w-5" />
+              </button>
+            )}
+
+            {source === 'radio' && (
+              <button 
+                onClick={() => setShowSearch(true)}
+                className="icon-button search text-amber-500 border-amber-500/50"
+                type="button" 
+                aria-label="Search"
+                title="Search Stations"
+              >
+                <Radio className="h-5 w-5" />
               </button>
             )}
           </div>

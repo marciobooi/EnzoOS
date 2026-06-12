@@ -93,7 +93,8 @@ router.post('/play-radio', async (req, res) => {
           current_track: {
             name: name || 'WEB RADIO',
             artists: [{ name: 'Live Stream' }],
-            album: { name: 'Web Radio Broadcast', images: [] }
+            album: { name: 'Web Radio Broadcast', images: [] },
+            url: url
           }
         }
       };
