@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Sliders, Terminal, LogOut, RefreshCw, Speaker, Smartphone, Laptop, Check, AlertCircle } from 'lucide-react';
+import { Sliders, Terminal, LogOut, RefreshCw, Speaker, Smartphone, Laptop, Check, AlertCircle, Sparkles } from 'lucide-react';
 import { api } from '../api';
 import TrackSearch from './TrackSearch';
 
@@ -107,347 +107,283 @@ export default function DefinitionsMenu({
   };
 
   return (
-    <div className="flex flex-row gap-6 font-mono text-zinc-300 h-full pb-2 pr-4 items-stretch select-none">
+    <div className="flex flex-row gap-5 font-mono text-zinc-300 h-full pb-2 pr-4 items-stretch select-none">
       
-      {/* Header */}
-      <div className="flex items-center gap-2 pb-3 border-b border-zinc-900">
-        <Sliders className="h-5 w-5 theme-text animate-pulse" />
-        <div>
-          <h3 className="text-xs font-bold text-white tracking-widest uppercase">System Definitions</h3>
-          <p className="text-[9px] text-zinc-500 uppercase mt-0.5">Control center and resource configuration</p>
-        </div>
-      </div>
-
-      {/* 0. PLUGIN SOURCE SELECTOR & DAEMON CONFIG */}
-      <section className="w-[280px] shrink-0 p-4 rounded-xl border border-zinc-900 bg-zinc-950/20 flex flex-col justify-between">
-        <div className="flex items-center justify-between">
-          <span className="text-[10px] font-bold tracking-wider text-zinc-400 uppercase">
-            [00] Media Source & Daemon Config
-          </span>
-          <button
-            onClick={onToggleSource}
-            className={`px-2.5 py-1 rounded text-[8px] font-extrabold uppercase border transition-all cursor-pointer ${
-              spotify 
-                ? 'bg-emerald-950/60 border-emerald-900 text-emerald-400' 
-                : 'bg-amber-950/60 border-amber-900 text-amber-400'
-            }`}
-          >
-            Plugin: {spotify ? 'Spotify' : 'Local'}
-          </button>
-        </div>
-
-        {/* Spotify Connect pairing instructions */}
-        <div className="flex flex-col gap-2 border-t border-zinc-900 pt-3 text-[10px] leading-relaxed text-zinc-400">
-          <p className="text-[8.5px] text-zinc-500 uppercase font-bold tracking-wider">Spotify Connect pairing</p>
-          <div className="p-2.5 rounded bg-zinc-950 border border-zinc-900 text-[9px] text-zinc-500">
-            To pair your account, just select and play to <strong className="text-white">"Resonance Connect"</strong> once from your official Spotify app (phone or computer) on this network. The daemon will cache your session automatically and allow full control.
+      {/* 1. MEDIA PLUGIN SOURCE CARD (Big Square) */}
+      <section className="w-[230px] shrink-0 p-5 rounded-2xl border border-zinc-800/70 bg-gradient-to-b from-[#1c1e24] to-[#121418] flex flex-col justify-between hover:border-zinc-700 transition-all duration-300 relative group overflow-hidden">
+        {/* Glow effect on hover */}
+        <div className="absolute inset-0 bg-gradient-to-tr from-[#1ed760]/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
+        
+        <div className="flex flex-col gap-2.5">
+          <div className="flex items-center justify-between">
+            <span className="text-[9px] font-extrabold tracking-widest text-zinc-550 uppercase">[01] SELECT SOURCE</span>
+            <Sparkles className="h-3.5 w-3.5 text-zinc-650" />
           </div>
+          <h3 className="text-sm font-extrabold text-white uppercase tracking-wider mt-1">
+            Media Engine
+          </h3>
+          <p className="text-[9.5px] text-zinc-500 leading-normal uppercase">
+            Choose the active audio plugin source.
+          </p>
         </div>
+
+        <button
+          onClick={onToggleSource}
+          className={`w-full py-3 rounded-xl text-[10px] font-extrabold uppercase border tracking-wider transition-all cursor-pointer active:scale-95 flex items-center justify-center gap-1.5 ${
+            spotify 
+              ? 'bg-[#1ed760]/10 border-[#1ed760]/30 text-[#1ed760] hover:bg-[#1ed760]/20' 
+              : 'bg-amber-500/10 border-amber-500/30 text-amber-400 hover:bg-amber-500/20'
+          }`}
+        >
+          {spotify ? 'Plugin: Spotify' : 'Plugin: Local'}
+        </button>
       </section>
 
-      {/* 1. SPOTIFY AUTHENTICATION KEYWAY */}
-      <section className="w-[280px] shrink-0 p-4 rounded-xl border border-zinc-900 bg-zinc-950/20 flex flex-col justify-between">
-        <div className="flex items-center justify-between">
-          <span className="text-[10px] font-bold tracking-wider text-zinc-400 uppercase">
-            [01] Spotify Keyway
-          </span>
-          {token ? (
-            <span className="text-[8px] bg-emerald-950/60 border border-emerald-900 text-emerald-400 px-2 py-0.5 rounded font-bold uppercase tracking-wider">
-              AUTHORIZED
-            </span>
-          ) : (
-            <span className="text-[8px] bg-rose-950/60 border border-rose-900 text-rose-400 px-2 py-0.5 rounded font-bold uppercase tracking-wider animate-pulse">
-              REQUIRED
-            </span>
-          )}
-        </div>
-
-      {!token ? (
-          <div className="flex flex-col gap-3 mt-1">
-            <p className="text-[10px] text-zinc-500 leading-relaxed">
-              Connect your Spotify account to enable track display, remote control and playback synchronization.
-            </p>
-            <a
-              href="/auth/spotify/login"
-              className="w-full py-2.5 px-3 rounded-lg bg-[#1ed760] hover:bg-[#1fdf64] active:scale-95 text-xs text-black font-extrabold uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center gap-2 no-underline"
-            >
-              <svg viewBox="0 0 24 24" className="h-4 w-4 fill-black shrink-0"><path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm4.586 14.424a.622.622 0 01-.857.207c-2.348-1.435-5.304-1.76-8.785-.964a.622.622 0 01-.277-1.215c3.809-.87 7.077-.496 9.712 1.115a.622.622 0 01.207.857zm1.223-2.722a.779.779 0 01-1.07.257c-2.687-1.652-6.785-2.131-9.965-1.166a.78.78 0 01-.973-.519.781.781 0 01.519-.972c3.632-1.102 8.147-.568 11.233 1.33a.779.779 0 01.256 1.07zm.105-2.835C14.692 8.95 9.375 8.775 6.297 9.71a.935.935 0 11-.543-1.79c3.533-1.072 9.404-.866 13.115 1.338a.936.936 0 01-.955 1.609z"/></svg>
-              Login with Spotify
-            </a>
+      {/* 2. SPOTIFY AUTHENTICATION CARD (Big Square) */}
+      <section className="w-[230px] shrink-0 p-5 rounded-2xl border border-zinc-800/70 bg-gradient-to-b from-[#1c1e24] to-[#121418] flex flex-col justify-between hover:border-zinc-700 transition-all duration-300 relative group overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-tr from-[#1ed760]/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
+        
+        <div className="flex flex-col gap-2.5">
+          <div className="flex items-center justify-between">
+            <span className="text-[9px] font-extrabold tracking-widest text-zinc-550 uppercase">[02] ACCOUNT AUTH</span>
+            {token ? (
+              <span className="text-[7.5px] bg-emerald-950/60 border border-emerald-900/50 text-[#1ed760] px-1.5 py-0.5 rounded font-bold uppercase tracking-wider">
+                OK
+              </span>
+            ) : (
+              <span className="text-[7.5px] bg-rose-950/60 border border-rose-900/50 text-rose-450 px-1.5 py-0.5 rounded font-bold uppercase tracking-wider animate-pulse">
+                ERR
+              </span>
+            )}
           </div>
-        ) : (
-          <div className="flex flex-col gap-2.5 mt-1">
-            <div className="p-2.5 rounded bg-zinc-950 border border-zinc-900 flex items-center justify-between gap-4">
-              <div className="min-w-0 flex items-center gap-2">
-                <svg viewBox="0 0 24 24" className="h-4 w-4 fill-[#1ed760] shrink-0"><path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm4.586 14.424a.622.622 0 01-.857.207c-2.348-1.435-5.304-1.76-8.785-.964a.622.622 0 01-.277-1.215c3.809-.87 7.077-.496 9.712 1.115a.622.622 0 01.207.857zm1.223-2.722a.779.779 0 01-1.07.257c-2.687-1.652-6.785-2.131-9.965-1.166a.78.78 0 01-.973-.519.781.781 0 01.519-.972c3.632-1.102 8.147-.568 11.233 1.33a.779.779 0 01.256 1.07zm.105-2.835C14.692 8.95 9.375 8.775 6.297 9.71a.935.935 0 11-.543-1.79c3.533-1.072 9.404-.866 13.115 1.338a.936.936 0 01-.955 1.609z"/></svg>
-                <div>
-                  <p className="text-[9px] text-zinc-500 uppercase tracking-widest">Spotify Connected</p>
-                </div>
-              </div>
-              <button
-                onClick={handleLogout}
-                className="px-2.5 py-1.5 rounded bg-rose-950/40 hover:bg-rose-900/60 text-rose-400 hover:text-rose-300 text-[9px] uppercase font-bold transition-all border border-rose-900/50 flex items-center gap-1 active:scale-95 cursor-pointer shrink-0"
-              >
-                <LogOut className="h-3 w-3" />
-                Disconnect
-              </button>
-            </div>
-          </div>
-        )}
-      </section>
-
-      {/* 2. AUDIO PATCHBAY / OUTPUT CHANNELS */}
-      <section className="w-[320px] shrink-0 p-4 rounded-xl border border-zinc-900 bg-zinc-950/20 flex flex-col gap-2">
-        <div className="flex items-center justify-between">
-          <span className="text-[10px] font-bold tracking-wider text-zinc-400 uppercase">
-            [02] Audio Output Patchbay
-          </span>
-          {token && (
-            <button
-              onClick={onRefreshDevices}
-              disabled={isFetchingDevices}
-              className="p-1 rounded hover:bg-zinc-900 text-zinc-500 hover:text-[var(--theme-color)] transition-colors cursor-pointer disabled:opacity-50"
-              title="Refresh Devices"
-            >
-              <RefreshCw className={`h-3.5 w-3.5 ${isFetchingDevices ? 'animate-spin theme-text' : ''}`} />
-            </button>
-          )}
+          <h3 className="text-sm font-extrabold text-white uppercase tracking-wider mt-1">
+            Spotify Keyway
+          </h3>
+          <p className="text-[9.5px] text-zinc-500 leading-normal uppercase">
+            {token ? 'Spotify account linked and authorized.' : 'Authorize connection to stream catalog.'}
+          </p>
         </div>
 
         {!token ? (
-          <div className="text-center py-4 text-zinc-400 text-[10px] border border-dashed border-zinc-800 rounded-lg select-none flex flex-col items-center gap-1">
-            <AlertCircle className="h-4 w-4 text-zinc-500" />
-            <span>AUTHORIZE KEYWAY TO LOCATE AUDIBLE CHANNELS</span>
-          </div>
+          <a
+            href="/auth/spotify/login"
+            className="w-full py-3 rounded-xl bg-[#1ed760] hover:bg-[#1fdf64] active:scale-95 text-[10px] text-black font-extrabold uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center gap-1.5 no-underline"
+          >
+            <svg viewBox="0 0 24 24" className="h-4 w-4 fill-black shrink-0"><path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm4.586 14.424a.622.622 0 01-.857.207c-2.348-1.435-5.304-1.76-8.785-.964a.622.622 0 01-.277-1.215c3.809-.87 7.077-.496 9.712 1.115a.622.622 0 01.207.857zm1.223-2.722a.779.779 0 01-1.07.257c-2.687-1.652-6.785-2.131-9.965-1.166a.78.78 0 01-.973-.519.781.781 0 01.519-.972c3.632-1.102 8.147-.568 11.233 1.33a.779.779 0 01.256 1.07zm.105-2.835C14.692 8.95 9.375 8.775 6.297 9.71a.935.935 0 11-.543-1.79c3.533-1.072 9.404-.866 13.115 1.338a.936.936 0 01-.955 1.609z"/></svg>
+            Link Account
+          </a>
         ) : (
-          <div className="flex flex-col gap-1.5 overflow-y-auto max-h-[140px] pr-1 custom-scrollbar">
-            {devices.length > 0 ? (
-              devices.map((device) => {
-                const isResonance = device.name === 'Resonance Connect';
-                return (
-                  <button
-                    key={device.id}
-                    onClick={() => !device.is_active && onTransferPlayback(device.id)}
-                    disabled={device.is_active}
-                    className={`w-full p-2.5 rounded-lg border text-left transition-all flex items-center justify-between gap-3 text-xs ${
-                      device.is_active
-                        ? 'theme-bg-glow theme-border-glow text-white font-bold cursor-default'
-                        : 'bg-zinc-950/40 border-zinc-900 text-zinc-400 hover:border-zinc-800 hover:text-zinc-200 cursor-pointer active:scale-[0.99]'
-                    }`}
-                  >
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      <span className={device.is_active ? 'theme-text' : 'text-zinc-650'}>
-                        {getDeviceIcon(device.type)}
-                      </span>
-                      <div className="min-w-0">
-                        <div className="truncate font-mono tracking-wide">
-                          {device.name}
-                          {isResonance && (
-                            <span className="ml-1.5 text-[8px] px-1 rounded theme-bg-glow theme-border-glow theme-text">
-                              DAEMON
-                            </span>
-                          )}
-                        </div>
-                        <p className="text-[8px] text-zinc-400 uppercase font-mono mt-0.5">
-                          Type: {device.type || 'Speaker'} // Vol: {device.volume_percent}%
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center shrink-0">
-                      {device.is_active ? (
-                        <span className="flex items-center gap-1 text-[8.5px] font-bold theme-text tracking-widest">
-                          <Check className="h-3 w-3" /> ACTIVE
-                        </span>
-                      ) : (
-                        <span className="text-[8.5px] text-zinc-400 hover:text-zinc-350 font-bold uppercase tracking-wider">
-                          CONNECT
-                        </span>
-                      )}
-                    </div>
-                  </button>
-                );
-              })
-            ) : (
-              <div className="text-center py-4 text-zinc-400 text-[10px] border border-dashed border-zinc-800 rounded-lg select-none">
-                NO DEVICES DETECTED ON CLIENT SUBNET.
-                <p className="text-[8.5px] text-zinc-550 mt-1 uppercase">
-                  Verify Librespot is running or launch Spotify on another device.
-                </p>
-              </div>
-            )}
-          </div>
+          <button
+            onClick={handleLogout}
+            className="w-full py-3 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20 text-[10px] uppercase font-bold transition-all flex items-center justify-center gap-1.5 active:scale-95 cursor-pointer"
+          >
+            <LogOut className="h-3.5 w-3.5" />
+            Disconnect
+          </button>
         )}
       </section>
 
-      {/* 3. SYSTEM OTA UPDATES */}
-      <section className="w-[360px] shrink-0 p-4 rounded-xl border border-zinc-900 bg-zinc-950/20 flex flex-col gap-2">
-        <div className="flex items-center justify-between">
-          <span className="text-[10px] font-bold tracking-wider text-zinc-400 uppercase">
-            [03] System OTA Updates
-          </span>
-          <span className="text-[8px] bg-zinc-900 border border-zinc-800 text-zinc-600 px-2 py-0.5 rounded font-bold uppercase tracking-wider">
-            GIT BRANCH
-          </span>
-        </div>
-
-        <div className="flex flex-col gap-2.5 mt-1">
-          {updateStatus === null && (
-            <button
-              onClick={checkUpdates}
-              className="w-full py-2 px-3 rounded-lg bg-zinc-900 hover:bg-zinc-850 text-xs text-zinc-350 border border-zinc-800 hover:text-white transition-colors cursor-pointer flex items-center justify-center gap-2 active:scale-95 uppercase font-bold tracking-wider"
-            >
-              Check for Updates
-            </button>
-          )}
-
-          {updateStatus === 'checking' && (
-            <div className="text-center py-2 text-zinc-400 text-[10px] flex items-center justify-center gap-2">
-              <RefreshCw className="h-3.5 w-3.5 animate-spin theme-text" />
-              <span>FETCHING LATEST GIT COMMITS...</span>
-            </div>
-          )}
-
-          {updateStatus === 'no-update' && (
-            <div className="flex flex-col gap-2">
-              <div className="p-2.5 rounded bg-emerald-950/20 border border-emerald-900/40 text-emerald-450 text-[10px] font-mono leading-relaxed">
-                <p className="font-bold text-emerald-400">✓ SYSTEM IS UP TO DATE</p>
-                <p className="text-[8.5px] text-zinc-400 mt-0.5">CURRENT COMMIT: {localCommit}</p>
-              </div>
+      {/* 3. AUDIO OUTPUT PATCHBAY CARD (Big Square / Medium Width) */}
+      <section className="w-[300px] shrink-0 p-5 rounded-2xl border border-zinc-800/70 bg-gradient-to-b from-[#1c1e24] to-[#121418] flex flex-col justify-between hover:border-zinc-700 transition-all duration-300 relative group overflow-hidden">
+        <div className="flex flex-col gap-2.5 h-full">
+          <div className="flex items-center justify-between">
+            <span className="text-[9px] font-extrabold tracking-widest text-zinc-550 uppercase">[03] AUDIO CHANNELS</span>
+            {token && (
               <button
-                onClick={checkUpdates}
-                className="w-full py-2 px-3 rounded-lg bg-zinc-950 hover:bg-zinc-900 text-[10px] text-zinc-400 border border-zinc-900 hover:text-zinc-350 transition-colors cursor-pointer active:scale-95 uppercase font-bold tracking-wider"
+                onClick={onRefreshDevices}
+                disabled={isFetchingDevices}
+                className="p-1 rounded hover:bg-zinc-900 text-zinc-500 hover:text-white transition-colors cursor-pointer disabled:opacity-50"
+                title="Refresh Devices"
               >
-                Re-check commits
+                <RefreshCw className={`h-3.5 w-3.5 ${isFetchingDevices ? 'animate-spin theme-text' : ''}`} />
               </button>
-            </div>
-          )}
- 
-          {updateStatus === 'available' && (
-            <div className="flex flex-col gap-2.5">
-              <div className="p-2.5 rounded bg-amber-950/20 border border-amber-900/40 text-amber-450 text-[10px] font-mono leading-normal">
-                <p className="font-bold text-amber-400">⚠️ UPDATE DETECTED ON ORIGIN</p>
-                <p className="text-[8.5px] text-zinc-400 mt-1">LOCAL: {localCommit} // REMOTE: {remoteCommit}</p>
-              </div>
-              <button
-                onClick={triggerOtaUpdate}
-                className="w-full py-2 px-3 rounded-lg theme-bg hover:opacity-90 active:scale-95 text-xs text-black font-extrabold uppercase tracking-wider transition-all cursor-pointer"
-              >
-                Deploy OTA Update
-              </button>
-            </div>
-          )}
+            )}
+          </div>
+          <h3 className="text-sm font-extrabold text-white uppercase tracking-wider mt-0.5">
+            Output Patchbay
+          </h3>
 
-          {updateStatus === 'updating' && (
-            <div className="p-3 rounded bg-zinc-950 border border-zinc-900 text-center flex flex-col items-stretch gap-2.5 font-mono">
-              <div className="flex items-center justify-between text-[10px] select-none">
-                <div className="flex items-center gap-2">
-                  <RefreshCw className="h-4 w-4 animate-spin theme-text" />
-                  <span className="font-bold text-white uppercase tracking-wider">Installing OTA Update</span>
+          {!token ? (
+            <div className="flex-grow flex flex-col items-center justify-center gap-2 border border-dashed border-zinc-800 rounded-xl p-4 text-center mt-1">
+              <AlertCircle className="h-4 w-4 text-zinc-650" />
+              <span className="text-[8.5px] text-zinc-500 leading-normal uppercase">Authorize account to discover audio routes</span>
+            </div>
+          ) : (
+            <div className="flex-grow overflow-y-auto max-h-[120px] pr-1 mt-1 custom-scrollbar flex flex-col gap-1.5">
+              {devices.length > 0 ? (
+                devices.map((device) => {
+                  const isResonance = device.name === 'Resonance Connect';
+                  return (
+                    <button
+                      key={device.id}
+                      onClick={() => !device.is_active && onTransferPlayback(device.id)}
+                      disabled={device.is_active}
+                      className={`w-full p-2 rounded-xl border text-left transition-all flex items-center justify-between gap-2 text-[10px] ${
+                        device.is_active
+                          ? 'theme-bg-glow theme-border-glow text-white font-bold cursor-default'
+                          : 'bg-zinc-950/40 border-zinc-900 text-zinc-400 hover:border-zinc-800 hover:text-zinc-200 cursor-pointer active:scale-[0.99]'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className={device.is_active ? 'theme-text' : 'text-zinc-600'}>
+                          {getDeviceIcon(device.type)}
+                        </span>
+                        <span className="truncate tracking-wide font-mono">
+                          {device.name}
+                        </span>
+                      </div>
+                      {device.is_active && <span className="text-[7.5px] theme-text uppercase font-bold shrink-0">ACTIVE</span>}
+                    </button>
+                  );
+                })
+              ) : (
+                <div className="text-center py-4 text-zinc-500 text-[8.5px] border border-dashed border-zinc-850 rounded-xl">
+                  NO CHANNELS DETECTED.
                 </div>
-                <span className="theme-text font-extrabold font-mono text-[9px] bg-zinc-900 border border-zinc-800 px-1.5 py-0.5 rounded">{otaPercent}%</span>
-              </div>
-              
-              {/* Progress Bar */}
-              <div className="w-full h-2 rounded bg-zinc-900 border border-zinc-850 overflow-hidden relative p-[1px]">
-                <div 
-                  className="h-full theme-bg transition-all duration-300 ease-out rounded shadow-[0_0_8px_var(--theme-color-glow)]"
-                  style={{ width: `${otaPercent}%` }}
-                />
-              </div>
-
-              <div 
-                ref={consoleRef}
-                className="bg-black/85 rounded border border-zinc-900 p-2 text-left h-24 overflow-y-auto text-[8px] text-white select-text custom-scrollbar flex flex-col gap-0.5 leading-normal"
-              >
-                {otaProgress && otaProgress.length > 0 ? (
-                  otaProgress.map((line, idx) => (
-                    <div key={idx} className="whitespace-pre-wrap break-all text-white font-medium">
-                      {line}
-                    </div>
-                  ))
-                ) : (
-                  <div className="text-white/60 animate-pulse uppercase font-medium">Initiating secure socket pipeline...</div>
-                )}
-              </div>
-              <p className="text-[7.5px] text-zinc-400 leading-normal uppercase">
-                The connection will drop and reconnect automatically once compile finishes.
-              </p>
-            </div>
-          )}
-
-          {updateStatus === 'error' && (
-            <div className="flex flex-col gap-2">
-              <div className="p-2.5 rounded bg-rose-950/20 border border-rose-900/40 text-rose-450 text-[10px] font-mono leading-normal">
-                <p className="font-bold text-rose-400">❌ UPDATE ATTEMPT FAILED</p>
-                <p className="text-[8.5px] text-zinc-400 mt-1">{errorMessage}</p>
-              </div>
-              <button
-                onClick={checkUpdates}
-                className="w-full py-2 px-3 rounded-lg bg-zinc-900 hover:bg-zinc-850 text-xs text-zinc-350 border border-zinc-800 hover:text-white transition-colors cursor-pointer active:scale-95"
-              >
-                Retry update check
-              </button>
+              )}
             </div>
           )}
         </div>
       </section>
 
-      {/* 5. SYSTEM THEMES */}
-      <section className="w-[280px] shrink-0 p-4 rounded-xl border border-zinc-900 bg-zinc-950/20 flex flex-col justify-between">
-        <div className="flex items-center justify-between">
-          <span className="text-[10px] font-bold tracking-wider text-zinc-400 uppercase">
-            [05] System Themes
-          </span>
-          <span className="text-[8px] bg-zinc-900 border border-zinc-800 text-zinc-550 px-2 py-0.5 rounded font-bold uppercase tracking-wider">
-            {theme?.toUpperCase() || 'AMBER'}
-          </span>
+      {/* 4. SYSTEM OTA CARD (Big Square) */}
+      <section className="w-[280px] shrink-0 p-5 rounded-2xl border border-zinc-800/70 bg-gradient-to-b from-[#1c1e24] to-[#121418] flex flex-col justify-between hover:border-zinc-700 transition-all duration-300 relative group overflow-hidden">
+        <div className="flex flex-col gap-2.5 h-full justify-between">
+          <div className="flex flex-col gap-2">
+            <div className="flex items-center justify-between">
+              <span className="text-[9px] font-extrabold tracking-widest text-zinc-550 uppercase">[04] SYSTEM UPDATE</span>
+              <span className="text-[7.5px] bg-zinc-900 border border-zinc-800 text-zinc-500 px-1.5 py-0.5 rounded font-bold uppercase">OTA</span>
+            </div>
+            <h3 className="text-sm font-extrabold text-white uppercase tracking-wider mt-0.5">
+              Firmware OTA
+            </h3>
+          </div>
+
+          <div className="flex-grow flex flex-col justify-center my-1.5">
+            {updateStatus === null && (
+              <button
+                onClick={checkUpdates}
+                className="w-full py-2.5 rounded-xl bg-zinc-900 hover:bg-zinc-850 text-[10px] text-zinc-300 border border-zinc-800 hover:text-white transition-colors cursor-pointer flex items-center justify-center gap-1.5 active:scale-95 uppercase font-bold tracking-wider"
+              >
+                Check for Updates
+              </button>
+            )}
+
+            {updateStatus === 'checking' && (
+              <div className="text-center py-2 text-zinc-500 text-[8.5px] flex items-center justify-center gap-1.5 font-bold uppercase tracking-wider">
+                <RefreshCw className="h-3 w-3 animate-spin theme-text" />
+                <span>Checking Git Commits...</span>
+              </div>
+            )}
+
+            {updateStatus === 'no-update' && (
+              <div className="p-2 rounded-xl bg-emerald-950/20 border border-emerald-900/40 text-[8.5px] font-mono leading-relaxed">
+                <p className="font-bold text-emerald-400">✓ SYSTEM UP TO DATE</p>
+                <p className="text-zinc-500 truncate mt-0.5">COMMIT: {localCommit.slice(0, 7) || 'HEAD'}</p>
+              </div>
+            )}
+
+            {updateStatus === 'available' && (
+              <button
+                onClick={triggerOtaUpdate}
+                className="w-full py-2.5 rounded-xl theme-bg hover:opacity-90 active:scale-95 text-[10px] text-black font-extrabold uppercase tracking-wider transition-all cursor-pointer"
+              >
+                Deploy OTA Update
+              </button>
+            )}
+
+            {updateStatus === 'updating' && (
+              <div className="w-full flex flex-col gap-1.5 text-center font-mono">
+                <div className="flex justify-between items-center text-[8.5px] text-zinc-400">
+                  <span>DEPLOYING</span>
+                  <span className="theme-text font-bold">{otaPercent}%</span>
+                </div>
+                <div className="w-full h-1.5 bg-zinc-900 rounded-full overflow-hidden p-[1px]">
+                  <div className="h-full theme-bg transition-all duration-300" style={{ width: `${otaPercent}%` }} />
+                </div>
+              </div>
+            )}
+
+            {updateStatus === 'error' && (
+              <div className="p-2 rounded-xl bg-rose-950/20 border border-rose-900/40 text-[8.5px] text-rose-450">
+                <p className="font-bold">❌ OTA ERROR</p>
+                <button onClick={checkUpdates} className="mt-1 text-[8px] underline uppercase tracking-wider">Retry</button>
+              </div>
+            )}
+          </div>
+
+          {updateStatus !== 'updating' && updateStatus !== null && (
+            <button
+              onClick={checkUpdates}
+              className="w-full py-1.5 text-[8.5px] text-zinc-500 hover:text-zinc-300 uppercase tracking-widest font-extrabold border border-dashed border-zinc-850 rounded-lg transition-colors cursor-pointer"
+            >
+              Re-check Commits
+            </button>
+          )}
+        </div>
+      </section>
+
+      {/* 5. SYSTEM THEMES CARD (Big Square) */}
+      <section className="w-[230px] shrink-0 p-5 rounded-2xl border border-zinc-800/70 bg-gradient-to-b from-[#1c1e24] to-[#121418] flex flex-col justify-between hover:border-zinc-700 transition-all duration-300 relative group overflow-hidden">
+        <div className="flex flex-col gap-2.5 w-full">
+          <div className="flex items-center justify-between">
+            <span className="text-[9px] font-extrabold tracking-widest text-zinc-550 uppercase">[05] PALETTE THEME</span>
+            <span className="text-[7.5px] bg-zinc-900 border border-zinc-800 text-zinc-400 px-1.5 py-0.5 rounded font-bold uppercase">{theme || 'amber'}</span>
+          </div>
+          <h3 className="text-sm font-extrabold text-white uppercase tracking-wider mt-0.5">
+            System Theme
+          </h3>
         </div>
 
-        <div className="grid grid-cols-5 gap-1.5 mt-1">
+        <div className="grid grid-cols-5 gap-1.5 mt-2">
           {[
-            { id: 'amber', name: 'Amber', colorClass: 'bg-[#ff8e00]' },
-            { id: 'emerald', name: 'Emerald', colorClass: 'bg-[#00ff66]' },
-            { id: 'cyan', name: 'Cyan', colorClass: 'bg-[#00ffff]' },
-            { id: 'amethyst', name: 'Amethyst', colorClass: 'bg-[#a855f7]' },
-            { id: 'ruby', name: 'Ruby', colorClass: 'bg-[#ff3366]' }
+            { id: 'amber', name: 'AMB', colorClass: 'bg-[#ff8e00]' },
+            { id: 'emerald', name: 'EME', colorClass: 'bg-[#00ff66]' },
+            { id: 'cyan', name: 'CYA', colorClass: 'bg-[#00ffff]' },
+            { id: 'amethyst', name: 'AME', colorClass: 'bg-[#a855f7]' },
+            { id: 'ruby', name: 'RUB', colorClass: 'bg-[#ff3366]' }
           ].map((t) => (
             <button
               key={t.id}
               onClick={() => onThemeChange(t.id)}
-              className={`py-2 px-1 rounded-lg border text-center transition-all cursor-pointer flex flex-col items-center gap-1 active:scale-95 ${
+              className={`py-2 px-0.5 rounded-lg border text-center transition-all cursor-pointer flex flex-col items-center gap-1 active:scale-95 ${
                 theme === t.id
                   ? 'bg-zinc-900 border-zinc-700 text-white font-bold'
                   : 'bg-zinc-950/40 border-zinc-950 text-zinc-500 hover:border-zinc-900 hover:text-zinc-350'
               }`}
+              title={t.name}
             >
-              <span className={`w-3 h-3 rounded-full ${t.colorClass} border border-black/20 shrink-0`} />
-              <span className="text-[7.5px] uppercase tracking-wider truncate w-full">{t.name}</span>
+              <span className={`w-3.5 h-3.5 rounded-full ${t.colorClass} border border-black/20 shrink-0`} />
+              <span className="text-[7px] font-bold uppercase tracking-wider truncate w-full">{t.name}</span>
             </button>
           ))}
         </div>
       </section>
 
-      {/* 4. SOURCE SEARCH & LOAD */}
-      <section className="w-[380px] shrink-0 flex flex-col h-full overflow-hidden">
-        <div className="flex items-center gap-2 pb-2 mb-3 border-b border-zinc-900">
-          <span className="text-[10px] font-bold tracking-wider text-zinc-400 uppercase">
-            [04] Source Catalog Search
-          </span>
-        </div>
-        
-        {!token ? (
-          <div className="p-4 rounded-xl border border-zinc-900 bg-zinc-950/20 text-center py-6 text-zinc-400 text-[10px] border-dashed select-none flex flex-col items-center gap-1.5">
-            <AlertCircle className="h-4 w-4 text-zinc-500" />
-            <span>AUTHORIZE KEYWAY TO ACTIVATE SERVICE SEARCH</span>
+      {/* 6. SEARCH CATALOG PANEL (Medium-Large Width) */}
+      <section className="w-[380px] shrink-0 p-5 rounded-2xl border border-zinc-800/70 bg-gradient-to-b from-[#1c1e24] to-[#121418] flex flex-col justify-between hover:border-zinc-700 transition-all duration-300 relative group overflow-hidden">
+        <div className="flex flex-col h-full justify-between">
+          <div className="flex items-center gap-2 pb-2 mb-2 border-b border-zinc-900 shrink-0">
+            <span className="text-[9px] font-extrabold tracking-widest text-zinc-550 uppercase">
+              [06] SOURCE SEARCH CATALOG
+            </span>
           </div>
-        ) : (
-          <TrackSearch
-            token={token}
-            onPlayTrack={onPlayTrack}
-            isDrawer={true}
-          />
-        )}
+          
+          <div className="flex-grow min-h-0">
+            {!token ? (
+              <div className="h-full flex flex-col items-center justify-center gap-2 border border-dashed border-zinc-850 rounded-xl p-4 text-center">
+                <AlertCircle className="h-4 w-4 text-zinc-650 animate-pulse" />
+                <span className="text-[8.5px] text-zinc-500 leading-normal uppercase">Authorize Account to Search Tracks</span>
+              </div>
+            ) : (
+              <TrackSearch
+                token={token}
+                onPlayTrack={onPlayTrack}
+                isDrawer={true}
+              />
+            )}
+          </div>
+        </div>
       </section>
 
     </div>
