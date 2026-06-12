@@ -215,8 +215,8 @@ export default function DefinitionsMenu({
         </div>
 
         {!token ? (
-          <div className="text-center py-4 text-zinc-650 text-[10px] border border-dashed border-zinc-900 rounded-lg select-none flex flex-col items-center gap-1">
-            <AlertCircle className="h-4 w-4 text-zinc-750" />
+          <div className="text-center py-4 text-zinc-400 text-[10px] border border-dashed border-zinc-800 rounded-lg select-none flex flex-col items-center gap-1">
+            <AlertCircle className="h-4 w-4 text-zinc-500" />
             <span>AUTHORIZE KEYWAY TO LOCATE AUDIBLE CHANNELS</span>
           </div>
         ) : (
@@ -248,7 +248,7 @@ export default function DefinitionsMenu({
                             </span>
                           )}
                         </div>
-                        <p className="text-[8px] text-zinc-650 uppercase font-mono mt-0.5">
+                        <p className="text-[8px] text-zinc-400 uppercase font-mono mt-0.5">
                           Type: {device.type || 'Speaker'} // Vol: {device.volume_percent}%
                         </p>
                       </div>
@@ -260,7 +260,7 @@ export default function DefinitionsMenu({
                           <Check className="h-3 w-3" /> ACTIVE
                         </span>
                       ) : (
-                        <span className="text-[8.5px] text-zinc-650 hover:text-zinc-400 font-bold uppercase tracking-wider">
+                        <span className="text-[8.5px] text-zinc-400 hover:text-zinc-350 font-bold uppercase tracking-wider">
                           CONNECT
                         </span>
                       )}
@@ -269,9 +269,9 @@ export default function DefinitionsMenu({
                 );
               })
             ) : (
-              <div className="text-center py-4 text-zinc-650 text-[10px] border border-dashed border-zinc-900 rounded-lg select-none">
+              <div className="text-center py-4 text-zinc-400 text-[10px] border border-dashed border-zinc-800 rounded-lg select-none">
                 NO DEVICES DETECTED ON CLIENT SUBNET.
-                <p className="text-[8.5px] text-zinc-700 mt-1 uppercase">
+                <p className="text-[8.5px] text-zinc-550 mt-1 uppercase">
                   Verify Librespot is running or launch Spotify on another device.
                 </p>
               </div>
@@ -302,7 +302,7 @@ export default function DefinitionsMenu({
           )}
 
           {updateStatus === 'checking' && (
-            <div className="text-center py-2 text-zinc-650 text-[10px] flex items-center justify-center gap-2">
+            <div className="text-center py-2 text-zinc-400 text-[10px] flex items-center justify-center gap-2">
               <RefreshCw className="h-3.5 w-3.5 animate-spin theme-text" />
               <span>FETCHING LATEST GIT COMMITS...</span>
             </div>
@@ -312,22 +312,22 @@ export default function DefinitionsMenu({
             <div className="flex flex-col gap-2">
               <div className="p-2.5 rounded bg-emerald-950/20 border border-emerald-900/40 text-emerald-450 text-[10px] font-mono leading-relaxed">
                 <p className="font-bold text-emerald-400">✓ SYSTEM IS UP TO DATE</p>
-                <p className="text-[8.5px] text-zinc-550 mt-0.5">CURRENT COMMIT: {localCommit}</p>
+                <p className="text-[8.5px] text-zinc-400 mt-0.5">CURRENT COMMIT: {localCommit}</p>
               </div>
               <button
                 onClick={checkUpdates}
-                className="w-full py-2 px-3 rounded-lg bg-zinc-950 hover:bg-zinc-900 text-[10px] text-zinc-450 border border-zinc-900 hover:text-zinc-350 transition-colors cursor-pointer active:scale-95 uppercase font-bold tracking-wider"
+                className="w-full py-2 px-3 rounded-lg bg-zinc-950 hover:bg-zinc-900 text-[10px] text-zinc-400 border border-zinc-900 hover:text-zinc-350 transition-colors cursor-pointer active:scale-95 uppercase font-bold tracking-wider"
               >
                 Re-check commits
               </button>
             </div>
           )}
-
+ 
           {updateStatus === 'available' && (
             <div className="flex flex-col gap-2.5">
               <div className="p-2.5 rounded bg-amber-950/20 border border-amber-900/40 text-amber-450 text-[10px] font-mono leading-normal">
                 <p className="font-bold text-amber-400">⚠️ UPDATE DETECTED ON ORIGIN</p>
-                <p className="text-[8.5px] text-zinc-550 mt-1">LOCAL: {localCommit} // REMOTE: {remoteCommit}</p>
+                <p className="text-[8.5px] text-zinc-400 mt-1">LOCAL: {localCommit} // REMOTE: {remoteCommit}</p>
               </div>
               <button
                 onClick={triggerOtaUpdate}
@@ -380,7 +380,7 @@ export default function DefinitionsMenu({
             <div className="flex flex-col gap-2">
               <div className="p-2.5 rounded bg-rose-950/20 border border-rose-900/40 text-rose-450 text-[10px] font-mono leading-normal">
                 <p className="font-bold text-rose-400">❌ UPDATE ATTEMPT FAILED</p>
-                <p className="text-[8.5px] text-zinc-550 mt-1">{errorMessage}</p>
+                <p className="text-[8.5px] text-zinc-400 mt-1">{errorMessage}</p>
               </div>
               <button
                 onClick={checkUpdates}
@@ -437,8 +437,8 @@ export default function DefinitionsMenu({
         </div>
         
         {!token ? (
-          <div className="p-4 rounded-xl border border-zinc-900 bg-zinc-950/20 text-center py-6 text-zinc-650 text-[10px] border-dashed select-none flex flex-col items-center gap-1.5">
-            <AlertCircle className="h-4 w-4 text-zinc-750" />
+          <div className="p-4 rounded-xl border border-zinc-900 bg-zinc-950/20 text-center py-6 text-zinc-400 text-[10px] border-dashed select-none flex flex-col items-center gap-1.5">
+            <AlertCircle className="h-4 w-4 text-zinc-500" />
             <span>AUTHORIZE KEYWAY TO ACTIVATE SERVICE SEARCH</span>
           </div>
         ) : (

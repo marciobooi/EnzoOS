@@ -508,12 +508,12 @@ export default function RemoteControl() {
         <div className="w-full max-w-sm bg-[#13161c] border border-white/5 rounded-2xl p-8 shadow-2xl flex flex-col gap-6 z-10">
           <div className="text-center flex flex-col gap-2">
             <h2 className="text-lg font-bold text-white uppercase tracking-[0.2em] drop-shadow-[0_0_15px_rgba(255,255,255,0.08)]">Resonance</h2>
-            <p className="text-[10px] font-semibold text-[#8695a7] uppercase tracking-wider">Remote Control Access</p>
+            <p className="text-[10px] font-semibold text-[#ffffff] uppercase tracking-wider">Remote Control Access</p>
           </div>
 
           <form onSubmit={handleLoginSubmit} className="flex flex-col gap-4">
             <div className="flex flex-col gap-1.5">
-              <label className="text-[9px] uppercase tracking-wider text-[#8695a7] font-bold">Username</label>
+              <label className="text-[9px] uppercase tracking-wider text-[#ffffff] font-bold">Username</label>
               <input
                 type="text"
                 value={usernameInput}
@@ -525,7 +525,7 @@ export default function RemoteControl() {
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <label className="text-[9px] uppercase tracking-wider text-[#8695a7] font-bold">Password</label>
+              <label className="text-[9px] uppercase tracking-wider text-[#ffffff] font-bold">Password</label>
               <input
                 type="password"
                 value={passwordInput}
@@ -559,7 +559,7 @@ export default function RemoteControl() {
       <header className="w-full max-w-md flex items-center justify-between z-10">
         <div className="flex items-center gap-2">
           <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500'}`} />
-          <span className="text-[11px] font-bold tracking-[0.2em] text-[#8695a7] uppercase">
+          <span className="text-[11px] font-bold tracking-[0.2em] text-[#ffffff] uppercase">
             Resonance Control
           </span>
         </div>
@@ -567,14 +567,14 @@ export default function RemoteControl() {
           <button 
             onClick={fetchDevices}
             disabled={!token}
-            className="p-2 rounded-full hover:bg-white/5 active:scale-90 transition-all text-[#8695a7] hover:text-white cursor-pointer disabled:opacity-35"
+            className="p-2 rounded-full hover:bg-white/5 active:scale-90 transition-all text-[#ffffff] hover:text-white cursor-pointer disabled:opacity-35"
             title="Refresh devices"
           >
             <RefreshCw className={`h-4 w-4 ${isFetchingDevices ? 'animate-spin text-white' : ''}`} />
           </button>
           <button 
             onClick={() => setShowSettings(!showSettings)}
-            className="p-2 rounded-full hover:bg-white/5 active:scale-90 transition-all text-[#8695a7] hover:text-white cursor-pointer"
+            className="p-2 rounded-full hover:bg-white/5 active:scale-90 transition-all text-[#ffffff] hover:text-white cursor-pointer"
           >
             <Settings className="h-4 w-4" />
           </button>
@@ -589,7 +589,7 @@ export default function RemoteControl() {
               <h3 className="text-sm font-bold text-white uppercase tracking-wider">Control Configuration</h3>
               <button 
                 onClick={() => setShowSettings(false)}
-                className="text-xs text-[#8695a7] hover:text-white font-bold"
+                className="text-xs text-[#ffffff] hover:text-white font-bold"
               >
                 Close
               </button>
@@ -597,7 +597,7 @@ export default function RemoteControl() {
 
             {/* Active Source Toggle */}
             <div className="flex justify-between items-center bg-white/2 border border-white/5 p-3 rounded-xl">
-              <span className="text-[10px] uppercase tracking-wider text-[#8695a7] font-semibold">Active Plugin Source</span>
+              <span className="text-[10px] uppercase tracking-wider text-[#ffffff] font-semibold">Active Plugin Source</span>
               <button
                 onClick={handleToggleSource}
                 className={`px-3 py-1.5 rounded-lg text-[9px] font-bold uppercase transition-all cursor-pointer ${
@@ -612,7 +612,7 @@ export default function RemoteControl() {
 
             {/* Spotify Web Access Keyway */}
             <div className="flex flex-col gap-2 border-t border-white/5 pt-3">
-              <div className="flex justify-between items-center text-[10px] uppercase tracking-wider text-[#8695a7] font-semibold">
+              <div className="flex justify-between items-center text-[10px] uppercase tracking-wider text-[#ffffff] font-semibold">
                 <span>Spotify Web Access</span>
                 {token ? (
                   <span className="text-[8px] bg-[#1ed760]/10 border border-[#1ed760]/30 text-[#1ed760] px-2 py-0.5 rounded font-bold uppercase tracking-wider">
@@ -654,16 +654,16 @@ export default function RemoteControl() {
             </div>
 
             {/* Spotify Connect pairing instructions */}
-            <div className="flex flex-col gap-2 border-t border-white/5 pt-3 text-[10px] leading-relaxed text-[#8695a7]">
-              <span className="text-[10px] uppercase tracking-wider text-[#8695a7] font-semibold">Spotify Connect pairing</span>
-              <div className="p-2.5 rounded bg-black/40 border border-white/5 text-[9px] text-[#8695a7]">
+            <div className="flex flex-col gap-2 border-t border-white/5 pt-3 text-[10px] leading-relaxed text-[#ffffff]">
+              <span className="text-[10px] uppercase tracking-wider text-[#ffffff] font-semibold">Spotify Connect pairing</span>
+              <div className="p-2.5 rounded bg-black/40 border border-white/5 text-[9px] text-[#ffffff]">
                 To pair your account, just select and play to <strong className="text-white">"Resonance Connect"</strong> once from your official Spotify app (phone or computer) on this network. The daemon will cache your session automatically and allow full control.
               </div>
             </div>
 
 
             <div className="border-t border-white/5 pt-4 flex flex-col gap-3">
-              <div className="flex justify-between items-center text-[10px] uppercase tracking-wider text-[#8695a7] font-semibold">
+              <div className="flex justify-between items-center text-[10px] uppercase tracking-wider text-[#ffffff] font-semibold">
                 <span>Cast Active Devices</span>
                 <span className="text-[8px] bg-white/5 border border-white/10 px-1.5 py-0.5 rounded text-white">{devices.length} Found</span>
               </div>
@@ -676,7 +676,7 @@ export default function RemoteControl() {
                       className={`w-full p-2 rounded-xl border flex items-center justify-between text-left transition-all active:scale-98 cursor-pointer ${
                         device.is_active 
                           ? 'bg-white/5 border-white/10 text-white font-bold' 
-                          : 'bg-transparent border-transparent text-[#8695a7] hover:bg-white/2 hover:text-white'
+                          : 'bg-transparent border-transparent text-[#ffffff] hover:bg-white/2 hover:text-white'
                       }`}
                     >
                       <div className="flex items-center gap-2">
@@ -684,21 +684,21 @@ export default function RemoteControl() {
                         <span className="text-[11px] truncate max-w-[150px]">{device.name}</span>
                       </div>
                       <div className="flex items-center gap-0.5">
-                        <span className="text-[8px] uppercase tracking-wider text-[#8695a7]">
+                        <span className="text-[8px] uppercase tracking-wider text-[#ffffff]">
                           {device.is_active ? 'Active' : 'Cast'}
                         </span>
-                        <ChevronRight className="h-3 w-3 text-[#8695a7]" />
+                        <ChevronRight className="h-3 w-3 text-[#ffffff]" />
                       </div>
                     </button>
                   ))
                 ) : (
-                  <div className="text-[10px] text-zinc-650 italic text-center py-2">No audio players detected on network</div>
+                  <div className="text-[10px] text-zinc-400 italic text-center py-2">No audio players detected on network</div>
                 )}
               </div>
             </div>
-
+ 
             <div className="border-t border-white/5 pt-4 flex flex-col gap-3">
-              <div className="flex justify-between items-center text-[10px] uppercase tracking-wider text-[#8695a7] font-semibold">
+              <div className="flex justify-between items-center text-[10px] uppercase tracking-wider text-[#ffffff] font-semibold">
                 <span>System Updates</span>
                 <span className="text-[8px] bg-white/5 border border-white/10 px-1.5 py-0.5 rounded text-white">OTA</span>
               </div>
@@ -727,7 +727,7 @@ export default function RemoteControl() {
                     </div>
                     <button
                       onClick={checkUpdates}
-                      className="w-full py-2 rounded-xl text-xs font-bold uppercase tracking-wider text-[#8695a7] hover:text-white transition-all"
+                      className="w-full py-2 rounded-xl text-xs font-bold uppercase tracking-wider text-[#ffffff] hover:text-white transition-all"
                     >
                       Check Again
                     </button>
@@ -757,7 +757,7 @@ export default function RemoteControl() {
                     <div className="w-full h-1.5 bg-white/10 rounded-full overflow-hidden">
                       <div className="h-full bg-white transition-all" style={{ width: `${otaPercent}%` }} />
                     </div>
-                    <div className="h-20 overflow-y-auto text-[8px] font-mono text-[#8695a7] flex flex-col gap-0.5 custom-scrollbar">
+                    <div className="h-20 overflow-y-auto text-[8px] font-mono text-[#ffffff] flex flex-col gap-0.5 custom-scrollbar">
                       {otaProgress.map((line, i) => <div key={i}>{line}</div>)}
                     </div>
                   </div>
@@ -826,7 +826,7 @@ export default function RemoteControl() {
           <h2 className="text-lg font-bold text-white tracking-tight leading-snug truncate">
             {trackName}
           </h2>
-          <p className="text-[12px] font-semibold text-[#8695a7] tracking-normal truncate">
+          <p className="text-[12px] font-semibold text-[#ffffff] tracking-normal truncate">
             {trackArtist}
           </p>
           {activeDevice && (
@@ -871,7 +871,7 @@ export default function RemoteControl() {
               }%, rgba(255, 255, 255, 0.05) 100%)`
             }}
           />
-          <div className="flex justify-between items-center text-[10px] text-[#8695a7] font-semibold font-mono">
+          <div className="flex justify-between items-center text-[10px] text-[#ffffff] font-semibold font-mono">
             <span>{formatTime(trackPosition)}</span>
             <span>{formatTime(trackDuration)}</span>
           </div>
@@ -883,7 +883,7 @@ export default function RemoteControl() {
             onClick={handleShuffle}
             disabled={spotify ? !token : true}
             className={`p-2 rounded-full transition-all active:scale-90 cursor-pointer disabled:opacity-20 ${
-              shuffleState ? 'text-[#c788ff] drop-shadow-[0_0_8px_rgba(199,136,255,0.4)]' : 'text-[#8695a7] hover:text-white'
+              shuffleState ? 'text-[#c788ff] drop-shadow-[0_0_8px_rgba(199,136,255,0.4)]' : 'text-[#ffffff] hover:text-white'
             }`}
           >
             <Shuffle className="h-4.5 w-4.5" />
@@ -922,7 +922,7 @@ export default function RemoteControl() {
             onClick={handleRepeat}
             disabled={spotify ? !token : true}
             className={`p-2 rounded-full transition-all active:scale-90 cursor-pointer disabled:opacity-20 ${
-              repeatState !== 'off' ? 'text-[#c788ff] drop-shadow-[0_0_8px_rgba(199,136,255,0.4)]' : 'text-[#8695a7] hover:text-white'
+              repeatState !== 'off' ? 'text-[#c788ff] drop-shadow-[0_0_8px_rgba(199,136,255,0.4)]' : 'text-[#ffffff] hover:text-white'
             }`}
           >
             <Repeat className="h-4.5 w-4.5" />
@@ -940,7 +940,7 @@ export default function RemoteControl() {
           <button 
             onClick={handleMuteToggle}
             disabled={spotify ? !token : false}
-            className="text-[#8695a7] hover:text-white active:scale-90 transition-all cursor-pointer disabled:opacity-25"
+            className="text-[#ffffff] hover:text-white active:scale-90 transition-all cursor-pointer disabled:opacity-25"
           >
             {isMuted || volume === 0 ? (
               <VolumeX className="h-4 w-4" />
@@ -966,7 +966,7 @@ export default function RemoteControl() {
             }}
           />
           
-          <span className="text-[10px] text-[#8695a7] font-semibold font-mono w-7 text-right">
+          <span className="text-[10px] text-[#ffffff] font-semibold font-mono w-7 text-right">
             {isMuted ? 0 : volume}%
           </span>
         </div>
