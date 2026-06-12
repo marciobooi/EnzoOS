@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Sliders, Music, Download, LogOut, Radio } from 'lucide-react';
 import { toast } from 'sonner';
 import { api } from '../api';
@@ -26,6 +26,9 @@ export default function DefinitionsMenu({
   errorMessage,
   setErrorMessage
 }) {
+  const [radioSearch, setRadioSearch] = useState('');
+  const [stationsList, setStationsList] = useState(RADIO_STATIONS);
+  const [isSearching, setIsSearching] = useState(false);
 
   // Theme Cycler Logic
   const themesList = ['amber', 'emerald', 'cyan', 'amethyst', 'ruby'];
@@ -202,12 +205,51 @@ export default function DefinitionsMenu({
         <span className="text-[9px] font-extrabold tracking-widest text-zinc-400 uppercase">WEB RADIO</span>
         
         <div className="my-auto flex flex-col items-center py-2 w-full gap-2.5">
-          <Radio 
-            className="h-12 w-12 text-zinc-500 group-hover:text-[var(--theme-color)] transition-colors"
-          />
+          <div className="flex items-center gap-1.5 w-full">
+            <Radio 
+              className={`h-4.5 w-4.5 text-zinc-500 group-hover:text-[var(--theme-color)] transition-colors ${isSearching ? 'animate-pulse' : ''}`}
+            />
+            <input
+              type="text"
+              placeholder="Search station..."
+              value={radioSearch}
+              onChange={(e) => setRadioSearch(e.target.value)}
+              onKeyDown={async (e) => {
+                if (e.key === 'Enter') {
+                  const query = radioSearch.trim();
+                  if (!query) {
+                    setStationsList(RADIO_STATIONS);
+                    return;
+                  }
+                  try {
+                    setIsSearching(true);
+                    const res = await fetch(`https://de1.api.radio-browser.info/json/stations/byname/${encodeURIComponent(query)}?limit=25&hidebroken=true`);
+                    const data = await res.json();
+                    const formatted = data.map(s => ({
+                      name: s.name.length > 22 ? s.name.substring(0, 20) + '...' : s.name,
+                      url: s.url_resolved || s.url
+                    }));
+                    if (formatted.length === 0) {
+                      toast.error('No stations found.');
+                      setStationsList(RADIO_STATIONS);
+                    } else {
+                      setStationsList(formatted);
+                      toast.success(`Found ${formatted.length} stations!`);
+                    }
+                  } catch (err) {
+                    toast.error('Failed to search stations.');
+                  } finally {
+                    setIsSearching(false);
+                  }
+                }
+              }}
+              className="w-full bg-zinc-950/40 hover:bg-zinc-950/75 border border-white/10 rounded-lg px-2.5 py-1 font-mono text-[9px] text-zinc-200 focus:outline-none focus:border-[var(--theme-color)]"
+            />
+          </div>
+
           <select
             onChange={async (e) => {
-              const selected = RADIO_STATIONS.find(s => s.url === e.target.value);
+              const selected = stationsList.find(s => s.url === e.target.value);
               if (selected) {
                 try {
                   await api.localPlayRadio(selected.url, selected.name);
@@ -218,12 +260,14 @@ export default function DefinitionsMenu({
                 }
               }
             }}
-            className="w-full bg-zinc-950/80 border border-white/10 rounded-lg px-2 py-1 font-mono text-[9px] text-zinc-300 focus:outline-none focus:border-[var(--theme-color)] cursor-pointer"
+            className="w-full bg-zinc-950/80 border border-white/10 rounded-lg px-2 py-1.5 font-mono text-[9px] text-zinc-300 focus:outline-none focus:border-[var(--theme-color)] cursor-pointer"
             defaultValue=""
           >
-            <option value="" disabled className="bg-zinc-950 text-zinc-500">SELECT STATION</option>
-            {RADIO_STATIONS.map((s) => (
-              <option key={s.url} value={s.url} className="bg-zinc-950 text-zinc-100">
+            <option value="" disabled className="bg-zinc-950 text-zinc-500">
+              {isSearching ? 'SEARCHING...' : 'SELECT STATION'}
+            </option>
+            {stationsList.map((s, idx) => (
+              <option key={`${s.url}-${idx}`} value={s.url} className="bg-zinc-950 text-zinc-100">
                 {s.name}
               </option>
             ))}
@@ -231,7 +275,7 @@ export default function DefinitionsMenu({
         </div>
 
         <div className="text-[9px] font-bold uppercase tracking-wider text-zinc-400 text-center w-full">
-          LIVE STREAMING
+          GLOBAL TUNE SEARCH
         </div>
       </div>
 
