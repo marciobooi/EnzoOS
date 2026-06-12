@@ -196,8 +196,23 @@ export default function EqualizerControl({
                   {bandVal > 0 ? `+${bandVal.toFixed(0)}` : bandVal.toFixed(0)}
                 </span>
                 
-                {/* Visual groove for path slider */}
-                <div className="relative w-1.5 bg-zinc-800 h-[65px] rounded-full flex items-center justify-center">
+                {/* Wider interactive container for the vertical slider */}
+                <div className="relative w-10 h-[65px] flex items-center justify-center">
+                  {/* Visual groove and knob (events disabled to prevent blocking clicks) */}
+                  <div className="absolute w-1.5 bg-zinc-800 h-full rounded-full pointer-events-none">
+                    {/* Styled slider track */}
+                    <div 
+                      className="absolute bottom-0 w-full rounded-full bg-gradient-to-t from-[var(--theme-color)]/70 to-[var(--theme-color)]" 
+                      style={{ height: `${((bandVal + 12) / 24) * 100}%` }}
+                    />
+                    {/* Styled slider knob */}
+                    <div 
+                      className="absolute left-1/2 -translate-y-1/2 w-3.5 h-3.5 rounded-full bg-white border-2 border-[var(--theme-color)] shadow-[0_0_6px_var(--theme-color-glow)]"
+                      style={{ bottom: `calc(${((bandVal + 12) / 24) * 100}% - 7px)` }}
+                    />
+                  </div>
+
+                  {/* Hidden input overlaying the entire wide container */}
                   <input
                     type="range"
                     min="-12"
@@ -207,17 +222,7 @@ export default function EqualizerControl({
                     orient="vertical" /* Backwards compatibility */
                     style={{ writingMode: 'bt-lr', WebkitAppearance: 'slider-vertical' }}
                     onChange={(e) => onBandChange(index, Number(e.target.value))}
-                    className="absolute inset-0 opacity-0 cursor-row-resize h-full w-full"
-                  />
-                  {/* Styled slider track */}
-                  <div 
-                    className="absolute bottom-0 w-full rounded-full bg-gradient-to-t from-[var(--theme-color)]/70 to-[var(--theme-color)]" 
-                    style={{ height: `${((bandVal + 12) / 24) * 100}%` }}
-                  />
-                  {/* Styled slider knob */}
-                  <div 
-                    className="absolute w-3.5 h-3.5 rounded-full bg-white border-2 border-[var(--theme-color)] shadow-[0_0_6px_var(--theme-color-glow)] transition-shadow hover:scale-110"
-                    style={{ bottom: `calc(${((bandVal + 12) / 24) * 100}% - 7px)` }}
+                    className="absolute inset-0 w-full h-full opacity-0 cursor-row-resize z-20"
                   />
                 </div>
                 
