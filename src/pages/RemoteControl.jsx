@@ -501,45 +501,45 @@ export default function RemoteControl() {
   if (!isAuthenticated) {
     return (
       <>
-        <div className="w-full min-h-screen text-[#f1f3f6] font-sans flex flex-col items-center justify-center p-6 relative overflow-hidden select-none">
+        <div className="w-full min-h-screen text-zinc-800 font-sans flex flex-col items-center justify-center p-6 relative overflow-hidden select-none">
           
           {/* Background Ambience Glow */}
-          <div className="absolute top-[-20%] left-1/2 -translate-x-1/2 w-[120%] aspect-square rounded-full bg-gradient-to-b from-[#2e3746]/10 to-transparent blur-3xl pointer-events-none" />
+          <div className="absolute top-[-20%] left-1/2 -translate-x-1/2 w-[120%] aspect-square rounded-full bg-gradient-to-b from-zinc-100 to-transparent blur-3xl pointer-events-none" />
 
-          <div className="w-full max-w-sm bg-[#13161c] border border-white/5 rounded-2xl p-8 shadow-2xl flex flex-col gap-6 z-10">
+          <div className="w-full max-w-sm bg-white border border-zinc-100 rounded-2xl p-8 shadow-2xl flex flex-col gap-6 z-10">
             <div className="text-center flex flex-col gap-2">
-              <h2 className="text-lg font-bold text-white uppercase tracking-[0.2em] drop-shadow-[0_0_15px_rgba(255,255,255,0.08)]">Resonance</h2>
-              <p className="text-[10px] font-semibold text-[#ffffff] uppercase tracking-wider">Remote Control Access</p>
+              <h2 className="text-lg font-bold text-zinc-900 uppercase tracking-[0.2em] drop-shadow-[0_0_15px_rgba(0,0,0,0.02)]">Resonance</h2>
+              <p className="text-[10px] font-semibold text-zinc-500 uppercase tracking-wider">Remote Control Access</p>
             </div>
 
             <form onSubmit={handleLoginSubmit} className="flex flex-col gap-4">
               <div className="flex flex-col gap-1.5">
-                <label className="text-[9px] uppercase tracking-wider text-[#ffffff] font-bold">Username</label>
+                <label className="text-[9px] uppercase tracking-wider text-zinc-600 font-bold">Username</label>
                 <input
                   type="text"
                   value={usernameInput}
                   onChange={(e) => setUsernameInput(e.target.value)}
                   placeholder="Enter username"
-                  className="w-full bg-black/40 border border-white/5 rounded-xl px-4 py-3 text-xs text-white placeholder:text-zinc-700 focus:outline-none focus:border-white/10"
+                  className="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-4 py-3 text-xs text-zinc-800 placeholder:text-zinc-400 focus:outline-none focus:border-zinc-300"
                   required
                 />
               </div>
 
               <div className="flex flex-col gap-1.5">
-                <label className="text-[9px] uppercase tracking-wider text-[#ffffff] font-bold">Password</label>
+                <label className="text-[9px] uppercase tracking-wider text-zinc-600 font-bold">Password</label>
                 <input
                   type="password"
                   value={passwordInput}
                   onChange={(e) => setPasswordInput(e.target.value)}
                   placeholder="Enter password"
-                  className="w-full bg-black/40 border border-white/5 rounded-xl px-4 py-3 text-xs text-white placeholder:text-zinc-700 focus:outline-none focus:border-white/10"
+                  className="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-4 py-3 text-xs text-zinc-800 placeholder:text-zinc-400 focus:outline-none focus:border-zinc-300"
                   required
                 />
               </div>
 
               <button
                 type="submit"
-                className="w-full py-3 rounded-xl bg-white text-black font-extrabold text-xs uppercase tracking-wider active:scale-95 transition-all cursor-pointer hover:bg-zinc-200 mt-2"
+                className="w-full py-3 rounded-xl bg-zinc-900 text-white font-extrabold text-xs uppercase tracking-wider active:scale-95 transition-all cursor-pointer hover:bg-zinc-800 mt-2"
               >
                 Authorize Device
               </button>
@@ -554,16 +554,16 @@ export default function RemoteControl() {
   // 2. Render normal remote dashboard if authenticated
     return (
       <>
-        <div className="w-full min-h-screen text-[#f1f3f6] font-sans flex flex-col items-center justify-between pb-10 pt-6 px-6 relative overflow-hidden select-none">
+        <div className="w-full min-h-screen text-zinc-800 font-sans flex flex-col items-center justify-between pb-10 pt-6 px-6 relative overflow-hidden select-none">
           
           {/* Background Ambience Glow */}
-          <div className="absolute top-[-20%] left-1/2 -translate-x-1/2 w-[120%] aspect-square rounded-full bg-gradient-to-b from-[#2e3746]/10 to-transparent blur-3xl pointer-events-none" />
+          <div className="absolute top-[-20%] left-1/2 -translate-x-1/2 w-[120%] aspect-square rounded-full bg-gradient-to-b from-zinc-100 to-transparent blur-3xl pointer-events-none" />
 
           {/* Header */}
           <header className="w-full max-w-md flex items-center justify-between z-10">
             <div className="flex items-center gap-2">
               <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500'}`} />
-              <span className="text-[11px] font-bold tracking-[0.2em] text-[#ffffff] uppercase">
+              <span className="text-[11px] font-bold tracking-[0.2em] text-zinc-800 uppercase">
                 Resonance Control
               </span>
             </div>
@@ -571,14 +571,14 @@ export default function RemoteControl() {
               <button 
                 onClick={fetchDevices}
                 disabled={!token}
-                className="p-2 rounded-full hover:bg-white/5 active:scale-90 transition-all text-[#ffffff] hover:text-white cursor-pointer disabled:opacity-35"
+                className="p-2 rounded-full hover:bg-zinc-100 active:scale-90 transition-all text-zinc-500 hover:text-zinc-900 cursor-pointer disabled:opacity-35"
                 title="Refresh devices"
               >
-                <RefreshCw className={`h-4 w-4 ${isFetchingDevices ? 'animate-spin text-white' : ''}`} />
+                <RefreshCw className={`h-4 w-4 ${isFetchingDevices ? 'animate-spin text-zinc-900' : ''}`} />
               </button>
               <button 
                 onClick={() => setShowSettings(!showSettings)}
-                className="p-2 rounded-full hover:bg-white/5 active:scale-90 transition-all text-[#ffffff] hover:text-white cursor-pointer"
+                className="p-2 rounded-full hover:bg-zinc-100 active:scale-90 transition-all text-zinc-500 hover:text-zinc-900 cursor-pointer"
               >
                 <Settings className="h-4 w-4" />
               </button>
@@ -587,27 +587,27 @@ export default function RemoteControl() {
 
           {/* Settings / Token Section */}
           {showSettings && (
-            <div className="absolute inset-0 bg-[#090b0e]/95 z-20 flex flex-col justify-center items-center p-6 backdrop-blur-md">
-              <div className="w-full max-w-sm bg-[#13161c] border border-white/5 rounded-2xl p-6 shadow-2xl flex flex-col gap-5">
+            <div className="absolute inset-0 bg-white/95 z-20 flex flex-col justify-center items-center p-6 backdrop-blur-md">
+              <div className="w-full max-w-sm bg-white border border-zinc-100 rounded-2xl p-6 shadow-2xl flex flex-col gap-5 text-zinc-800">
                 <div className="flex items-center justify-between">
-                  <h3 className="text-sm font-bold text-white uppercase tracking-wider">Control Configuration</h3>
+                  <h3 className="text-sm font-bold text-zinc-950 uppercase tracking-wider">Control Configuration</h3>
                   <button 
                     onClick={() => setShowSettings(false)}
-                    className="text-xs text-[#ffffff] hover:text-white font-bold"
+                    className="text-xs text-zinc-500 hover:text-zinc-900 font-bold"
                   >
                     Close
                   </button>
                 </div>
 
                 {/* Active Source Toggle */}
-                <div className="flex justify-between items-center bg-white/2 border border-white/5 p-3 rounded-xl">
-                  <span className="text-[10px] uppercase tracking-wider text-[#ffffff] font-semibold">Active Plugin Source</span>
+                <div className="flex justify-between items-center bg-zinc-50 border border-zinc-100 p-3 rounded-xl">
+                  <span className="text-[10px] uppercase tracking-wider text-zinc-700 font-semibold">Active Plugin Source</span>
                   <button
                     onClick={handleToggleSource}
                     className={`px-3 py-1.5 rounded-lg text-[9px] font-bold uppercase transition-all cursor-pointer ${
                       spotify 
-                        ? 'bg-emerald-500/10 border border-emerald-500/30 text-emerald-400' 
-                        : 'bg-amber-500/10 border border-amber-500/30 text-amber-400'
+                        ? 'bg-emerald-500/10 border border-emerald-500/30 text-emerald-600' 
+                        : 'bg-amber-500/10 border border-amber-500/30 text-amber-600'
                     }`}
                   >
                     {spotify ? 'Spotify' : 'Local Media'}
@@ -615,15 +615,15 @@ export default function RemoteControl() {
                 </div>
 
                 {/* Spotify Web Access Keyway */}
-                <div className="flex flex-col gap-2 border-t border-white/5 pt-3">
-                  <div className="flex justify-between items-center text-[10px] uppercase tracking-wider text-[#ffffff] font-semibold">
+                <div className="flex flex-col gap-2 border-t border-zinc-100 pt-3">
+                  <div className="flex justify-between items-center text-[10px] uppercase tracking-wider text-zinc-700 font-semibold">
                     <span>Spotify Web Access</span>
                     {token ? (
-                      <span className="text-[8px] bg-[#1ed760]/10 border border-[#1ed760]/30 text-[#1ed760] px-2 py-0.5 rounded font-bold uppercase tracking-wider">
+                      <span className="text-[8px] bg-emerald-500/10 border border-emerald-500/30 text-emerald-600 px-2 py-0.5 rounded font-bold uppercase tracking-wider">
                         AUTHORIZED
                       </span>
                     ) : (
-                      <span className="text-[8px] bg-rose-500/10 border border-rose-500/30 text-rose-400 px-2 py-0.5 rounded font-bold uppercase tracking-wider animate-pulse">
+                      <span className="text-[8px] bg-rose-500/10 border border-rose-500/30 text-rose-600 px-2 py-0.5 rounded font-bold uppercase tracking-wider animate-pulse">
                         REQUIRED
                       </span>
                     )}
@@ -650,7 +650,7 @@ export default function RemoteControl() {
                           toast.error('Logout failed');
                         }
                       }}
-                      className="w-full py-2 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-500 font-bold text-xs uppercase tracking-wider active:scale-95 transition-all cursor-pointer hover:bg-rose-500/20"
+                      className="w-full py-2 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-600 font-bold text-xs uppercase tracking-wider active:scale-95 transition-all cursor-pointer hover:bg-rose-500/20"
                     >
                       Disconnect Spotify Account
                     </button>
@@ -658,18 +658,18 @@ export default function RemoteControl() {
                 </div>
 
                 {/* Spotify Connect pairing instructions */}
-                <div className="flex flex-col gap-2 border-t border-white/5 pt-3 text-[10px] leading-relaxed text-[#ffffff]">
-                  <span className="text-[10px] uppercase tracking-wider text-[#ffffff] font-semibold">Spotify Connect pairing</span>
-                  <div className="p-2.5 rounded bg-black/40 border border-white/5 text-[9px] text-[#ffffff]">
-                    To pair your account, just select and play to <strong className="text-white">"Resonance Connect"</strong> once from your official Spotify app (phone or computer) on this network. The daemon will cache your session automatically and allow full control.
+                <div className="flex flex-col gap-2 border-t border-zinc-100 pt-3 text-[10px] leading-relaxed text-zinc-650">
+                  <span className="text-[10px] uppercase tracking-wider text-zinc-700 font-semibold">Spotify Connect pairing</span>
+                  <div className="p-2.5 rounded bg-zinc-50 border border-zinc-100 text-[9px] text-zinc-650">
+                    To pair your account, just select and play to <strong className="text-zinc-900">"Resonance Connect"</strong> once from your official Spotify app (phone or computer) on this network. The daemon will cache your session automatically and allow full control.
                   </div>
                 </div>
 
 
-                <div className="border-t border-white/5 pt-4 flex flex-col gap-3">
-                  <div className="flex justify-between items-center text-[10px] uppercase tracking-wider text-[#ffffff] font-semibold">
+                <div className="border-t border-zinc-100 pt-4 flex flex-col gap-3">
+                  <div className="flex justify-between items-center text-[10px] uppercase tracking-wider text-zinc-700 font-semibold">
                     <span>Cast Active Devices</span>
-                    <span className="text-[8px] bg-white/5 border border-white/10 px-1.5 py-0.5 rounded text-white">{devices.length} Found</span>
+                    <span className="text-[8px] bg-zinc-50 border border-zinc-200 px-1.5 py-0.5 rounded text-zinc-700">{devices.length} Found</span>
                   </div>
                   <div className="flex flex-col gap-1.5 max-h-32 overflow-y-auto pr-1">
                     {devices.length > 0 ? (
@@ -679,8 +679,8 @@ export default function RemoteControl() {
                           onClick={() => handleCast(device.id)}
                           className={`w-full p-2 rounded-xl border flex items-center justify-between text-left transition-all active:scale-98 cursor-pointer ${
                             device.is_active 
-                              ? 'bg-white/5 border-white/10 text-white font-bold' 
-                              : 'bg-transparent border-transparent text-[#ffffff] hover:bg-white/2 hover:text-white'
+                              ? 'bg-zinc-50 border-zinc-200 text-zinc-900 font-bold' 
+                              : 'bg-transparent border-transparent text-zinc-500 hover:bg-zinc-50 hover:text-zinc-900'
                           }`}
                         >
                           <div className="flex items-center gap-2">
@@ -688,10 +688,10 @@ export default function RemoteControl() {
                             <span className="text-[11px] truncate max-w-[150px]">{device.name}</span>
                           </div>
                           <div className="flex items-center gap-0.5">
-                            <span className="text-[8px] uppercase tracking-wider text-[#ffffff]">
+                            <span className="text-[8px] uppercase tracking-wider text-zinc-500">
                               {device.is_active ? 'Active' : 'Cast'}
                             </span>
-                            <ChevronRight className="h-3 w-3 text-[#ffffff]" />
+                            <ChevronRight className="h-3 w-3 text-zinc-500" />
                           </div>
                         </button>
                       ))
@@ -701,24 +701,24 @@ export default function RemoteControl() {
                   </div>
                 </div>
      
-                <div className="border-t border-white/5 pt-4 flex flex-col gap-3">
-                  <div className="flex justify-between items-center text-[10px] uppercase tracking-wider text-[#ffffff] font-semibold">
+                <div className="border-t border-zinc-100 pt-4 flex flex-col gap-3">
+                  <div className="flex justify-between items-center text-[10px] uppercase tracking-wider text-zinc-700 font-semibold">
                     <span>System Updates</span>
-                    <span className="text-[8px] bg-white/5 border border-white/10 px-1.5 py-0.5 rounded text-white">OTA</span>
+                    <span className="text-[8px] bg-zinc-50 border border-zinc-200 px-1.5 py-0.5 rounded text-zinc-700">OTA</span>
                   </div>
                   
                   <div className="flex flex-col gap-2">
                     {updateStatus === null && (
                       <button
                         onClick={checkUpdates}
-                        className="w-full py-2.5 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 active:scale-95 transition-all text-xs font-bold uppercase tracking-wider text-white"
+                        className="w-full py-2.5 rounded-xl border border-zinc-200 bg-zinc-50 hover:bg-zinc-100 active:scale-95 transition-all text-xs font-bold uppercase tracking-wider text-zinc-750"
                       >
                         Check for Updates
                       </button>
                     )}
 
                     {updateStatus === 'checking' && (
-                      <div className="w-full py-2.5 rounded-xl border border-white/10 bg-white/5 flex justify-center items-center gap-2 text-xs font-bold uppercase tracking-wider text-white">
+                      <div className="w-full py-2.5 rounded-xl border border-zinc-200 bg-zinc-50 flex justify-center items-center gap-2 text-xs font-bold uppercase tracking-wider text-zinc-750">
                         <RefreshCw className="h-4 w-4 animate-spin" />
                         Checking...
                       </div>
@@ -726,12 +726,12 @@ export default function RemoteControl() {
 
                     {updateStatus === 'no-update' && (
                       <div className="flex flex-col gap-2">
-                        <div className="p-3 rounded-xl border border-emerald-500/20 bg-emerald-500/5 text-emerald-500 text-[10px] font-mono leading-normal text-center">
+                        <div className="p-3 rounded-xl border border-emerald-500/20 bg-emerald-500/5 text-emerald-600 text-[10px] font-mono leading-normal text-center">
                           ✓ System is up to date
                         </div>
                         <button
                           onClick={checkUpdates}
-                          className="w-full py-2 rounded-xl text-xs font-bold uppercase tracking-wider text-[#ffffff] hover:text-white transition-all"
+                          className="w-full py-2 rounded-xl text-xs font-bold uppercase tracking-wider text-zinc-500 hover:text-zinc-800 transition-all"
                         >
                           Check Again
                         </button>
@@ -740,7 +740,7 @@ export default function RemoteControl() {
 
                     {updateStatus === 'available' && (
                       <div className="flex flex-col gap-2">
-                        <div className="p-3 rounded-xl border border-amber-500/20 bg-amber-500/5 text-amber-500 text-[10px] font-mono leading-normal text-center">
+                        <div className="p-3 rounded-xl border border-amber-500/20 bg-amber-500/5 text-amber-600 text-[10px] font-mono leading-normal text-center">
                           ⚠️ Update Available
                         </div>
                         <button
@@ -753,15 +753,15 @@ export default function RemoteControl() {
                     )}
 
                     {updateStatus === 'updating' && (
-                      <div className="p-3 rounded-xl border border-white/10 bg-black/40 flex flex-col gap-3">
-                        <div className="flex justify-between items-center text-[10px] text-white font-bold uppercase">
+                      <div className="p-3 rounded-xl border border-zinc-200 bg-zinc-50 flex flex-col gap-3">
+                        <div className="flex justify-between items-center text-[10px] text-zinc-900 font-bold uppercase">
                           <span>Installing</span>
                           <span>{otaPercent}%</span>
                         </div>
-                        <div className="w-full h-1.5 bg-white/10 rounded-full overflow-hidden">
-                          <div className="h-full bg-white transition-all" style={{ width: `${otaPercent}%` }} />
+                        <div className="w-full h-1.5 bg-zinc-200 rounded-full overflow-hidden">
+                          <div className="h-full bg-zinc-900 transition-all" style={{ width: `${otaPercent}%` }} />
                         </div>
-                        <div className="h-20 overflow-y-auto text-[8px] font-mono text-[#ffffff] flex flex-col gap-0.5 custom-scrollbar">
+                        <div className="h-20 overflow-y-auto text-[8px] font-mono text-zinc-650 flex flex-col gap-0.5 custom-scrollbar">
                           {otaProgress.map((line, i) => <div key={i}>{line}</div>)}
                         </div>
                       </div>
@@ -769,12 +769,12 @@ export default function RemoteControl() {
 
                     {updateStatus === 'error' && (
                       <div className="flex flex-col gap-2">
-                        <div className="p-3 rounded-xl border border-rose-500/20 bg-rose-500/5 text-rose-500 text-[10px] font-mono leading-normal text-center">
+                        <div className="p-3 rounded-xl border border-rose-500/20 bg-rose-500/5 text-rose-600 text-[10px] font-mono leading-normal text-center">
                           Update Failed
                         </div>
                         <button
                           onClick={checkUpdates}
-                          className="w-full py-2 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 active:scale-95 transition-all text-xs font-bold uppercase tracking-wider text-white"
+                          className="w-full py-2 rounded-xl border border-zinc-200 bg-zinc-50 hover:bg-zinc-100 active:scale-95 transition-all text-xs font-bold uppercase tracking-wider text-zinc-700"
                         >
                           Retry
                         </button>
@@ -783,10 +783,10 @@ export default function RemoteControl() {
                   </div>
                 </div>
 
-                <div className="border-t border-white/5 pt-4 flex flex-col gap-2">
+                <div className="border-t border-zinc-100 pt-4 flex flex-col gap-2">
                   <button
                     onClick={handleRemoteLogout}
-                    className="w-full py-2.5 rounded-xl border border-rose-500/20 text-rose-500 bg-rose-500/5 hover:bg-rose-500/10 active:scale-95 transition-all text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer"
+                    className="w-full py-2.5 rounded-xl border border-rose-500/20 text-rose-600 bg-rose-500/5 hover:bg-rose-500/10 active:scale-95 transition-all text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer"
                   >
                     <LogOut className="h-4 w-4" />
                     <span>De-authorize Remote</span>
@@ -801,7 +801,7 @@ export default function RemoteControl() {
             
             {/* Album Artwork Panel */}
             <div className="w-full flex justify-center">
-              <div className="w-[75vw] max-w-[280px] aspect-square rounded-[2rem] bg-[#12151b] border border-white/5 overflow-hidden shadow-[0_25px_60px_-15px_rgba(0,0,0,0.8)] flex items-center justify-center relative group">
+              <div className="w-[75vw] max-w-[280px] aspect-square rounded-[2rem] bg-zinc-50 border border-zinc-100 overflow-hidden shadow-lg flex items-center justify-center relative group">
                 {albumImage ? (
                   <img 
                     src={albumImage} 
@@ -809,16 +809,16 @@ export default function RemoteControl() {
                     className="w-full h-full object-cover select-none pointer-events-none scale-100 transition-all duration-700" 
                   />
                 ) : (
-                  <div className="flex flex-col items-center gap-3 text-zinc-700">
-                    <Music className="h-12 w-12 stroke-[1.25] text-[#2c3441]" />
-                    <span className="text-[9px] uppercase tracking-widest font-extrabold text-[#2c3441]">Resonance</span>
+                  <div className="flex flex-col items-center gap-3 text-zinc-400">
+                    <Music className="h-12 w-12 stroke-[1.25] text-zinc-350" />
+                    <span className="text-[9px] uppercase tracking-widest font-extrabold text-zinc-350">Resonance</span>
                   </div>
                 )}
                 
                 {/* Ambient artwork shadow/glow under art */}
                 {albumImage && (
                   <div 
-                    className="absolute inset-0 -z-10 scale-95 opacity-50 blur-2xl transition-all duration-700"
+                    className="absolute inset-0 -z-10 scale-95 opacity-20 blur-2xl transition-all duration-700"
                     style={{ backgroundImage: `url(${albumImage})`, backgroundSize: 'cover' }}
                   />
                 )}
@@ -827,14 +827,14 @@ export default function RemoteControl() {
 
             {/* Track Title and Artist details */}
             <div className="w-full text-center flex flex-col gap-1.5 px-4">
-              <h2 className="text-lg font-bold text-white tracking-tight leading-snug truncate">
+              <h2 className="text-lg font-bold text-zinc-900 tracking-tight leading-snug truncate">
                 {trackName}
               </h2>
-              <p className="text-[12px] font-semibold text-[#ffffff] tracking-normal truncate">
+              <p className="text-[12px] font-semibold text-zinc-500 tracking-normal truncate">
                 {trackArtist}
               </p>
               {activeDevice && (
-                <div className="inline-flex items-center gap-1.5 justify-center mt-1 text-[9px] font-bold text-[#c788ff] uppercase tracking-[0.15em] bg-white/2 border border-white/5 px-2.5 py-1 rounded-full self-center">
+                <div className="inline-flex items-center gap-1.5 justify-center mt-1 text-[9px] font-bold text-purple-600 uppercase tracking-[0.15em] bg-purple-50 border border-purple-100 px-2.5 py-1 rounded-full self-center">
                   <Laptop className="h-3 w-3" />
                   <span>Playing on: {activeDevice.name}</span>
                 </div>
@@ -844,7 +844,7 @@ export default function RemoteControl() {
             {/* Auth status block when token is missing */}
             {spotify && !token && (
               <div className="mx-4 p-4 rounded-2xl bg-amber-500/5 border border-amber-500/20 text-center flex flex-col gap-3">
-                <p className="text-[10px] text-amber-250 font-medium leading-relaxed">
+                <p className="text-[10px] text-amber-600 font-medium leading-relaxed">
                   Resonance is not authenticated to Spotify. Connect your account to synchronize playback.
                 </p>
                 <a
@@ -866,16 +866,16 @@ export default function RemoteControl() {
                 value={trackPosition}
                 onChange={handleSeek}
                 disabled={spotify ? (!token || !trackDuration) : !trackDuration}
-                className="w-full h-1 bg-white/5 hover:bg-white/10 rounded-lg appearance-none cursor-pointer accent-white transition-all focus:outline-none"
+                className="w-full h-1 bg-zinc-200 hover:bg-zinc-300 rounded-lg appearance-none cursor-pointer accent-zinc-900 transition-all focus:outline-none"
                 style={{
-                  background: `linear-gradient(to right, #ffffff 0%, #ffffff ${
+                  background: `linear-gradient(to right, #18181b 0%, #18181b ${
                     trackDuration ? (trackPosition / trackDuration) * 100 : 0
-                  }%, rgba(255, 255, 255, 0.05) ${
+                  }%, rgba(0, 0, 0, 0.06) ${
                     trackDuration ? (trackPosition / trackDuration) * 100 : 0
-                  }%, rgba(255, 255, 255, 0.05) 100%)`
+                  }%, rgba(0, 0, 0, 0.06) 100%)`
                 }}
               />
-              <div className="flex justify-between items-center text-[10px] text-[#ffffff] font-semibold font-mono">
+              <div className="flex justify-between items-center text-[10px] text-zinc-500 font-semibold font-mono">
                 <span>{formatTime(trackPosition)}</span>
                 <span>{formatTime(trackDuration)}</span>
               </div>
@@ -887,7 +887,7 @@ export default function RemoteControl() {
                 onClick={handleShuffle}
                 disabled={spotify ? !token : true}
                 className={`p-2 rounded-full transition-all active:scale-90 cursor-pointer disabled:opacity-20 ${
-                  shuffleState ? 'text-[#c788ff] drop-shadow-[0_0_8px_rgba(199,136,255,0.4)]' : 'text-[#ffffff] hover:text-white'
+                  shuffleState ? 'text-purple-600 drop-shadow-[0_0_8px_rgba(147,51,234,0.2)]' : 'text-zinc-400 hover:text-zinc-700'
                 }`}
               >
                 <Shuffle className="h-4.5 w-4.5" />
@@ -896,7 +896,7 @@ export default function RemoteControl() {
               <button
                 onClick={handlePrevious}
                 disabled={spotify ? !token : false}
-                className="p-2.5 rounded-full hover:bg-white/5 text-[#f1f3f6] active:scale-90 transition-all cursor-pointer disabled:opacity-20"
+                className="p-2.5 rounded-full hover:bg-zinc-100 text-zinc-700 active:scale-90 transition-all cursor-pointer disabled:opacity-20"
               >
                 <SkipBack className="h-5.5 w-5.5 fill-current" />
               </button>
@@ -905,19 +905,19 @@ export default function RemoteControl() {
               <button
                 onClick={handlePlayPause}
                 disabled={spotify ? !token : false}
-                className="h-16 w-16 rounded-full bg-white text-black flex items-center justify-center shadow-lg active:scale-90 transition-all cursor-pointer hover:bg-zinc-150 disabled:opacity-50"
+                className="h-16 w-16 rounded-full bg-zinc-900 text-white flex items-center justify-center shadow-lg active:scale-90 transition-all cursor-pointer hover:bg-zinc-800 disabled:opacity-50"
               >
                 {isPlaying ? (
-                  <Pause className="h-6.5 w-6.5 fill-current text-black" />
+                  <Pause className="h-6.5 w-6.5 fill-current text-white" />
                 ) : (
-                  <Play className="h-6.5 w-6.5 fill-current text-black ml-1" />
+                  <Play className="h-6.5 w-6.5 fill-current text-white ml-1" />
                 )}
               </button>
 
               <button
                 onClick={handleNext}
                 disabled={spotify ? !token : false}
-                className="p-2.5 rounded-full hover:bg-white/5 text-[#f1f3f6] active:scale-90 transition-all cursor-pointer disabled:opacity-20"
+                className="p-2.5 rounded-full hover:bg-zinc-100 text-zinc-700 active:scale-90 transition-all cursor-pointer disabled:opacity-20"
               >
                 <SkipForward className="h-5.5 w-5.5 fill-current" />
               </button>
@@ -926,12 +926,12 @@ export default function RemoteControl() {
                 onClick={handleRepeat}
                 disabled={spotify ? !token : true}
                 className={`p-2 rounded-full transition-all active:scale-90 cursor-pointer disabled:opacity-20 ${
-                  repeatState !== 'off' ? 'text-[#c788ff] drop-shadow-[0_0_8px_rgba(199,136,255,0.4)]' : 'text-[#ffffff] hover:text-white'
+                  repeatState !== 'off' ? 'text-purple-600 drop-shadow-[0_0_8px_rgba(147,51,234,0.2)]' : 'text-zinc-400 hover:text-zinc-700'
                 }`}
               >
                 <Repeat className="h-4.5 w-4.5" />
                 {repeatState === 'track' && (
-                  <span className="absolute text-[6px] font-extrabold bg-[#c788ff] text-black rounded-full px-0.5 bottom-0 right-0">1</span>
+                  <span className="absolute text-[6px] font-extrabold bg-purple-600 text-white rounded-full px-1 bottom-0 right-0">1</span>
                 )}
               </button>
             </div>
@@ -940,11 +940,11 @@ export default function RemoteControl() {
 
           {/* Sleek bottom Volume control bar */}
           <footer className="w-full max-w-md z-10 px-4 mt-4">
-            <div className="bg-[#12151b] border border-white/5 rounded-2xl px-4 py-3 flex items-center gap-3.5 shadow-xl">
+            <div className="bg-white border border-zinc-100 rounded-2xl px-4 py-3 flex items-center gap-3.5 shadow-lg">
               <button 
                 onClick={handleMuteToggle}
                 disabled={spotify ? !token : false}
-                className="text-[#ffffff] hover:text-white active:scale-90 transition-all cursor-pointer disabled:opacity-25"
+                className="text-zinc-500 hover:text-zinc-800 active:scale-90 transition-all cursor-pointer disabled:opacity-25"
               >
                 {isMuted || volume === 0 ? (
                   <VolumeX className="h-4 w-4" />
@@ -960,17 +960,17 @@ export default function RemoteControl() {
                 value={isMuted ? 0 : volume}
                 onChange={handleVolumeChange}
                 disabled={spotify ? !token : false}
-                className="flex-grow h-1 bg-white/5 hover:bg-white/10 rounded-lg appearance-none cursor-pointer accent-white transition-all focus:outline-none"
+                className="flex-grow h-1 bg-zinc-200 hover:bg-zinc-300 rounded-lg appearance-none cursor-pointer accent-zinc-900 transition-all focus:outline-none"
                 style={{
-                  background: `linear-gradient(to right, #ffffff 0%, #ffffff ${
+                  background: `linear-gradient(to right, #18181b 0%, #18181b ${
                     isMuted ? 0 : volume
-                  }%, rgba(255, 255, 255, 0.05) ${
+                  }%, rgba(0, 0, 0, 0.06) ${
                     isMuted ? 0 : volume
-                  }%, rgba(255, 255, 255, 0.05) 100%)`
+                  }%, rgba(0, 0, 0, 0.06) 100%)`
                 }}
               />
               
-              <span className="text-[10px] text-[#ffffff] font-semibold font-mono w-7 text-right">
+              <span className="text-[10px] text-zinc-600 font-semibold font-mono w-7 text-right">
                 {isMuted ? 0 : volume}%
               </span>
             </div>
