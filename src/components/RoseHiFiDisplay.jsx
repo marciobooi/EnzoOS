@@ -138,15 +138,19 @@ export default function RoseHiFiDisplay({
               title="Open EQ / Resonance Frequency Scheme"
               type="button"
             >
-              {[...Array(8)].map((_, i) => (
-                <span 
-                  key={i} 
-                  style={{ 
-                    animationPlayState: isPlaying ? 'running' : 'paused',
-                    height: isPlaying ? undefined : '3px'
-                  }} 
-                  />
-              ))}
+              {/* Left Channel Mini VU Meter */}
+              <div className="vu-channel-box">
+                <div className="vu-dial-scale" />
+                <span className="vu-dial-label">CH L</span>
+                <div className={`vu-needle ${isPlaying ? 'active-l' : ''}`} />
+              </div>
+
+              {/* Right Channel Mini VU Meter */}
+              <div className="vu-channel-box">
+                <div className="vu-dial-scale" />
+                <span className="vu-dial-label">CH R</span>
+                <div className={`vu-needle ${isPlaying ? 'active-r' : ''}`} />
+              </div>
             </button>
           </div>
         </div>

@@ -199,7 +199,7 @@ export default function EqualizerControl({
                 {/* Wider interactive container for the vertical slider */}
                 <div className="relative w-10 h-[65px] flex items-center justify-center">
                   {/* Visual groove and knob (events disabled to prevent blocking clicks) */}
-                  <div className="absolute w-1.5 bg-zinc-800 h-full rounded-full pointer-events-none">
+                  <div className="absolute left-1/2 -translate-x-1/2 w-1.5 bg-zinc-800 h-full rounded-full pointer-events-none">
                     {/* Styled slider track */}
                     <div 
                       className="absolute bottom-0 w-full rounded-full bg-gradient-to-t from-[var(--theme-color)]/70 to-[var(--theme-color)]" 
@@ -207,8 +207,11 @@ export default function EqualizerControl({
                     />
                     {/* Styled slider knob */}
                     <div 
-                      className="absolute left-1/2 -translate-y-1/2 w-3.5 h-3.5 rounded-full bg-white border-2 border-[var(--theme-color)] shadow-[0_0_6px_var(--theme-color-glow)]"
-                      style={{ bottom: `calc(${((bandVal + 12) / 24) * 100}% - 7px)` }}
+                      className="absolute left-1/2 w-3.5 h-3.5 rounded-full bg-white border-2 border-[var(--theme-color)] shadow-[0_0_6px_var(--theme-color-glow)]"
+                      style={{ 
+                        bottom: `${((bandVal + 12) / 24) * 100}%`,
+                        transform: 'translate(-50%, 50%)'
+                      }}
                     />
                   </div>
 
