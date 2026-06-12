@@ -563,3 +563,23 @@ div[data-theme="ruby"] *::selection {
   width: 326px !important;
   z-index: 99999 !important;
 }
+
+/* Skinned premium glassmorphism menu cards */
+.menu-card {
+  background: rgba(255, 255, 255, 0.03) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5), 0 8px 32px 0 rgba(5, 13, 28, 0.4) !important;
+}
+
+.menu-card:hover {
+  background: rgba(255, 255, 255, 0.06) !important;
+  border-color: rgba(255, 255, 255, 0.15) !important;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.6), 0 8px 32px 0 rgba(5, 13, 28, 0.5) !important;
+}
+
+.menu-card.active-card {
+  border-color: var(--theme-color) !important;
+  border-width: 1px !important;
+  background: rgba(255, 255, 255, 0.05) !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5), 0 8px 32px 0 rgba(5, 13, 28, 0.4), 0 0 12px var(--theme-color-glow) !important;
+}
