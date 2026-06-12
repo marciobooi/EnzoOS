@@ -134,7 +134,7 @@ router.get('/login', (req, res) => {
     'user-read-email',
   ].join(' ');
 
-  pendingOAuthState = crypto.randomBytes(16).toString('hex');
+  pendingOAuthState = crypto.randomBytes(16).toString('hex') + (req.query.from === 'remote' ? '_remote' : '');
 
   const params = new URLSearchParams({
     response_type: 'code',
@@ -161,6 +161,7 @@ router.get('/callback', async (req, res) => {
   if (!state || state !== pendingOAuthState) {
     return res.redirect('/?auth_error=state_mismatch');
   }
+  const isFromRemote = state.endsWith('_remote');
   pendingOAuthState = null;
 
   try {
@@ -207,7 +208,7 @@ router.get('/callback', async (req, res) => {
     console.log(`[Resonance Auth] Authenticated as: ${tokenState.display_name}`);
 
     // Redirect back to the app root cleanly
-    res.redirect('/');
+    res.redirect(isFromRemote ? '/remote' : '/');
 
   } catch (err) {
     console.error('[Resonance Auth] OAuth callback error:', err.message);

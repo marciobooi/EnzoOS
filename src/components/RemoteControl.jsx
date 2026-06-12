@@ -595,6 +595,49 @@ export default function RemoteControl() {
               </button>
             </div>
 
+            {/* Spotify Web Access Keyway */}
+            <div className="flex flex-col gap-2 border-t border-white/5 pt-3">
+              <div className="flex justify-between items-center text-[10px] uppercase tracking-wider text-[#8695a7] font-semibold">
+                <span>Spotify Web Access</span>
+                {token ? (
+                  <span className="text-[8px] bg-[#1ed760]/10 border border-[#1ed760]/30 text-[#1ed760] px-2 py-0.5 rounded font-bold uppercase tracking-wider">
+                    AUTHORIZED
+                  </span>
+                ) : (
+                  <span className="text-[8px] bg-rose-500/10 border border-rose-500/30 text-rose-400 px-2 py-0.5 rounded font-bold uppercase tracking-wider animate-pulse">
+                    REQUIRED
+                  </span>
+                )}
+              </div>
+              
+              {!token ? (
+                <a
+                  href="/auth/spotify/login?from=remote"
+                  className="w-full py-2.5 px-3 rounded-xl bg-[#1ed760] hover:bg-[#1fdf64] active:scale-95 text-xs text-black font-extrabold uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center gap-2 no-underline"
+                >
+                  <svg viewBox="0 0 24 24" className="h-4 w-4 fill-black shrink-0"><path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm4.586 14.424a.622.622 0 01-.857.207c-2.348-1.435-5.304-1.76-8.785-.964a.622.622 0 01-.277-1.215c3.809-.87 7.077-.496 9.712 1.115a.622.622 0 01.207.857zm1.223-2.722a.779.779 0 01-1.07.257c-2.687-1.652-6.785-2.131-9.965-1.166a.78.78 0 01-.973-.519.781.781 0 01.519-.972c3.632-1.102 8.147-.568 11.233 1.33a.779.779 0 01.256 1.07zm.105-2.835C14.692 8.95 9.375 8.775 6.297 9.71a.935.935 0 11-.543-1.79c3.533-1.072 9.404-.866 13.115 1.338a.936.936 0 01-.955 1.609z"/></svg>
+                  Login with Spotify
+                </a>
+              ) : (
+                <button
+                  onClick={async () => {
+                    try {
+                      const res = await fetch('/auth/spotify/logout', { method: 'POST' });
+                      const data = await res.json();
+                      if (data.success) {
+                        toast.success('Disconnected from Spotify');
+                      }
+                    } catch (err) {
+                      toast.error('Logout failed');
+                    }
+                  }}
+                  className="w-full py-2 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-500 font-bold text-xs uppercase tracking-wider active:scale-95 transition-all cursor-pointer hover:bg-rose-500/20"
+                >
+                  Disconnect Spotify Account
+                </button>
+              )}
+            </div>
+
             {/* Spotify Daemon Credentials Form */}
             <form onSubmit={handleSaveDaemonCredentials} className="flex flex-col gap-2 border-t border-white/5 pt-3">
               <span className="text-[10px] uppercase tracking-wider text-[#8695a7] font-semibold">Spotify Daemon Config</span>
@@ -801,10 +844,17 @@ export default function RemoteControl() {
 
         {/* Auth status block when token is missing */}
         {spotify && !token && (
-          <div className="mx-4 p-4 rounded-2xl bg-amber-500/5 border border-amber-500/20 text-center flex flex-col gap-2.5">
+          <div className="mx-4 p-4 rounded-2xl bg-amber-500/5 border border-amber-500/20 text-center flex flex-col gap-3">
             <p className="text-[10px] text-amber-250 font-medium leading-relaxed">
-              Resonance is not authenticated to Spotify. Please authenticate on the main system display.
+              Resonance is not authenticated to Spotify. Connect your account to synchronize playback.
             </p>
+            <a
+              href="/auth/spotify/login?from=remote"
+              className="w-full py-2.5 px-3 rounded-xl bg-[#1ed760] hover:bg-[#1fdf64] active:scale-95 text-xs text-black font-extrabold uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center gap-2 no-underline"
+            >
+              <svg viewBox="0 0 24 24" className="h-4 w-4 fill-black shrink-0"><path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm4.586 14.424a.622.622 0 01-.857.207c-2.348-1.435-5.304-1.76-8.785-.964a.622.622 0 01-.277-1.215c3.809-.87 7.077-.496 9.712 1.115a.622.622 0 01.207.857zm1.223-2.722a.779.779 0 01-1.07.257c-2.687-1.652-6.785-2.131-9.965-1.166a.78.78 0 01-.973-.519.781.781 0 01.519-.972c3.632-1.102 8.147-.568 11.233 1.33a.779.779 0 01.256 1.07zm.105-2.835C14.692 8.95 9.375 8.775 6.297 9.71a.935.935 0 11-.543-1.79c3.533-1.072 9.404-.866 13.115 1.338a.936.936 0 01-.955 1.609z"/></svg>
+              Login with Spotify
+            </a>
           </div>
         )}
 
