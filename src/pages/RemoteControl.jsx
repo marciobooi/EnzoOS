@@ -85,9 +85,23 @@ export default function RemoteControl() {
   const [otaPercent, setOtaPercent] = useState(0);
 
   const [spotify, setSpotify] = useState(true);
+  const [source, setSource] = useState('spotify'); // 'spotify' | 'local' | 'radio'
   const [daemonUsername, setDaemonUsername] = useState('');
   const [daemonPassword, setDaemonPassword] = useState('');
   const [isSavingDaemonCreds, setIsSavingDaemonCreds] = useState(false);
+
+  // Synchronize spotify & source states for backward-compatible rendering/api calls
+  useEffect(() => {
+    setSpotify(source === 'spotify');
+  }, [source]);
+
+  useEffect(() => {
+    if (spotify && source !== 'spotify') {
+      setSource('spotify');
+    } else if (!spotify && source === 'spotify') {
+      setSource('local');
+    }
+  }, [spotify]);
 
   const progressInterval = useRef(null);
   const volumeApiTimeout = useRef(null);
@@ -123,11 +137,18 @@ export default function RemoteControl() {
     }
   };
 
-  const handleToggleSource = () => {
-    const nextSpotify = !spotify;
-    setSpotify(nextSpotify);
-    sendUpdate('SET_SOURCE', { spotify: nextSpotify });
-    toast.success(`Source set to: ${nextSpotify ? 'Spotify' : 'Local Media'}`);
+  const handleToggleSource = (targetSource) => {
+    let nextSource = targetSource;
+    if (!targetSource || typeof targetSource !== 'string') {
+      nextSource = source === 'spotify' ? 'local' : (source === 'local' ? 'radio' : 'spotify');
+    }
+    setSource(nextSource);
+    const isSpotify = nextSource === 'spotify';
+    setSpotify(isSpotify);
+    sendUpdate('SET_SOURCE', { spotify: isSpotify, source: nextSource });
+    
+    const sourceNames = { spotify: 'Spotify', local: 'Local Media', radio: 'Web Radio' };
+    toast.success(`Source set to: ${sourceNames[nextSource]}`);
   };
 
   const handleRadioSearch = async () => {
@@ -187,6 +208,7 @@ export default function RemoteControl() {
     setOtaProgress,
     setOtaPercent,
     setSpotify,
+    setSource,
     setDevices,
     onRequestSync: () => {
       localSync();
@@ -855,18 +877,23 @@ export default function RemoteControl() {
                 </div>
 
                 {/* Active Source Toggle */}
-                <div className="flex justify-between items-center bg-zinc-50 border border-zinc-100 p-3 rounded-xl">
+                <div className="flex flex-col gap-2 bg-zinc-50 border border-zinc-100 p-3 rounded-xl">
                   <span className="text-[10px] uppercase tracking-wider text-zinc-700 font-semibold">Active Plugin Source</span>
-                  <button
-                    onClick={handleToggleSource}
-                    className={`px-3 py-1.5 rounded-lg text-[9px] font-bold uppercase transition-all cursor-pointer ${
-                      spotify 
-                        ? 'bg-emerald-500/10 border border-emerald-500/30 text-emerald-650' 
-                        : 'bg-amber-500/10 border border-amber-500/30 text-amber-650'
-                    }`}
-                  >
-                    {spotify ? 'Spotify' : 'Local Media'}
-                  </button>
+                  <div className="grid grid-cols-3 gap-2">
+                    {['spotify', 'local', 'radio'].map(src => (
+                      <button
+                        key={src}
+                        onClick={() => handleToggleSource(src)}
+                        className={`py-2 rounded-lg text-[9px] font-bold uppercase transition-all cursor-pointer border text-center ${
+                          source === src 
+                            ? 'bg-zinc-900 border-zinc-950 text-white' 
+                            : 'bg-white border-zinc-200 text-zinc-650 hover:bg-zinc-50'
+                        }`}
+                      >
+                        {src === 'spotify' ? 'Spotify' : (src === 'local' ? 'Local' : 'Radio')}
+                      </button>
+                    ))}
+                  </div>
                 </div>
 
                 {/* Spotify Web Access Keyway */}

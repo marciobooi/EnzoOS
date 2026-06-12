@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Play, Pause, SkipForward, SkipBack, Shuffle, Repeat, Volume2, VolumeX, Home, Volume1, Sliders } from 'lucide-react';
+import { Play, Pause, SkipForward, SkipBack, Shuffle, Repeat, Volume2, VolumeX, Home, Volume1, Sliders, Radio } from 'lucide-react';
 
 export default function RoseHiFiDisplay({
   isPlaying,
@@ -26,7 +26,14 @@ export default function RoseHiFiDisplay({
   hasToken,
   spotify,
   onToggleSource,
-  onToggleEqualizer
+  onToggleEqualizer,
+  source,
+  radioSearch,
+  setRadioSearch,
+  stationsList,
+  isSearching,
+  handleRadioSearch,
+  onPlayRadio
 }) {
   const [showVolumeFeedback, setShowVolumeFeedback] = useState(false);
   const feedbackTimeout = useRef(null);
@@ -104,184 +111,258 @@ export default function RoseHiFiDisplay({
       </section>
 
       {/* 2. Details and Controls Column */}
-      <section className="details-column" aria-label="Track details and playback controls">
-        
-        {/* Topline Readout & Audio Router */}
-        <div className="track-details">
-          <div className="hifi-topline">
-            <button 
-              onClick={onToggleSource}
-              className={`status-pill cursor-pointer transition-colors border ${
-                spotify 
-                  ? 'text-emerald-400 border-emerald-500/20 bg-emerald-500/5' 
-                  : 'text-amber-500 border-amber-500/20 bg-amber-500/5'
-              }`}
-              title="Click to Switch Plugin Source"
-            >
-              <span className={`status-dot ${spotify ? 'bg-emerald-400' : 'bg-amber-500'}`}></span>
-              PLUGIN: {spotify ? 'SPOTIFY' : 'LOCAL' }
-            </button>
-            {spotify && (
+      {source === 'radio' ? (
+        <section className="details-column" aria-label="Web Radio controls">
+          <div className="track-details h-full flex flex-col justify-between" style={{ minHeight: '230px' }}>
+            <div className="hifi-topline">
               <button 
-                onClick={onTransferPlayback}
-                className={`status-pill cursor-pointer transition-colors ${
-                  isLocalDeviceActive 
-                    ? 'text-emerald-400 hover:text-emerald-300' 
-                    : 'theme-text hover:opacity-80 animate-pulse'
-                }`}
-                title={isLocalDeviceActive ? 'Spotify Connect Active' : 'Click to Route Audio to Resonance'}
+                onClick={onToggleSource}
+                className="status-pill cursor-pointer transition-colors border text-amber-500 border-amber-500/20 bg-amber-500/5 font-sans"
               >
-                <span className={`status-dot ${isLocalDeviceActive ? 'bg-emerald-400' : 'theme-bg'}`}></span>
-                {isLocalDeviceActive ? 'SPOTIFY CONNECT // ACTIVE' : 'ROUTE TO RESONANCE'}
+                <span className="status-dot bg-amber-500"></span>
+                PLUGIN: WEB RADIO
               </button>
-            )}
-            <span className="system-readout">DOT MATRIX / 2026</span>
-          </div>
+              <span className="system-readout tracking-widest text-[9px] font-extrabold uppercase">
+                {isPlaying ? `NOW PLAYING: ${trackName}` : 'SYSTEM IDLE'}
+              </span>
+            </div>
 
-          {/* Title Container & Live Volume Popup */}
-          <div className="title-container mt-1">
-            <h1 className="track-title truncate w-[75%]" title={trackName}>
-              {trackName}
-            </h1>
-            <div className={`volume-feedback ${showVolumeFeedback ? 'visible' : ''}`} aria-live="polite">
-              {isMuted ? 'MUTE' : volume}
+            {/* Search Input Area */}
+            <div className="flex gap-2 items-center mt-1 shrink-0">
+              <Radio className="h-4 w-4 text-[var(--theme-color)] animate-pulse" />
+              <input
+                type="text"
+                placeholder="Search Global Stations (Lofi, BBC, Jazz)..."
+                value={radioSearch}
+                onChange={(e) => setRadioSearch(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') handleRadioSearch();
+                }}
+                className="flex-grow bg-black/40 border border-white/10 rounded-xl px-4 py-2 font-mono text-xs text-zinc-200 placeholder:text-zinc-650 focus:outline-none focus:border-[var(--theme-color)]"
+              />
+              <button
+                onClick={handleRadioSearch}
+                disabled={isSearching}
+                className="px-4 py-2 bg-[var(--theme-color)] text-black font-extrabold text-[10px] uppercase tracking-wider rounded-xl hover:opacity-85 active:scale-95 transition-all cursor-pointer disabled:opacity-50"
+              >
+                {isSearching ? '...' : 'SEARCH'}
+              </button>
+            </div>
+
+            {/* Scrollable list of stations */}
+            <div className="flex-grow overflow-y-auto pr-1.5 mt-2 custom-scrollbar grid grid-cols-2 gap-2 max-h-[145px]">
+              {stationsList.map((station, idx) => (
+                <button
+                  key={`${station.url}-${idx}`}
+                  onClick={() => onPlayRadio(station.url, station.name)}
+                  className="p-2.5 rounded-xl bg-white/5 border border-white/10 hover:border-[var(--theme-color)] text-left flex items-center justify-between transition-all active:scale-[0.98] cursor-pointer group"
+                >
+                  <div className="flex items-center gap-2 min-w-0">
+                    <div className="w-7 h-7 rounded-full bg-black/20 flex items-center justify-center border border-white/10 shrink-0 overflow-hidden relative">
+                      {station.favicon ? (
+                        <img 
+                          src={station.favicon} 
+                          alt="" 
+                          className="w-full h-full object-cover"
+                          onError={(e) => { e.target.style.display = 'none'; }}
+                        />
+                      ) : null}
+                      <Radio className="w-3.5 h-3.5 text-zinc-400 absolute" style={{ zIndex: -1 }} />
+                    </div>
+                    <div className="min-w-0 flex flex-col">
+                      <span className="text-[10px] font-bold text-white truncate group-hover:text-[var(--theme-color)]">{station.name}</span>
+                      <span className="text-[8px] font-mono text-zinc-400 tracking-wider uppercase truncate">
+                        {station.country ? station.country : 'Global'}{station.tags ? ` • ${station.tags.split(',')[0]}` : ''}
+                      </span>
+                    </div>
+                  </div>
+                  <span className="text-[8px] bg-white/5 border border-white/10 group-hover:border-[var(--theme-color)] group-hover:text-black group-hover:bg-[var(--theme-color)] px-2 py-0.5 rounded font-extrabold text-zinc-350 uppercase tracking-wider shrink-0 transition-colors">
+                    PLAY
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
+        </section>
+      ) : (
+        <section className="details-column" aria-label="Track details and playback controls">
+          
+          {/* Topline Readout & Audio Router */}
+          <div className="track-details">
+            <div className="hifi-topline">
+              <button 
+                onClick={onToggleSource}
+                className={`status-pill cursor-pointer transition-colors border ${
+                  spotify 
+                    ? 'text-emerald-400 border-emerald-500/20 bg-emerald-500/5' 
+                    : 'text-amber-500 border-amber-500/20 bg-amber-500/5'
+                }`}
+                title="Click to Switch Plugin Source"
+              >
+                <span className={`status-dot ${spotify ? 'bg-emerald-400' : 'bg-amber-500'}`}></span>
+                PLUGIN: {spotify ? 'SPOTIFY' : 'LOCAL' }
+              </button>
+              {spotify && (
+                <button 
+                  onClick={onTransferPlayback}
+                  className={`status-pill cursor-pointer transition-colors ${
+                    isLocalDeviceActive 
+                      ? 'text-emerald-400 hover:text-emerald-300' 
+                      : 'theme-text hover:opacity-80 animate-pulse'
+                  }`}
+                  title={isLocalDeviceActive ? 'Spotify Connect Active' : 'Click to Route Audio to Resonance'}
+                >
+                  <span className={`status-dot ${isLocalDeviceActive ? 'bg-emerald-400' : 'theme-bg'}`}></span>
+                  {isLocalDeviceActive ? 'SPOTIFY CONNECT // ACTIVE' : 'ROUTE TO RESONANCE'}
+                </button>
+              )}
+              <span className="system-readout">DOT MATRIX / 2026</span>
+            </div>
+
+            {/* Title Container & Live Volume Popup */}
+            <div className="title-container mt-1">
+              <h1 className="track-title truncate w-[75%]" title={trackName}>
+                {trackName}
+              </h1>
+              <div className={`volume-feedback ${showVolumeFeedback ? 'visible' : ''}`} aria-live="polite">
+                {isMuted ? 'MUTE' : volume}
+              </div>
+            </div>
+
+            {/* Metadata & Mini Visualizer */}
+            <div className="metadata-row mt-1.5">
+              <div className="truncate w-[60%]">
+                <div className="track-artist truncate">{trackArtist}</div>
+                <div className="track-album truncate">{trackAlbumName}</div>
+              </div>
+
+              {/* Precision Mechanical VU Meters (Click to Open EQ) */}
+              <button
+                onClick={onToggleEqualizer}
+                className="hifi-visualizer shrink-0 cursor-pointer hover:opacity-90 transition-opacity bg-transparent border-0 p-0"
+                title="Open Parametric Equalizer"
+                type="button"
+              >
+                {/* Left Channel Mechanical VU */}
+                <div className="vu-channel-box">
+                  <div className="vu-dial-area">
+                    <div className="vu-dot-grid" />
+                    <div className="vu-glow-overlay" />
+                    <div className="vu-scale-marks">
+                      <span>-20dB</span>
+                      <span>-10dB</span>
+                      <span>0dB</span>
+                    </div>
+                    <div className={`vu-needle ${isPlaying ? 'active-l' : ''}`} />
+                  </div>
+                  <div className="vu-readout-line">
+                    <span className="text-zinc-400">LINE LEVEL L</span>
+                    <span ref={dbLRef} className="text-[var(--theme-color)]">-45.0 DB</span>
+                  </div>
+                </div>
+
+                {/* Right Channel Mechanical VU */}
+                <div className="vu-channel-box">
+                  <div className="vu-dial-area">
+                    <div className="vu-dot-grid" />
+                    <div className="vu-glow-overlay" />
+                    <div className="vu-scale-marks">
+                      <span>-20dB</span>
+                      <span>-10dB</span>
+                      <span>0dB</span>
+                    </div>
+                    <div className={`vu-needle ${isPlaying ? 'active-r' : ''}`} />
+                  </div>
+                  <div className="vu-readout-line">
+                    <span className="text-zinc-400">LINE LEVEL R</span>
+                    <span ref={dbRRef} className="text-[var(--theme-color)]">-45.0 DB</span>
+                  </div>
+                </div>
+              </button>
             </div>
           </div>
 
-          {/* Metadata & Mini Visualizer */}
-          <div className="metadata-row mt-1.5">
-            <div className="truncate w-[60%]">
-              <div className="track-artist truncate">{trackArtist}</div>
-              <div className="track-album truncate">{trackAlbumName}</div>
-            </div>
-
-            {/* Precision Mechanical VU Meters (Click to Open EQ) */}
-            <button
-              onClick={onToggleEqualizer}
-              className="hifi-visualizer shrink-0 cursor-pointer hover:opacity-90 transition-opacity bg-transparent border-0 p-0"
-              title="Open Parametric Equalizer"
-              type="button"
+          {/* Playback Dotted Controls */}
+          <div className="music-controls" aria-label="Playback controls">
+            <button 
+              onClick={handleToggleRepeat}
+              className={`icon-button repeat ${repeatState !== 'off' ? 'active' : ''}`}
+              type="button" 
+              aria-label="Repeat"
+              title={`Repeat: ${repeatState}`}
             >
-              {/* Left Channel Mechanical VU */}
-              <div className="vu-channel-box">
-                <div className="vu-dial-area">
-                  <div className="vu-dot-grid" />
-                  <div className="vu-glow-overlay" />
-                  <div className="vu-scale-marks">
-                    <span>-20dB</span>
-                    <span>-10dB</span>
-                    <span>0dB</span>
-                  </div>
-                  <div className={`vu-needle ${isPlaying ? 'active-l' : ''}`} />
-                </div>
-                <div className="vu-readout-line">
-                  <span className="text-zinc-400">LINE LEVEL L</span>
-                  <span ref={dbLRef} className="text-[var(--theme-color)]">-45.0 DB</span>
-                </div>
-              </div>
-
-              {/* Right Channel Mechanical VU */}
-              <div className="vu-channel-box">
-                <div className="vu-dial-area">
-                  <div className="vu-dot-grid" />
-                  <div className="vu-glow-overlay" />
-                  <div className="vu-scale-marks">
-                    <span>-20dB</span>
-                    <span>-10dB</span>
-                    <span>0dB</span>
-                  </div>
-                  <div className={`vu-needle ${isPlaying ? 'active-r' : ''}`} />
-                </div>
-                <div className="vu-readout-line">
-                  <span className="text-zinc-400">LINE LEVEL R</span>
-                  <span ref={dbRRef} className="text-[var(--theme-color)]">-45.0 DB</span>
-                </div>
-              </div>
+              <Repeat className="h-5 w-5" />
+            </button>
+            
+            <button 
+              onClick={handlePrevious}
+              className="icon-button prev" 
+              type="button" 
+              aria-label="Previous track"
+            >
+              <SkipBack className="h-5 w-5 fill-current" />
+            </button>
+            
+            <button 
+              onClick={handlePlayPause}
+              className={`icon-button play ${isPlaying ? 'playing' : ''}`}
+              type="button" 
+              aria-label={isPlaying ? 'Pause' : 'Play'}
+            >
+              {isPlaying ? (
+                <Pause className="h-5 w-5 fill-current" />
+              ) : (
+                <Play className="h-5 w-5 fill-current translate-x-0.5" />
+              )}
+            </button>
+            
+            <button 
+              onClick={handleNext}
+              className="icon-button next" 
+              type="button" 
+              aria-label="Next track"
+            >
+              <SkipForward className="h-5 w-5 fill-current" />
+            </button>
+            
+            <button 
+              onClick={handleToggleShuffle}
+              className={`icon-button shuffle ${shuffleState ? 'active' : ''}`}
+              type="button" 
+              aria-label="Shuffle"
+            >
+              <Shuffle className="h-5 w-5" />
             </button>
           </div>
-        </div>
 
-        {/* Playback Dotted Controls */}
-        <div className="music-controls" aria-label="Playback controls">
-          <button 
-            onClick={handleToggleRepeat}
-            className={`icon-button repeat ${repeatState !== 'off' ? 'active' : ''}`}
-            type="button" 
-            aria-label="Repeat"
-            title={`Repeat: ${repeatState}`}
-          >
-            <Repeat className="h-5 w-5" />
-          </button>
-          
-          <button 
-            onClick={handlePrevious}
-            className="icon-button prev" 
-            type="button" 
-            aria-label="Previous track"
-          >
-            <SkipBack className="h-5 w-5 fill-current" />
-          </button>
-          
-          <button 
-            onClick={handlePlayPause}
-            className={`icon-button play ${isPlaying ? 'playing' : ''}`}
-            type="button" 
-            aria-label={isPlaying ? 'Pause' : 'Play'}
-          >
-            {isPlaying ? (
-              <Pause className="h-5 w-5 fill-current" />
-            ) : (
-              <Play className="h-5 w-5 fill-current translate-x-0.5" />
-            )}
-          </button>
-          
-          <button 
-            onClick={handleNext}
-            className="icon-button next" 
-            type="button" 
-            aria-label="Next track"
-          >
-            <SkipForward className="h-5 w-5 fill-current" />
-          </button>
-          
-          <button 
-            onClick={handleToggleShuffle}
-            className={`icon-button shuffle ${shuffleState ? 'active' : ''}`}
-            type="button" 
-            aria-label="Shuffle"
-          >
-            <Shuffle className="h-5 w-5" />
-          </button>
-        </div>
-
-        {/* Interactive Seek Area */}
-        <div className="progress-area" aria-label="Track progress">
-          <div className="relative w-full h-3.5 group">
-            {/* Custom Dot Matrix Progress Bar background & fill */}
-            <div className="progress-bar-dots absolute inset-0">
-              <div 
-                className="progress-fill-dots" 
-                style={{ width: `${(trackPosition / (trackDuration || 1)) * 100}%` }} 
+          {/* Interactive Seek Area */}
+          <div className="progress-area" aria-label="Track progress">
+            <div className="relative w-full h-3.5 group">
+              {/* Custom Dot Matrix Progress Bar background & fill */}
+              <div className="progress-bar-dots absolute inset-0">
+                <div 
+                  className="progress-fill-dots" 
+                  style={{ width: `${(trackPosition / (trackDuration || 1)) * 100}%` }} 
+                />
+              </div>
+              {/* Transparent input slider on top */}
+              <input 
+                type="range"
+                min={0}
+                max={trackDuration || 0}
+                value={trackPosition || 0}
+                onChange={handleSeek}
+                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
               />
             </div>
-            {/* Transparent input slider on top */}
-            <input 
-              type="range"
-              min={0}
-              max={trackDuration || 0}
-              value={trackPosition || 0}
-              onChange={handleSeek}
-              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-            />
-          </div>
 
-          <div className="progress-times">
-            <span className="time-elapsed">{formatTime(trackPosition)}</span>
-            <span className="time-total">{formatTime(trackDuration)}</span>
+            <div className="progress-times">
+              <span className="time-elapsed">{formatTime(trackPosition)}</span>
+              <span className="time-total">{formatTime(trackDuration)}</span>
+            </div>
           </div>
-        </div>
-
-      </section>
+        </section>
+      )}
 
       {/* 3. System Sidebar Column */}
       <aside className="controls-column" aria-label="System controls">

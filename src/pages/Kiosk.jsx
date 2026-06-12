@@ -113,6 +113,30 @@ export default function Kiosk() {
   const [updateStatus, setUpdateStatus] = useState(null);
   const [errorMessage, setErrorMessage] = useState('');
   const [spotify, setSpotify] = useState(true);
+  const [source, setSource] = useState('spotify'); // 'spotify' | 'local' | 'radio'
+
+  const [radioSearch, setRadioSearch] = useState('');
+  const [stationsList, setStationsList] = useState([
+    { name: 'SomaFM: Groove Salad', url: 'http://ice1.somafm.com/groovesalad-128-mp3', favicon: 'https://somafm.com/img/somafm120.png', country: 'USA', tags: 'ambient, chillout' },
+    { name: 'SomaFM: DEF CON Radio', url: 'http://ice1.somafm.com/defcon-128-mp3', favicon: 'https://somafm.com/img/defcon120.png', country: 'USA', tags: 'ambient, electronic' },
+    { name: 'Lofi Girl Ambient', url: 'http://play.stream.lofigirl.com/lofi', favicon: 'https://lofigirl.com/wp-content/uploads/2023/02/lofi-girl-logo.png', country: 'France', tags: 'lofi, ambient' },
+    { name: 'Chilltrax Ambient', url: 'https://chilltrax.dnshosting.net/chilltrax.mp3', favicon: '', country: 'USA', tags: 'chillout' },
+    { name: 'Jazz Radio Classic', url: 'http://jazzradio.ice.infomaniak.ch/jazzradio-high.mp3', favicon: '', country: 'France', tags: 'jazz' }
+  ]);
+  const [isSearching, setIsSearching] = useState(false);
+
+  // Synchronize spotify & source states for backward-compatible rendering/api calls
+  useEffect(() => {
+    setSpotify(source === 'spotify');
+  }, [source]);
+
+  useEffect(() => {
+    if (spotify && source !== 'spotify') {
+      setSource('spotify');
+    } else if (!spotify && source === 'spotify') {
+      setSource('local');
+    }
+  }, [spotify]);
 
   const [scale, setScale] = useState(1);
   const containerRef = useRef(null);
@@ -148,6 +172,7 @@ export default function Kiosk() {
     setOtaProgress,
     setOtaPercent,
     setSpotify,
+    setSource,
     setDevices,
     onRequestSync: () => {
       syncCurrentState();
@@ -156,11 +181,66 @@ export default function Kiosk() {
     isRemote: false
   });
 
-  const handleToggleSource = () => {
-    const nextSpotify = !spotify;
-    setSpotify(nextSpotify);
-    sendUpdate('SET_SOURCE', { spotify: nextSpotify });
-    toast.success(`Source set to: ${nextSpotify ? 'Spotify' : 'Local Media'}`);
+  const handleToggleSource = (targetSource) => {
+    let nextSource = targetSource;
+    if (!targetSource || typeof targetSource !== 'string') {
+      nextSource = source === 'spotify' ? 'local' : (source === 'local' ? 'radio' : 'spotify');
+    }
+    setSource(nextSource);
+    const isSpotify = nextSource === 'spotify';
+    setSpotify(isSpotify);
+    sendUpdate('SET_SOURCE', { spotify: isSpotify, source: nextSource });
+    
+    const sourceNames = { spotify: 'Spotify', local: 'Local Media', radio: 'Web Radio' };
+    toast.success(`Source set to: ${sourceNames[nextSource]}`);
+  };
+
+  const handleRadioSearch = async () => {
+    const query = radioSearch.trim();
+    if (!query) {
+      setStationsList([
+        { name: 'SomaFM: Groove Salad', url: 'http://ice1.somafm.com/groovesalad-128-mp3', favicon: 'https://somafm.com/img/somafm120.png', country: 'USA', tags: 'ambient, chillout' },
+        { name: 'SomaFM: DEF CON Radio', url: 'http://ice1.somafm.com/defcon-128-mp3', favicon: 'https://somafm.com/img/defcon120.png', country: 'USA', tags: 'ambient, electronic' },
+        { name: 'Lofi Girl Ambient', url: 'http://play.stream.lofigirl.com/lofi', favicon: 'https://lofigirl.com/wp-content/uploads/2023/02/lofi-girl-logo.png', country: 'France', tags: 'lofi, ambient' },
+        { name: 'Chilltrax Ambient', url: 'https://chilltrax.dnshosting.net/chilltrax.mp3', favicon: '', country: 'USA', tags: 'chillout' },
+        { name: 'Jazz Radio Classic', url: 'http://jazzradio.ice.infomaniak.ch/jazzradio-high.mp3', favicon: '', country: 'France', tags: 'jazz' }
+      ]);
+      return;
+    }
+    try {
+      setIsSearching(true);
+      const res = await fetch(`https://de1.api.radio-browser.info/json/stations/byname/${encodeURIComponent(query)}?limit=25&hidebroken=true`);
+      const data = await res.json();
+      const formatted = data.map(s => ({
+        name: s.name.length > 22 ? s.name.substring(0, 20) + '...' : s.name,
+        url: s.url_resolved || s.url,
+        favicon: s.favicon,
+        country: s.country,
+        tags: s.tags
+      }));
+      if (formatted.length === 0) {
+        toast.error('No stations found.');
+      } else {
+        setStationsList(formatted);
+        toast.success(`Found ${formatted.length} stations!`);
+      }
+    } catch (err) {
+      toast.error('Failed to search stations.');
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  const handlePlayRadio = async (url, name) => {
+    try {
+      await api.localPlayRadio(url, name);
+      if (source !== 'radio') {
+        handleToggleSource('radio');
+      }
+      toast.success(`Playing Radio: ${name}`);
+    } catch (err) {
+      toast.error(`Failed to play radio: ${err.message}`);
+    }
   };
 
   useEffect(() => {
@@ -561,6 +641,13 @@ export default function Kiosk() {
           spotify={spotify}
           onToggleSource={handleToggleSource}
           onToggleEqualizer={() => setIsEqualizerOpen(!isEqualizerOpen)}
+          source={source}
+          radioSearch={radioSearch}
+          setRadioSearch={setRadioSearch}
+          stationsList={stationsList}
+          isSearching={isSearching}
+          handleRadioSearch={handleRadioSearch}
+          onPlayRadio={handlePlayRadio}
         />
 
         {/* Full-Screen Horizontal Equalizer Control Overlay */}
@@ -610,31 +697,17 @@ export default function Kiosk() {
               isFetchingDevices={isFetchingDevices}
               onTransferPlayback={transferPlayback}
               onRefreshDevices={fetchDevices}
-              onPlayTrack={(uri) => {
-                handlePlayTrack(uri);
-                setIsMenuOpen(false);
-              }}
-              onPlayRadio={async (url, name) => {
-                try {
-                  await api.localPlayRadio(url, name);
-                  if (spotify) {
-                    setSpotify(false);
-                    sendUpdate('SET_SOURCE', { spotify: false });
-                  }
-                  setIsMenuOpen(false);
-                  toast.success(`Playing Radio: ${name}`);
-                } catch (err) {
-                  toast.error(`Failed to play radio: ${err.message}`);
-                }
-              }}
               theme={theme}
               onThemeChange={handleThemeChange}
               otaProgress={otaProgress}
               setOtaProgress={setOtaProgress}
               otaPercent={otaPercent}
               setOtaPercent={setOtaPercent}
-              spotify={spotify}
-              onToggleSource={handleToggleSource}
+              source={source}
+              onSetSource={(src) => {
+                handleToggleSource(src);
+                setIsMenuOpen(false);
+              }}
               updateStatus={updateStatus}
               setUpdateStatus={setUpdateStatus}
               errorMessage={errorMessage}
