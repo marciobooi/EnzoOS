@@ -33,6 +33,17 @@ export default function App() {
 
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [theme, setTheme] = useState(localStorage.getItem('resonance_theme') || 'amber');
+  const lastVolumeChangeTime = useRef(0);
+
+  const setVolumeWithLock = (vol) => {
+    if (Date.now() - lastVolumeChangeTime.current < 2500) return;
+    setVolume(vol);
+  };
+
+  const setIsMutedWithLock = (muted) => {
+    if (Date.now() - lastVolumeChangeTime.current < 2500) return;
+    setIsMuted(muted);
+  };
 
   const handleThemeChange = (newTheme) => {
     setTheme(newTheme);
@@ -73,8 +84,8 @@ export default function App() {
     setTrackDuration,
     setShuffleState,
     setRepeatState,
-    setVolume,
-    setIsMuted,
+    setVolume: setVolumeWithLock,
+    setIsMuted: setIsMutedWithLock,
     setUpdateStatus,
     setOtaProgress,
     setOtaPercent,
@@ -334,8 +345,10 @@ export default function App() {
         setShuffleState(state.shuffle_state);
         setRepeatState(state.repeat_state);
         if (state.device && state.device.volume_percent !== undefined) {
-          setVolume(state.device.volume_percent);
-          setIsMuted(state.device.volume_percent === 0);
+          if (Date.now() - lastVolumeChangeTime.current >= 2500) {
+            setVolume(state.device.volume_percent);
+            setIsMuted(state.device.volume_percent === 0);
+          }
         }
 
         // Broadcast current state to other connected clients via WebSocket
@@ -376,6 +389,7 @@ export default function App() {
     const vol = parseInt(e.target.value, 10);
     setVolume(vol);
     setIsMuted(vol === 0);
+    lastVolumeChangeTime.current = Date.now();
 
     // Broadcast volume update immediately over WS for instant remote response
     if (ws.current && ws.current.readyState === WebSocket.OPEN) {
@@ -408,6 +422,7 @@ export default function App() {
   const handleToggleMute = async () => {
     const newMuteState = !isMuted;
     setIsMuted(newMuteState);
+    lastVolumeChangeTime.current = Date.now();
     const targetVolume = newMuteState ? 0 : volume;
 
     // Broadcast mute update immediately over WS

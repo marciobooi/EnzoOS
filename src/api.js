@@ -9,9 +9,14 @@ async function handleResponse(response) {
     return { success: true };
   }
 
+  const text = await response.text();
+  if (!text) {
+    return { success: true };
+  }
+
   let data;
   try {
-    data = await response.json();
+    data = JSON.parse(text);
   } catch (err) {
     throw new Error('Could not parse response from Spotify API.');
   }

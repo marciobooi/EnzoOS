@@ -75,6 +75,17 @@ export default function RemoteControl() {
 
   const progressInterval = useRef(null);
   const volumeApiTimeout = useRef(null);
+  const lastVolumeChangeTime = useRef(0);
+
+  const setVolumeWithLock = (vol) => {
+    if (Date.now() - lastVolumeChangeTime.current < 2500) return;
+    setVolume(vol);
+  };
+
+  const setIsMutedWithLock = (muted) => {
+    if (Date.now() - lastVolumeChangeTime.current < 2500) return;
+    setIsMuted(muted);
+  };
 
   const handleSaveDaemonCredentials = async (e) => {
     e.preventDefault();
@@ -123,8 +134,8 @@ export default function RemoteControl() {
     setTrackDuration,
     setShuffleState,
     setRepeatState,
-    setVolume,
-    setIsMuted,
+    setVolume: setVolumeWithLock,
+    setIsMuted: setIsMutedWithLock,
     setUpdateStatus,
     setOtaProgress,
     setOtaPercent,
@@ -205,8 +216,10 @@ export default function RemoteControl() {
         setShuffleState(state.shuffle_state);
         setRepeatState(state.repeat_state);
         if (state.device?.volume_percent !== undefined) {
-          setVolume(state.device.volume_percent);
-          setIsMuted(state.device.volume_percent === 0);
+          if (Date.now() - lastVolumeChangeTime.current >= 2500) {
+            setVolume(state.device.volume_percent);
+            setIsMuted(state.device.volume_percent === 0);
+          }
         }
       }
     } catch (err) {
@@ -385,6 +398,7 @@ export default function RemoteControl() {
     const newVol = parseInt(e.target.value, 10);
     setVolume(newVol);
     setIsMuted(newVol === 0);
+    lastVolumeChangeTime.current = Date.now();
 
     if (ws.current && ws.current.readyState === WebSocket.OPEN) {
       ws.current.send(JSON.stringify({
@@ -423,6 +437,7 @@ export default function RemoteControl() {
   const handleMuteToggle = async () => {
     const newMute = !isMuted;
     setIsMuted(newMute);
+    lastVolumeChangeTime.current = Date.now();
     const targetVol = newMute ? 0 : (volume || 50);
 
     if (ws.current && ws.current.readyState === WebSocket.OPEN) {
