@@ -8,6 +8,7 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+const projectRoot = path.resolve(__dirname, '..');
 const execPromise = promisify(exec);
 const router = express.Router();
 
@@ -15,11 +16,11 @@ const router = express.Router();
 router.get('/status', async (req, res) => {
   try {
     // Run git fetch to update tracking branches
-    await execPromise('git fetch origin main');
+    await execPromise('git fetch origin main', { cwd: projectRoot });
     
     // Get local and remote hashes
-    const { stdout: localHash } = await execPromise('git rev-parse HEAD');
-    const { stdout: remoteHash } = await execPromise('git rev-parse origin/main');
+    const { stdout: localHash } = await execPromise('git rev-parse HEAD', { cwd: projectRoot });
+    const { stdout: remoteHash } = await execPromise('git rev-parse origin/main', { cwd: projectRoot });
     
     const local = localHash.trim();
     const remote = remoteHash.trim();
