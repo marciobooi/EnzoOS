@@ -89,10 +89,12 @@ export function useResonanceWS({
           }
 
           if (type === 'REQUEST_SYNC') {
-            console.log('[Resonance WS] Received request to sync state');
-            if (onRequestSyncRef.current) {
-              onRequestSyncRef.current();
-            }
+            console.log('[Resonance WS] Received request to sync state, scheduling fetch in 1200ms');
+            setTimeout(() => {
+              if (onRequestSyncRef.current) {
+                onRequestSyncRef.current();
+              }
+            }, 1200);
           }
 
           if (type === 'UPDATE_PROGRESS') {
