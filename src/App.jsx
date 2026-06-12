@@ -464,15 +464,13 @@ export default function App() {
   const trackArtist = currentTrack?.artists?.map(a => a.name).join(', ') || 'No Source Loaded';
 
   return (
-    <div data-theme={theme} className="w-screen h-screen bg-[#050505] flex items-center justify-center relative overflow-hidden p-6 select-none font-sans">
+    <div data-theme={theme} className="w-screen h-screen bg-[#050505] flex items-center justify-center relative overflow-hidden p-6 select-none font-sans w-full w-[320px]">
       <div 
         ref={containerRef}
         className="music-player-container"
         style={{
           transform: `scale(${scale})`,
-          transformOrigin: 'center center',
-          width: '1400px',
-          height: '320px',
+          transformOrigin: 'center center',       
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
