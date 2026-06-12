@@ -89,8 +89,8 @@ else
   echo -e "${YELLOW}Node.js $(node -v) already installed.${NC}"
 fi
 
-# 7. Install GUI, Kiosk Display Stack, Audio, SSH, and Librespot
-echo -e "\n${GREEN}[5/7] Installing display server, window manager, browser, audio, SSH, and dependencies...${NC}"
+# 7. Install GUI, Kiosk Display Stack, Audio, SSH, Librespot, and MPD
+echo -e "\n${GREEN}[5/7] Installing display server, window manager, browser, audio, SSH, MPD, and dependencies...${NC}"
 apt-get install -y \
   xserver-xorg \
   xinit \
@@ -102,7 +102,15 @@ apt-get install -y \
   openssh-server \
   unclutter \
   avahi-daemon \
-  libnss-mdns
+  libnss-mdns \
+  mpd \
+  mpc
+
+# Enable and start MPD service
+echo -e "${YELLOW}Enabling and starting Media Player Daemon (MPD)...${NC}"
+systemctl enable mpd
+systemctl start mpd
+
 
 echo -e "${YELLOW}Installing Raspotify repository and precompiled Librespot daemon...${NC}"
 # Install Raspotify repository and package (contains the precompiled /usr/bin/librespot binary)
