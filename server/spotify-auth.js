@@ -1,17 +1,9 @@
 import express from 'express';
 import fetch from 'node-fetch';
 import crypto from 'crypto';
-import fs from 'fs';
-import path from 'path';
-import { fileURLToPath } from 'url';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+import { getSetting, setSetting, deleteSetting } from './db.js';
 
 const router = express.Router();
-
-// Where we persist the refresh token across server restarts
-const TOKEN_STORE_PATH = path.resolve(__dirname, '../.spotify_tokens.json');
 
 // In-memory token state
 let tokenState = {
@@ -22,24 +14,36 @@ let tokenState = {
 };
 
 // Load persisted tokens on startup
-const loadTokens = () => {
+const loadTokens = async () => {
   try {
-    if (fs.existsSync(TOKEN_STORE_PATH)) {
-      const saved = JSON.parse(fs.readFileSync(TOKEN_STORE_PATH, 'utf8'));
-      tokenState = { ...tokenState, ...saved };
-      console.log('[Resonance Auth] Loaded persisted Spotify tokens.');
+    const access = await getSetting('spotify_access_token');
+    const refresh = await getSetting('spotify_refresh_token');
+    const expires = await getSetting('spotify_expires_at');
+    const display = await getSetting('spotify_display_name');
+    
+    if (refresh) {
+      tokenState = {
+        access_token: access,
+        refresh_token: refresh,
+        expires_at: expires ? Number(expires) : 0,
+        display_name: display
+      };
+      console.log('[Resonance Auth] Loaded persisted Spotify tokens from DB.');
     }
   } catch (err) {
-    console.warn('[Resonance Auth] Could not load persisted tokens:', err.message);
+    console.warn('[Resonance Auth] Could not load persisted tokens from DB:', err.message);
   }
 };
 
-// Persist tokens to disk
-const saveTokens = () => {
+// Persist tokens to DB
+const saveTokens = async () => {
   try {
-    fs.writeFileSync(TOKEN_STORE_PATH, JSON.stringify(tokenState, null, 2), 'utf8');
+    if (tokenState.access_token) await setSetting('spotify_access_token', tokenState.access_token);
+    if (tokenState.refresh_token) await setSetting('spotify_refresh_token', tokenState.refresh_token);
+    await setSetting('spotify_expires_at', tokenState.expires_at);
+    if (tokenState.display_name) await setSetting('spotify_display_name', tokenState.display_name);
   } catch (err) {
-    console.warn('[Resonance Auth] Could not persist tokens:', err.message);
+    console.warn('[Resonance Auth] Could not persist tokens to DB:', err.message);
   }
 };
 
@@ -235,9 +239,14 @@ router.get('/token', async (req, res) => {
 });
 
 // POST /auth/spotify/logout  →  clear all tokens
-router.post('/logout', (req, res) => {
+router.post('/logout', async (req, res) => {
   tokenState = { access_token: null, refresh_token: null, expires_at: 0, display_name: null };
-  try { fs.unlinkSync(TOKEN_STORE_PATH); } catch (_) {}
+  try { 
+    await deleteSetting('spotify_access_token');
+    await deleteSetting('spotify_refresh_token');
+    await deleteSetting('spotify_expires_at');
+    await deleteSetting('spotify_display_name');
+  } catch (_) {}
 
   const broadcast = req.app.get('wssBroadcast');
   if (broadcast) broadcast({ type: 'CLEAR_TOKEN' });

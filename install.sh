@@ -104,7 +104,9 @@ apt-get install -y \
   avahi-daemon \
   libnss-mdns \
   mpd \
-  mpc
+  mpc \
+  sqlite3 \
+  libsqlite3-dev
 
 # Enable and start MPD service
 echo -e "${YELLOW}Enabling and starting Media Player Daemon (MPD)...${NC}"
