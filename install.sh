@@ -35,7 +35,7 @@ if [ -n "$SUDO_USER" ] && [ "$SUDO_USER" != "root" ]; then
 else
   # Fallback if run directly from a root shell
   echo -e "${YELLOW}Warning: Running directly from root shell. We need to identify the kiosk user.${NC}"
-  read -p "Enter the username of the user who will auto-login to the kiosk: " TARGET_USER
+  read -p "Enter the username of the user who will auto-login to the kiosk: " TARGET_USER <&2
   USER_HOME=$(getent passwd "$TARGET_USER" | cut -d: -f6)
   if [ -z "$USER_HOME" ]; then
     echo -e "${RED}Error: User '$TARGET_USER' does not exist on this system.${NC}"
@@ -67,8 +67,8 @@ echo -e ""
 echo -e "${YELLOW}In your app settings, add this Redirect URI:${NC}"
 echo -e "${GREEN}  http://resonance.local:5000/auth/spotify/callback${NC}"
 echo -e ""
-read -p "Enter your Spotify Client ID:     " SPOTIFY_CLIENT_ID < /dev/tty
-read -p "Enter your Spotify Client Secret: " SPOTIFY_CLIENT_SECRET < /dev/tty
+read -p "Enter your Spotify Client ID:     " SPOTIFY_CLIENT_ID <&2
+read -p "Enter your Spotify Client Secret: " SPOTIFY_CLIENT_SECRET <&2
 
 if [ -z "$SPOTIFY_CLIENT_ID" ] || [ -z "$SPOTIFY_CLIENT_SECRET" ]; then
   echo -e "${YELLOW}Warning: No Spotify credentials entered. You can add them later in the .env file.${NC}"
