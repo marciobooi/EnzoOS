@@ -30,23 +30,27 @@ export default function RoseHiFiDisplay({
 }) {
   const [showVolumeFeedback, setShowVolumeFeedback] = useState(false);
   const feedbackTimeout = useRef(null);
-  const [dbValues, setDbValues] = useState({ left: '-45.0', right: '-45.0' });
+  const dbLRef = useRef(null);
+  const dbRRef = useRef(null);
 
-  // Simulate dynamic VU meter levels
+  // Simulate dynamic VU meter levels directly in DOM to avoid React re-render lag
   useEffect(() => {
     if (!isPlaying) {
-      setDbValues({ left: '-45.0', right: '-45.0' });
+      if (dbLRef.current) dbLRef.current.textContent = '-45.0 DB';
+      if (dbRRef.current) dbRRef.current.textContent = '-45.0 DB';
       return;
     }
 
     const interval = setInterval(() => {
       const leftVal = (Math.random() * 18 - 16.5).toFixed(1);
       const rightVal = (Math.random() * 18 - 16.5).toFixed(1);
-      setDbValues({
-        left: `${Number(leftVal) > 0 ? '+' : ''}${leftVal}`,
-        right: `${Number(rightVal) > 0 ? '+' : ''}${rightVal}`
-      });
-    }, 120);
+      
+      const leftText = `${Number(leftVal) > 0 ? '+' : ''}${leftVal} DB`;
+      const rightText = `${Number(rightVal) > 0 ? '+' : ''}${rightVal} DB`;
+
+      if (dbLRef.current) dbLRef.current.textContent = leftText;
+      if (dbRRef.current) dbRRef.current.textContent = rightText;
+    }, 150);
 
     return () => clearInterval(interval);
   }, [isPlaying]);
@@ -172,7 +176,7 @@ export default function RoseHiFiDisplay({
                 </div>
                 <div className="vu-readout-line">
                   <span className="text-zinc-400">LINE LEVEL L</span>
-                  <span className="text-[var(--theme-color)]">{dbValues.left} DB</span>
+                  <span ref={dbLRef} className="text-[var(--theme-color)]">-45.0 DB</span>
                 </div>
               </div>
 
@@ -190,7 +194,7 @@ export default function RoseHiFiDisplay({
                 </div>
                 <div className="vu-readout-line">
                   <span className="text-zinc-400">LINE LEVEL R</span>
-                  <span className="text-[var(--theme-color)]">{dbValues.right} DB</span>
+                  <span ref={dbRRef} className="text-[var(--theme-color)]">-45.0 DB</span>
                 </div>
               </div>
             </button>
