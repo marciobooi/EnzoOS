@@ -16,6 +16,10 @@
   --color-green-matrix-glow: rgba(0, 255, 102, 0.25);
 }
 
+body {
+  background-color: white !important;
+}
+
 /* Custom global styles for the Dot-Matrix LED Screen */
 .dot-matrix-screen {
   position: relative;
