@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { toast } from 'sonner';
 import { LogOut, Terminal } from 'lucide-react';
 import { api } from './api';
+import { useResonanceWS } from './websocket';
 
 // Subcomponents
 import RoseHiFiDisplay from './components/RoseHiFiDisplay';
@@ -9,9 +10,8 @@ import DefinitionsMenu from './components/DefinitionsMenu';
 import RemoteControl from './components/RemoteControl';
 
 export default function App() {
-  // Authentication states
-  const [token, setToken] = useState(localStorage.getItem('spotify_access_token') || '');
-  const [refreshToken, setRefreshToken] = useState(localStorage.getItem('spotify_refresh_token') || '');
+  // Authentication state (server-managed, synchronized via WebSocket)
+  const [token, setToken] = useState('');
 
   // Spotify Player states
   const [playbackState, setPlaybackState] = useState(null);
@@ -48,12 +48,49 @@ export default function App() {
   const [scale, setScale] = useState(1);
   const containerRef = useRef(null);
 
+  // Set up periodic device list and state fetching
+  useEffect(() => {
+    if (!token) return;
+
+    fetchDevices();
+    syncCurrentState();
+
+    // Poll every 8 seconds to track devices and playback state
+    const pollIntervalId = setInterval(() => {
+      fetchDevices();
+      syncCurrentState();
+    }, 8000);
+
+    return () => clearInterval(pollIntervalId);
+  }, [token]);
+
+  // Connect to the centralized WebSocket hook
+  const { ws, sendUpdate } = useResonanceWS({
+    token,
+    setToken,
+    setPlaybackState,
+    setTrackPosition,
+    setTrackDuration,
+    setShuffleState,
+    setRepeatState,
+    setVolume,
+    setIsMuted,
+    setUpdateStatus,
+    setOtaProgress,
+    setOtaPercent,
+    setSpotify,
+    setDevices,
+    onRequestSync: () => {
+      syncCurrentState();
+    },
+    isAuthenticated: true,
+    isRemote: false
+  });
+
   const handleToggleSource = () => {
     const nextSpotify = !spotify;
     setSpotify(nextSpotify);
-    if (ws.current && ws.current.readyState === WebSocket.OPEN) {
-      ws.current.send(JSON.stringify({ type: 'SET_SOURCE', payload: { spotify: nextSpotify } }));
-    }
+    sendUpdate('SET_SOURCE', { spotify: nextSpotify });
     toast.success(`Source set to: ${nextSpotify ? 'Spotify' : 'Local Media'}`);
   };
 
@@ -84,11 +121,6 @@ export default function App() {
     };
   }, []);
 
-  // WebSocket reference
-  const ws = useRef(null);
-  // Stable ref to syncCurrentState — prevents stale closure in WS onmessage handler
-  const syncCurrentStateRef = useRef(null);
-
   // Derived Librespot states
   const resonanceDevice = devices.find(d => d.name === 'Resonance Connect');
   const resonanceDeviceId = resonanceDevice?.id || '';
@@ -98,163 +130,6 @@ export default function App() {
   useEffect(() => {
     isLocalDeviceActiveRef.current = isLocalDeviceActive;
   }, [isLocalDeviceActive]);
-
-  // Extract tokens from URL if arriving from Spotify redirect callback
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const accessTokenUrl = params.get('access_token');
-    const refreshTokenUrl = params.get('refresh_token');
-
-    if (accessTokenUrl) {
-      localStorage.setItem('spotify_access_token', accessTokenUrl);
-      setToken(accessTokenUrl);
-      toast.success('Spotify Authenticated successfully!');
-    }
-    if (refreshTokenUrl) {
-      localStorage.setItem('spotify_refresh_token', refreshTokenUrl);
-      setRefreshToken(refreshTokenUrl);
-    }
-
-    // Clean URL query params to preserve security
-    if (accessTokenUrl || refreshTokenUrl) {
-      const url = new URL(window.location.href);
-      url.search = '';
-      window.history.replaceState({}, document.title, url.toString());
-    }
-  }, []);
-  // Set up periodic device list and state fetching
-  useEffect(() => {
-    if (!token) return;
-
-    fetchDevices();
-    syncCurrentState();
-
-    // Poll every 8 seconds to track devices and playback state
-    const pollIntervalId = setInterval(() => {
-      fetchDevices();
-      syncCurrentState();
-    }, 8000);
-
-    return () => clearInterval(pollIntervalId);
-  }, [token]);
-
-  // Set up WebSocket connection for real-time synchronization
-  useEffect(() => {
-    let socket;
-    let reconnectTimeout;
-
-    const connectWS = () => {
-      const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-      const wsUrl = `${wsProtocol}//${window.location.host}/ws`;
-      socket = new WebSocket(wsUrl);
-      ws.current = socket;
-
-      socket.onopen = () => {
-        console.log('[Resonance Client] Connected to WebSocket server');
-        if (token) {
-          socket.send(JSON.stringify({ type: 'SET_TOKEN', payload: { token } }));
-        }
-      };
-
-      socket.onmessage = (event) => {
-        try {
-          const { type, payload } = JSON.parse(event.data);
-
-          if (type === 'PLAYBACK_STATE') {
-            setPlaybackState(payload);
-            setTrackPosition(payload.position);
-            setTrackDuration(payload.duration);
-            if (payload.shuffle_state !== undefined) {
-              setShuffleState(payload.shuffle_state);
-            }
-            if (payload.repeat_state !== undefined) {
-              setRepeatState(payload.repeat_state);
-            }
-            if (payload.volume !== undefined) {
-              setVolume(payload.volume);
-            }
-            if (payload.is_muted !== undefined) {
-              setIsMuted(payload.is_muted);
-            }
-          }
-
-          if (type === 'REQUEST_SYNC') {
-            console.log('[Resonance Client] Received sync request, syncing local state');
-            // Use the ref so we always call the latest version (avoids stale closure)
-            if (syncCurrentStateRef.current) {
-              syncCurrentStateRef.current();
-            }
-          }
-
-          if (type === 'UPDATE_PROGRESS') {
-            setUpdateStatus('updating');
-            setOtaProgress(prev => [...prev, payload.text].slice(-30));
-            if (payload.percent !== undefined && payload.percent !== null) {
-              setOtaPercent(payload.percent);
-            }
-          }
-
-          if (type === 'SET_SOURCE') {
-            setSpotify(payload.spotify);
-          }
-
-          if (type === 'SET_TOKEN') {
-            const newToken = payload.token;
-            if (newToken && newToken !== localStorage.getItem('spotify_access_token')) {
-              localStorage.setItem('spotify_access_token', newToken);
-              setToken(newToken);
-              toast.success('System authentication token synchronized!');
-            }
-          }
-
-          if (type === 'CLEAR_TOKEN') {
-            if (localStorage.getItem('spotify_access_token')) {
-              localStorage.removeItem('spotify_access_token');
-              localStorage.removeItem('spotify_refresh_token');
-              setToken('');
-              setRefreshToken('');
-              setPlaybackState(null);
-              setDevices([]);
-              toast.info('System token cleared.');
-            }
-          }
-
-          if (type === 'ERROR') {
-            console.warn('[Resonance Client] Server WS reported error:', payload.message);
-          }
-        } catch (err) {
-          console.error('[Resonance Client] Error parsing WS message:', err);
-        }
-      };
-
-      socket.onclose = (e) => {
-        console.log('[Resonance Client] WebSocket disconnected. Reconnecting in 3s...', e.reason);
-        reconnectTimeout = setTimeout(connectWS, 3000);
-      };
-
-      socket.onerror = (err) => {
-        console.error('[Resonance Client] WebSocket error:', err);
-        socket.close();
-      };
-    };
-
-    connectWS();
-
-    return () => {
-      clearTimeout(reconnectTimeout);
-      if (socket) {
-        socket.close();
-      }
-      ws.current = null;
-    };
-  }, []);
-
-  // Send token to WebSocket server when it changes locally
-  useEffect(() => {
-    if (token && ws.current && ws.current.readyState === WebSocket.OPEN) {
-      ws.current.send(JSON.stringify({ type: 'SET_TOKEN', payload: { token } }));
-    }
-  }, [token]);
 
   // Track position slider polling (runs while music is playing)
   useEffect(() => {
@@ -540,16 +415,11 @@ export default function App() {
     const targetVolume = newMuteState ? 0 : volume;
 
     // Broadcast mute update immediately over WS
-    if (ws.current && ws.current.readyState === WebSocket.OPEN) {
-      ws.current.send(JSON.stringify({
-        type: 'BROADCAST_STATE',
-        payload: {
-          ...playbackState,
-          volume: targetVolume,
-          is_muted: newMuteState
-        }
-      }));
-    }
+    sendUpdate('BROADCAST_STATE', {
+      ...playbackState,
+      volume: targetVolume,
+      is_muted: newMuteState
+    });
 
     try {
       await api.setVolume(token, targetVolume);
@@ -564,15 +434,10 @@ export default function App() {
     try {
       await fetch('/auth/spotify/logout', { method: 'POST' });
     } catch (_) {}
-    localStorage.removeItem('spotify_access_token');
-    localStorage.removeItem('spotify_refresh_token');
     setToken('');
-    setRefreshToken('');
     setPlaybackState(null);
     setDevices([]);
-    if (ws.current && ws.current.readyState === WebSocket.OPEN) {
-      ws.current.send(JSON.stringify({ type: 'CLEAR_TOKEN' }));
-    }
+    sendUpdate('CLEAR_TOKEN');
     toast.info('Spotify disconnected.');
   };
 

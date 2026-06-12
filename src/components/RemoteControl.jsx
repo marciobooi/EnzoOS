@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { api } from '../api';
 import { toast } from 'sonner';
+import { useResonanceWS } from '../websocket';
 
 // Helper utilities for managing cookies
 const setCookie = (name, value, days = 365) => {
@@ -45,12 +46,10 @@ export default function RemoteControl() {
   const [passwordInput, setPasswordInput] = useState('');
 
   // Connection and token states
-  const [token, setToken] = useState(localStorage.getItem('spotify_access_token') || '');
-  const [isConnected, setIsConnected] = useState(false);
+  const [token, setToken] = useState('');
   const [devices, setDevices] = useState([]);
   const [isFetchingDevices, setIsFetchingDevices] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
-  const [manualTokenInput, setManualTokenInput] = useState('');
 
   // Playback states
   const [playbackState, setPlaybackState] = useState(null);
@@ -74,7 +73,6 @@ export default function RemoteControl() {
   const [daemonPassword, setDaemonPassword] = useState('');
   const [isSavingDaemonCreds, setIsSavingDaemonCreds] = useState(false);
 
-  const ws = useRef(null);
   const progressInterval = useRef(null);
   const volumeApiTimeout = useRef(null);
 
@@ -101,9 +99,7 @@ export default function RemoteControl() {
   const handleToggleSource = () => {
     const nextSpotify = !spotify;
     setSpotify(nextSpotify);
-    if (ws.current && ws.current.readyState === WebSocket.OPEN) {
-      ws.current.send(JSON.stringify({ type: 'SET_SOURCE', payload: { spotify: nextSpotify } }));
-    }
+    sendUpdate('SET_SOURCE', { spotify: nextSpotify });
     toast.success(`Source set to: ${nextSpotify ? 'Spotify' : 'Local Media'}`);
   };
 
@@ -118,104 +114,28 @@ export default function RemoteControl() {
   const activeDevice = devices.find(d => d.is_active);
   const resonanceDevice = devices.find(d => d.name === 'Resonance Connect');
 
-  // WebSocket Connection (only connects once authenticated)
-  useEffect(() => {
-    if (!isAuthenticated) return;
-
-    let socket;
-    let reconnectTimeout;
-
-    const connectWS = () => {
-      const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-      const wsUrl = `${wsProtocol}//${window.location.host}/ws`;
-      socket = new WebSocket(wsUrl);
-      ws.current = socket;
-
-      socket.onopen = () => {
-        setIsConnected(true);
-        console.log('[Resonance Remote] Connected to WebSocket');
-        if (token) {
-          socket.send(JSON.stringify({ type: 'SET_TOKEN', payload: { token } }));
-        }
-        socket.send(JSON.stringify({ type: 'REQUEST_SYNC' }));
-      };
-
-      socket.onmessage = (event) => {
-        try {
-          const { type, payload } = JSON.parse(event.data);
-
-          if (type === 'PLAYBACK_STATE') {
-            setPlaybackState(payload);
-            setTrackPosition(payload.position);
-            setTrackDuration(payload.duration);
-            if (payload.shuffle_state !== undefined) setShuffleState(payload.shuffle_state);
-            if (payload.repeat_state !== undefined) setRepeatState(payload.repeat_state);
-            if (payload.volume !== undefined) setVolume(payload.volume);
-            if (payload.is_muted !== undefined) setIsMuted(payload.is_muted);
-          }
-
-          if (type === 'UPDATE_PROGRESS') {
-            setUpdateStatus('updating');
-            setOtaProgress(prev => [...prev, payload.text].slice(-30));
-            if (payload.percent !== undefined && payload.percent !== null) {
-              setOtaPercent(payload.percent);
-            }
-          }
-
-          if (type === 'SET_SOURCE') {
-            setSpotify(payload.spotify);
-          }
-
-          if (type === 'SET_TOKEN') {
-            const newToken = payload.token;
-            if (newToken && newToken !== localStorage.getItem('spotify_access_token')) {
-              localStorage.setItem('spotify_access_token', newToken);
-              setToken(newToken);
-              toast.success('Access token synced from main display');
-            }
-          }
-
-          if (type === 'CLEAR_TOKEN') {
-            localStorage.removeItem('spotify_access_token');
-            setToken('');
-            setPlaybackState(null);
-            setDevices([]);
-            toast.info('Session cleared from main display');
-          }
-
-          if (type === 'REQUEST_SYNC') {
-            localSync();
-          }
-        } catch (err) {
-          console.error('[Resonance Remote] Error parsing WS message:', err);
-        }
-      };
-
-      socket.onclose = () => {
-        setIsConnected(false);
-        reconnectTimeout = setTimeout(connectWS, 3000);
-      };
-
-      socket.onerror = () => {
-        socket.close();
-      };
-    };
-
-    connectWS();
-
-    return () => {
-      clearTimeout(reconnectTimeout);
-      if (socket) socket.close();
-      ws.current = null;
-    };
-  }, [token, isAuthenticated]);
-
-  // Sync token changes to WS
-  useEffect(() => {
-    if (isAuthenticated && token && ws.current && ws.current.readyState === WebSocket.OPEN) {
-      ws.current.send(JSON.stringify({ type: 'SET_TOKEN', payload: { token } }));
-    }
-  }, [token, isAuthenticated]);
+  // Connect to the centralized WebSocket hook
+  const { isConnected, ws, sendUpdate } = useResonanceWS({
+    token,
+    setToken,
+    setPlaybackState,
+    setTrackPosition,
+    setTrackDuration,
+    setShuffleState,
+    setRepeatState,
+    setVolume,
+    setIsMuted,
+    setUpdateStatus,
+    setOtaProgress,
+    setOtaPercent,
+    setSpotify,
+    setDevices,
+    onRequestSync: () => {
+      localSync();
+    },
+    isAuthenticated,
+    isRemote: true
+  });
 
   // Poll devices & state from Spotify Web API
   useEffect(() => {
@@ -534,15 +454,7 @@ export default function RemoteControl() {
     }
   };
 
-  const applyManualToken = (e) => {
-    e.preventDefault();
-    if (!manualTokenInput.trim()) return;
-    localStorage.setItem('spotify_access_token', manualTokenInput.trim());
-    setToken(manualTokenInput.trim());
-    setManualTokenInput('');
-    setShowSettings(false);
-    toast.success('Access Token updated locally');
-  };
+
 
   const handleLoginSubmit = (e) => {
     e.preventDefault();
@@ -710,23 +622,7 @@ export default function RemoteControl() {
                 {isSavingDaemonCreds ? 'Saving...' : 'Save & Restart Daemon'}
               </button>
             </form>
-            
-            <form onSubmit={applyManualToken} className="flex flex-col gap-2">
-              <label className="text-[10px] uppercase tracking-wider text-[#8695a7] font-semibold">Spotify Developer Token</label>
-              <textarea
-                value={manualTokenInput}
-                onChange={(e) => setManualTokenInput(e.target.value)}
-                placeholder="Paste new OAuth Access Token..."
-                rows={3}
-                className="w-full bg-black/40 border border-white/5 rounded-xl p-3 text-[10px] text-white font-mono placeholder:text-zinc-700 focus:outline-none focus:border-white/20 resize-none"
-              />
-              <button
-                type="submit"
-                className="w-full py-2.5 rounded-xl bg-white text-black font-extrabold text-xs uppercase tracking-wider active:scale-95 transition-all cursor-pointer hover:bg-zinc-200"
-              >
-                Sync Token Locally
-              </button>
-            </form>
+
 
             <div className="border-t border-white/5 pt-4 flex flex-col gap-3">
               <div className="flex justify-between items-center text-[10px] uppercase tracking-wider text-[#8695a7] font-semibold">
@@ -907,14 +803,8 @@ export default function RemoteControl() {
         {spotify && !token && (
           <div className="mx-4 p-4 rounded-2xl bg-amber-500/5 border border-amber-500/20 text-center flex flex-col gap-2.5">
             <p className="text-[10px] text-amber-250 font-medium leading-relaxed">
-              Remote Control is not authenticated to Spotify. Connect a client or enter a token in settings.
+              Resonance is not authenticated to Spotify. Please authenticate on the main system display.
             </p>
-            <button
-              onClick={() => setShowSettings(true)}
-              className="py-1.5 px-4 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-extrabold text-[9px] uppercase tracking-wider self-center active:scale-95 transition-all cursor-pointer"
-            >
-              Configure Token
-            </button>
           </div>
         )}
 

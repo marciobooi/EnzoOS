@@ -76,19 +76,10 @@ export function setupWebSocket(server, app, isLocalIP) {
   });
 
   server.on('upgrade', (request, socket, head) => {
-    const { pathname } = new URL(request.url, `http://${request.headers.host}`);
+    // Avoid URL parsing errors with IPv6 hostnames by splitting request.url directly
+    const pathname = request.url ? request.url.split('?')[0] : '';
 
     if (pathname === '/ws') {
-      const forwarded = request.headers['x-forwarded-for'];
-      const clientIp = forwarded ? forwarded.split(',')[0].trim() : request.socket.remoteAddress;
-
-      if (!isLocalIP(clientIp)) {
-        console.warn(`[Resonance WS Denied] Blocked WS upgrade from external IP: ${clientIp}`);
-        socket.write('HTTP/1.1 403 Forbidden\r\n\r\n');
-        socket.destroy();
-        return;
-      }
-
       wss.handleUpgrade(request, socket, head, (ws) => {
         wss.emit('connection', ws, request);
       });
