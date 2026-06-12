@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { toast } from 'sonner';
+import { toast, Toaster } from 'sonner';
 import { LogOut, Terminal } from 'lucide-react';
 import { api } from './api';
 import { useResonanceWS } from './websocket';
@@ -465,13 +465,9 @@ export default function App() {
 
   return (
     <div data-theme={theme} className="w-screen h-screen bg-[#050505] flex items-center justify-center relative overflow-hidden p-6 select-none font-sans">
-      
-      {/* Subtle retro glowing background spots */}
-      <div className="absolute top-[-30%] left-[-20%] w-[70%] h-[70%] rounded-full theme-bg-glow blur-[150px] pointer-events-none" />
-      <div className="absolute bottom-[-30%] right-[-20%] w-[70%] h-[70%] rounded-full bg-emerald-950/5 blur-[150px] pointer-events-none" />
-
       <div 
         ref={containerRef}
+        className="music-player-container"
         style={{
           transform: `scale(${scale})`,
           transformOrigin: 'center center',
@@ -556,6 +552,7 @@ export default function App() {
             />
           </div>
         </div>
+        <Toaster theme="dark" closeButton richColors position="bottom-right" />
       </div>
     </div>
   );
