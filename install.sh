@@ -150,7 +150,7 @@ echo -e "${GREEN}Raspotify Spotify Connect service configured and started.${NC}"
 # Configure passwordless sudo for Spotify configuration updates
 echo -e "${YELLOW}Configuring sudo permissions for Spotify daemon management...${NC}"
 cat <<EOF > /etc/sudoers.d/resonance
-$TARGET_USER ALL=(ALL) NOPASSWD: /usr/bin/tee /etc/default/raspotify, /usr/bin/systemctl restart raspotify
+$TARGET_USER ALL=(ALL) NOPASSWD: /usr/bin/tee /etc/default/raspotify, /bin/tee /etc/default/raspotify, /usr/bin/systemctl restart raspotify, /bin/systemctl restart raspotify
 EOF
 chmod 440 /etc/sudoers.d/resonance
 
