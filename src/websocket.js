@@ -119,11 +119,6 @@ export function useResonanceWS({
             const newToken = payload.token;
             if (newToken && newToken !== tokenRef.current) {
               if (setToken) setToken(newToken);
-              toast.success(
-                isRemote 
-                  ? 'Access token synced from main display'
-                  : 'System authentication token synchronized!'
-              );
             }
           }
 
@@ -131,11 +126,6 @@ export function useResonanceWS({
             if (setToken) setToken('');
             if (setPlaybackState) setPlaybackState(null);
             if (setDevices) setDevices([]);
-            toast.info(
-              isRemote
-                ? 'Session cleared from main display'
-                : 'System token cleared.'
-            );
           }
 
           if (type === 'ERROR') {

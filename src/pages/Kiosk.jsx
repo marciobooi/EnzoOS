@@ -547,7 +547,7 @@ export default function Kiosk() {
             />
           </div>
         </div>
-        <Toaster theme="dark" closeButton richColors position="bottom-right" />
+        <Toaster theme="dark" closeButton richColors position="bottom-right" visibleToasts={1} />
       </div>
     </div>
   );

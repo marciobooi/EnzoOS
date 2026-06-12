@@ -546,7 +546,7 @@ export default function RemoteControl() {
             </form>
           </div>
         </div>
-        <Toaster theme="dark" closeButton richColors position="bottom-right" />
+        <Toaster theme="dark" closeButton richColors position="bottom-right" visibleToasts={1} />
       </>
     );
   }
@@ -977,7 +977,7 @@ export default function RemoteControl() {
           </footer>
 
         </div>
-        <Toaster theme="dark" closeButton richColors position="bottom-right" />
+        <Toaster theme="dark" closeButton richColors position="bottom-right" visibleToasts={1} />
       </>
     );
 }
