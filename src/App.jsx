@@ -480,7 +480,8 @@ export default function App() {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          flexShrink: 0
+          flexShrink: 0,
+          position: 'relative'
         }}
       >
         <RoseHiFiDisplay
@@ -509,59 +510,51 @@ export default function App() {
           spotify={spotify}
           onToggleSource={handleToggleSource}
         />
-      </div>
 
-      {/* SIDE PANEL DRAWER (SYSTEM DEFINITIONS MENU) */}
-      {/* Backdrop overlay */}
-      <div 
-        onClick={() => setIsMenuOpen(false)}
-        className={`fixed inset-0 bg-black/60 backdrop-blur-sm z-40 transition-opacity duration-300 ${
-          isMenuOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
-        }`}
-      />
+        {/* Full-Screen Horizontal Definitions Menu Overlay */}
+        <div 
+          className={`absolute inset-0 bg-gradient-to-b from-[#181a20] to-[#0a0b0d] border border-[#262b35] rounded-3xl shadow-2xl z-50 transform transition-all duration-300 ease-in-out flex flex-col p-5 font-mono ${
+            isMenuOpen ? 'opacity-100 scale-100 pointer-events-auto' : 'opacity-0 scale-95 pointer-events-none'
+          }`}
+        >
+          {/* Header & Close Button */}
+          <div className="flex justify-between items-center mb-3 select-none shrink-0">
+            <h4 className="text-[11px] font-extrabold uppercase tracking-[0.2em] theme-text">System Configuration Control Panel</h4>
+            <button 
+              onClick={() => setIsMenuOpen(false)}
+              className="text-zinc-500 hover:text-white transition-colors cursor-pointer text-[10px] font-extrabold font-mono px-3.5 py-1 rounded-lg bg-zinc-950 border border-zinc-900 active:scale-95"
+            >
+              CLOSE [X]
+            </button>
+          </div>
 
-      {/* Drawer Container */}
-      <div 
-        className={`fixed top-0 right-0 h-full w-[450px] bg-gradient-to-b from-[#22252c] to-[#0f1013] border-l border-[#303643] shadow-2xl z-50 transform transition-transform duration-300 ease-in-out flex flex-col p-6 font-mono ${
-          isMenuOpen ? 'translate-x-0' : 'translate-x-full'
-        }`}
-      >
-        {/* Close Button Header */}
-        <div className="flex justify-end mb-4 select-none shrink-0">
-          <button 
-            onClick={() => setIsMenuOpen(false)}
-            className="text-zinc-500 hover:text-white transition-colors cursor-pointer text-[10px] font-extrabold font-mono px-3.5 py-1.5 rounded-lg bg-zinc-950 border border-zinc-900 active:scale-95"
-          >
-            CLOSE [X]
-          </button>
-        </div>
-
-        {/* Drawer Scrollable Content */}
-        <div className="flex-grow overflow-y-auto">
-          <DefinitionsMenu
-            token={token}
-            handleLogout={handleLogout}
-            devices={devices}
-            isFetchingDevices={isFetchingDevices}
-            onTransferPlayback={transferPlayback}
-            onRefreshDevices={fetchDevices}
-            onPlayTrack={(uri) => {
-              handlePlayTrack(uri);
-              setIsMenuOpen(false);
-            }}
-            theme={theme}
-            onThemeChange={handleThemeChange}
-            otaProgress={otaProgress}
-            setOtaProgress={setOtaProgress}
-            otaPercent={otaPercent}
-            setOtaPercent={setOtaPercent}
-            spotify={spotify}
-            onToggleSource={handleToggleSource}
-            updateStatus={updateStatus}
-            setUpdateStatus={setUpdateStatus}
-            errorMessage={errorMessage}
-            setErrorMessage={setErrorMessage}
-          />
+          {/* Horizontally Scrollable Content */}
+          <div className="flex-grow overflow-x-auto overflow-y-hidden custom-scrollbar">
+            <DefinitionsMenu
+              token={token}
+              handleLogout={handleLogout}
+              devices={devices}
+              isFetchingDevices={isFetchingDevices}
+              onTransferPlayback={transferPlayback}
+              onRefreshDevices={fetchDevices}
+              onPlayTrack={(uri) => {
+                handlePlayTrack(uri);
+                setIsMenuOpen(false);
+              }}
+              theme={theme}
+              onThemeChange={handleThemeChange}
+              otaProgress={otaProgress}
+              setOtaProgress={setOtaProgress}
+              otaPercent={otaPercent}
+              setOtaPercent={setOtaPercent}
+              spotify={spotify}
+              onToggleSource={handleToggleSource}
+              updateStatus={updateStatus}
+              setUpdateStatus={setUpdateStatus}
+              errorMessage={errorMessage}
+              setErrorMessage={setErrorMessage}
+            />
+          </div>
         </div>
       </div>
     </div>

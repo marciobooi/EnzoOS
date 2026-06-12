@@ -107,7 +107,7 @@ export default function DefinitionsMenu({
   };
 
   return (
-    <div className="flex flex-col gap-6 font-mono text-zinc-300">
+    <div className="flex flex-row gap-6 font-mono text-zinc-300 h-full pb-2 pr-4 items-stretch select-none">
       
       {/* Header */}
       <div className="flex items-center gap-2 pb-3 border-b border-zinc-900">
@@ -119,7 +119,7 @@ export default function DefinitionsMenu({
       </div>
 
       {/* 0. PLUGIN SOURCE SELECTOR & DAEMON CONFIG */}
-      <section className="p-4 rounded-xl border border-zinc-900 bg-zinc-950/20 flex flex-col gap-3">
+      <section className="w-[280px] shrink-0 p-4 rounded-xl border border-zinc-900 bg-zinc-950/20 flex flex-col justify-between">
         <div className="flex items-center justify-between">
           <span className="text-[10px] font-bold tracking-wider text-zinc-400 uppercase">
             [00] Media Source & Daemon Config
@@ -146,7 +146,7 @@ export default function DefinitionsMenu({
       </section>
 
       {/* 1. SPOTIFY AUTHENTICATION KEYWAY */}
-      <section className="p-4 rounded-xl border border-zinc-900 bg-zinc-950/20 flex flex-col gap-3">
+      <section className="w-[280px] shrink-0 p-4 rounded-xl border border-zinc-900 bg-zinc-950/20 flex flex-col justify-between">
         <div className="flex items-center justify-between">
           <span className="text-[10px] font-bold tracking-wider text-zinc-400 uppercase">
             [01] Spotify Keyway
@@ -197,7 +197,7 @@ export default function DefinitionsMenu({
       </section>
 
       {/* 2. AUDIO PATCHBAY / OUTPUT CHANNELS */}
-      <section className="p-4 rounded-xl border border-zinc-900 bg-zinc-950/20 flex flex-col gap-3">
+      <section className="w-[320px] shrink-0 p-4 rounded-xl border border-zinc-900 bg-zinc-950/20 flex flex-col gap-2">
         <div className="flex items-center justify-between">
           <span className="text-[10px] font-bold tracking-wider text-zinc-400 uppercase">
             [02] Audio Output Patchbay
@@ -220,7 +220,7 @@ export default function DefinitionsMenu({
             <span>AUTHORIZE KEYWAY TO LOCATE AUDIBLE CHANNELS</span>
           </div>
         ) : (
-          <div className="flex flex-col gap-2">
+          <div className="flex flex-col gap-1.5 overflow-y-auto max-h-[140px] pr-1 custom-scrollbar">
             {devices.length > 0 ? (
               devices.map((device) => {
                 const isResonance = device.name === 'Resonance Connect';
@@ -281,7 +281,7 @@ export default function DefinitionsMenu({
       </section>
 
       {/* 3. SYSTEM OTA UPDATES */}
-      <section className="p-4 rounded-xl border border-zinc-900 bg-zinc-950/20 flex flex-col gap-3">
+      <section className="w-[360px] shrink-0 p-4 rounded-xl border border-zinc-900 bg-zinc-950/20 flex flex-col gap-2">
         <div className="flex items-center justify-between">
           <span className="text-[10px] font-bold tracking-wider text-zinc-400 uppercase">
             [03] System OTA Updates
@@ -358,7 +358,7 @@ export default function DefinitionsMenu({
 
               <div 
                 ref={consoleRef}
-                className="bg-black/85 rounded border border-zinc-900 p-2 text-left h-36 overflow-y-auto text-[8px] text-white select-text custom-scrollbar flex flex-col gap-0.5 leading-normal"
+                className="bg-black/85 rounded border border-zinc-900 p-2 text-left h-24 overflow-y-auto text-[8px] text-white select-text custom-scrollbar flex flex-col gap-0.5 leading-normal"
               >
                 {otaProgress && otaProgress.length > 0 ? (
                   otaProgress.map((line, idx) => (
@@ -394,7 +394,7 @@ export default function DefinitionsMenu({
       </section>
 
       {/* 5. SYSTEM THEMES */}
-      <section className="p-4 rounded-xl border border-zinc-900 bg-zinc-950/20 flex flex-col gap-3">
+      <section className="w-[280px] shrink-0 p-4 rounded-xl border border-zinc-900 bg-zinc-950/20 flex flex-col justify-between">
         <div className="flex items-center justify-between">
           <span className="text-[10px] font-bold tracking-wider text-zinc-400 uppercase">
             [05] System Themes
@@ -429,7 +429,7 @@ export default function DefinitionsMenu({
       </section>
 
       {/* 4. SOURCE SEARCH & LOAD */}
-      <section className="flex-grow flex flex-col">
+      <section className="w-[380px] shrink-0 flex flex-col h-full overflow-hidden">
         <div className="flex items-center gap-2 pb-2 mb-3 border-b border-zinc-900">
           <span className="text-[10px] font-bold tracking-wider text-zinc-400 uppercase">
             [04] Source Catalog Search
