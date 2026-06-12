@@ -504,7 +504,7 @@ export default function Kiosk() {
 
         {/* Full-Screen Horizontal Definitions Menu Overlay */}
         <div 
-          className={`absolute inset-0 bg-gradient-to-b from-[#181a20] to-[#0a0b0d] border border-[#262b35] rounded-3xl shadow-2xl z-50 transform transition-all duration-300 ease-in-out flex flex-col p-5 font-mono ${
+          className={`absolute inset-0 bg-gradient-to-b from-[#181a20] to-[#0a0b0d] border border-[#262b35] rounded-3xl shadow-2xl z-50 transform transition-all duration-300 ease-in-out flex flex-col p-5 font-sans ${
             isMenuOpen ? 'opacity-100 scale-100 pointer-events-auto' : 'opacity-0 scale-95 pointer-events-none'
           }`}
         >
@@ -513,7 +513,7 @@ export default function Kiosk() {
             <h4 className="text-[11px] font-extrabold uppercase tracking-[0.2em] theme-text">System Configuration Control Panel</h4>
             <button 
               onClick={() => setIsMenuOpen(false)}
-              className="text-zinc-500 hover:text-white transition-colors cursor-pointer text-[10px] font-extrabold font-mono px-3.5 py-1 rounded-lg bg-zinc-950 border border-zinc-900 active:scale-95"
+              className="text-zinc-500 hover:text-white transition-colors cursor-pointer text-[10px] font-extrabold font-sans px-3.5 py-1 rounded-lg bg-zinc-950 border border-zinc-900 active:scale-95"
             >
               CLOSE [X]
             </button>
