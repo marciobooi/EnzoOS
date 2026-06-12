@@ -5,9 +5,6 @@ import TrackSearch from './TrackSearch';
 
 export default function DefinitionsMenu({
   token,
-  manualTokenInput,
-  setManualTokenInput,
-  handleApplyManualToken,
   handleLogout,
   devices,
   isFetchingDevices,

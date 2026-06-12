@@ -12,7 +12,6 @@ export default function App() {
   // Authentication states
   const [token, setToken] = useState(localStorage.getItem('spotify_access_token') || '');
   const [refreshToken, setRefreshToken] = useState(localStorage.getItem('spotify_refresh_token') || '');
-  const [manualTokenInput, setManualTokenInput] = useState('');
 
   // Spotify Player states
   const [playbackState, setPlaybackState] = useState(null);
@@ -560,20 +559,6 @@ export default function App() {
   };
 
 
-  // Set manual token fallback
-  const handleApplyManualToken = (e) => {
-    e.preventDefault();
-    if (!manualTokenInput.trim()) {
-      toast.error('Token cannot be empty');
-      return;
-    }
-    localStorage.setItem('spotify_access_token', manualTokenInput.trim());
-    setToken(manualTokenInput.trim());
-    setManualTokenInput('');
-    setIsMenuOpen(false);
-    toast.success('Custom authentication token applied!');
-  };
-
   // Log out / disconnect Spotify
   const handleLogout = async () => {
     try {
@@ -679,9 +664,6 @@ export default function App() {
         <div className="flex-grow overflow-y-auto">
           <DefinitionsMenu
             token={token}
-            manualTokenInput={manualTokenInput}
-            setManualTokenInput={setManualTokenInput}
-            handleApplyManualToken={handleApplyManualToken}
             handleLogout={handleLogout}
             devices={devices}
             isFetchingDevices={isFetchingDevices}

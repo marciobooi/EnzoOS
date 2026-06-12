@@ -4,13 +4,11 @@ import cors from 'cors';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import http from 'http';
-import { WebSocketServer, WebSocket } from 'ws';
-import { exec } from 'child_process';
-import { promisify } from 'util';
 import updateRouter from './update.js';
-import spotifyAuthRouter, { getValidAccessToken } from './spotify-auth.js';
-
-const execPromise = promisify(exec);
+import spotifyAuthRouter from './spotify-auth.js';
+import playerRouter from './player.js';
+import spotifyDaemonRouter from './spotify-daemon.js';
+import { setupWebSocket } from './websocket.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -29,6 +27,12 @@ app.use('/api/system/update', updateRouter);
 
 // Spotify OAuth routes
 app.use('/auth/spotify', spotifyAuthRouter);
+
+// Local player control routes
+app.use('/api/player', playerRouter);
+
+// Spotify Connect daemon configuration routes
+app.use('/api/spotify', spotifyDaemonRouter);
 
 // Helper to detect if an IP address belongs to the same local area network (LAN)
 const isLocalIP = (ip) => {
@@ -114,92 +118,6 @@ app.get('/remote', (req, res, next) => {
   next();
 });
 
-// Local Player control endpoints (using mpc)
-app.post('/api/player/play', async (req, res) => {
-  try {
-    await execPromise('mpc play');
-    res.json({ success: true });
-  } catch (err) {
-    console.error('[Local Player] Play failed:', err);
-    res.status(500).json({ success: false, error: err.message });
-  }
-});
-
-app.post('/api/player/pause', async (req, res) => {
-  try {
-    await execPromise('mpc pause');
-    res.json({ success: true });
-  } catch (err) {
-    console.error('[Local Player] Pause failed:', err);
-    res.status(500).json({ success: false, error: err.message });
-  }
-});
-
-app.post('/api/player/next', async (req, res) => {
-  try {
-    await execPromise('mpc next');
-    res.json({ success: true });
-  } catch (err) {
-    console.error('[Local Player] Next failed:', err);
-    res.status(500).json({ success: false, error: err.message });
-  }
-});
-
-app.post('/api/player/previous', async (req, res) => {
-  try {
-    await execPromise('mpc prev');
-    res.json({ success: true });
-  } catch (err) {
-    console.error('[Local Player] Previous failed:', err);
-    res.status(500).json({ success: false, error: err.message });
-  }
-});
-
-app.post('/api/player/volume', async (req, res) => {
-  const { volume } = req.body;
-  try {
-    await execPromise(`mpc volume ${volume}`);
-    res.json({ success: true });
-  } catch (err) {
-    console.error('[Local Player] Volume failed:', err);
-    res.status(500).json({ success: false, error: err.message });
-  }
-});
-
-app.post('/api/player/seek', async (req, res) => {
-  const { position } = req.body;
-  try {
-    await execPromise(`mpc seek ${position}`);
-    res.json({ success: true });
-  } catch (err) {
-    console.error('[Local Player] Seek failed:', err);
-    res.status(500).json({ success: false, error: err.message });
-  }
-});
-
-// Spotify Daemon Credentials Configuration (write to /etc/default/raspotify)
-app.post('/api/spotify/credentials', async (req, res) => {
-  const { username, password } = req.body;
-  if (!username || !password) {
-    return res.status(400).json({ success: false, error: 'Username and password are required' });
-  }
-  try {
-    const configContent = `# Resonance HiFi - Raspotify Configuration
-DEVICE_NAME="Resonance Connect"
-BITRATE="320"
-OPTIONS="--backend alsa --initial-volume 50 --enable-volume-normalisation --username ${username} --password ${password}"
-`;
-    const escapedContent = configContent.replace(/'/g, "'\\''");
-    await execPromise(`echo '${escapedContent}' | sudo tee /etc/default/raspotify`);
-    await execPromise('sudo systemctl restart raspotify');
-    console.log(`[Resonance Server] Spotify daemon credentials updated for: ${username}`);
-    res.json({ success: true, message: 'Spotify daemon credentials updated and service restarted' });
-  } catch (err) {
-    console.error('[Resonance Server] Failed to update daemon credentials:', err);
-    res.status(500).json({ success: false, error: err.message });
-  }
-});
-
 // Fallback all non-API requests to index.html for Single Page App client routing
 app.use((req, res, next) => {
   if (req.method === 'GET') {
@@ -212,103 +130,8 @@ app.use((req, res, next) => {
 // Create HTTP server wrapping Express
 const server = http.createServer(app);
 
-// Initialize WebSocket server
-const wss = new WebSocketServer({ noServer: true });
-
-let cachedPlaybackState = null;
-let cachedSourceState = { spotify: true };
-
-// Helper to broadcast messages to all connected WS clients
-const broadcast = (data, excludeWs = null) => {
-  const message = JSON.stringify(data);
-  wss.clients.forEach((client) => {
-    if (client.readyState === WebSocket.OPEN && client !== excludeWs) {
-      client.send(message);
-    }
-  });
-};
-
-app.set('wssBroadcast', broadcast);
-
-wss.on('connection', async (ws) => {
-  console.log('[Resonance WS] Client connected. Active clients:', wss.clients.size);
-  
-  // Send last cached playback state on connect
-  if (cachedPlaybackState) {
-    ws.send(JSON.stringify({ type: 'PLAYBACK_STATE', payload: cachedPlaybackState }));
-  }
-
-  // Send the active source state on connect
-  ws.send(JSON.stringify({ type: 'SET_SOURCE', payload: cachedSourceState }));
-
-  // Send the server-managed access token (auto-refreshed if needed)
-  const serverToken = await getValidAccessToken();
-  if (serverToken) {
-    ws.send(JSON.stringify({ type: 'SET_TOKEN', payload: { token: serverToken } }));
-  }
-
-  ws.on('message', (messageStr) => {
-    try {
-      const { type, payload } = JSON.parse(messageStr);
-      
-      if (type === 'BROADCAST_STATE') {
-        cachedPlaybackState = payload;
-        // Broadcast new state to all OTHER clients
-        broadcast({ type: 'PLAYBACK_STATE', payload }, ws);
-      }
-
-      if (type === 'REQUEST_SYNC') {
-        // Broadcast sync request to OTHER clients (typically the main player)
-        broadcast({ type: 'REQUEST_SYNC' }, ws);
-      }
-
-      if (type === 'SET_SOURCE') {
-        cachedSourceState = payload;
-        broadcast({ type: 'SET_SOURCE', payload }, ws);
-      }
-
-      if (type === 'SET_TOKEN') {
-        // Clients can still push tokens for cross-client sync (legacy path)
-        console.log('[Resonance WS] Token sync received from client.');
-        broadcast({ type: 'SET_TOKEN', payload }, ws);
-      }
-
-      if (type === 'CLEAR_TOKEN') {
-        console.log('[Resonance WS] Token clear received from client.');
-        broadcast({ type: 'CLEAR_TOKEN' }, ws);
-      }
-    } catch (err) {
-      console.error('[Resonance WS] Failed parsing client message:', err);
-    }
-  });
-
-  ws.on('close', () => {
-    console.log('[Resonance WS] Client disconnected. Active clients:', wss.clients.size);
-  });
-});
-
-// Upgrade HTTP connection to WebSocket on /ws path
-server.on('upgrade', (request, socket, head) => {
-  const { pathname } = new URL(request.url, `http://${request.headers.host}`);
-
-  if (pathname === '/ws') {
-    const forwarded = request.headers['x-forwarded-for'];
-    const clientIp = forwarded ? forwarded.split(',')[0].trim() : request.socket.remoteAddress;
-
-    if (!isLocalIP(clientIp)) {
-      console.warn(`[Resonance WS Denied] Blocked WS upgrade from external IP: ${clientIp}`);
-      socket.write('HTTP/1.1 403 Forbidden\r\n\r\n');
-      socket.destroy();
-      return;
-    }
-
-    wss.handleUpgrade(request, socket, head, (ws) => {
-      wss.emit('connection', ws, request);
-    });
-  } else {
-    socket.destroy();
-  }
-});
+// Setup WebSocket server
+setupWebSocket(server, app, isLocalIP);
 
 server.listen(PORT, () => {
   console.log(`[Resonance Backend] Server listening on http://localhost:${PORT}`);
