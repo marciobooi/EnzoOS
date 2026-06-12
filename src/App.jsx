@@ -349,11 +349,7 @@ export default function App() {
     }
   };
 
-  // Keep the ref always pointing to the latest syncCurrentState so the WS
-  // closure (which captures nothing from the render cycle) can still call it safely
-  useEffect(() => {
-    syncCurrentStateRef.current = syncCurrentState;
-  });
+
 
   // Manual Seek
   const handleSeek = async (e) => {
