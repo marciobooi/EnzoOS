@@ -36,9 +36,16 @@ export default function RoseHiFiDisplay({
   onPlayRadio
 }) {
   const [showVolumeFeedback, setShowVolumeFeedback] = useState(false);
+  const [showSearch, setShowSearch] = useState(true);
   const feedbackTimeout = useRef(null);
   const dbLRef = useRef(null);
   const dbRRef = useRef(null);
+
+  useEffect(() => {
+    if (source === 'radio') {
+      setShowSearch(true);
+    }
+  }, [source]);
 
   // Simulate dynamic VU meter levels directly in DOM to avoid React re-render lag
   useEffect(() => {
@@ -111,7 +118,8 @@ export default function RoseHiFiDisplay({
       </section>
 
       {/* 2. Details and Controls Column */}
-      {source === 'radio' ? (
+      {/* 2. Details and Controls Column */}
+      {source === 'radio' && showSearch ? (
         <section className="details-column" aria-label="Web Radio controls">
           <div className="track-details h-full flex flex-col justify-between" style={{ minHeight: '230px' }}>
             <div className="hifi-topline">
@@ -122,9 +130,12 @@ export default function RoseHiFiDisplay({
                 <span className="status-dot bg-amber-500"></span>
                 PLUGIN: WEB RADIO
               </button>
-              <span className="system-readout tracking-widest text-[9px] font-extrabold uppercase">
-                {isPlaying ? `NOW PLAYING: ${trackName}` : 'SYSTEM IDLE'}
-              </span>
+              <button
+                onClick={() => setShowSearch(false)}
+                className="status-pill cursor-pointer transition-all border border-zinc-650 hover:bg-white/5 px-2 py-0.5 rounded text-zinc-400 font-sans"
+              >
+                [CLOSE X]
+              </button>
             </div>
 
             {/* Search Input Area */}
@@ -154,7 +165,10 @@ export default function RoseHiFiDisplay({
               {stationsList.map((station, idx) => (
                 <button
                   key={`${station.url}-${idx}`}
-                  onClick={() => onPlayRadio(station.url, station.name)}
+                  onClick={() => {
+                    onPlayRadio(station.url, station.name);
+                    setShowSearch(false);
+                  }}
                   className="p-2.5 rounded-xl bg-white/5 border border-white/10 hover:border-[var(--theme-color)] text-left flex items-center justify-between transition-all active:scale-[0.98] cursor-pointer group"
                 >
                   <div className="flex items-center gap-2 min-w-0">
@@ -193,15 +207,24 @@ export default function RoseHiFiDisplay({
               <button 
                 onClick={onToggleSource}
                 className={`status-pill cursor-pointer transition-colors border ${
-                  spotify 
+                  source === 'spotify' 
                     ? 'text-emerald-400 border-emerald-500/20 bg-emerald-500/5' 
                     : 'text-amber-500 border-amber-500/20 bg-amber-500/5'
                 }`}
                 title="Click to Switch Plugin Source"
               >
-                <span className={`status-dot ${spotify ? 'bg-emerald-400' : 'bg-amber-500'}`}></span>
-                PLUGIN: {spotify ? 'SPOTIFY' : 'LOCAL' }
+                <span className={`status-dot ${source === 'spotify' ? 'bg-emerald-400' : 'bg-amber-500'}`}></span>
+                PLUGIN: {source.toUpperCase()}
               </button>
+              {source === 'radio' && (
+                <button 
+                  onClick={() => setShowSearch(true)}
+                  className="status-pill cursor-pointer transition-all border border-amber-500/20 bg-amber-500/5 hover:bg-amber-500/10 px-2 py-0.5 rounded text-amber-500 font-sans"
+                  title="Search Web Radio"
+                >
+                  [🔍 SEARCH]
+                </button>
+              )}
               {spotify && (
                 <button 
                   onClick={onTransferPlayback}
