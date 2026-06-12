@@ -508,8 +508,6 @@ background: #141414;
   border-radius: 999px;
   overflow: hidden;
   position: relative;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .progress-bar-dots::before {
