@@ -586,7 +586,7 @@ export default function Kiosk() {
 
         {/* Full-Screen Horizontal Definitions Menu Overlay */}
         <div 
-          className={`absolute inset-0 bg-[#050d1cd9] border border-zinc-300 rounded-3xl shadow-2xl z-50 transform transition-all duration-300 ease-in-out flex flex-col p-5 font-sans ${
+          className={`absolute inset-0 bg-[#050d1c] border border-zinc-300 rounded-3xl shadow-2xl z-50 transform transition-all duration-300 ease-in-out flex flex-col p-5 font-sans ${
             isMenuOpen ? 'opacity-100 scale-100 pointer-events-auto' : 'opacity-0 scale-95 pointer-events-none'
           }`}
         >
