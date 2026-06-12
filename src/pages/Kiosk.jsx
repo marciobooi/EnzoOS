@@ -454,7 +454,7 @@ export default function Kiosk() {
   const trackArtist = currentTrack?.artists?.map(a => a.name).join(', ') || 'No Source Loaded';
 
   return (
-    <div data-theme={theme} className="w-screen h-screen bg-[#050505] flex items-center justify-center relative overflow-hidden p-6 select-none font-sans">
+    <div data-theme={theme} className="w-screen h-screen flex items-center justify-center relative overflow-hidden p-6 select-none font-sans">
       
       {/* Subtle retro glowing background spots */}
       <div className="absolute top-[-30%] left-[-20%] w-[70%] h-[70%] rounded-full theme-bg-glow blur-[150px] pointer-events-none" />
