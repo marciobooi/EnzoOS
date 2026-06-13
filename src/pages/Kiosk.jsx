@@ -141,13 +141,6 @@ export default function Kiosk() {
   const [isSearching, setIsSearching] = useState(false);
   const [standby, setStandby] = useState(false);
 
-  const handleToggleStandby = (enabled) => {
-    setStandby(enabled);
-    if (ws.current && ws.current.readyState === WebSocket.OPEN) {
-      ws.current.send(JSON.stringify({ type: 'SET_STANDBY', payload: { enabled } }));
-    }
-  };
-
   // Synchronize spotify & source states for backward-compatible rendering/api calls
   useEffect(() => {
     setSpotify(source === 'spotify');
@@ -204,6 +197,25 @@ export default function Kiosk() {
     isRemote: false,
     setStandby
   });
+
+  const handleToggleStandby = (enabled) => {
+    setStandby(enabled);
+    if (ws.current && ws.current.readyState === WebSocket.OPEN) {
+      ws.current.send(JSON.stringify({ type: 'SET_STANDBY', payload: { enabled } }));
+    }
+  };
+
+  // Auto-standby idle timer (10 minutes of paused/idle state triggers standby)
+  useEffect(() => {
+    if (standby || isPlaying) return;
+
+    const idleTimeout = setTimeout(() => {
+      console.log('[Kiosk] Auto-standby triggered due to 10 minutes of inactivity');
+      handleToggleStandby(true);
+    }, 10 * 60 * 1000); // 10 minutes
+
+    return () => clearTimeout(idleTimeout);
+  }, [isPlaying, standby]);
 
   const handleToggleSource = (targetSource) => {
     let nextSource = targetSource;

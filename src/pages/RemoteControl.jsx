@@ -87,13 +87,6 @@ export default function RemoteControl() {
   const [isSavingDaemonCreds, setIsSavingDaemonCreds] = useState(false);
   const [standby, setStandby] = useState(false);
 
-  const handleToggleStandby = (enabled) => {
-    setStandby(enabled);
-    if (ws.current && ws.current.readyState === WebSocket.OPEN) {
-      ws.current.send(JSON.stringify({ type: 'SET_STANDBY', payload: { enabled } }));
-    }
-  };
-
   // Synchronize spotify & source states for backward-compatible rendering/api calls
   useEffect(() => {
     setSpotify(source === 'spotify');
@@ -175,7 +168,7 @@ export default function RemoteControl() {
   const handleRadioSearch = async () => {
     const query = radioSearch.trim();
     if (!query) {
-      setStationsList(favoriteStations.length > 0 ? favoriteStations : RADIO_STATIONS);
+      setStationsList(favoriteStations);
       return;
     }
     try {
@@ -204,19 +197,21 @@ export default function RemoteControl() {
 
   const handleSaveDaemonCredentials = async (e) => {
     e.preventDefault();
-    if (!daemonUsername.trim() || !daemonPassword.trim()) {
-      toast.error('Username and password are required.');
-      return;
-    }
+    setIsSavingDaemonCreds(true);
     try {
-      setIsSavingDaemonCreds(true);
-      await api.setSpotifyCredentials(daemonUsername.trim(), daemonPassword.trim());
-      toast.success('Spotify Daemon credentials updated! Restarting service...');
-      setDaemonUsername('');
-      setDaemonPassword('');
+      const res = await fetch('/api/spotify/credentials', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: daemonUsername, password: daemonPassword })
+      });
+      const data = await res.json();
+      if (data.success) {
+        toast.success('Spotify daemon credentials updated successfully.');
+      } else {
+        toast.error(data.error || 'Failed to update credentials.');
+      }
     } catch (err) {
-      console.error('Failed to save daemon credentials:', err);
-      toast.error(`Failed to update credentials: ${err.message}`);
+      toast.error('Failed to update credentials.');
     } finally {
       setIsSavingDaemonCreds(false);
     }
@@ -274,6 +269,13 @@ export default function RemoteControl() {
     isRemote: true,
     setStandby
   });
+
+  const handleToggleStandby = (enabled) => {
+    setStandby(enabled);
+    if (ws.current && ws.current.readyState === WebSocket.OPEN) {
+      ws.current.send(JSON.stringify({ type: 'SET_STANDBY', payload: { enabled } }));
+    }
+  };
 
   // Poll devices & state from Spotify Web API
   useEffect(() => {
