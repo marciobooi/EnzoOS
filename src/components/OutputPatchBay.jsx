@@ -82,7 +82,7 @@ export default function OutputPatchBay({
                     <Laptop className={`h-4 w-4 shrink-0 ${isActive ? 'text-[#ff8e00]' : 'text-zinc-500'}`} />
                   )}
                   <div className="min-w-0">
-                    <p className="text-xs font-bold text-slate-200 truncate uppercase">OUT_{String.fromCharCode(65 + index)}_{d.name.toUpperCase().replace(/\s+/g, '_')}</p>
+                    <p className="text-xs font-bold text-slate-200 truncate uppercase">OUT_{String.fromCharCode(65 + index)}_{d.name?.toUpperCase().replace(/\s+/g, '_') || ''}</p>
                     <p className="text-[9px] text-zinc-500 truncate">{d.name} ({d.type})</p>
                   </div>
                 </div>

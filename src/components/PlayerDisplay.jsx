@@ -260,7 +260,7 @@ export default function PlayerDisplay({
                 title="Click to Switch Plugin Source"
               >
                 <span className={`status-dot ${source === 'spotify' ? 'bg-emerald-400' : 'bg-amber-500'}`}></span>
-                PLUGIN: {source.toUpperCase()}
+                PLUGIN: {source?.toUpperCase() || ''}
               </button>
               <span className="system-readout">DOT MATRIX / 2026</span>
               {spotify && (

@@ -81,7 +81,7 @@ export default function PlaybackControls({
               ? 'border-amber-500/50 text-amber-500 shadow-[0_0_8px_rgba(255,142,0,0.2)]' 
               : 'border-slate-800 text-slate-500 hover:text-slate-300 hover:border-slate-700'
           }`}
-          title={`REPEAT: ${repeatState.toUpperCase()}`}
+          title={`REPEAT: ${repeatState?.toUpperCase() || 'OFF'}`}
         >
           <Repeat className="h-3.5 w-3.5" />
           {repeatState === 'track' && (
