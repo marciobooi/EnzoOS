@@ -102,35 +102,33 @@ export default function DspWizard({ onClose }) {
   }, []);
 
   const handleSelectOption = (value) => {
-    setAnswers(prev => ({
-      ...prev,
+    const nextAnswers = {
+      ...answers,
       [QUESTIONS[currentStep].id]: value
-    }));
-  };
+    };
+    setAnswers(nextAnswers);
 
-  const handleNext = () => {
-    if (currentStep < QUESTIONS.length - 1) {
-      setCurrentStep(prev => prev + 1);
-    } else {
-      handleApply();
-    }
+    // Auto-advance or apply calibration
+    setTimeout(async () => {
+      if (currentStep < QUESTIONS.length - 1) {
+        setCurrentStep(prev => prev + 1);
+      } else {
+        setIsSaving(true);
+        try {
+          await api.saveDspCalibration(nextAnswers);
+          setCurrentStep(QUESTIONS.length); // Navigate to success step
+        } catch (err) {
+          console.error('Failed to save calibration profile:', err);
+        } finally {
+          setIsSaving(false);
+        }
+      }
+    }, 180);
   };
 
   const handleBack = () => {
     if (currentStep > 0) {
       setCurrentStep(prev => prev - 1);
-    }
-  };
-
-  const handleApply = async () => {
-    setIsSaving(true);
-    try {
-      await api.saveDspCalibration(answers);
-      setCurrentStep(QUESTIONS.length); // Navigate to success step
-    } catch (err) {
-      console.error('Failed to save calibration profile:', err);
-    } finally {
-      setIsSaving(false);
     }
   };
 
@@ -270,36 +268,20 @@ export default function DspWizard({ onClose }) {
       {/* Navigation Footer */}
       <div className="flex justify-between items-center mt-3 pt-2 border-t border-white/5 shrink-0">
         <button
-          onClick={handleBack}
-          disabled={currentStep === 0}
-          className="flex items-center gap-1 text-[10px] font-extrabold text-zinc-500 hover:text-white disabled:opacity-20 disabled:hover:text-zinc-500 transition-colors cursor-pointer font-sans"
+          onClick={onClose}
+          className="flex items-center gap-1.5 text-[10px] font-extrabold text-rose-500 hover:text-rose-400 transition-colors cursor-pointer font-sans"
         >
-          <ChevronLeft className="h-4 w-4" />
-          PREVIOUS
+          <X className="h-4 w-4" />
+          QUIT WIZARD
         </button>
 
         <button
-          onClick={handleNext}
-          disabled={!selectedValue || isSaving}
-          className={`flex items-center gap-1 px-5 py-1.5 rounded-xl font-extrabold text-[10px] uppercase tracking-wider transition-all cursor-pointer ${
-            currentStep === QUESTIONS.length - 1 
-              ? 'bg-emerald-500 text-black hover:bg-emerald-400' 
-              : 'bg-[var(--theme-color)] text-black hover:opacity-90'
-          } disabled:opacity-40 disabled:cursor-not-allowed font-sans`}
+          onClick={handleBack}
+          disabled={currentStep === 0}
+          className="flex items-center gap-1.5 text-[10px] font-extrabold text-zinc-500 hover:text-white disabled:opacity-20 disabled:hover:text-zinc-500 transition-colors cursor-pointer font-sans"
         >
-          {isSaving ? (
-            'SAVING...'
-          ) : currentStep === QUESTIONS.length - 1 ? (
-            <>
-              APPLY CALIBRATION
-              <Check className="h-3.5 w-3.5" />
-            </>
-          ) : (
-            <>
-              NEXT QUESTION
-              <ChevronRight className="h-3.5 w-3.5" />
-            </>
-          )}
+          <ChevronLeft className="h-4 w-4" />
+          PREVIOUS QUESTION
         </button>
       </div>
     </div>
