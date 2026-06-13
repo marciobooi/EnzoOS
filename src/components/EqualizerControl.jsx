@@ -43,7 +43,7 @@ export default function EqualizerControl({
           <div className="w-12 h-12 rounded-full bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400 animate-pulse mb-3">
             <Sliders className="h-6 w-6" />
           </div>
-          <h3 className="text-xs font-bold text-white uppercase tracking-[0.2em] mb-1">CamillaDSP Active</h3>
+          <h3 className="text-xs font-bold text-white uppercase tracking-[0.2em] mb-1">Room Correction Active</h3>
           <p className="text-[9px] text-zinc-400 max-w-sm leading-relaxed font-sans font-medium mb-4">
             Room acoustic calibration is currently active. The manual parametric equalizer is bypassed to prevent phase distortion and frequency overlap.
           </p>
