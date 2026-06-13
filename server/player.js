@@ -292,7 +292,13 @@ function generateCamillaConfig(answers, dacInfo) {
       chunksize: 1024,
       queuelimit: 4,
       capture: { type: "Alsa", channels: 2, device: "hw:Loopback,1,0", format: "S16LE" },
-      playback: { type: "Alsa", channels: dacInfo.channels || 2, device: dacInfo.device || "hw:CARD=DAC,DEV=0", format: dacInfo.format || "S24LE" }
+      playback: { 
+        type: "Alsa", 
+        channels: dacInfo.channels || 2, 
+        device: dacInfo.device || "hw:CARD=DAC,DEV=0", 
+        format: dacInfo.format || "S24LE",
+        gain: -6.0 // ⚠️ CRITICAL: Adds digital headroom to prevent clipping from your +5.5dB bass boost
+      }
     },
     mixers: {},
     filters: {},
@@ -302,6 +308,7 @@ function generateCamillaConfig(answers, dacInfo) {
   // If user selected Manual Equalizer, bypass all CamillaDSP filters (flat response)
   if (answers[0] === 'eq' || answers['0'] === 'eq') {
     config.devices.playback.channels = 2;
+    config.devices.playback.gain = 0.0; // No attenuation needed for flat response
     config.mixers.speaker_map = {
       channels: { in: 2, out: 2 },
       mapping: [
@@ -313,107 +320,34 @@ function generateCamillaConfig(answers, dacInfo) {
     return config;
   }
 
-  let leftFilters = [];
-  let rightFilters = [];
-  let subFilters = [];
+  // --- 1. DEFINE THE MASTER ARCHITECTURE FILTERS ---
+  config.filters.subsonic_cut = { type: "Biquad", parameters: { type: "Highpass", freq: 18, q: 0.707 } };
+  config.filters.harman_bass_shelf = { type: "Biquad", parameters: { type: "LowShelf", freq: 105, gain: 5.5, q: 0.707 } };
+  config.filters.vocal_clarity_dip = { type: "Biquad", parameters: { type: "Peaking", freq: 250, gain: -1.2, q: 0.6 } };
+  config.filters.presence_definition = { type: "Biquad", parameters: { type: "Peaking", freq: 3000, gain: 1.0, q: 0.8 } };
+  config.filters.harman_treble_tilt = { type: "Biquad", parameters: { type: "HighShelf", freq: 4500, gain: -2.0, q: 0.5 } };
+  config.filters.spatial_air_sparkle = { type: "Biquad", parameters: { type: "Peaking", freq: 14000, gain: 1.5, q: 1.8 } }; // Fixed to Peaking
 
-  // --- State-of-the-Art 2026 Master Target Curve Stack ---
+  const masterCurveFilters = [
+    "subsonic_cut",
+    "harman_bass_shelf",
+    "vocal_clarity_dip",
+    "presence_definition",
+    "harman_treble_tilt",
+    "spatial_air_sparkle"
+  ];
+
+  // --- 2. HANDLE MIXING AND USER CHANNELS ---
+  let isSubwooferSetup = answers.q1_setup === "2 Speakers + 1 Subwoofer";
   
-  // 1. Infrasonic / Subsonic Protection (Protects drivers and cleans amplifier headroom)
-  config.filters.subsonic_cut = {
-    type: "Biquad",
-    parameters: {
-      type: "Highpass",
-      freq: 18,
-      q: 0.707
-    }
-  };
-
-  // 2. Harman Bass Shelf (Gives authority and deep low-frequency punch)
-  config.filters.harman_bass_shelf = {
-    type: "Biquad",
-    parameters: {
-      type: "LowShelf",
-      freq: 105,
-      gain: 5.5,
-      q: 0.707
-    }
-  };
-
-  // 3. Midrange Anti-Muddiness Dip (Removes boxiness, separates vocals from bass range)
-  config.filters.vocal_clarity_dip = {
-    type: "Biquad",
-    parameters: {
-      type: "Peaking",
-      freq: 250,
-      gain: -1.2,
-      q: 0.6
-    }
-  };
-
-  // 4. Soundstage Presence Highlight (Enhances holographic imaging and definition)
-  config.filters.presence_definition = {
-    type: "Biquad",
-    parameters: {
-      type: "Peaking",
-      freq: 3000,
-      gain: 1.0,
-      q: 0.8
-    }
-  };
-
-  // 5. High-Frequency Treble Tilt (Prevents listening fatigue during long sessions)
-  config.filters.harman_treble_tilt = {
-    type: "Biquad",
-    parameters: {
-      type: "HighShelf",
-      freq: 4500,
-      gain: -2.0,
-      q: 0.5
-    }
-  };
-
-  // 6. Ultra-High Spatial Air (Restores micro-details and acoustic sparkle)
-  config.filters.spatial_air_sparkle = {
-    type: "Biquad",
-    parameters: {
-      type: "HighShelf",
-      freq: 13000,
-      gain: 1.5,
-      q: 0.707
-    }
-  };
-
-  // Stack the 2026 Master Curve filters on the main playback channels
-  leftFilters.push(
-    "subsonic_cut",
-    "harman_bass_shelf",
-    "vocal_clarity_dip",
-    "presence_definition",
-    "harman_treble_tilt",
-    "spatial_air_sparkle"
-  );
-  rightFilters.push(
-    "subsonic_cut",
-    "harman_bass_shelf",
-    "vocal_clarity_dip",
-    "presence_definition",
-    "harman_treble_tilt",
-    "spatial_air_sparkle"
-  );
-
-  let subChannels = [];
-
-  // --- Q1: SPEAKER SETUP (Routing & Mixer) ---
-  if (answers.q1_setup === "2 Speakers + 1 Subwoofer") {
+  if (isSubwooferSetup) {
     config.devices.playback.channels = 3;
-    subChannels.push(2);
     config.mixers.speaker_map = {
       channels: { in: 2, out: 3 },
       mapping: [
-        { dest: 0, sources: [{ channel: 0, gain: 0 }] },
-        { dest: 1, sources: [{ channel: 1, gain: 0 }] },
-        { dest: 2, sources: [{ channel: 0, gain: -3.0 }, { channel: 1, gain: -3.0 }] }
+        { dest: 0, sources: [{ channel: 0, gain: 0 }] }, // Left
+        { dest: 1, sources: [{ channel: 1, gain: 0 }] }, // Right
+        { dest: 2, sources: [{ channel: 0, gain: -3.0 }, { channel: 1, gain: -3.0 }] } // Sub mono sum
       ]
     };
   } else {
@@ -427,85 +361,91 @@ function generateCamillaConfig(answers, dacInfo) {
     };
   }
 
-  // --- Q5: SPEAKER SIZE (Safety Highpass) ---
+  // Create isolated filter queues starting with your Master Curve
+  let leftPipeline = [...masterCurveFilters];
+  let rightPipeline = [...masterCurveFilters];
+  let subPipeline = []; // Subwoofer should skip high-treble master filters
+
+  // --- 3. DYNAMIC USER ADJUSTMENTS (LAYERED AFTER THE MASTER CURVE) ---
+  
+  // Q5: Speaker Size Safety
   if (answers.q5_size === "Small / Desktop") {
     config.filters.speaker_safety = { type: "Biquad", parameters: { type: "Highpass", freq: 85, q: 0.707 } };
-    leftFilters.push("speaker_safety");
-    rightFilters.push("speaker_safety");
+    leftPipeline.push("speaker_safety");
+    rightPipeline.push("speaker_safety");
   } else if (answers.q5_size === "Medium / Bookshelf") {
     config.filters.speaker_safety = { type: "Biquad", parameters: { type: "Highpass", freq: 45, q: 0.707 } };
-    leftFilters.push("speaker_safety");
-    rightFilters.push("speaker_safety");
+    leftPipeline.push("speaker_safety");
+    rightPipeline.push("speaker_safety");
   }
 
-  // --- Q2: ROOM ACOUSTICS (Harsh Reflection Fixes) ---
+  // Q2: Room Acoustics
   if (answers.q2_acoustics === "Echoey") {
     config.filters.room_tamer = { type: "Biquad", parameters: { type: "HighShelf", freq: 4000, gain: -2.5, q: 0.7 } };
-    leftFilters.push("room_tamer");
-    rightFilters.push("room_tamer");
+    leftPipeline.push("room_tamer");
+    rightPipeline.push("room_tamer");
   }
 
-  // --- Q7: WALL PLACEMENT (Boomy Bass reduction) ---
+  // Q7: Wall Placement
   if (answers.q7_walls === "Pushed against a wall") {
     config.filters.wall_correction = { type: "Biquad", parameters: { type: "LowShelf", freq: 150, gain: -2.0, q: 0.7 } };
-    leftFilters.push("wall_correction");
-    rightFilters.push("wall_correction");
+    leftPipeline.push("wall_correction");
+    rightPipeline.push("wall_correction");
   } else if (answers.q7_walls === "Tucked in a corner / Shelf") {
     config.filters.wall_correction = { type: "Biquad", parameters: { type: "LowShelf", freq: 150, gain: -4.0, q: 0.7 } };
-    leftFilters.push("wall_correction");
-    rightFilters.push("wall_correction");
+    leftPipeline.push("wall_correction");
+    rightPipeline.push("wall_correction");
   }
 
-  // --- Q4: SOUND SIGNATURE PREFERENCE (Target Curve) ---
+  // Q4: Sound Signature Preference (additional preferences)
   if (answers.q4_signature === "Warm & Bass Punchy") {
     config.filters.user_pref_eq = { type: "Biquad", parameters: { type: "LowShelf", freq: 100, gain: 3.5, q: 0.7 } };
-    leftFilters.push("user_pref_eq");
-    rightFilters.push("user_pref_eq");
-    if (subChannels.length > 0) subFilters.push("user_pref_eq");
+    leftPipeline.push("user_pref_eq");
+    rightPipeline.push("user_pref_eq");
+    if (isSubwooferSetup) subPipeline.push("user_pref_eq");
   } else if (answers.q4_signature === "Clear & Detailed") {
     config.filters.user_pref_eq = { type: "Biquad", parameters: { type: "Peaking", freq: 2500, gain: 2.0, q: 1.0 } };
-    leftFilters.push("user_pref_eq");
-    rightFilters.push("user_pref_eq");
+    leftPipeline.push("user_pref_eq");
+    rightPipeline.push("user_pref_eq");
   }
 
-  // --- Q6: LISTENING VOLUME (Fletcher-Munson Equalization) ---
+  // Q6: Listening Volume
   if (answers.q6_volume === "Quiet / Background") {
     config.filters.loudness_bass = { type: "Biquad", parameters: { type: "LowShelf", freq: 80, gain: 4.0, q: 0.7 } };
     config.filters.loudness_treble = { type: "Biquad", parameters: { type: "HighShelf", freq: 8000, gain: 2.5, q: 0.7 } };
-    leftFilters.push("loudness_bass", "loudness_treble");
-    rightFilters.push("loudness_bass", "loudness_treble");
-    if (subChannels.length > 0) subFilters.push("loudness_bass");
+    leftPipeline.push("loudness_bass", "loudness_treble");
+    rightPipeline.push("loudness_bass", "loudness_treble");
+    if (isSubwooferSetup) subPipeline.push("loudness_bass");
   }
 
-  // --- Q3: SPEAKER PLACEMENT (Time Alignment Delay) ---
+  // Q3: Speaker Distance Time Alignment
   if (answers.q3_placement === "Closer to the Left Speaker") {
-    config.filters.time_alignment = { type: "Delay", parameters: { delay: 1.5, unit: "ms" } };
-    leftFilters.push("time_alignment");
+    config.filters.left_delay = { type: "Delay", parameters: { delay: 1.5, unit: "ms" } };
+    leftPipeline.push("left_delay");
   } else if (answers.q3_placement === "Closer to the Right Speaker") {
-    config.filters.time_alignment = { type: "Delay", parameters: { delay: 1.5, unit: "ms" } };
-    rightFilters.push("time_alignment");
+    config.filters.right_delay = { type: "Delay", parameters: { delay: 1.5, unit: "ms" } };
+    rightPipeline.push("right_delay");
   }
 
-  // --- SUBWOOFER CROSSOVER MANAGEMENT (Only if 2.1 setup exists) ---
-  if (subChannels.length > 0) {
+  // --- 4. SUBWOOFER SPECIFIC FILTERS ---
+  if (isSubwooferSetup) {
     config.filters.sub_lowpass = { type: "Biquad", parameters: { type: "Lowpass", freq: 80, q: 0.707 } };
     config.filters.mains_highpass = { type: "Biquad", parameters: { type: "Highpass", freq: 80, q: 0.707 } };
-    leftFilters.unshift("mains_highpass");
-    rightFilters.unshift("mains_highpass");
-    subFilters.push("sub_lowpass");
+    
+    // Crossovers must run first before anything else
+    leftPipeline.unshift("mains_highpass");
+    rightPipeline.unshift("mains_highpass");
+    
+    // Subwoofer only needs bass management, not the vocal/treble filters
+    subPipeline.push("sub_lowpass", "harman_bass_shelf"); 
   }
 
-  // 4. ASSEMBLING THE PIPELINE MATRIX
+  // --- 5. COMPILE THE PIPELINE MATRIX ---
   config.pipeline.push({ type: "Mixer", mapping: "speaker_map" });
-
-  if (leftFilters.length > 0) {
-    config.pipeline.push({ type: "Filter", channel: 0, names: leftFilters });
-  }
-  if (rightFilters.length > 0) {
-    config.pipeline.push({ type: "Filter", channel: 1, names: rightFilters });
-  }
-  if (subFilters.length > 0) {
-    config.pipeline.push({ type: "Filter", channel: 2, names: subFilters });
+  config.pipeline.push({ type: "Filter", channel: 0, names: leftPipeline });
+  config.pipeline.push({ type: "Filter", channel: 1, names: rightPipeline });
+  if (isSubwooferSetup) {
+    config.pipeline.push({ type: "Filter", channel: 2, names: subPipeline });
   }
 
   return config;
