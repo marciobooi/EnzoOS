@@ -1,8 +1,50 @@
 import { WebSocketServer, WebSocket } from 'ws';
 import { getValidAccessToken } from './spotify-auth.js';
+import { getSetting, setSetting, dbReady } from './db.js';
 
 let cachedPlaybackState = null;
-let cachedSourceState = { spotify: true };
+let cachedSourceState = { spotify: true, source: 'spotify' };
+
+/**
+ * Helper to load cached state from DB on startup.
+ */
+export const loadCachedStateFromDB = async () => {
+  await dbReady;
+  try {
+    const activeSource = await getSetting('active_source');
+    if (activeSource) {
+      cachedSourceState = {
+        spotify: activeSource === 'spotify',
+        source: activeSource
+      };
+      console.log(`[Resonance WS] Loaded active source from DB: ${activeSource}`);
+      
+      if (activeSource === 'radio') {
+        const url = await getSetting('last_radio_url');
+        const name = await getSetting('last_radio_name');
+        const favicon = await getSetting('last_radio_favicon');
+        if (url) {
+          cachedPlaybackState = {
+            paused: true, // Start paused on reboot/standby
+            position: 0,
+            duration: 0,
+            track_window: {
+              current_track: {
+                name: name || 'WEB RADIO',
+                artists: [{ name: 'Live Stream' }],
+                album: { name: 'Web Radio Broadcast', images: favicon ? [{ url: favicon }] : [] },
+                url: url
+              }
+            }
+          };
+          console.log(`[Resonance WS] Loaded last played radio from DB: ${name} (${url})`);
+        }
+      }
+    }
+  } catch (err) {
+    console.warn('[Resonance WS] Failed to load cached state from DB:', err.message);
+  }
+};
 
 /**
  * Initializes and binds the WebSocket server, handling message routing and upgrades.
@@ -53,6 +95,7 @@ export function setupWebSocket(server, app, isLocalIP) {
 
         if (type === 'SET_SOURCE') {
           cachedSourceState = payload;
+          setSetting('active_source', payload.source || (payload.spotify ? 'spotify' : 'local'));
           broadcast({ type: 'SET_SOURCE', payload }, ws);
         }
 

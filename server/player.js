@@ -1,7 +1,7 @@
 import express from 'express';
 import { exec } from 'child_process';
 import { promisify } from 'util';
-import { getFavoriteRadios, addFavoriteRadio, deleteFavoriteRadioByUrl } from './db.js';
+import { getFavoriteRadios, addFavoriteRadio, deleteFavoriteRadioByUrl, setSetting } from './db.js';
 
 const execPromise = promisify(exec);
 const router = express.Router();
@@ -76,8 +76,14 @@ router.post('/seek', async (req, res) => {
 
 // POST /api/player/play-radio -> Play web radio stream
 router.post('/play-radio', async (req, res) => {
-  const { url, name } = req.body;
+  const { url, name, favicon } = req.body;
   try {
+    // Save last played radio info to database settings
+    await setSetting('active_source', 'radio');
+    await setSetting('last_radio_url', url);
+    if (name) await setSetting('last_radio_name', name);
+    await setSetting('last_radio_favicon', favicon || '');
+
     // Clear playlist, add URL, play
     await execPromise('mpc clear');
     await execPromise(`mpc add "${url}"`);

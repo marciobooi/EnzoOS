@@ -340,11 +340,11 @@ export const api = {
   /**
    * Play web radio stream.
    */
-  async localPlayRadio(url, name) {
+  async localPlayRadio(url, name, favicon) {
     const response = await fetch('/api/player/play-radio', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ url, name })
+      body: JSON.stringify({ url, name, favicon })
     });
     return response.json();
   },

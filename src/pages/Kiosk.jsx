@@ -267,9 +267,9 @@ export default function Kiosk() {
     }
   };
 
-  const handlePlayRadio = async (url, name) => {
+  const handlePlayRadio = async (url, name, favicon) => {
     try {
-      await api.localPlayRadio(url, name);
+      await api.localPlayRadio(url, name, favicon);
       if (source !== 'radio') {
         handleToggleSource('radio');
       }

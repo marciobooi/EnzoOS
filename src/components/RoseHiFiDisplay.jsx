@@ -168,15 +168,17 @@ export default function RoseHiFiDisplay({
               {stationsList.map((station, idx) => {
                 const isFavorite = favoriteStations.some(s => s.url === station.url);
                 return (
-                  <button
+                  <div
                     key={`${station.url}-${idx}`}
-                    onClick={() => {
-                      onPlayRadio(station.url, station.name);
-                      setShowSearch(false);
-                    }}
-                    className="p-2.5 rounded-xl bg-white/5 border border-white/10 hover:border-[var(--theme-color)] text-left flex items-center justify-between transition-all active:scale-[0.98] cursor-pointer group"
+                    className="p-2.5 rounded-xl bg-white/5 border border-white/10 hover:border-[var(--theme-color)] text-left flex items-center justify-between transition-all group"
                   >
-                    <div className="flex items-center gap-2 min-w-0">
+                    <button
+                      onClick={() => {
+                        onPlayRadio(station.url, station.name, station.favicon);
+                        setShowSearch(false);
+                      }}
+                      className="flex items-center gap-2 min-w-0 flex-grow text-left cursor-pointer bg-transparent border-0 p-0 outline-none"
+                    >
                       <div className="w-7 h-7 rounded-full bg-black/20 flex items-center justify-center border border-white/10 shrink-0 overflow-hidden relative">
                         {station.favicon ? (
                           <img 
@@ -194,23 +196,26 @@ export default function RoseHiFiDisplay({
                           {station.country ? station.country : 'Global'}{station.tags ? ` • ${station.tags.split(',')[0]}` : ''}
                         </span>
                       </div>
-                    </div>
-                    <div className="flex items-center gap-1.5 shrink-0">
+                    </button>
+                    <div className="flex items-center gap-1.5 shrink-0 ml-2">
                       <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onToggleFavoriteRadio(station);
-                        }}
+                        onClick={() => onToggleFavoriteRadio(station)}
                         className="p-1 rounded hover:bg-white/10 text-zinc-400 hover:text-rose-500 transition-colors cursor-pointer"
                         title={isFavorite ? "Remove from favorites" : "Add to favorites"}
                       >
                         <Heart className={`w-3.5 h-3.5 ${isFavorite ? 'text-rose-500 fill-rose-500' : ''}`} />
                       </button>
-                      <span className="text-[8px] bg-white/5 border border-white/10 group-hover:border-[var(--theme-color)] group-hover:text-black group-hover:bg-[var(--theme-color)] px-2 py-0.5 rounded font-extrabold text-zinc-350 uppercase tracking-wider shrink-0 transition-colors">
+                      <button
+                        onClick={() => {
+                          onPlayRadio(station.url, station.name, station.favicon);
+                          setShowSearch(false);
+                        }}
+                        className="text-[8px] bg-white/5 border border-white/10 group-hover:border-[var(--theme-color)] group-hover:text-black group-hover:bg-[var(--theme-color)] px-2 py-0.5 rounded font-extrabold text-zinc-350 uppercase tracking-wider shrink-0 transition-colors cursor-pointer"
+                      >
                         PLAY
-                      </span>
+                      </button>
                     </div>
-                  </button>
+                  </div>
                 );
               })}
             </div>

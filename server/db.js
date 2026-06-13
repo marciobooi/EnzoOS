@@ -16,36 +16,39 @@ const db = new sqlite3.Database(dbPath, (err) => {
   }
 });
 
-// Setup tables
-db.serialize(() => {
-  db.run(`
-    CREATE TABLE IF NOT EXISTS settings (
-      key TEXT PRIMARY KEY,
-      value TEXT
-    )
-  `, (err) => {
-    if (err) {
-      console.error('[Resonance DB] Error creating settings table:', err.message);
-    } else {
-      console.log('[Resonance DB] Settings table initialized.');
-    }
-  });
+// Setup tables and export a ready promise
+export const dbReady = new Promise((resolve) => {
+  db.serialize(() => {
+    db.run(`
+      CREATE TABLE IF NOT EXISTS settings (
+        key TEXT PRIMARY KEY,
+        value TEXT
+      )
+    `, (err) => {
+      if (err) {
+        console.error('[Resonance DB] Error creating settings table:', err.message);
+      } else {
+        console.log('[Resonance DB] Settings table initialized.');
+      }
+    });
 
-  db.run(`
-    CREATE TABLE IF NOT EXISTS favorite_radios (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      name TEXT NOT NULL,
-      url TEXT NOT NULL UNIQUE,
-      favicon TEXT,
-      country TEXT,
-      tags TEXT
-    )
-  `, (err) => {
-    if (err) {
-      console.error('[Resonance DB] Error creating favorite_radios table:', err.message);
-    } else {
-      console.log('[Resonance DB] Favorite radios table initialized.');
-    }
+    db.run(`
+      CREATE TABLE IF NOT EXISTS favorite_radios (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        url TEXT NOT NULL UNIQUE,
+        favicon TEXT,
+        country TEXT,
+        tags TEXT
+      )
+    `, (err) => {
+      if (err) {
+        console.error('[Resonance DB] Error creating favorite_radios table:', err.message);
+      } else {
+        console.log('[Resonance DB] Favorite radios table initialized.');
+      }
+      resolve();
+    });
   });
 });
 

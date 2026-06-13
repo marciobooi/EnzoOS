@@ -96,6 +96,14 @@ export default function RemoteControl() {
     setSpotify(source === 'spotify');
   }, [source]);
 
+  const hasCheckedInitialSource = useRef(false);
+  useEffect(() => {
+    if (source === 'radio' && !hasCheckedInitialSource.current) {
+      setActiveTab('radio');
+      hasCheckedInitialSource.current = true;
+    }
+  }, [source]);
+
   useEffect(() => {
     if (spotify && source !== 'spotify') {
       setSource('spotify');
@@ -916,7 +924,7 @@ export default function RemoteControl() {
                         <button
                           onClick={async () => {
                             try {
-                              await api.localPlayRadio(station.url, station.name);
+                              await api.localPlayRadio(station.url, station.name, station.favicon);
                               if (spotify) {
                                 setSpotify(false);
                                 sendUpdate('SET_SOURCE', { spotify: false });
@@ -960,7 +968,7 @@ export default function RemoteControl() {
                           <button
                             onClick={async () => {
                               try {
-                                await api.localPlayRadio(station.url, station.name);
+                                await api.localPlayRadio(station.url, station.name, station.favicon);
                                 if (spotify) {
                                   setSpotify(false);
                                   sendUpdate('SET_SOURCE', { spotify: false });
@@ -1233,7 +1241,7 @@ export default function RemoteControl() {
             </div>
 
             {/* Premium navigation bar */}
-            <div className="bg-white/95 border border-zinc-150 backdrop-blur-md rounded-2xl px-2 py-1.5 flex justify-around items-center shadow-lg">
+            <div className="bg-white/95 backdrop-blur-md rounded-2xl px-2 py-1.5 flex justify-around items-center shadow-lg">
               <button
                 onClick={() => setActiveTab('player')}
                 className={`flex flex-col items-center justify-center py-1 flex-1 cursor-pointer transition-all active:scale-95 ${
