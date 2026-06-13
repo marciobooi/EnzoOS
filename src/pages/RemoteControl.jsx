@@ -135,7 +135,6 @@ export default function RemoteControl() {
     try {
       if (isFavorite) {
         await api.deleteFavoriteRadio(station.url);
-        toast.success(`Removed from favorites: ${station.name}`);
       } else {
         await api.addFavoriteRadio({
           name: station.name,
@@ -144,7 +143,6 @@ export default function RemoteControl() {
           country: station.country,
           tags: station.tags
         });
-        toast.success(`Added to favorites: ${station.name}`);
       }
       await fetchFavorites();
     } catch (err) {
@@ -173,7 +171,6 @@ export default function RemoteControl() {
         toast.error('No stations found.');
       } else {
         setStationsList(formatted);
-        toast.success(`Found ${formatted.length} stations!`);
       }
     } catch (err) {
       toast.error('Failed to search stations.');
@@ -215,7 +212,6 @@ export default function RemoteControl() {
     sendUpdate('SET_SOURCE', { spotify: isSpotify, source: nextSource });
     
     const sourceNames = { spotify: 'Spotify', local: 'Local Media', radio: 'Web Radio' };
-    toast.success(`Source set to: ${sourceNames[nextSource]}`);
   };
 
 
@@ -611,7 +607,6 @@ export default function RemoteControl() {
     eraseCookie('remote_auth');
     setIsAuthenticated(false);
     setActiveTab('player');
-    toast.info('De-authorized Remote connection');
   };
 
   const formatTime = (ms) => {
@@ -966,7 +961,6 @@ export default function RemoteControl() {
                                 setSpotify(false);
                                 sendUpdate('SET_SOURCE', { spotify: false });
                               }
-                              toast.success(`Playing Radio: ${station.name}`);
                             } catch (err) {
                               toast.error(`Failed to play radio: ${err.message}`);
                             }
@@ -1010,7 +1004,6 @@ export default function RemoteControl() {
                                   setSpotify(false);
                                   sendUpdate('SET_SOURCE', { spotify: false });
                                 }
-                                toast.success(`Playing Radio: ${station.name}`);
                               } catch (err) {
                                 toast.error(`Failed to play radio: ${err.message}`);
                               }
@@ -1084,9 +1077,6 @@ export default function RemoteControl() {
                         try {
                           const res = await fetch('/auth/spotify/logout', { method: 'POST' });
                           const data = await res.json();
-                          if (data.success) {
-                            toast.success('Disconnected from Spotify');
-                          }
                         } catch (err) {
                           toast.error('Logout failed');
                         }
