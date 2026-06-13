@@ -47,6 +47,7 @@ export default function Kiosk() {
 
   const [theme, setTheme] = useState(localStorage.getItem('resonance_theme') || 'amber');
   const lastVolumeChangeTime = useRef(0);
+  const volumeApiTimeout = useRef(null);
   const [favoriteStations, setFavoriteStations] = useState([]);
 
   const [otaProgress, setOtaProgress] = useState([]);
@@ -590,20 +591,26 @@ export default function Kiosk() {
       }));
     }
 
-    if (!spotify) {
-      try {
-        await api.localSetVolume(vol);
-      } catch (err) {
-        console.error('Local volume error:', err);
+    if (volumeApiTimeout.current) {
+      clearTimeout(volumeApiTimeout.current);
+    }
+
+    volumeApiTimeout.current = setTimeout(async () => {
+      if (!spotify) {
+        try {
+          await api.localSetVolume(vol);
+        } catch (err) {
+          console.error('Local volume error:', err);
+        }
+        return;
       }
-      return;
-    }
-    if (!token) return;
-    try {
-      await api.setVolume(token, vol);
-    } catch (err) {
-      console.warn('Spotify volume adjustment warning (no active device or session):', err);
-    }
+      if (!token) return;
+      try {
+        await api.setVolume(token, vol);
+      } catch (err) {
+        console.warn('Spotify volume adjustment warning (no active device or session):', err);
+      }
+    }, 180);
   };
 
   const handleToggleMute = async () => {
