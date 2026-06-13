@@ -192,12 +192,20 @@ export default function DspWizard({ onClose, onCalibrationComplete }) {
           </p>
         </div>
 
-        <button 
-          onClick={onClose}
-          className="mt-3 w-full py-2.5 rounded-xl bg-emerald-500 text-black font-extrabold text-[10px] uppercase tracking-wider active:scale-95 transition-all cursor-pointer hover:bg-emerald-400"
-        >
-          Return to Player display
-        </button>
+        <div className="flex gap-2.5 mt-3 shrink-0">
+          <button 
+            onClick={() => setCurrentStep(0)}
+            className="flex-1 py-2.5 rounded-xl bg-zinc-800 text-zinc-300 font-extrabold text-[10px] uppercase tracking-wider active:scale-95 border border-white/5 transition-all cursor-pointer hover:bg-zinc-750"
+          >
+            Configure CamillaDSP instead
+          </button>
+          <button 
+            onClick={onClose}
+            className="flex-1 py-2.5 rounded-xl bg-emerald-500 text-black font-extrabold text-[10px] uppercase tracking-wider active:scale-95 transition-all cursor-pointer hover:bg-emerald-400"
+          >
+            Return to Player display
+          </button>
+        </div>
       </div>
     );
   }
@@ -240,12 +248,20 @@ export default function DspWizard({ onClose, onCalibrationComplete }) {
           </div>
         </div>
 
-        <button 
-          onClick={onClose}
-          className="mt-3 w-full py-2.5 rounded-xl bg-emerald-500 text-black font-extrabold text-[10px] uppercase tracking-wider active:scale-95 transition-all cursor-pointer hover:bg-emerald-400"
-        >
-          Return to Player display
-        </button>
+        <div className="flex gap-2.5 mt-3 shrink-0">
+          <button 
+            onClick={() => setCurrentStep(0)}
+            className="flex-1 py-2.5 rounded-xl bg-zinc-800 text-zinc-300 font-extrabold text-[10px] uppercase tracking-wider active:scale-95 border border-white/5 transition-all cursor-pointer hover:bg-zinc-750"
+          >
+            Switch to Manual Equalizer
+          </button>
+          <button 
+            onClick={onClose}
+            className="flex-1 py-2.5 rounded-xl bg-emerald-500 text-black font-extrabold text-[10px] uppercase tracking-wider active:scale-95 transition-all cursor-pointer hover:bg-emerald-400"
+          >
+            Return to Player display
+          </button>
+        </div>
       </div>
     );
   }
