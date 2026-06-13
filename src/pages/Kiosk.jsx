@@ -63,6 +63,7 @@ export default function Kiosk() {
   const [isSearching, setIsSearching] = useState(false);
   const [standby, setStandby] = useState(false);
   const [isDspWizardOpen, setIsDspWizardOpen] = useState(false);
+  const [dspActive, setDspActive] = useState(false);
   const [scale, setScale] = useState(1);
   const containerRef = useRef(null);
 
@@ -138,6 +139,33 @@ export default function Kiosk() {
   useEffect(() => {
     fetchFavorites();
   }, []);
+
+  useEffect(() => {
+    async function loadDspStatus() {
+      try {
+        const calibration = await api.getDspCalibration();
+        if (calibration && calibration[0] === 'dsp') {
+          setDspActive(true);
+        } else {
+          setDspActive(false);
+        }
+      } catch (err) {
+        console.warn('Failed to load initial DSP active state:', err);
+      }
+    }
+    loadDspStatus();
+  }, []);
+
+  async function handleDeactivateDsp() {
+    try {
+      const calibration = await api.getDspCalibration() || {};
+      calibration[0] = 'eq';
+      await api.saveDspCalibration(calibration);
+      setDspActive(false);
+    } catch (err) {
+      console.warn('Failed to change audio processing mode:', err);
+    }
+  }
 
   function setVolumeWithLock(vol) {
     if (Date.now() - lastVolumeChangeTime.current < 2500) return;
@@ -743,6 +771,8 @@ export default function Kiosk() {
             preAmp={eqPreAmp}
             onPreAmpChange={handlePreAmpChange}
             onClose={() => setIsEqualizerOpen(false)}
+            dspActive={dspActive}
+            onDeactivateDsp={handleDeactivateDsp}
           />
         </div>
 
@@ -803,6 +833,7 @@ export default function Kiosk() {
         >
           <DspWizard
             onClose={() => setIsDspWizardOpen(false)}
+            onCalibrationComplete={(active) => setDspActive(active)}
           />
         </div>
 

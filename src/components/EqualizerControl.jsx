@@ -25,7 +25,9 @@ export default function EqualizerControl({
   onNoiseFloorChange,
   preAmp,
   onPreAmpChange,
-  onClose
+  onClose,
+  dspActive,
+  onDeactivateDsp
 }) {
   const bandLabels = ['60 Hz', '250 Hz', '1 kHz', '4 kHz', '16 kHz'];
 
@@ -35,6 +37,32 @@ export default function EqualizerControl({
 
   return (
     <div className="bg-[#0b0f19] border border-white/10 rounded-2xl p-5 relative overflow-hidden h-full flex flex-col justify-between text-zinc-100 font-sans shadow-2xl">
+      {/* CamillaDSP Active Overlay Warning */}
+      {dspActive && (
+        <div className="absolute inset-0 bg-[#070a12]/95 backdrop-blur-sm z-[110] flex flex-col items-center justify-center p-6 text-center animate-fade-in font-mono">
+          <div className="w-12 h-12 rounded-full bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400 animate-pulse mb-3">
+            <Sliders className="h-6 w-6" />
+          </div>
+          <h3 className="text-xs font-bold text-white uppercase tracking-[0.2em] mb-1">CamillaDSP Active</h3>
+          <p className="text-[9px] text-zinc-400 max-w-sm leading-relaxed font-sans font-medium mb-4">
+            Room acoustic calibration is currently active. The manual parametric equalizer is bypassed to prevent phase distortion and frequency overlap.
+          </p>
+          <div className="flex gap-3 w-full max-w-xs shrink-0">
+            <button
+              onClick={onClose}
+              className="flex-grow py-2 rounded-xl bg-white/5 border border-white/10 text-white font-extrabold text-[9px] uppercase tracking-wider active:scale-95 transition-all cursor-pointer hover:bg-white/10 font-sans"
+            >
+              Keep DSP & Close
+            </button>
+            <button
+              onClick={onDeactivateDsp}
+              className="flex-grow py-2 rounded-xl bg-amber-500 text-black font-extrabold text-[9px] uppercase tracking-wider active:scale-95 transition-all cursor-pointer hover:bg-amber-400 font-sans"
+            >
+              Use Manual EQ
+            </button>
+          </div>
+        </div>
+      )}
       {/* Glossy sheen */}
       <div className="absolute inset-0 pointer-events-none opacity-30 bg-gradient-to-tr from-transparent via-white/5 to-white/10" />
       

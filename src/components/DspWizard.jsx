@@ -91,7 +91,7 @@ const QUESTIONS = [
   }
 ];
 
-export default function DspWizard({ onClose }) {
+export default function DspWizard({ onClose, onCalibrationComplete }) {
   const [currentStep, setCurrentStep] = useState(0); // 0 to 7, 99 (EQ success), or 8 (DSP success)
   const [answers, setAnswers] = useState({});
   const [isSaving, setIsSaving] = useState(false);
@@ -125,6 +125,9 @@ export default function DspWizard({ onClose }) {
           setIsSaving(true);
           try {
             await api.saveDspCalibration(nextAnswers);
+            if (onCalibrationComplete) {
+              onCalibrationComplete(false);
+            }
             setCurrentStep(99); // Go to EQ success screen
           } catch (err) {
             console.error('Failed to save calibration profile:', err);
@@ -140,6 +143,9 @@ export default function DspWizard({ onClose }) {
         setIsSaving(true);
         try {
           await api.saveDspCalibration(nextAnswers);
+          if (onCalibrationComplete) {
+            onCalibrationComplete(true);
+          }
           setCurrentStep(QUESTIONS.length); // Navigate to DSP success step
         } catch (err) {
           console.error('Failed to save calibration profile:', err);
