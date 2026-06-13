@@ -5,7 +5,7 @@ import { useResonanceWS } from '../websocket';
 import { Power } from 'lucide-react';
 
 // Subcomponents
-import RoseHiFiDisplay from '../components/RoseHiFiDisplay';
+import PlayerDisplay from '../components/PlayerDisplay';
 import DefinitionsMenu from '../components/DefinitionsMenu';
 import EqualizerControl, { EQ_PRESETS } from '../components/EqualizerControl';
 
@@ -44,6 +44,24 @@ export default function Kiosk() {
   const [eqSaturation, setEqSaturation] = useState(() => Number(localStorage.getItem('resonance_eq_saturation')) || 0);
   const [eqNoiseFloor, setEqNoiseFloor] = useState(() => Number(localStorage.getItem('resonance_eq_noise')) || 0);
   const [eqPreAmp, setEqPreAmp] = useState(() => Number(localStorage.getItem('resonance_eq_preamp')) || 0.0);
+
+  const [theme, setTheme] = useState(localStorage.getItem('resonance_theme') || 'amber');
+  const lastVolumeChangeTime = useRef(0);
+  const [favoriteStations, setFavoriteStations] = useState([]);
+
+  const [otaProgress, setOtaProgress] = useState([]);
+  const [otaPercent, setOtaPercent] = useState(0);
+  const [updateStatus, setUpdateStatus] = useState(null);
+  const [errorMessage, setErrorMessage] = useState('');
+  const [spotify, setSpotify] = useState(true);
+  const [source, setSource] = useState('spotify'); // 'spotify' | 'local' | 'radio'
+
+  const [radioSearch, setRadioSearch] = useState('');
+  const [stationsList, setStationsList] = useState([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const [standby, setStandby] = useState(false);
+  const [scale, setScale] = useState(1);
+  const containerRef = useRef(null);
 
   const handleEqPresetChange = (presetName) => {
     setEqPreset(presetName);
@@ -91,9 +109,7 @@ export default function Kiosk() {
     localStorage.setItem('resonance_eq_preset', 'Custom');
   };
 
-  const [theme, setTheme] = useState(localStorage.getItem('resonance_theme') || 'amber');
-  const lastVolumeChangeTime = useRef(0);
-  const [favoriteStations, setFavoriteStations] = useState([]);
+
 
   const fetchFavorites = async () => {
     try {
@@ -129,17 +145,7 @@ export default function Kiosk() {
     localStorage.setItem('resonance_theme', newTheme);
   };
 
-  const [otaProgress, setOtaProgress] = useState([]);
-  const [otaPercent, setOtaPercent] = useState(0);
-  const [updateStatus, setUpdateStatus] = useState(null);
-  const [errorMessage, setErrorMessage] = useState('');
-  const [spotify, setSpotify] = useState(true);
-  const [source, setSource] = useState('spotify'); // 'spotify' | 'local' | 'radio'
 
-  const [radioSearch, setRadioSearch] = useState('');
-  const [stationsList, setStationsList] = useState([]);
-  const [isSearching, setIsSearching] = useState(false);
-  const [standby, setStandby] = useState(false);
 
   // Synchronize spotify & source states for backward-compatible rendering/api calls
   useEffect(() => {
@@ -154,8 +160,7 @@ export default function Kiosk() {
     }
   }, [spotify]);
 
-  const [scale, setScale] = useState(1);
-  const containerRef = useRef(null);
+
 
   // Set up periodic device list and state fetching
   useEffect(() => {
@@ -694,7 +699,7 @@ export default function Kiosk() {
           position: 'relative'
         }}
       >
-        <RoseHiFiDisplay
+        <PlayerDisplay
           isPlaying={isPlaying}
           isLocalDeviceActive={isLocalDeviceActive}
           trackName={trackName}

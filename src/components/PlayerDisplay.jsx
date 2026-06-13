@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Play, Pause, SkipForward, SkipBack, Shuffle, Repeat, Volume2, VolumeX, Home, Volume1, Sliders, Radio, Heart, Power } from 'lucide-react';
 
-export default function RoseHiFiDisplay({
+export default function PlayerDisplay({
   isPlaying,
   isLocalDeviceActive,
   trackName,
