@@ -17,7 +17,8 @@ import {
   ChevronRight,
   LogOut,
   Radio,
-  Heart
+  Heart,
+  Power
 } from 'lucide-react';
 import { api } from '../api';
 import { toast, Toaster } from 'sonner';
@@ -41,13 +42,7 @@ const eraseCookie = (name) => {
   document.cookie = `${name}=; Max-Age=-99999999; path=/`;
 };
 
-const RADIO_STATIONS = [
-  { name: 'SomaFM: Groove Salad', url: 'http://ice1.somafm.com/groovesalad-128-mp3', favicon: 'https://somafm.com/img/somafm120.png', country: 'USA', tags: 'ambient, chillout' },
-  { name: 'SomaFM: DEF CON Radio', url: 'http://ice1.somafm.com/defcon-128-mp3', favicon: 'https://somafm.com/img/defcon120.png', country: 'USA', tags: 'ambient, electronic' },
-  { name: 'Lofi Girl Ambient', url: 'http://play.stream.lofigirl.com/lofi', favicon: 'https://lofigirl.com/wp-content/uploads/2023/02/lofi-girl-logo.png', country: 'France', tags: 'lofi, ambient' },
-  { name: 'Chilltrax Ambient', url: 'https://chilltrax.dnshosting.net/chilltrax.mp3', favicon: '', country: 'USA', tags: 'chillout' },
-  { name: 'Jazz Radio Classic', url: 'http://jazzradio.ice.infomaniak.ch/jazzradio-high.mp3', favicon: '', country: 'France', tags: 'jazz' }
-];
+
 
 export default function RemoteControl() {
   // Authentication states
@@ -60,7 +55,7 @@ export default function RemoteControl() {
 
   // Web Radio states
   const [radioSearch, setRadioSearch] = useState('');
-  const [stationsList, setStationsList] = useState(RADIO_STATIONS);
+  const [stationsList, setStationsList] = useState([]);
   const [isSearching, setIsSearching] = useState(false);
 
   // Connection and token states
@@ -90,6 +85,14 @@ export default function RemoteControl() {
   const [daemonUsername, setDaemonUsername] = useState('');
   const [daemonPassword, setDaemonPassword] = useState('');
   const [isSavingDaemonCreds, setIsSavingDaemonCreds] = useState(false);
+  const [standby, setStandby] = useState(false);
+
+  const handleToggleStandby = (enabled) => {
+    setStandby(enabled);
+    if (ws.current && ws.current.readyState === WebSocket.OPEN) {
+      ws.current.send(JSON.stringify({ type: 'SET_STANDBY', payload: { enabled } }));
+    }
+  };
 
   // Synchronize spotify & source states for backward-compatible rendering/api calls
   useEffect(() => {
@@ -132,13 +135,16 @@ export default function RemoteControl() {
     try {
       const favs = await api.getFavoriteRadios();
       setFavoriteStations(favs || []);
-      if (!radioSearch.trim()) {
-        setStationsList(favs && favs.length > 0 ? favs : RADIO_STATIONS);
-      }
     } catch (err) {
       console.warn('Failed to load favorite stations on remote:', err);
     }
   };
+
+  useEffect(() => {
+    if (!radioSearch.trim()) {
+      setStationsList(favoriteStations);
+    }
+  }, [radioSearch, favoriteStations]);
 
   useEffect(() => {
     fetchFavorites();
@@ -265,7 +271,8 @@ export default function RemoteControl() {
       localSync();
     },
     isAuthenticated,
-    isRemote: true
+    isRemote: true,
+    setStandby
   });
 
   // Poll devices & state from Spotify Web API
@@ -683,6 +690,23 @@ export default function RemoteControl() {
   // 2. Render normal remote dashboard if authenticated
     return (
       <>
+        {standby && (
+          <div className="absolute inset-0 bg-black z-[9999] flex items-center justify-center flex-col animate-fade-in">
+            <button
+              onClick={() => handleToggleStandby(false)}
+              className="group flex flex-col items-center justify-center gap-4 cursor-pointer focus:outline-none transition-all active:scale-95"
+              type="button"
+              aria-label="Power on system"
+            >
+              <div className="w-20 h-20 rounded-full border border-white/5 bg-white/[0.01] hover:bg-white/[0.03] hover:border-white/10 flex items-center justify-center transition-all duration-500 shadow-inner group-hover:scale-105">
+                <Power className="h-8 w-8 text-white/10 group-hover:text-white/30 transition-colors duration-500" />
+              </div>
+              <span className="text-[9px] uppercase tracking-[0.25em] text-white/5 group-hover:text-white/15 transition-colors duration-500 font-sans font-extrabold mt-1">
+                Tap to Wake System
+              </span>
+            </button>
+          </div>
+        )}
         <div className="w-full min-h-screen text-zinc-800 font-sans flex flex-col items-center justify-between pb-6 pt-6 px-6 relative overflow-hidden select-none">
           
           {/* Background Ambience Glow */}
@@ -697,6 +721,15 @@ export default function RemoteControl() {
               </span>
             </div>
             <div className="flex items-center gap-2">
+              <button 
+                onClick={() => handleToggleStandby(!standby)}
+                className={`p-2 rounded-full hover:bg-zinc-100 active:scale-90 transition-all cursor-pointer ${
+                  standby ? 'text-rose-500 bg-rose-50' : 'text-zinc-500 hover:text-zinc-900'
+                }`}
+                title={standby ? 'Wake up' : 'Standby'}
+              >
+                <Power className="h-4 w-4" />
+              </button>
               <button 
                 onClick={fetchDevices}
                 disabled={!token}
@@ -919,6 +952,12 @@ export default function RemoteControl() {
                   >
                     {isSearching ? '...' : 'Search'}
                   </button>
+                </div>
+
+                {/* List label: "FAVORITE STATIONS" or "SEARCH RESULTS" */}
+                <div className="flex justify-between items-center text-[9px] uppercase tracking-wider font-extrabold text-zinc-400 px-1 mt-1">
+                  <span>{radioSearch.trim() ? 'Search Results' : 'Favorite Stations'}</span>
+                  <span>({stationsList.length})</span>
                 </div>
 
                 {/* Stations Results List */}

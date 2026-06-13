@@ -2,6 +2,7 @@ import express from 'express';
 import { exec } from 'child_process';
 import { promisify } from 'util';
 import { getFavoriteRadios, addFavoriteRadio, deleteFavoriteRadioByUrl, setSetting } from './db.js';
+import { setStandbyState, cachedStandbyState } from './websocket.js';
 
 const execPromise = promisify(exec);
 const router = express.Router();
@@ -9,6 +10,9 @@ const router = express.Router();
 // POST /api/player/play -> Play local media
 router.post('/play', async (req, res) => {
   try {
+    if (cachedStandbyState) {
+      await setStandbyState(false);
+    }
     await execPromise('mpc play');
     res.json({ success: true });
   } catch (err) {
@@ -78,6 +82,9 @@ router.post('/seek', async (req, res) => {
 router.post('/play-radio', async (req, res) => {
   const { url, name, favicon } = req.body;
   try {
+    if (cachedStandbyState) {
+      await setStandbyState(false);
+    }
     // Save last played radio info to database settings
     await setSetting('active_source', 'radio');
     await setSetting('last_radio_url', url);

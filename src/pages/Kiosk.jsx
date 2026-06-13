@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { toast, Toaster } from 'sonner';
 import { api } from '../api';
 import { useResonanceWS } from '../websocket';
+import { Power } from 'lucide-react';
 
 // Subcomponents
 import RoseHiFiDisplay from '../components/RoseHiFiDisplay';
@@ -90,14 +91,6 @@ export default function Kiosk() {
     localStorage.setItem('resonance_eq_preset', 'Custom');
   };
 
-  const DEFAULT_STATIONS = [
-    { name: 'SomaFM: Groove Salad', url: 'http://ice1.somafm.com/groovesalad-128-mp3', favicon: 'https://somafm.com/img/somafm120.png', country: 'USA', tags: 'ambient, chillout' },
-    { name: 'SomaFM: DEF CON Radio', url: 'http://ice1.somafm.com/defcon-128-mp3', favicon: 'https://somafm.com/img/defcon120.png', country: 'USA', tags: 'ambient, electronic' },
-    { name: 'Lofi Girl Ambient', url: 'http://play.stream.lofigirl.com/lofi', favicon: 'https://lofigirl.com/wp-content/uploads/2023/02/lofi-girl-logo.png', country: 'France', tags: 'lofi, ambient' },
-    { name: 'Chilltrax Ambient', url: 'https://chilltrax.dnshosting.net/chilltrax.mp3', favicon: '', country: 'USA', tags: 'chillout' },
-    { name: 'Jazz Radio Classic', url: 'http://jazzradio.ice.infomaniak.ch/jazzradio-high.mp3', favicon: '', country: 'France', tags: 'jazz' }
-  ];
-
   const [theme, setTheme] = useState(localStorage.getItem('resonance_theme') || 'amber');
   const lastVolumeChangeTime = useRef(0);
   const [favoriteStations, setFavoriteStations] = useState([]);
@@ -106,14 +99,16 @@ export default function Kiosk() {
     try {
       const favs = await api.getFavoriteRadios();
       setFavoriteStations(favs || []);
-      // If not currently searching, show favorites or defaults as default list
-      if (!radioSearch.trim()) {
-        setStationsList(favs && favs.length > 0 ? favs : DEFAULT_STATIONS);
-      }
     } catch (err) {
       console.warn('Failed to load favorite stations:', err);
     }
   };
+
+  useEffect(() => {
+    if (!radioSearch.trim()) {
+      setStationsList(favoriteStations);
+    }
+  }, [radioSearch, favoriteStations]);
 
   useEffect(() => {
     fetchFavorites();
@@ -144,6 +139,14 @@ export default function Kiosk() {
   const [radioSearch, setRadioSearch] = useState('');
   const [stationsList, setStationsList] = useState([]);
   const [isSearching, setIsSearching] = useState(false);
+  const [standby, setStandby] = useState(false);
+
+  const handleToggleStandby = (enabled) => {
+    setStandby(enabled);
+    if (ws.current && ws.current.readyState === WebSocket.OPEN) {
+      ws.current.send(JSON.stringify({ type: 'SET_STANDBY', payload: { enabled } }));
+    }
+  };
 
   // Synchronize spotify & source states for backward-compatible rendering/api calls
   useEffect(() => {
@@ -198,7 +201,8 @@ export default function Kiosk() {
       syncCurrentState();
     },
     isAuthenticated: true,
-    isRemote: false
+    isRemote: false,
+    setStandby
   });
 
   const handleToggleSource = (targetSource) => {
@@ -641,6 +645,24 @@ export default function Kiosk() {
   return (
     <div data-theme={theme} className="w-screen h-screen flex items-center justify-center relative overflow-hidden p-6 select-none font-sans">
       
+      {standby && (
+        <div className="absolute inset-0 bg-black z-[9999] flex items-center justify-center flex-col animate-fade-in">
+          <button
+            onClick={() => handleToggleStandby(false)}
+            className="group flex flex-col items-center justify-center gap-4 cursor-pointer focus:outline-none transition-all active:scale-95"
+            type="button"
+            aria-label="Power on system"
+          >
+            <div className="w-24 h-24 rounded-full border border-white/5 bg-white/[0.01] hover:bg-white/[0.03] hover:border-white/10 flex items-center justify-center transition-all duration-500 shadow-inner group-hover:scale-105">
+              <Power className="h-10 w-10 text-white/10 group-hover:text-white/30 transition-colors duration-500" />
+            </div>
+            <span className="text-[10px] uppercase tracking-[0.25em] text-white/5 group-hover:text-white/15 transition-colors duration-500 font-sans font-extrabold mt-1">
+              Tap to Wake
+            </span>
+          </button>
+        </div>
+      )}
+      
       {/* Subtle retro glowing background spots */}
       <div className="absolute top-[-30%] left-[-20%] w-[70%] h-[70%] rounded-full theme-bg-glow blur-[150px] pointer-events-none" />
       <div className="absolute bottom-[-30%] right-[-20%] w-[70%] h-[70%] rounded-full bg-emerald-950/5 blur-[150px] pointer-events-none" />
@@ -695,6 +717,7 @@ export default function Kiosk() {
           onPlayRadio={handlePlayRadio}
           favoriteStations={favoriteStations}
           onToggleFavoriteRadio={handleToggleFavoriteRadio}
+          onToggleStandby={handleToggleStandby}
         />
 
         {/* Full-Screen Horizontal Equalizer Control Overlay */}

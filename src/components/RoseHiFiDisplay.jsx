@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Play, Pause, SkipForward, SkipBack, Shuffle, Repeat, Volume2, VolumeX, Home, Volume1, Sliders, Radio, Heart } from 'lucide-react';
+import { Play, Pause, SkipForward, SkipBack, Shuffle, Repeat, Volume2, VolumeX, Home, Volume1, Sliders, Radio, Heart, Power } from 'lucide-react';
 
 export default function RoseHiFiDisplay({
   isPlaying,
@@ -35,13 +35,30 @@ export default function RoseHiFiDisplay({
   handleRadioSearch,
   onPlayRadio,
   favoriteStations = [],
-  onToggleFavoriteRadio
+  onToggleFavoriteRadio,
+  onToggleStandby
 }) {
   const [showVolumeFeedback, setShowVolumeFeedback] = useState(false);
   const [showSearch, setShowSearch] = useState(true);
+  const [showVolumePopup, setShowVolumePopup] = useState(false);
   const feedbackTimeout = useRef(null);
+  const volumePopupRef = useRef(null);
   const dbLRef = useRef(null);
   const dbRRef = useRef(null);
+
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (volumePopupRef.current && !volumePopupRef.current.contains(event.target)) {
+        setShowVolumePopup(false);
+      }
+    }
+    if (showVolumePopup) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showVolumePopup]);
 
   useEffect(() => {
     if (source === 'radio') {
@@ -163,8 +180,14 @@ export default function RoseHiFiDisplay({
               </button>
             </div>
 
+            {/* List label: "FAVORITES" or "SEARCH RESULTS" */}
+            <div className="flex justify-between items-center mt-2 px-1 text-[9px] uppercase tracking-wider font-extrabold text-zinc-500">
+              <span>{radioSearch.trim() ? 'Search Results' : 'Favorite Stations'}</span>
+              <span>({stationsList.length})</span>
+            </div>
+
             {/* Scrollable list of stations */}
-            <div className="flex-grow overflow-y-auto pr-1.5 mt-2 custom-scrollbar grid grid-cols-2 gap-2 max-h-[145px]">
+            <div className="flex-grow overflow-y-auto pr-1.5 mt-1 custom-scrollbar grid grid-cols-2 gap-2 max-h-[145px]">
               {stationsList.map((station, idx) => {
                 const isFavorite = favoriteStations.some(s => s.url === station.url);
                 return (
@@ -443,7 +466,7 @@ export default function RoseHiFiDisplay({
       )}
 
       {/* 3. System Sidebar Column */}
-      <aside className="controls-column" aria-label="System controls">
+      <aside className="controls-column relative" aria-label="System controls">
         <button 
           onClick={onToggleMenu}
           className={`icon-button menu ${!hasToken ? 'theme-border theme-text active animate-pulse' : ''}`} 
@@ -454,35 +477,69 @@ export default function RoseHiFiDisplay({
           <Sliders className="h-5 w-5" />
         </button>
         
-        <button 
-          onClick={stepVolumeUp}
-          className="icon-button volume-up" 
-          type="button" 
-          aria-label="Volume up"
-        >
-          <Volume2 className="h-5 w-5" />
-        </button>
-        
-        <button 
-          onClick={stepVolumeDown}
-          className="icon-button volume-down" 
-          type="button" 
-          aria-label="Volume down"
-        >
-          <Volume1 className="h-5 w-5" />
-        </button>
-        
-        <button 
-          onClick={handleToggleMute}
-          className={`icon-button volume-mute ${isMuted ? 'active' : ''}`} 
-          type="button" 
-          aria-label="Mute volume"
-        >
-          {isMuted ? (
-            <VolumeX className="h-5 w-5 text-rose-500" />
-          ) : (
-            <VolumeX className="h-5 w-5" />
+        {/* Volume Button & Popup */}
+        <div ref={volumePopupRef} className="relative flex items-center justify-center">
+          <button 
+            onClick={() => setShowVolumePopup(!showVolumePopup)}
+            className={`icon-button volume ${showVolumePopup ? 'active' : ''}`} 
+            type="button" 
+            aria-label="Toggle Volume Control"
+            title="Adjust Volume"
+          >
+            {isMuted || volume === 0 ? (
+              <VolumeX className="h-5 w-5 text-rose-500 animate-pulse" />
+            ) : volume > 50 ? (
+              <Volume2 className="h-5 w-5" />
+            ) : (
+              <Volume1 className="h-5 w-5" />
+            )}
+          </button>
+
+          {showVolumePopup && (
+            <div className="absolute right-14 bottom-0 bg-[#0d1527] border border-white/10 rounded-2xl p-4 flex items-center gap-3 shadow-2xl z-[150] w-64 animate-fade-in">
+              <button
+                onClick={handleToggleMute}
+                className="text-zinc-400 hover:text-white transition-colors flex-shrink-0 cursor-pointer"
+                type="button"
+                aria-label="Toggle Mute"
+              >
+                {isMuted || volume === 0 ? (
+                  <VolumeX className="h-5 w-5 text-rose-500" />
+                ) : (
+                  <Volume2 className="h-5 w-5" />
+                )}
+              </button>
+              <input
+                type="range"
+                min="0"
+                max="100"
+                value={isMuted ? 0 : volume}
+                onChange={handleVolumeChange}
+                className="flex-grow h-1.5 bg-zinc-800 rounded-lg appearance-none cursor-pointer accent-[var(--theme-color)] transition-all focus:outline-none"
+                style={{
+                  background: `linear-gradient(to right, var(--theme-color) 0%, var(--theme-color) ${
+                    isMuted ? 0 : volume
+                  }%, rgba(255, 255, 255, 0.06) ${
+                    isMuted ? 0 : volume
+                  }%, rgba(255, 255, 255, 0.06) 100%)`
+                }}
+              />
+              <span className="text-[10px] text-zinc-450 font-mono font-bold w-8 text-right shrink-0">
+                {isMuted ? 0 : volume}%
+              </span>
+            </div>
           )}
+        </div>
+
+        {/* Standby Power Button */}
+        <button 
+          onClick={() => onToggleStandby(true)}
+          className="icon-button standby text-zinc-450 hover:text-rose-500 transition-colors" 
+          type="button" 
+          aria-label="Standby System"
+          title="Enter Standby Mode"
+        >
+          <Power className="h-5 w-5" />
         </button>
       </aside>
 

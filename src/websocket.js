@@ -23,7 +23,8 @@ export function useResonanceWS({
   setDevices,
   onRequestSync,
   isAuthenticated = true,
-  isRemote = false
+  isRemote = false,
+  setStandby
 }) {
   const [isConnected, setIsConnected] = useState(false);
   const ws = useRef(null);
@@ -113,6 +114,10 @@ export function useResonanceWS({
 
           if (type === 'SET_SOURCE') {
             if (setSpotify) setSpotify(payload.spotify);
+          }
+
+          if (type === 'SET_STANDBY') {
+            if (setStandby) setStandby(payload.enabled);
           }
 
           if (type === 'SET_TOKEN') {

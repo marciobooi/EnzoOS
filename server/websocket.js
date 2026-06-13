@@ -4,6 +4,25 @@ import { getSetting, setSetting, dbReady } from './db.js';
 
 let cachedPlaybackState = null;
 let cachedSourceState = { spotify: true, source: 'spotify' };
+export let cachedStandbyState = false;
+let wssBroadcast = null;
+
+export const setStandbyState = async (enabled) => {
+  cachedStandbyState = enabled;
+  await setSetting('standby', enabled ? 'true' : 'false');
+  if (wssBroadcast) {
+    wssBroadcast({ type: 'SET_STANDBY', payload: { enabled } });
+  }
+
+  if (enabled) {
+    try {
+      const { exec } = await import('child_process');
+      exec('mpc stop');
+    } catch (err) {
+      console.error('[Standby] Failed to stop mpc:', err);
+    }
+  }
+};
 
 /**
  * Helper to load cached state from DB on startup.
@@ -11,6 +30,10 @@ let cachedSourceState = { spotify: true, source: 'spotify' };
 export const loadCachedStateFromDB = async () => {
   await dbReady;
   try {
+    const standbyVal = await getSetting('standby');
+    cachedStandbyState = standbyVal === 'true';
+    console.log(`[Resonance WS] Loaded standby state from DB: ${cachedStandbyState}`);
+
     const activeSource = await getSetting('active_source');
     if (activeSource) {
       cachedSourceState = {
@@ -61,6 +84,7 @@ export function setupWebSocket(server, app, isLocalIP) {
     });
   };
 
+  wssBroadcast = broadcast;
   app.set('wssBroadcast', broadcast);
 
   wss.on('connection', async (ws) => {
@@ -74,18 +98,25 @@ export function setupWebSocket(server, app, isLocalIP) {
     // Send the active source state on connect
     ws.send(JSON.stringify({ type: 'SET_SOURCE', payload: cachedSourceState }));
 
+    // Send the active standby state on connect
+    ws.send(JSON.stringify({ type: 'SET_STANDBY', payload: { enabled: cachedStandbyState } }));
+
     // Send the server-managed access token (auto-refreshed if needed)
     const serverToken = await getValidAccessToken();
     if (serverToken) {
       ws.send(JSON.stringify({ type: 'SET_TOKEN', payload: { token: serverToken } }));
     }
 
-    ws.on('message', (messageStr) => {
+    ws.on('message', async (messageStr) => {
       try {
         const { type, payload } = JSON.parse(messageStr);
         
         if (type === 'BROADCAST_STATE') {
           cachedPlaybackState = payload;
+          if (cachedStandbyState && payload && !payload.paused) {
+            // Auto-wake if playing music
+            await setStandbyState(false);
+          }
           broadcast({ type: 'PLAYBACK_STATE', payload }, ws);
         }
 
@@ -97,6 +128,10 @@ export function setupWebSocket(server, app, isLocalIP) {
           cachedSourceState = payload;
           setSetting('active_source', payload.source || (payload.spotify ? 'spotify' : 'local'));
           broadcast({ type: 'SET_SOURCE', payload }, ws);
+        }
+
+        if (type === 'SET_STANDBY') {
+          await setStandbyState(payload.enabled);
         }
 
         if (type === 'SET_TOKEN') {
