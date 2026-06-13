@@ -127,6 +127,16 @@ export function setupWebSocket(server, app, isLocalIP) {
         if (type === 'SET_SOURCE') {
           cachedSourceState = payload;
           setSetting('active_source', payload.source || (payload.spotify ? 'spotify' : 'local'));
+          
+          if (payload.spotify || payload.source === 'spotify') {
+            try {
+              const { exec } = await import('child_process');
+              exec('mpc stop');
+            } catch (err) {
+              console.error('[SET_SOURCE] Failed to stop mpc:', err);
+            }
+          }
+          
           broadcast({ type: 'SET_SOURCE', payload }, ws);
         }
 

@@ -20,6 +20,7 @@ export function useResonanceWS({
   setOtaProgress,
   setOtaPercent,
   setSpotify,
+  setSource,
   setDevices,
   onRequestSync,
   isAuthenticated = true,
@@ -114,6 +115,7 @@ export function useResonanceWS({
 
           if (type === 'SET_SOURCE') {
             if (setSpotify) setSpotify(payload.spotify);
+            if (setSource) setSource(payload.source);
           }
 
           if (type === 'SET_STANDBY') {
