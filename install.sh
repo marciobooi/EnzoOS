@@ -107,8 +107,30 @@ apt-get install -y \
   mpc \
   sqlite3 \
   libsqlite3-dev
+# Enable ALSA Loopback kernel module immediately and on boot
+echo -e "${YELLOW}Enabling ALSA Loopback device module (snd-aloop)...${NC}"
+modprobe snd-aloop || true
+if ! grep -q "snd-aloop" /etc/modules; then
+  echo "snd-aloop" >> /etc/modules
+fi
 
-# Configure MPD software volume control
+# Configure ALSA Default Device to route to Loopback
+echo -e "${YELLOW}Creating default ALSA configuration (/etc/asound.conf) routing to Loopback...${NC}"
+cat <<EOF > /etc/asound.conf
+# Resonance HiFi - Default ALSA Route to Loopback
+pcm.!default {
+    type hw
+    card Loopback
+    device 0
+}
+
+ctl.!default {
+    type hw
+    card Loopback
+}
+EOF
+
+# Configure MPD software volume control targeting Loopback device
 if ! grep -q "ALSA Software Volume" /etc/mpd.conf; then
   echo -e "${YELLOW}Configuring software volume mixer for MPD...${NC}"
   cat <<EOF >> /etc/mpd.conf
@@ -116,6 +138,7 @@ if ! grep -q "ALSA Software Volume" /etc/mpd.conf; then
 audio_output {
     type            "alsa"
     name            "ALSA Software Volume"
+    device          "hw:Loopback,0,0"
     mixer_type      "software"
 }
 EOF
@@ -126,6 +149,91 @@ echo -e "${YELLOW}Enabling and starting Media Player Daemon (MPD)...${NC}"
 systemctl enable mpd
 systemctl restart mpd
 
+echo -e "\n${GREEN}Installing CamillaDSP...${NC}"
+if ! command -v camilladsp &> /dev/null; then
+  ARCH=$(uname -m)
+  echo -e "${YELLOW}Detected CPU architecture: ${ARCH}${NC}"
+  if [ "$ARCH" = "aarch64" ]; then
+    CAMILLA_ARCH="aarch64"
+  elif [ "$ARCH" = "x86_64" ]; then
+    CAMILLA_ARCH="amd64"
+  elif [[ "$ARCH" =~ "arm" ]]; then
+    CAMILLA_ARCH="armv7"
+  else
+    CAMILLA_ARCH="aarch64"
+  fi
+  
+  echo -e "${YELLOW}Downloading CamillaDSP v2.0.3 for ${CAMILLA_ARCH}...${NC}"
+  wget -q "https://github.com/HEnquist/camilladsp/releases/download/v2.0.3/camilladsp-linux-${CAMILLA_ARCH}.tar.gz" -O /tmp/camilladsp.tar.gz
+  tar -xzf /tmp/camilladsp.tar.gz -C /tmp/
+  mv /tmp/camilladsp /usr/bin/camilladsp
+  chmod +x /usr/bin/camilladsp
+  rm -f /tmp/camilladsp.tar.gz
+  echo -e "${GREEN}CamillaDSP v2.0.3 installed successfully in /usr/bin/camilladsp.${NC}"
+else
+  echo -e "${YELLOW}CamillaDSP already installed: $(camilladsp --version || true)${NC}"
+fi
+
+# Create default flat CamillaDSP configuration to prevent crash on initial run
+echo -e "${YELLOW}Creating initial flat CamillaDSP configuration...${NC}"
+cat <<EOF > "$PROJECT_DIR/camilladsp.yml"
+devices:
+  samplerate: 44100
+  chunksize: 1024
+  queuelimit: 4
+  capture:
+    type: Alsa
+    channels: 2
+    device: hw:Loopback,1,0
+    format: S16LE
+  playback:
+    type: Alsa
+    channels: 2
+    device: hw:0,0
+    format: S16LE
+mixers:
+  speaker_map:
+    channels:
+      in: 2
+      out: 2
+    mapping:
+      - dest: 0
+        sources:
+          - channel: 0
+            gain: 0
+      - dest: 1
+        sources:
+          - channel: 1
+            gain: 0
+pipeline:
+  - type: Mixer
+    mapping: speaker_map
+EOF
+chown $TARGET_USER:$TARGET_USER "$PROJECT_DIR/camilladsp.yml"
+
+# Create CamillaDSP systemd service running in the background
+echo -e "${YELLOW}Configuring CamillaDSP systemd service...${NC}"
+cat <<EOF > /etc/systemd/system/camilladsp.service
+[Unit]
+Description=CamillaDSP Audio Processor
+After=network.target sound.target
+Requires=sound.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=$PROJECT_DIR
+ExecStart=/usr/bin/camilladsp -c $PROJECT_DIR/camilladsp.yml -p 1234
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+systemctl daemon-reload
+systemctl enable camilladsp
+systemctl restart camilladsp
 
 echo -e "${YELLOW}Installing Raspotify repository and precompiled Librespot daemon...${NC}"
 # Install Raspotify repository and package (contains the precompiled /usr/bin/librespot binary)
@@ -156,6 +264,12 @@ sed -i 's/#LIBRESPOT_BITRATE=160/LIBRESPOT_BITRATE=320/g' /etc/raspotify/conf
 sed -i 's/LIBRESPOT_DISABLE_CREDENTIAL_CACHE=/#LIBRESPOT_DISABLE_CREDENTIAL_CACHE=/g' /etc/raspotify/conf
 sed -i 's/#LIBRESPOT_INITIAL_VOLUME=50/LIBRESPOT_INITIAL_VOLUME=50/g' /etc/raspotify/conf
 sed -i 's/#LIBRESPOT_BACKEND=/LIBRESPOT_BACKEND=alsa/g' /etc/raspotify/conf
+# Route Spotify connect to ALSA Loopback
+if grep -q "LIBRESPOT_DEVICE=" /etc/raspotify/conf; then
+  sed -i 's/.*LIBRESPOT_DEVICE=.*/LIBRESPOT_DEVICE="hw:Loopback,0,0"/g' /etc/raspotify/conf
+else
+  echo 'LIBRESPOT_DEVICE="hw:Loopback,0,0"' >> /etc/raspotify/conf
+fi
 
 # Enable and start native Raspotify systemd daemon
 echo -e "${YELLOW}Enabling and starting Raspotify service...${NC}"
@@ -164,10 +278,10 @@ systemctl enable raspotify
 systemctl restart raspotify
 echo -e "${GREEN}Raspotify Spotify Connect service configured and started.${NC}"
 
-# Configure passwordless sudo for Spotify daemon management
-echo -e "${YELLOW}Configuring sudo permissions for Spotify daemon management...${NC}"
+# Configure passwordless sudo for Spotify and CamillaDSP daemon management
+echo -e "${YELLOW}Configuring sudo permissions for Spotify and CamillaDSP daemon management...${NC}"
 cat <<EOF > /etc/sudoers.d/resonance
-$TARGET_USER ALL=(ALL) NOPASSWD: /usr/bin/tee /etc/raspotify/conf, /bin/tee /etc/raspotify/conf, /usr/bin/systemctl restart raspotify, /bin/systemctl restart raspotify
+$TARGET_USER ALL=(ALL) NOPASSWD: /usr/bin/tee /etc/raspotify/conf, /bin/tee /etc/raspotify/conf, /usr/bin/systemctl restart raspotify, /bin/systemctl restart raspotify, /usr/bin/systemctl restart camilladsp, /bin/systemctl restart camilladsp, /usr/bin/systemctl reload camilladsp, /bin/systemctl reload camilladsp
 EOF
 chmod 440 /etc/sudoers.d/resonance
 
@@ -258,6 +372,7 @@ echo -e "${GREEN}.env written.${NC}"
 cd "$PROJECT_DIR"
 echo -e "${YELLOW}Installing npm dependencies (running as $TARGET_USER)...${NC}"
 sudo -u $TARGET_USER npm install
+sudo -u $TARGET_USER npm install yaml
 
 echo -e "${YELLOW}Compiling production assets (running as $TARGET_USER)...${NC}"
 sudo -u $TARGET_USER npm run build
