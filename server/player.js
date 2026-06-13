@@ -114,8 +114,8 @@ router.post('/play-radio', async (req, res) => {
       
       // Broadcast current playback state to all clients
       broadcast({ type: 'PLAYBACK_STATE', payload: stateUpdate });
-      // Force source to be local
-      broadcast({ type: 'SET_SOURCE', payload: { spotify: false } });
+      // Force source to be radio
+      broadcast({ type: 'SET_SOURCE', payload: { spotify: false, source: 'radio' } });
     }
 
     res.json({ success: true });

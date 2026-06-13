@@ -53,8 +53,8 @@ export default function Kiosk() {
   const [otaPercent, setOtaPercent] = useState(0);
   const [updateStatus, setUpdateStatus] = useState(null);
   const [errorMessage, setErrorMessage] = useState('');
-  const [spotify, setSpotify] = useState(true);
   const [source, setSource] = useState('spotify'); // 'spotify' | 'local' | 'radio'
+  const spotify = source === 'spotify';
 
   const [radioSearch, setRadioSearch] = useState('');
   const [stationsList, setStationsList] = useState([]);
@@ -153,18 +153,6 @@ export default function Kiosk() {
 
 
 
-  // Synchronize spotify & source states for backward-compatible rendering/api calls
-  useEffect(() => {
-    setSpotify(source === 'spotify');
-  }, [source]);
-
-  useEffect(() => {
-    if (spotify && source !== 'spotify') {
-      setSource('spotify');
-    } else if (!spotify && source === 'spotify') {
-      setSource('local');
-    }
-  }, [spotify]);
 
 
 
@@ -198,7 +186,7 @@ export default function Kiosk() {
     setUpdateStatus,
     setOtaProgress,
     setOtaPercent,
-    setSpotify,
+    setSpotify: (isSpotify) => setSource(prev => isSpotify ? 'spotify' : (prev === 'spotify' ? 'local' : prev)),
     setSource,
     setDevices,
     onRequestSync: () => {

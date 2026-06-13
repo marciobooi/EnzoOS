@@ -80,17 +80,12 @@ export default function RemoteControl() {
   const [otaProgress, setOtaProgress] = useState([]);
   const [otaPercent, setOtaPercent] = useState(0);
 
-  const [spotify, setSpotify] = useState(true);
   const [source, setSource] = useState('spotify'); // 'spotify' | 'local' | 'radio'
+  const spotify = source === 'spotify';
   const [daemonUsername, setDaemonUsername] = useState('');
   const [daemonPassword, setDaemonPassword] = useState('');
   const [isSavingDaemonCreds, setIsSavingDaemonCreds] = useState(false);
   const [standby, setStandby] = useState(false);
-
-  // Synchronize spotify & source states for backward-compatible rendering/api calls
-  useEffect(() => {
-    setSpotify(source === 'spotify');
-  }, [source]);
 
   const hasCheckedInitialSource = useRef(false);
   useEffect(() => {
@@ -99,14 +94,6 @@ export default function RemoteControl() {
       hasCheckedInitialSource.current = true;
     }
   }, [source]);
-
-  useEffect(() => {
-    if (spotify && source !== 'spotify') {
-      setSource('spotify');
-    } else if (!spotify && source === 'spotify') {
-      setSource('local');
-    }
-  }, [spotify]);
 
   const progressInterval = useRef(null);
   const volumeApiTimeout = useRef(null);
@@ -259,7 +246,7 @@ export default function RemoteControl() {
     setUpdateStatus,
     setOtaProgress,
     setOtaPercent,
-    setSpotify,
+    setSpotify: (isSpotify) => setSource(prev => isSpotify ? 'spotify' : (prev === 'spotify' ? 'local' : prev)),
     setSource,
     setDevices,
     onRequestSync: () => {
