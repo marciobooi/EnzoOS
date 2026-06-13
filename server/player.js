@@ -317,7 +317,19 @@ function generateCamillaConfig(answers, dacInfo) {
   let rightFilters = [];
   let subFilters = [];
 
-  // Harman Target Curve filters
+  // --- State-of-the-Art 2026 Master Target Curve Stack ---
+  
+  // 1. Infrasonic / Subsonic Protection (Protects drivers and cleans amplifier headroom)
+  config.filters.subsonic_cut = {
+    type: "Biquad",
+    parameters: {
+      type: "Highpass",
+      freq: 18,
+      q: 0.707
+    }
+  };
+
+  // 2. Harman Bass Shelf (Gives authority and deep low-frequency punch)
   config.filters.harman_bass_shelf = {
     type: "Biquad",
     parameters: {
@@ -328,18 +340,67 @@ function generateCamillaConfig(answers, dacInfo) {
     }
   };
 
+  // 3. Midrange Anti-Muddiness Dip (Removes boxiness, separates vocals from bass range)
+  config.filters.vocal_clarity_dip = {
+    type: "Biquad",
+    parameters: {
+      type: "Peaking",
+      freq: 250,
+      gain: -1.2,
+      q: 0.6
+    }
+  };
+
+  // 4. Soundstage Presence Highlight (Enhances holographic imaging and definition)
+  config.filters.presence_definition = {
+    type: "Biquad",
+    parameters: {
+      type: "Peaking",
+      freq: 3000,
+      gain: 1.0,
+      q: 0.8
+    }
+  };
+
+  // 5. High-Frequency Treble Tilt (Prevents listening fatigue during long sessions)
   config.filters.harman_treble_tilt = {
     type: "Biquad",
     parameters: {
       type: "HighShelf",
-      freq: 3500,
+      freq: 4500,
       gain: -2.0,
       q: 0.5
     }
   };
 
-  leftFilters.push("harman_bass_shelf", "harman_treble_tilt");
-  rightFilters.push("harman_bass_shelf", "harman_treble_tilt");
+  // 6. Ultra-High Spatial Air (Restores micro-details and acoustic sparkle)
+  config.filters.spatial_air_sparkle = {
+    type: "Biquad",
+    parameters: {
+      type: "HighShelf",
+      freq: 13000,
+      gain: 1.5,
+      q: 0.707
+    }
+  };
+
+  // Stack the 2026 Master Curve filters on the main playback channels
+  leftFilters.push(
+    "subsonic_cut",
+    "harman_bass_shelf",
+    "vocal_clarity_dip",
+    "presence_definition",
+    "harman_treble_tilt",
+    "spatial_air_sparkle"
+  );
+  rightFilters.push(
+    "subsonic_cut",
+    "harman_bass_shelf",
+    "vocal_clarity_dip",
+    "presence_definition",
+    "harman_treble_tilt",
+    "spatial_air_sparkle"
+  );
 
   let subChannels = [];
 
