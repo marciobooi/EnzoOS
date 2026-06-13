@@ -571,6 +571,15 @@ export default function RemoteControl() {
       }));
     }
 
+    if (!spotify) {
+      try {
+        await api.localSetVolume(targetVol);
+      } catch (err) {
+        console.error('Local volume mute failed:', err);
+      }
+      return;
+    }
+
     try {
       await api.setVolume(token, targetVol);
     } catch (err) {

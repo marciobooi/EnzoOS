@@ -604,6 +604,15 @@ export default function Kiosk() {
       is_muted: newMuteState
     });
 
+    if (!spotify) {
+      try {
+        await api.localSetVolume(targetVolume);
+      } catch (err) {
+        console.error('Local mute error:', err);
+      }
+      return;
+    }
+
     try {
       await api.setVolume(token, targetVolume);
     } catch (err) {
