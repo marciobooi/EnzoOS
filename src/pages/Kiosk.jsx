@@ -610,11 +610,11 @@ export default function Kiosk() {
       }
       return;
     }
+    if (!token) return;
     try {
       await api.setVolume(token, vol);
     } catch (err) {
-      console.error('Volume adjustment error:', err);
-      toast.error(`Volume change failed: ${err.message}`);
+      console.warn('Spotify volume adjustment warning (no active device or session):', err);
     }
   };
 
@@ -640,10 +640,11 @@ export default function Kiosk() {
       return;
     }
 
+    if (!token) return;
     try {
       await api.setVolume(token, targetVolume);
     } catch (err) {
-      console.error('Mute error:', err);
+      console.warn('Spotify volume mute warning:', err);
     }
   };
 

@@ -557,8 +557,7 @@ export default function RemoteControl() {
       try {
         await api.setVolume(token, newVol);
       } catch (err) {
-        console.error('Spotify volume API failed:', err);
-        toast.error(`Volume change failed: ${err.message}`);
+        console.warn('Spotify volume API warning (no active session):', err);
       }
     }, 180);
   };
@@ -589,10 +588,11 @@ export default function RemoteControl() {
       return;
     }
 
+    if (!token) return;
     try {
       await api.setVolume(token, targetVol);
     } catch (err) {
-      console.error('Spotify volume mute failed:', err);
+      console.warn('Spotify volume mute warning:', err);
     }
   };
 
