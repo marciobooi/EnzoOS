@@ -228,7 +228,6 @@ export default function Kiosk() {
     sendUpdate('SET_SOURCE', { spotify: isSpotify, source: nextSource });
     
     const sourceNames = { spotify: 'Spotify', local: 'Local Media', radio: 'Web Radio' };
-    toast.success(`Source set to: ${sourceNames[nextSource]}`);
   };
 
   const handleToggleFavoriteRadio = async (station) => {
@@ -236,7 +235,6 @@ export default function Kiosk() {
     try {
       if (isFavorite) {
         await api.deleteFavoriteRadio(station.url);
-        toast.success(`Removed from favorites: ${station.name}`);
       } else {
         await api.addFavoriteRadio({
           name: station.name,
@@ -245,7 +243,6 @@ export default function Kiosk() {
           country: station.country,
           tags: station.tags
         });
-        toast.success(`Added to favorites: ${station.name}`);
       }
       await fetchFavorites();
     } catch (err) {
@@ -274,7 +271,6 @@ export default function Kiosk() {
         toast.error('No stations found.');
       } else {
         setStationsList(formatted);
-        toast.success(`Found ${formatted.length} stations!`);
       }
     } catch (err) {
       toast.error('Failed to search stations.');
@@ -289,7 +285,6 @@ export default function Kiosk() {
       if (source !== 'radio') {
         handleToggleSource('radio');
       }
-      toast.success(`Playing Radio: ${name}`);
     } catch (err) {
       toast.error(`Failed to play radio: ${err.message}`);
     }
@@ -369,7 +364,6 @@ export default function Kiosk() {
   const transferPlayback = async (targetId) => {
     try {
       await api.transferPlayback(token, targetId);
-      toast.success('Audio route cast successfully.');
       setTimeout(fetchDevices, 500);
     } catch (err) {
       toast.error(`Transfer error: ${err.message}`);
@@ -391,7 +385,6 @@ export default function Kiosk() {
     try {
       const activeId = resonanceDeviceId || (devices.find(d => d.is_active)?.id);
       await api.play(token, activeId, null, [trackUri]);
-      toast.success('Track loaded successfully.');
       setTimeout(syncCurrentState, 800);
     } catch (err) {
       toast.error(`Play error: ${err.message}`);
@@ -473,7 +466,6 @@ export default function Kiosk() {
     try {
       const activeId = resonanceDeviceId || (devices.find(d => d.is_active)?.id);
       await api.setShuffle(token, nextShuffle, activeId);
-      toast.success(`Shuffle ${nextShuffle ? 'activated' : 'deactivated'}`);
       setTimeout(syncCurrentState, 500);
     } catch (err) {
       setShuffleState(!nextShuffle);
@@ -494,7 +486,6 @@ export default function Kiosk() {
     try {
       const activeId = resonanceDeviceId || (devices.find(d => d.is_active)?.id);
       await api.setRepeat(token, nextRepeat, activeId);
-      toast.success(`Repeat mode set to: ${nextRepeat}`);
       setTimeout(syncCurrentState, 500);
     } catch (err) {
       setRepeatState(repeatState);
@@ -652,7 +643,6 @@ export default function Kiosk() {
     setPlaybackState(null);
     setDevices([]);
     sendUpdate('CLEAR_TOKEN');
-    toast.info('Spotify disconnected.');
   };
 
   return (
