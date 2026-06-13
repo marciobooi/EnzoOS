@@ -72,8 +72,8 @@ if [ ! -d "$PROJECT_DIR" ]; then
 else
   echo -e "\n${GREEN}[3/7] Updating existing EnzoOS repository in $PROJECT_DIR...${NC}"
   cd "$PROJECT_DIR"
-  sudo -u $TARGET_USER git fetch origin main
-  sudo -u $TARGET_USER git reset --hard origin/main
+  # sudo -u $TARGET_USER git fetch origin main
+  # sudo -u $TARGET_USER git reset --hard origin/main
 fi
 
 # 6. Install Node.js (v20)
@@ -114,19 +114,35 @@ if ! grep -q "snd-aloop" /etc/modules; then
   echo "snd-aloop" >> /etc/modules
 fi
 
-# Configure ALSA Default Device to route to Loopback
+# Configure ALSA Default Device to route to Loopback using type plug (handles format/rate conversions automatically)
 echo -e "${YELLOW}Creating default ALSA configuration (/etc/asound.conf) routing to Loopback...${NC}"
 cat <<EOF > /etc/asound.conf
 # Resonance HiFi - Default ALSA Route to Loopback
+# This forces Volumio, Spotify, AirPlay, etc., to send audio to the virtual pipe instead of a physical card.
 pcm.!default {
-    type hw
-    card Loopback
-    device 0
+    type plug
+    slave.pcm "camilla_input"
 }
 
 ctl.!default {
     type hw
     card Loopback
+}
+
+# Define the entry point to the Loopback pipe
+pcm.camilla_input {
+    type hw
+    card Loopback
+    device 0
+    subdevice 0
+}
+
+# Fix for duplex output (duplex safety PCM configurations)
+pcm.loop_monitor {
+    type hw
+    card Loopback
+    device 1
+    subdevice 0
 }
 EOF
 
@@ -281,7 +297,7 @@ echo -e "${GREEN}Raspotify Spotify Connect service configured and started.${NC}"
 # Configure passwordless sudo for Spotify and CamillaDSP daemon management
 echo -e "${YELLOW}Configuring sudo permissions for Spotify and CamillaDSP daemon management...${NC}"
 cat <<EOF > /etc/sudoers.d/resonance
-$TARGET_USER ALL=(ALL) NOPASSWD: /usr/bin/tee /etc/raspotify/conf, /bin/tee /etc/raspotify/conf, /usr/bin/systemctl restart raspotify, /bin/systemctl restart raspotify, /usr/bin/systemctl restart camilladsp, /bin/systemctl restart camilladsp, /usr/bin/systemctl reload camilladsp, /bin/systemctl reload camilladsp
+$TARGET_USER ALL=(ALL) NOPASSWD: /usr/bin/tee /etc/raspotify/conf, /bin/tee /etc/raspotify/conf, /usr/bin/tee /etc/asound.conf, /bin/tee /etc/asound.conf, /usr/bin/systemctl restart raspotify, /bin/systemctl restart raspotify, /usr/bin/systemctl restart camilladsp, /bin/systemctl restart camilladsp, /usr/bin/systemctl reload camilladsp, /bin/systemctl reload camilladsp
 EOF
 chmod 440 /etc/sudoers.d/resonance
 

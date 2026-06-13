@@ -451,6 +451,57 @@ function generateCamillaConfig(answers, dacInfo) {
   return config;
 }
 
+// Function to ensure /etc/asound.conf is correctly configured for ALSA Loopback
+async function ensureAsoundConf() {
+  const asoundConfPath = '/etc/asound.conf';
+  const expectedContent = `# Resonance HiFi - Default ALSA Route to Loopback
+# This forces Volumio, Spotify, AirPlay, etc., to send audio to the virtual pipe instead of a physical card.
+pcm.!default {
+    type plug
+    slave.pcm "camilla_input"
+}
+
+ctl.!default {
+    type hw
+    card Loopback
+}
+
+# Define the entry point to the Loopback pipe
+pcm.camilla_input {
+    type hw
+    card Loopback
+    device 0
+    subdevice 0
+}
+
+# Fix for duplex output (duplex safety PCM configurations)
+pcm.loop_monitor {
+    type hw
+    card Loopback
+    device 1
+    subdevice 0
+}
+`;
+
+  try {
+    let currentContent = '';
+    if (fs.existsSync(asoundConfPath)) {
+      currentContent = fs.readFileSync(asoundConfPath, 'utf8');
+    }
+
+    if (currentContent.trim() !== expectedContent.trim()) {
+      console.log('[ALSA] Writing correct loopback routing configuration to /etc/asound.conf...');
+      const tempPath = path.join(__dirname, '../asound.conf.tmp');
+      fs.writeFileSync(tempPath, expectedContent, 'utf8');
+      await execPromise(`sudo /usr/bin/tee ${asoundConfPath} < ${tempPath} > /dev/null`);
+      fs.unlinkSync(tempPath);
+      console.log('[ALSA] /etc/asound.conf updated successfully.');
+    }
+  } catch (err) {
+    console.warn('[ALSA] Failed to write /etc/asound.conf (non-root context or missing sudoers permission):', err.message);
+  }
+}
+
 // POST /api/player/dsp-calibration -> Save user DSP calibration answers & generate configuration
 router.post('/dsp-calibration', async (req, res) => {
   const { answers } = req.body;
@@ -460,6 +511,9 @@ router.post('/dsp-calibration', async (req, res) => {
   try {
     await setSetting('dsp_calibration', JSON.stringify(answers));
     console.log('[CamillaDSP] Saved calibration profile:', answers);
+
+    // Auto-configure ALSA Loopback routing
+    await ensureAsoundConf();
 
     // Scan for DAC capability automatically
     const dacInfo = detectDac();
