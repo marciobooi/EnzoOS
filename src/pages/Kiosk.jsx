@@ -63,6 +63,12 @@ export default function Kiosk() {
   const [scale, setScale] = useState(1);
   const containerRef = useRef(null);
 
+  // UI state variables derived from playbackState
+  const currentTrack = playbackState?.track_window?.current_track;
+  const isPlaying = playbackState ? !playbackState.paused : false;
+  const trackName = currentTrack?.name || 'SYSTEM IDLE';
+  const trackArtist = currentTrack?.artists?.map(a => a.name).join(', ') || 'No Source Loaded';
+
   const handleEqPresetChange = (presetName) => {
     setEqPreset(presetName);
     localStorage.setItem('resonance_eq_preset', presetName);
@@ -652,12 +658,6 @@ export default function Kiosk() {
     sendUpdate('CLEAR_TOKEN');
     toast.info('Spotify disconnected.');
   };
-
-  // UI state variables
-  const currentTrack = playbackState?.track_window?.current_track;
-  const isPlaying = playbackState ? !playbackState.paused : false;
-  const trackName = currentTrack?.name || 'SYSTEM IDLE';
-  const trackArtist = currentTrack?.artists?.map(a => a.name).join(', ') || 'No Source Loaded';
 
   return (
     <div data-theme={theme} className="w-screen h-screen flex items-center justify-center relative overflow-hidden p-6 select-none font-sans">
