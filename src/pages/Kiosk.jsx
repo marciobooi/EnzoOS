@@ -8,6 +8,7 @@ import { Power } from 'lucide-react';
 import PlayerDisplay from '../components/PlayerDisplay';
 import DefinitionsMenu from '../components/DefinitionsMenu';
 import EqualizerControl, { EQ_PRESETS } from '../components/EqualizerControl';
+import DspWizard from '../components/DspWizard';
 
 export default function Kiosk() {
   // Authentication state (server-managed, synchronized via WebSocket)
@@ -61,6 +62,7 @@ export default function Kiosk() {
   const [stationsList, setStationsList] = useState([]);
   const [isSearching, setIsSearching] = useState(false);
   const [standby, setStandby] = useState(false);
+  const [isDspWizardOpen, setIsDspWizardOpen] = useState(false);
   const [scale, setScale] = useState(1);
   const containerRef = useRef(null);
 
@@ -785,9 +787,25 @@ export default function Kiosk() {
               setUpdateStatus={setUpdateStatus}
               errorMessage={errorMessage}
               setErrorMessage={setErrorMessage}
+              onOpenDspWizard={() => {
+                setIsDspWizardOpen(true);
+                setIsMenuOpen(false);
+              }}
             />
           </div>
         </div>
+
+        {/* Full-Screen CamillaDSP Calibration Wizard Overlay */}
+        <div 
+          className={`absolute inset-0 bg-[#070b13] border border-white/10 rounded-3xl shadow-2xl z-50 transform transition-all duration-300 ease-in-out flex flex-col p-1.5 font-sans ${
+            isDspWizardOpen ? 'opacity-100 scale-100 pointer-events-auto' : 'opacity-0 scale-95 pointer-events-none'
+          }`}
+        >
+          <DspWizard
+            onClose={() => setIsDspWizardOpen(false)}
+          />
+        </div>
+
         <Toaster theme="dark" closeButton richColors position="bottom-right" visibleToasts={1} />
       </div>
     </div>

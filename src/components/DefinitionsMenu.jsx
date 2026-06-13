@@ -1,5 +1,4 @@
-import React from 'react';
-import { Sliders, Music, Download, LogOut, Radio } from 'lucide-react';
+import { Sliders, Music, Download, LogOut, Radio, Waves } from 'lucide-react';
 
 export default function DefinitionsMenu({
   token,
@@ -14,7 +13,8 @@ export default function DefinitionsMenu({
   setOtaPercent,
   setOtaProgress,
   errorMessage,
-  setErrorMessage
+  setErrorMessage,
+  onOpenDspWizard
 }) {
   // Theme Cycler Logic
   const themesList = ['amber', 'emerald', 'cyan', 'amethyst', 'ruby'];
@@ -149,6 +149,25 @@ export default function DefinitionsMenu({
         <div className="flex items-center justify-between text-[9px] font-bold uppercase tracking-wider w-full">
           <span className="text-zinc-400">THEME</span>
           <span className="text-white font-extrabold">{theme?.toUpperCase()}</span>
+        </div>
+      </button>
+
+      {/* 4b. ACOUSTIC PROFILE CARD */}
+      <button
+        onClick={onOpenDspWizard}
+        className="w-[180px] shrink-0 p-5 rounded-2xl text-left flex flex-col justify-between transition-all duration-300 relative group overflow-hidden cursor-pointer menu-card hover:scale-[1.01]"
+      >
+        <span className="text-[9px] font-extrabold tracking-widest text-zinc-400 uppercase">Acoustic Profiler</span>
+        
+        <div className="my-auto flex justify-center py-2">
+          <Waves 
+            className="h-16 w-16 text-zinc-500 group-hover:text-[var(--theme-color)] group-hover:drop-shadow-[0_0_10px_var(--theme-color-glow)] transition-all duration-300"
+          />
+        </div>
+
+        <div className="flex items-center justify-between text-[9px] font-bold uppercase tracking-wider w-full">
+          <span className="text-zinc-400">DSP TUNING</span>
+          <span className="text-white font-extrabold">WIZARD</span>
         </div>
       </button>
 

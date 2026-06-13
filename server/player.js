@@ -163,4 +163,29 @@ router.delete('/radios', async (req, res) => {
   }
 });
 
+// POST /api/player/dsp-calibration -> Save user DSP calibration answers
+router.post('/dsp-calibration', async (req, res) => {
+  const { answers } = req.body;
+  if (!answers) {
+    return res.status(400).json({ error: 'Answers are required' });
+  }
+  try {
+    await setSetting('dsp_calibration', JSON.stringify(answers));
+    console.log('[CamillaDSP] Saved calibration profile:', answers);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/player/dsp-calibration -> Retrieve calibration
+router.get('/dsp-calibration', async (req, res) => {
+  try {
+    const data = await getSetting('dsp_calibration');
+    res.json(data ? JSON.parse(data) : null);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 export default router;

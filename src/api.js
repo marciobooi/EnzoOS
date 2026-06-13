@@ -379,5 +379,25 @@ export const api = {
       body: JSON.stringify({ url })
     });
     return response.json();
+  },
+
+  /**
+   * Save CamillaDSP calibration settings.
+   */
+  async saveDspCalibration(answers) {
+    const response = await fetch('/api/player/dsp-calibration', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ answers })
+    });
+    return response.json();
+  },
+
+  /**
+   * Fetch CamillaDSP calibration settings.
+   */
+  async getDspCalibration() {
+    const response = await fetch('/api/player/dsp-calibration');
+    return response.json();
   }
 };
