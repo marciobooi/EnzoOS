@@ -228,6 +228,13 @@ div[data-theme="ruby"] *::selection {
   animation: pulse-glow-theme 2s infinite ease-in-out;
 }
 
+@keyframes player-subtle-shift {
+  0%, 100% { transform: translate(0, 0); }
+  25% { transform: translate(1px, 0); }
+  50% { transform: translate(1px, 1px); }
+  75% { transform: translate(0, 1px); }
+}
+
 .music-player {
   width: 1400px;
   height: 320px;
@@ -241,6 +248,7 @@ div[data-theme="ruby"] *::selection {
   box-shadow: inset 0 0 32px rgba(0, 0, 0, 0.6);
   font-family: 'Doto', monospace;
   flex-shrink: 0;
+  animation: player-subtle-shift 240s ease-in-out infinite;
 }
 
 .album-column {
@@ -582,4 +590,30 @@ div[data-theme="ruby"] *::selection {
   border-width: 1px !important;
   background: rgba(255, 255, 255, 0.05) !important;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5), 0 8px 32px 0 rgba(5, 13, 28, 0.4), 0 0 12px var(--theme-color-glow) !important;
+}
+
+/* OLED Burn-in prevention / pixel shifter */
+@keyframes screensaver-drift {
+  0% {
+    transform: translate(0, 0);
+  }
+  20% {
+    transform: translate(25px, -15px);
+  }
+  40% {
+    transform: translate(-20px, 20px);
+  }
+  60% {
+    transform: translate(-25px, -20px);
+  }
+  80% {
+    transform: translate(15px, 25px);
+  }
+  100% {
+    transform: translate(0, 0);
+  }
+}
+
+.screensaver-float {
+  animation: screensaver-drift 120s ease-in-out infinite;
 }

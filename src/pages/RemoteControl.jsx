@@ -694,7 +694,7 @@ export default function RemoteControl() {
           <div className="absolute inset-0 bg-black z-[9999] flex items-center justify-center flex-col animate-fade-in">
             <button
               onClick={() => handleToggleStandby(false)}
-              className="group flex flex-col items-center justify-center gap-4 cursor-pointer focus:outline-none transition-all active:scale-95"
+              className="group flex flex-col items-center justify-center gap-4 cursor-pointer focus:outline-none transition-all active:scale-95 screensaver-float"
               type="button"
               aria-label="Power on system"
             >
