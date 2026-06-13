@@ -111,14 +111,14 @@ export default function Kiosk() {
 
 
 
-  const fetchFavorites = async () => {
+  async function fetchFavorites() {
     try {
       const favs = await api.getFavoriteRadios();
       setFavoriteStations(favs || []);
     } catch (err) {
       console.warn('Failed to load favorite stations:', err);
     }
-  };
+  }
 
   useEffect(() => {
     if (!radioSearch.trim()) {
@@ -130,15 +130,15 @@ export default function Kiosk() {
     fetchFavorites();
   }, []);
 
-  const setVolumeWithLock = (vol) => {
+  function setVolumeWithLock(vol) {
     if (Date.now() - lastVolumeChangeTime.current < 2500) return;
     setVolume(vol);
-  };
+  }
 
-  const setIsMutedWithLock = (muted) => {
+  function setIsMutedWithLock(muted) {
     if (Date.now() - lastVolumeChangeTime.current < 2500) return;
     setIsMuted(muted);
-  };
+  }
 
   const handleThemeChange = (newTheme) => {
     setTheme(newTheme);
@@ -357,7 +357,7 @@ export default function Kiosk() {
   }, [playbackState, trackDuration]);
 
   // Refresh Spotify Connect devices list
-  const fetchDevices = async () => {
+  async function fetchDevices() {
     if (!token) return;
     try {
       setIsFetchingDevices(true);
@@ -368,7 +368,7 @@ export default function Kiosk() {
     } finally {
       setIsFetchingDevices(false);
     }
-  };
+  }
 
   // Transfer playback to target device
   const transferPlayback = async (targetId) => {
@@ -508,7 +508,7 @@ export default function Kiosk() {
   };
 
   // Sync state manually from Spotify Web API
-  const syncCurrentState = async () => {
+  async function syncCurrentState() {
     if (!spotify) return;
     if (!token) return;
     try {
@@ -555,7 +555,7 @@ export default function Kiosk() {
     } catch (err) {
       console.warn('Could not sync remote state:', err);
     }
-  };
+  }
 
   // Manual Seek
   const handleSeek = async (e) => {
