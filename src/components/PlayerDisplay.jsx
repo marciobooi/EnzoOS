@@ -621,7 +621,7 @@ export default function PlayerDisplay({
                       return next;
                     });
                   }}
-                  className="absolute bottom-1.5 right-2.5 z-[60] bg-black/75 hover:bg-black border border-white/10 text-[6.5px] font-extrabold tracking-wider uppercase px-1.5 py-0.5 rounded text-zinc-400 hover:text-[var(--theme-color)] transition-all cursor-pointer opacity-0 group-hover:opacity-100"
+                  className="absolute bottom-1.5 right-2.5 z-[60] bg-black/75 hover:bg-black border border-white/10 text-[6.5px] font-extrabold tracking-wider uppercase px-1.5 py-0.5 rounded text-zinc-400 hover:text-[var(--theme-color)] transition-all cursor-pointer opacity-70 hover:opacity-100"
                   title="Toggle Visualizer Mode"
                 >
                   {visualizerMode === 'vu' ? 'VU' : '7-Band'}
