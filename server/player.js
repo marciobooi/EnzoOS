@@ -676,5 +676,21 @@ export async function updateCamillaConfigFromSettings() {
   return dacInfo;
 }
 
+// POST /api/player/standby -> Set standby state (used by wake monitor scripts or external triggers)
+router.post('/standby', async (req, res) => {
+  const { enabled } = req.body;
+  if (enabled === undefined) {
+    return res.status(400).json({ error: 'enabled parameter is required' });
+  }
+  try {
+    const { setStandbyState } = await import('./websocket.js');
+    await setStandbyState(enabled);
+    res.json({ success: true });
+  } catch (err) {
+    console.error('[Player API] Standby toggle failed:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 export default router;
 

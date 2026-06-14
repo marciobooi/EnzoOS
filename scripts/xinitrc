@@ -4,13 +4,14 @@
 
 # ── Display tuning ──────────────────────────────────────────────────────────
 
-# Disable screensaver, blanking, DPMS power management
-xset s off
-xset s noblank
-xset -dpms
+# Start power manager (enables DPMS with 5-minute timeout)
+/usr/local/bin/kiosk-power.sh &
 
-# Hide mouse cursor after 0.1s of inactivity
-unclutter -idle 0.1 -root &
+# Start wake monitor (touch + keyboard + media keys)
+/usr/local/bin/kiosk-wake-monitor.sh &
+
+# Hide mouse cursor after 0.5s of inactivity
+unclutter -idle 0.5 -root &
 
 # ── Resolution setup (skip gracefully on VMs / unsupported displays) ─────────
 
@@ -82,6 +83,9 @@ while true; do
     --app=http://localhost:5000/kiosk \
     --window-size=800,480 \
     --autoplay-policy=no-user-gesture-required \
+    --user-data-dir="$HOME/.config/spotify-kiosk" \
+    --disk-cache-dir="$HOME/.cache/spotify-kiosk" \
+    --disable-restore-session-state \
     --noerrdialogs \
     --disable-infobars \
     --disable-session-crashed-bubble \

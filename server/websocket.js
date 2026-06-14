@@ -14,13 +14,16 @@ export const setStandbyState = async (enabled) => {
     wssBroadcast({ type: 'SET_STANDBY', payload: { enabled } });
   }
 
-  if (enabled) {
-    try {
-      const { exec } = await import('child_process');
+  try {
+    const { exec } = await import('child_process');
+    if (enabled) {
       exec('mpc stop');
-    } catch (err) {
-      console.error('[Standby] Failed to stop mpc:', err);
+      exec('sudo /usr/local/bin/kiosk-power.sh standby');
+    } else {
+      exec('sudo /usr/local/bin/kiosk-power.sh wake');
     }
+  } catch (err) {
+    console.error('[Standby] Failed to execute power/mpc action:', err);
   }
 };
 

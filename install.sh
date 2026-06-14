@@ -106,7 +106,9 @@ apt-get install -y \
   mpd \
   mpc \
   sqlite3 \
-  libsqlite3-dev
+  libsqlite3-dev \
+  xinput \
+  evtest
 # Enable ALSA Loopback kernel module immediately and on boot
 echo -e "${YELLOW}Enabling ALSA Loopback device module (snd-aloop)...${NC}"
 modprobe snd-aloop || true
@@ -297,7 +299,7 @@ echo -e "${GREEN}Raspotify Spotify Connect service configured and started.${NC}"
 # Configure passwordless sudo for Spotify and CamillaDSP daemon management
 echo -e "${YELLOW}Configuring sudo permissions for Spotify and CamillaDSP daemon management...${NC}"
 cat <<EOF > /etc/sudoers.d/resonance
-$TARGET_USER ALL=(ALL) NOPASSWD: /usr/bin/tee /etc/raspotify/conf, /bin/tee /etc/raspotify/conf, /usr/bin/tee /etc/asound.conf, /bin/tee /etc/asound.conf, /usr/bin/systemctl restart raspotify, /bin/systemctl restart raspotify, /usr/bin/systemctl restart camilladsp, /bin/systemctl restart camilladsp, /usr/bin/systemctl reload camilladsp, /bin/systemctl reload camilladsp
+$TARGET_USER ALL=(ALL) NOPASSWD: /usr/bin/tee /etc/raspotify/conf, /bin/tee /etc/raspotify/conf, /usr/bin/tee /etc/asound.conf, /bin/tee /etc/asound.conf, /usr/bin/systemctl restart raspotify, /bin/systemctl restart raspotify, /usr/bin/systemctl restart camilladsp, /bin/systemctl restart camilladsp, /usr/bin/systemctl reload camilladsp, /bin/systemctl reload camilladsp, /usr/local/bin/kiosk-power.sh
 EOF
 chmod 440 /etc/sudoers.d/resonance
 
@@ -330,6 +332,21 @@ systemctl restart avahi-daemon || true
 # 8. Configure Kiosk startup scripts
 echo -e "\n${GREEN}[6/7] Configuring kiosk startup files...${NC}"
 
+# Deploy kiosk power management and wake monitor scripts
+echo -e "${YELLOW}Deploying kiosk power management and wake monitor scripts...${NC}"
+cp "$PROJECT_DIR/scripts/kiosk-power.sh" "/usr/local/bin/kiosk-power.sh"
+chmod +x "/usr/local/bin/kiosk-power.sh"
+chown root:root "/usr/local/bin/kiosk-power.sh"
+
+cp "$PROJECT_DIR/scripts/kiosk-wake-monitor.sh" "/usr/local/bin/kiosk-wake-monitor.sh"
+chmod +x "/usr/local/bin/kiosk-wake-monitor.sh"
+chown root:root "/usr/local/bin/kiosk-wake-monitor.sh"
+
+# Ensure Chromium profile and cache directories exist with correct user permissions
+echo -e "${YELLOW}Creating Chromium kiosk profile data directories...${NC}"
+mkdir -p "$USER_HOME/.config/spotify-kiosk"
+mkdir -p "$USER_HOME/.cache/spotify-kiosk"
+
 # Deploy .xinitrc from the repository to the target user home directory
 echo -e "${YELLOW}Deploying kiosk startup xinitrc config...${NC}"
 cp "$PROJECT_DIR/scripts/xinitrc" "$USER_HOME/.xinitrc"
@@ -341,6 +358,7 @@ echo -e "${YELLOW}Deploying Openbox config to disable window decorations...${NC}
 mkdir -p "$USER_HOME/.config/openbox"
 cp "$PROJECT_DIR/scripts/openbox_rc.xml" "$USER_HOME/.config/openbox/rc.xml"
 chown -R $TARGET_USER:$TARGET_USER "$USER_HOME/.config"
+chown -R $TARGET_USER:$TARGET_USER "$USER_HOME/.cache"
 
 # Automatically trigger X server when logging in on TTY1 console
 AUTOSTART_X_BLOCK=$(cat <<'EOF'

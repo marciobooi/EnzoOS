@@ -799,23 +799,6 @@ export default function RemoteControl() {
   // 2. Render normal remote dashboard if authenticated
     return (
       <>
-        {standby && (
-          <div className="absolute inset-0 bg-black z-[9999] flex items-center justify-center flex-col animate-fade-in">
-            <button
-              onClick={() => handleToggleStandby(false)}
-              className="group flex flex-col items-center justify-center gap-4 cursor-pointer focus:outline-none transition-all active:scale-95 screensaver-float"
-              type="button"
-              aria-label="Power on system"
-            >
-              <div className="w-20 h-20 rounded-full border border-white/5 bg-white/[0.01] hover:bg-white/[0.03] hover:border-white/10 flex items-center justify-center transition-all duration-500 shadow-inner group-hover:scale-105">
-                <Power className="h-8 w-8 text-white/10 group-hover:text-white/30 transition-colors duration-500" />
-              </div>
-              <span className="text-[9px] uppercase tracking-[0.25em] text-white/5 group-hover:text-white/15 transition-colors duration-500 font-sans font-extrabold mt-1">
-                Tap to Wake System
-              </span>
-            </button>
-          </div>
-        )}
         <div className="w-full min-h-screen text-zinc-800 font-sans flex flex-col items-center justify-between pb-6 pt-6 px-6 relative overflow-hidden select-none">
           
           {/* Background Ambience Glow */}
@@ -832,10 +815,12 @@ export default function RemoteControl() {
             <div className="flex items-center gap-2">
               <button 
                 onClick={() => handleToggleStandby(!standby)}
-                className={`p-2 rounded-full hover:bg-zinc-100 active:scale-90 transition-all cursor-pointer ${
-                  standby ? 'text-rose-500 bg-rose-50' : 'text-zinc-500 hover:text-zinc-900'
+                className={`p-2 rounded-full active:scale-90 transition-all cursor-pointer ${
+                  standby 
+                    ? 'text-red-500 hover:bg-red-100 bg-red-50' 
+                    : 'text-zinc-500 hover:text-zinc-900 hover:bg-zinc-100'
                 }`}
-                title={standby ? 'Wake up' : 'Standby'}
+                title="Standby"
               >
                 <Power className="h-4 w-4" />
               </button>
@@ -849,6 +834,7 @@ export default function RemoteControl() {
               </button>
             </div>
           </header>
+
 
           {/* Main Content Area (Tab Swapping) */}
           <main className="w-full max-w-md flex-grow flex flex-col justify-center gap-6 z-10 mt-4 overflow-y-auto max-h-[calc(100vh-190px)] custom-scrollbar pb-2">
