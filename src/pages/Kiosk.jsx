@@ -51,6 +51,7 @@ export default function Kiosk() {
   const [activeTheme, setActiveTheme] = useState(() => localStorage.getItem('resonance_theme_active') || 'dot-matrix');
   const [brightness, setBrightness] = useState(() => Number(localStorage.getItem('resonance_theme_brightness')) || 100);
   const [isThemeSettingsOpen, setIsThemeSettingsOpen] = useState(false);
+  const [remoteAccessEnabled, setRemoteAccessEnabled] = useState(true);
 
   const themeSyncTimeout = useRef(null);
   const queueThemeSync = (themeColor, activeThemeVal, brightnessVal) => {
@@ -304,7 +305,8 @@ export default function Kiosk() {
     setDspActive,
     setTheme,
     setActiveTheme,
-    setBrightness
+    setBrightness,
+    setRemoteAccessEnabled
   });
 
   const handleToggleStandby = (enabled) => {
@@ -903,6 +905,11 @@ export default function Kiosk() {
               onOpenThemeSettings={() => {
                 setIsThemeSettingsOpen(true);
                 setIsMenuOpen(false);
+              }}
+              remoteAccessEnabled={remoteAccessEnabled}
+              onToggleRemoteAccess={(enabled) => {
+                setRemoteAccessEnabled(enabled);
+                sendUpdate('SET_REMOTE_ACCESS', { enabled });
               }}
             />
           </div>

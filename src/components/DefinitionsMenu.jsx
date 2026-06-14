@@ -1,4 +1,4 @@
-import { Sliders, Music, Download, LogOut, Radio, Waves } from 'lucide-react';
+import { Sliders, Music, Download, LogOut, Radio, Waves, Smartphone } from 'lucide-react';
 
 export default function DefinitionsMenu({
   token,
@@ -15,7 +15,9 @@ export default function DefinitionsMenu({
   errorMessage,
   setErrorMessage,
   onOpenDspWizard,
-  onOpenThemeSettings
+  onOpenThemeSettings,
+  remoteAccessEnabled = true,
+  onToggleRemoteAccess
 }) {
   // Theme Cycler Logic
   const themesList = ['amber', 'emerald', 'cyan', 'amethyst', 'ruby'];
@@ -173,6 +175,37 @@ export default function DefinitionsMenu({
         <div className="flex items-center justify-between text-[9px] font-bold uppercase tracking-wider w-full">
           <span className="text-zinc-400">DSP TUNING</span>
           <span className="text-white font-extrabold">WIZARD</span>
+        </div>
+      </button>
+
+      {/* 4c. REMOTE ACCESS CONTROL CARD */}
+      <button
+        onClick={() => {
+          if (onToggleRemoteAccess) onToggleRemoteAccess(!remoteAccessEnabled);
+        }}
+        className={`w-[180px] shrink-0 p-5 rounded-2xl text-left flex flex-col justify-between transition-all duration-300 relative group overflow-hidden cursor-pointer ${
+          remoteAccessEnabled ? 'active-card scale-[1.02]' : 'menu-card hover:scale-[1.01]'
+        }`}
+      >
+        <span className="text-[9px] font-extrabold tracking-widest text-zinc-400 uppercase">ACCESS PANEL</span>
+        
+        <div className="my-auto flex justify-center py-2">
+          {remoteAccessEnabled ? (
+            <Smartphone 
+              className="h-16 w-16 text-[var(--theme-color)] drop-shadow-[0_0_10px_var(--theme-color-glow)] transition-all duration-300"
+            />
+          ) : (
+            <Smartphone 
+              className="h-16 w-16 text-zinc-500 opacity-40 group-hover:text-zinc-350 transition-colors"
+            />
+          )}
+        </div>
+
+        <div className="flex items-center justify-between text-[9px] font-bold uppercase tracking-wider w-full">
+          <span className={remoteAccessEnabled ? 'text-white font-extrabold' : 'text-zinc-400'}>REMOTE VIEW</span>
+          <span className={remoteAccessEnabled ? 'text-[var(--theme-color)] font-black' : 'text-zinc-400'}>
+            {remoteAccessEnabled ? 'ENABLED' : 'DISABLED'}
+          </span>
         </div>
       </button>
 

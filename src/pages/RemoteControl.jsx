@@ -21,7 +21,8 @@ import {
   Power,
   Sliders,
   Cpu,
-  Palette
+  Palette,
+  Smartphone
 } from 'lucide-react';
 import { api } from '../api';
 import { toast, Toaster } from 'sonner';
@@ -92,6 +93,7 @@ export default function RemoteControl() {
   const [daemonPassword, setDaemonPassword] = useState('');
   const [isSavingDaemonCreds, setIsSavingDaemonCreds] = useState(false);
   const [standby, setStandby] = useState(false);
+  const [remoteAccessEnabled, setRemoteAccessEnabled] = useState(true);
 
   // Equalizer & Wizard Remote states
   const [isDspWizardOpen, setIsDspWizardOpen] = useState(false);
@@ -423,7 +425,8 @@ export default function RemoteControl() {
     setDspActive,
     setTheme,
     setActiveTheme,
-    setBrightness
+    setBrightness,
+    setRemoteAccessEnabled
   });
 
   const handleToggleStandby = (enabled) => {
@@ -789,6 +792,24 @@ export default function RemoteControl() {
     const secs = totalSecs % 60;
     return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
   };
+
+  if (!remoteAccessEnabled) {
+    return (
+      <div className="w-screen h-screen bg-[#040612] text-zinc-100 flex flex-col items-center justify-center p-6 font-sans select-none">
+        <div className="max-w-md w-full bg-white/[0.02] border border-white/10 rounded-3xl p-8 text-center flex flex-col items-center gap-6 shadow-2xl backdrop-blur-md">
+          <div className="w-20 h-20 rounded-2xl bg-rose-500/10 border border-rose-500/20 flex items-center justify-center text-rose-500 animate-bounce">
+            <Smartphone className="h-10 w-10" />
+          </div>
+          <div>
+            <h1 className="text-sm font-extrabold uppercase tracking-[0.2em] text-white">Remote Access Disabled</h1>
+            <p className="text-zinc-400 text-[9px] mt-2 leading-relaxed font-mono">
+              The administrator has disabled remote control capabilities. Please enable it from the physical kiosk system menu.
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   // 1. Render Login Form if not authorized
   if (!isAuthenticated) {

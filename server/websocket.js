@@ -105,6 +105,12 @@ export const loadCachedStateFromDB = async () => {
       source: activeSource
     };
     console.log(`[Resonance WS] Loaded active source from DB: ${activeSource}`);
+
+    let remoteAccessVal = await getSetting('remote_access_enabled');
+    if (!remoteAccessVal) {
+      await setSetting('remote_access_enabled', 'true');
+      console.log('[Resonance DB] Initialized default remote_access_enabled in DB.');
+    }
       
       if (activeSource === 'radio') {
         const url = await getSetting('last_radio_url');
@@ -182,6 +188,10 @@ export function setupWebSocket(server, app, isLocalIP) {
       ws.send(JSON.stringify({ type: 'THEME_SETTINGS', payload: JSON.parse(themeSettings) }));
     }
 
+    // Send remote access status on connect
+    const remoteAccess = await getSetting('remote_access_enabled');
+    ws.send(JSON.stringify({ type: 'SET_REMOTE_ACCESS', payload: { enabled: remoteAccess === 'true' } }));
+
     // Send the server-managed access token (auto-refreshed if needed)
     const serverToken = await getValidAccessToken();
     if (serverToken) {
@@ -253,6 +263,12 @@ export function setupWebSocket(server, app, isLocalIP) {
           
           // Broadcast theme settings to all other clients
           broadcast({ type: 'THEME_SETTINGS', payload }, ws);
+        }
+
+        if (type === 'SET_REMOTE_ACCESS') {
+          console.log('[Resonance WS] Remote access update received:', payload);
+          await setSetting('remote_access_enabled', payload.enabled ? 'true' : 'false');
+          broadcast({ type: 'SET_REMOTE_ACCESS', payload }, ws);
         }
 
         if (type === 'CLEAR_TOKEN') {

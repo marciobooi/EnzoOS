@@ -34,7 +34,8 @@ export function useResonanceWS({
     setDspActive,
     setTheme,
     setActiveTheme,
-    setBrightness
+    setBrightness,
+    setRemoteAccessEnabled
   }) {
     const [isConnected, setIsConnected] = useState(false);
     const ws = useRef(null);
@@ -166,6 +167,10 @@ export function useResonanceWS({
               localStorage.setItem('resonance_theme', payload.themeColor);
               localStorage.setItem('resonance_theme_active', payload.activeTheme);
               localStorage.setItem('resonance_theme_brightness', payload.brightness);
+            }
+
+            if (type === 'SET_REMOTE_ACCESS') {
+              if (setRemoteAccessEnabled) setRemoteAccessEnabled(payload.enabled);
             }
   
             if (type === 'CLEAR_TOKEN') {
