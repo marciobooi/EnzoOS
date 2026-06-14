@@ -322,7 +322,8 @@ export default function Kiosk() {
     setRemoteAccessEnabled,
     onAudioLevels: (payload) => {
       window.dispatchEvent(new CustomEvent('resonance-audio-levels', { detail: payload }));
-    }
+    },
+    setVisualizerMode
   });
 
   useEffect(() => {
@@ -821,6 +822,8 @@ export default function Kiosk() {
         <PlayerDisplay
           theme={theme}
           activeTheme={activeTheme}
+          visualizerMode={visualizerMode}
+          onVisualizerModeChange={handleVisualizerModeChange}
           isPlaying={isPlaying}
           isLocalDeviceActive={isLocalDeviceActive}
           trackName={trackName}
@@ -952,6 +955,8 @@ export default function Kiosk() {
             onColorChange={handleThemeColorChange}
             brightness={brightness}
             onBrightnessChange={handleBrightnessChange}
+            visualizerMode={visualizerMode}
+            onVisualizerModeChange={handleVisualizerModeChange}
             onClose={() => setIsThemeSettingsOpen(false)}
           />
         </div>
