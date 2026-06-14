@@ -4,6 +4,8 @@ import { Play, Pause, SkipForward, SkipBack, Shuffle, Repeat, Volume2, VolumeX, 
 export default function PlayerDisplay({
   theme = 'amber',
   activeTheme = 'dot-matrix',
+  visualizerMode = 'vu',
+  onVisualizerModeChange,
   isPlaying,
   isLocalDeviceActive,
   trackName,
@@ -49,7 +51,6 @@ export default function PlayerDisplay({
   const dbRRef = useRef(null);
   const needleLRef = useRef(null);
   const needleRRef = useRef(null);
-  const [visualizerMode, setVisualizerMode] = useState(() => localStorage.getItem('resonance_visualizer_mode') || 'vu');
   const canvasRef = useRef(null);
 
   useEffect(() => {
@@ -615,11 +616,9 @@ export default function PlayerDisplay({
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
-                    setVisualizerMode(prev => {
-                      const next = prev === 'vu' ? 'digital' : 'vu';
-                      localStorage.setItem('resonance_visualizer_mode', next);
-                      return next;
-                    });
+                    if (onVisualizerModeChange) {
+                      onVisualizerModeChange(visualizerMode === 'vu' ? 'digital' : 'vu');
+                    }
                   }}
                   className="absolute bottom-1.5 right-2.5 z-[60] bg-black/75 hover:bg-black border border-white/10 text-[6.5px] font-extrabold tracking-wider uppercase px-1.5 py-0.5 rounded text-zinc-400 hover:text-[var(--theme-color)] transition-all cursor-pointer opacity-70 hover:opacity-100"
                   title="Toggle Visualizer Mode"

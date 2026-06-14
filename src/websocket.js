@@ -36,7 +36,8 @@ export function useResonanceWS({
     setActiveTheme,
     setBrightness,
     setRemoteAccessEnabled,
-    onAudioLevels
+    onAudioLevels,
+    setVisualizerMode
   }) {
     const [isConnected, setIsConnected] = useState(false);
     const ws = useRef(null);
@@ -164,10 +165,12 @@ export function useResonanceWS({
               if (setTheme) setTheme(payload.themeColor);
               if (setActiveTheme) setActiveTheme(payload.activeTheme);
               if (setBrightness) setBrightness(payload.brightness);
+              if (setVisualizerMode) setVisualizerMode(payload.visualizerMode || 'vu');
 
               localStorage.setItem('resonance_theme', payload.themeColor);
               localStorage.setItem('resonance_theme_active', payload.activeTheme);
               localStorage.setItem('resonance_theme_brightness', payload.brightness);
+              localStorage.setItem('resonance_visualizer_mode', payload.visualizerMode || 'vu');
             }
 
             if (type === 'SET_REMOTE_ACCESS') {

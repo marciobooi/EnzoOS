@@ -50,17 +50,19 @@ export default function Kiosk() {
   const [theme, setTheme] = useState(localStorage.getItem('resonance_theme') || 'amber');
   const [activeTheme, setActiveTheme] = useState(() => localStorage.getItem('resonance_theme_active') || 'dot-matrix');
   const [brightness, setBrightness] = useState(() => Number(localStorage.getItem('resonance_theme_brightness')) || 100);
+  const [visualizerMode, setVisualizerMode] = useState(() => localStorage.getItem('resonance_visualizer_mode') || 'vu');
   const [isThemeSettingsOpen, setIsThemeSettingsOpen] = useState(false);
   const [remoteAccessEnabled, setRemoteAccessEnabled] = useState(true);
 
   const themeSyncTimeout = useRef(null);
-  const queueThemeSync = (themeColor, activeThemeVal, brightnessVal) => {
+  const queueThemeSync = (themeColor, activeThemeVal, brightnessVal, visualizerModeVal) => {
     if (themeSyncTimeout.current) clearTimeout(themeSyncTimeout.current);
     themeSyncTimeout.current = setTimeout(() => {
       sendUpdate('SET_THEME_SETTINGS', {
         themeColor,
         activeTheme: activeThemeVal,
-        brightness: brightnessVal
+        brightness: brightnessVal,
+        visualizerMode: visualizerModeVal
       });
     }, 400);
   };
@@ -71,7 +73,8 @@ export default function Kiosk() {
     sendUpdate('SET_THEME_SETTINGS', {
       themeColor: newColor,
       activeTheme,
-      brightness
+      brightness,
+      visualizerMode
     });
   };
 
@@ -81,14 +84,26 @@ export default function Kiosk() {
     sendUpdate('SET_THEME_SETTINGS', {
       themeColor: theme,
       activeTheme: newTheme,
-      brightness
+      brightness,
+      visualizerMode
     });
   };
 
   const handleBrightnessChange = (newVal) => {
     setBrightness(newVal);
     localStorage.setItem('resonance_theme_brightness', newVal);
-    queueThemeSync(theme, activeTheme, newVal);
+    queueThemeSync(theme, activeTheme, newVal, visualizerMode);
+  };
+
+  const handleVisualizerModeChange = (mode) => {
+    setVisualizerMode(mode);
+    localStorage.setItem('resonance_visualizer_mode', mode);
+    sendUpdate('SET_THEME_SETTINGS', {
+      themeColor: theme,
+      activeTheme,
+      brightness,
+      visualizerMode: mode
+    });
   };
 
   const lastVolumeChangeTime = useRef(0);

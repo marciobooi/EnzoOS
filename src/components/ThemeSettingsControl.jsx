@@ -23,6 +23,8 @@ export default function ThemeSettingsControl({
   onColorChange,
   brightness = 100,
   onBrightnessChange,
+  visualizerMode = 'vu',
+  onVisualizerModeChange,
   onClose
 }) {
   return (
@@ -123,7 +125,7 @@ export default function ThemeSettingsControl({
         {/* Right Side: Brightness & Performance */}
         <div className="lg:col-span-5 bg-zinc-950/60 border border-white/5 rounded-xl p-4 flex flex-col justify-between overflow-hidden">
           <div>
-            <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center justify-between mb-2 shrink-0">
               <span className="font-mono text-[9px] text-zinc-400 tracking-wider">
                 SCREEN HARDWARE PARAMETERS
               </span>
@@ -131,10 +133,10 @@ export default function ThemeSettingsControl({
             </div>
 
             {/* Brightness slider */}
-            <div className="bg-zinc-900/40 border border-white/5 rounded-xl p-3.5 mt-2">
-              <div className="flex justify-between items-center text-[10px] mb-1.5 font-sans">
+            <div className="bg-zinc-900/40 border border-white/5 rounded-xl p-3 mt-1.5 shrink-0">
+              <div className="flex justify-between items-center text-[9.5px] mb-1 font-sans">
                 <span className="font-mono text-zinc-300 flex items-center gap-1.5">
-                  <Sun className="w-3.5 h-3.5 text-zinc-400" /> Backlight Brightness
+                  <Sun className="w-3 h-3 text-zinc-400" /> Backlight Brightness
                 </span>
                 <span className="font-mono text-[var(--theme-color)] font-bold">{brightness}%</span>
               </div>
@@ -145,17 +147,46 @@ export default function ThemeSettingsControl({
                 step="5"
                 value={brightness}
                 onChange={(e) => onBrightnessChange && onBrightnessChange(Number(e.target.value))}
-                className="w-full accent-[var(--theme-color)] h-1.5 bg-zinc-800 rounded-full appearance-none cursor-pointer"
+                className="w-full accent-[var(--theme-color)] h-1 bg-zinc-800 rounded-full appearance-none cursor-pointer"
               />
-              <div className="flex justify-between text-[8px] text-zinc-500 font-mono mt-1 select-none">
+              <div className="flex justify-between text-[7.5px] text-zinc-500 font-mono mt-0.5 select-none">
                 <span>10% (Dim)</span>
                 <span>100% (Full Power)</span>
               </div>
             </div>
+
+            {/* Visualizer Mode Selection */}
+            <div className="bg-zinc-900/40 border border-white/5 rounded-xl p-3 mt-3 shrink-0">
+              <span className="font-mono text-[9px] text-zinc-400 uppercase tracking-wider block mb-2 font-bold">
+                ACTIVE PLAYER VISUALIZER
+              </span>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => onVisualizerModeChange && onVisualizerModeChange('vu')}
+                  className={`flex-1 py-1.5 rounded-xl border text-[9px] uppercase font-bold tracking-wider transition-all cursor-pointer text-center select-none active:scale-95 ${
+                    visualizerMode === 'vu'
+                      ? 'border-[var(--theme-color)] bg-[var(--theme-color)]/5 text-white'
+                      : 'border-white/10 bg-zinc-900/40 hover:bg-zinc-800/40 text-zinc-400'
+                  }`}
+                >
+                  VU Needles
+                </button>
+                <button
+                  onClick={() => onVisualizerModeChange && onVisualizerModeChange('digital')}
+                  className={`flex-1 py-1.5 rounded-xl border text-[9px] uppercase font-bold tracking-wider transition-all cursor-pointer text-center select-none active:scale-95 ${
+                    visualizerMode === 'digital'
+                      ? 'border-[var(--theme-color)] bg-[var(--theme-color)]/5 text-white'
+                      : 'border-white/10 bg-zinc-900/40 hover:bg-zinc-800/40 text-zinc-400'
+                  }`}
+                >
+                  7-Band Digital
+                </button>
+              </div>
+            </div>
           </div>
 
-          <div className="border-t border-white/5 pt-3 mt-3">
-            <p className="font-mono text-[8px] text-center text-zinc-500 leading-normal">
+          <div className="border-t border-white/5 pt-2 mt-2 shrink-0">
+            <p className="font-mono text-[7.5px] text-center text-zinc-500 leading-normal">
               Backlight dimming applies a software rendering overlay to protect screen lifetime on Waveshare HDMI hardware. Refresh rate is maintained at standard sync depth.
             </p>
           </div>
