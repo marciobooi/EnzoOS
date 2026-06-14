@@ -101,6 +101,12 @@ export function setupWebSocket(server, app, isLocalIP) {
     // Send the active standby state on connect
     ws.send(JSON.stringify({ type: 'SET_STANDBY', payload: { enabled: cachedStandbyState } }));
 
+    // Send the active EQ settings on connect
+    const eqSettings = await getSetting('eq_settings');
+    if (eqSettings) {
+      ws.send(JSON.stringify({ type: 'EQ_SETTINGS', payload: JSON.parse(eqSettings) }));
+    }
+
     // Send the server-managed access token (auto-refreshed if needed)
     const serverToken = await getValidAccessToken();
     if (serverToken) {
@@ -147,6 +153,20 @@ export function setupWebSocket(server, app, isLocalIP) {
         if (type === 'SET_TOKEN') {
           console.log('[Resonance WS] Token sync received from client.');
           broadcast({ type: 'SET_TOKEN', payload }, ws);
+        }
+
+        if (type === 'SET_EQ_SETTINGS') {
+          console.log('[Resonance WS] EQ settings update received:', payload);
+          await setSetting('eq_settings', JSON.stringify(payload));
+          
+          // Trigger rebuilding/reloading CamillaDSP config based on new EQ settings
+          const { updateCamillaConfigFromSettings } = await import('./player.js');
+          updateCamillaConfigFromSettings().catch(err => {
+            console.error('[Resonance WS] Failed to update CamillaDSP config on EQ change:', err);
+          });
+          
+          // Broadcast the new EQ settings to all other clients so their UI updates
+          broadcast({ type: 'EQ_SETTINGS', payload }, ws);
         }
 
         if (type === 'CLEAR_TOKEN') {

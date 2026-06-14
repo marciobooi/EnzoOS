@@ -106,6 +106,20 @@ export default function RemoteControl() {
   const [eqNoiseFloor, setEqNoiseFloor] = useState(() => Number(localStorage.getItem('resonance_eq_noise')) || 0);
   const [eqPreAmp, setEqPreAmp] = useState(() => Number(localStorage.getItem('resonance_eq_preamp')) || 0.0);
 
+  const eqSyncTimeout = useRef(null);
+  const queueEqSync = (presetName, nextBands, saturation, noiseFloor, preAmp) => {
+    if (eqSyncTimeout.current) clearTimeout(eqSyncTimeout.current);
+    eqSyncTimeout.current = setTimeout(() => {
+      sendUpdate('SET_EQ_SETTINGS', {
+        preset: presetName,
+        bands: nextBands,
+        saturation,
+        noiseFloor,
+        preAmp
+      });
+    }, 400);
+  };
+
   const handleEqPresetChange = (presetName) => {
     setEqPreset(presetName);
     localStorage.setItem('resonance_eq_preset', presetName);
@@ -119,6 +133,15 @@ export default function RemoteControl() {
       localStorage.setItem('resonance_eq_saturation', found.saturation);
       localStorage.setItem('resonance_eq_noise', found.noiseFloor);
       localStorage.setItem('resonance_eq_preamp', found.preAmp);
+
+      // Sync preset change immediately
+      sendUpdate('SET_EQ_SETTINGS', {
+        preset: presetName,
+        bands: found.bands,
+        saturation: found.saturation,
+        noiseFloor: found.noiseFloor,
+        preAmp: found.preAmp
+      });
     }
   };
 
@@ -129,6 +152,7 @@ export default function RemoteControl() {
     localStorage.setItem('resonance_eq_bands', JSON.stringify(nextBands));
     setEqPreset('Custom');
     localStorage.setItem('resonance_eq_preset', 'Custom');
+    queueEqSync('Custom', nextBands, eqSaturation, eqNoiseFloor, eqPreAmp);
   };
 
   const handleSaturationChange = (val) => {
@@ -136,6 +160,7 @@ export default function RemoteControl() {
     localStorage.setItem('resonance_eq_saturation', val);
     setEqPreset('Custom');
     localStorage.setItem('resonance_eq_preset', 'Custom');
+    queueEqSync('Custom', eqBands, val, eqNoiseFloor, eqPreAmp);
   };
 
   const handleNoiseFloorChange = (val) => {
@@ -143,6 +168,7 @@ export default function RemoteControl() {
     localStorage.setItem('resonance_eq_noise', val);
     setEqPreset('Custom');
     localStorage.setItem('resonance_eq_preset', 'Custom');
+    queueEqSync('Custom', eqBands, eqSaturation, val, eqPreAmp);
   };
 
   const handlePreAmpChange = (val) => {
@@ -150,6 +176,7 @@ export default function RemoteControl() {
     localStorage.setItem('resonance_eq_preamp', val);
     setEqPreset('Custom');
     localStorage.setItem('resonance_eq_preset', 'Custom');
+    queueEqSync('Custom', eqBands, eqSaturation, eqNoiseFloor, val);
   };
 
   useEffect(() => {
@@ -342,7 +369,12 @@ export default function RemoteControl() {
     },
     isAuthenticated,
     isRemote: true,
-    setStandby
+    setStandby,
+    setEqPreset,
+    setEqBands,
+    setEqSaturation,
+    setEqNoiseFloor,
+    setEqPreAmp
   });
 
   const handleToggleStandby = (enabled) => {

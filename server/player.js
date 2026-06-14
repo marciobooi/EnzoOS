@@ -284,8 +284,95 @@ function detectDac() {
   return detected;
 }
 
+// --- 1. ADVANCED ANALOG & DIGITAL PROFILE DATABASE (5 BANDS + GAIN + ANALOG)
+const presetDatabase = {
+  "Clinical Reference": {
+    preampGain: 0.0,         // Pure studio transparency, no attenuation needed
+    noiseFloorLevel: null,   // Dead silent digital black background
+    useSaturation: false,
+    bands: [
+      { type: "Highpass", freq: 30, q: 0.707 },
+      { type: "LowShelf", freq: 105, gain: -1.5, q: 0.707 },
+      { type: "Peaking", freq: 250, gain: -1.0, q: 0.5 },
+      { type: "Peaking", freq: 3200, gain: 1.0, q: 1.0 },
+      { type: "HighShelf", freq: 10000, gain: 0.0, q: 0.707 }
+    ]
+  },
+  "Warm Valve": {
+    preampGain: -2.5,        // Headroom buffer for the tube bass shelves
+    noiseFloorLevel: -85.0,  // Subtle, lush organic analog tube glow hiss
+    useSaturation: true,     // Excite lower-octave tube warmth
+    bands: [
+      { type: "LowShelf", freq: 40, gain: 2.0, q: 0.707 },
+      { type: "Peaking", freq: 120, gain: 1.5, q: 0.6 },
+      { type: "Peaking", freq: 400, gain: 1.0, q: 0.8 },
+      { type: "Peaking", freq: 3000, gain: -1.5, q: 1.0 },
+      { type: "HighShelf", freq: 8500, gain: -2.5, q: 0.5 }
+    ]
+  },
+  "Bass Boost": {
+    preampGain: -6.0,        // Hard compression headroom safeguard against clipping
+    noiseFloorLevel: -95.0,  // Low tape-saturation floor
+    useSaturation: true,     // Heavy punch transformer saturation element
+    bands: [
+      { type: "Peaking", freq: 45, gain: 5.5, q: 1.2 },
+      { type: "LowShelf", freq: 110, gain: 3.5, q: 0.707 },
+      { type: "Peaking", freq: 280, gain: -2.5, q: 1.0 },
+      { type: "Peaking", freq: 2500, gain: 1.0, q: 0.7 },
+      { type: "HighShelf", freq: 12000, gain: 1.5, q: 0.707 }
+    ]
+  },
+  "Vocal Clarity": {
+    preampGain: -4.0,        // Attenuation security for peak upper-mid clarity
+    noiseFloorLevel: -100.0, // Pristine, deep, isolated vocal backdrop
+    useSaturation: false,    // No harmonic distortion on human vocals
+    bands: [
+      { type: "Highpass", freq: 100, q: 0.707 },
+      { type: "Peaking", freq: 160, gain: -1.5, q: 1.0 },
+      { type: "Peaking", freq: 900, gain: 1.8, q: 0.8 },
+      { type: "Peaking", freq: 3500, gain: 4.0, q: 1.2 },
+      { type: "Peaking", freq: 7200, gain: -2.5, q: 2.0 }
+    ]
+  },
+  "Hi-Fi Spatial": {
+    preampGain: -5.0,        // Secure attenuation layout for cinema scale extensions
+    noiseFloorLevel: -90.0,  // Light premium vinyl background
+    useSaturation: true,     // Upper register high-frequency spatial acoustic exciter
+    bands: [
+      { type: "LowShelf", freq: 50, gain: 4.5, q: 0.707 },
+      { type: "Peaking", freq: 130, gain: 1.0, q: 0.8 },
+      { type: "Peaking", freq: 1000, gain: -2.0, q: 0.5 },
+      { type: "Peaking", freq: 6500, gain: 2.2, q: 1.2 },
+      { type: "HighShelf", freq: 15000, gain: 4.0, q: 0.707 }
+    ]
+  }
+};
+
 // --- CamillaDSP Configuration Generator ---
-function generateCamillaConfig(answers, dacInfo) {
+function generateCamillaConfig(answers, eqSettings, dacInfo) {
+  const isDspActive = answers && (answers[0] === 'dsp' || answers['0'] === 'dsp');
+  const isSubwooferSetup = answers && answers.q1_setup === "2 Speakers + 1 Subwoofer";
+
+  const selectedPresetName = eqSettings?.preset || "Clinical Reference";
+  
+  let profile;
+  if (selectedPresetName === 'Custom' && eqSettings) {
+    profile = {
+      preampGain: Number(eqSettings.preAmp) || 0.0,
+      noiseFloorLevel: (eqSettings.noiseFloor > 0) ? (-105.0 + (Number(eqSettings.noiseFloor) * 2.0)) : null,
+      useSaturation: (eqSettings.saturation > 0),
+      bands: [
+        { type: "LowShelf", freq: 60, gain: Number(eqSettings.bands[0]) || 0, q: 0.707 },
+        { type: "Peaking", freq: 250, gain: Number(eqSettings.bands[1]) || 0, q: 0.707 },
+        { type: "Peaking", freq: 1000, gain: Number(eqSettings.bands[2]) || 0, q: 0.707 },
+        { type: "Peaking", freq: 4000, gain: Number(eqSettings.bands[3]) || 0, q: 0.707 },
+        { type: "HighShelf", freq: 16000, gain: Number(eqSettings.bands[4]) || 0, q: 0.707 }
+      ]
+    };
+  } else {
+    profile = presetDatabase[selectedPresetName] || presetDatabase["Clinical Reference"];
+  }
+
   let config = {
     devices: {
       samplerate: dacInfo.samplerate || 44100,
@@ -297,7 +384,7 @@ function generateCamillaConfig(answers, dacInfo) {
         channels: dacInfo.channels || 2, 
         device: dacInfo.device || "hw:CARD=DAC,DEV=0", 
         format: dacInfo.format || "S24LE",
-        gain: -6.0 // ⚠️ CRITICAL: Adds digital headroom to prevent clipping from your +5.5dB bass boost
+        gain: isDspActive ? (profile.preampGain - 6.0) : profile.preampGain
       }
     },
     mixers: {},
@@ -305,49 +392,46 @@ function generateCamillaConfig(answers, dacInfo) {
     pipeline: []
   };
 
-  // If user selected Manual Equalizer, bypass all CamillaDSP filters (flat response)
-  if (answers[0] === 'eq' || answers['0'] === 'eq') {
-    config.devices.playback.channels = 2;
-    config.devices.playback.gain = 0.0; // No attenuation needed for flat response
-    config.mixers.speaker_map = {
-      channels: { in: 2, out: 2 },
-      mapping: [
-        { dest: 0, sources: [{ channel: 0, gain: 0 }] },
-        { dest: 1, sources: [{ channel: 1, gain: 0 }] }
-      ]
-    };
-    config.pipeline.push({ type: "Mixer", mapping: "speaker_map" });
-    return config;
+  // Build Profile 5-Band Filters
+  profile.bands.forEach((band, index) => {
+    const filterKey = `profile_band_${index + 1}`;
+    if (band.type === "Highpass" || band.type === "Lowpass") {
+      config.filters[filterKey] = { type: "Biquad", parameters: { type: band.type, freq: band.freq, q: band.q } };
+    } else {
+      config.filters[filterKey] = { type: "Biquad", parameters: { type: band.type, freq: band.freq, gain: band.gain, q: band.q } };
+    }
+  });
+
+  // Build Saturation filter
+  if (profile.useSaturation) {
+    if (selectedPresetName === "Warm Valve") {
+      config.filters.analog_saturation = { type: "Biquad", parameters: { type: "Peaking", freq: 45, gain: 1.5, q: 2.0 } };
+    } else if (selectedPresetName === "Bass Boost") {
+      config.filters.analog_saturation = { type: "Biquad", parameters: { type: "Peaking", freq: 60, gain: 1.5, q: 1.5 } };
+    } else if (selectedPresetName === "Hi-Fi Spatial") {
+      config.filters.analog_saturation = { type: "Biquad", parameters: { type: "Peaking", freq: 12000, gain: 1.0, q: 2.5 } };
+    } else if (selectedPresetName === "Custom" && eqSettings) {
+      config.filters.analog_saturation = { type: "Biquad", parameters: { type: "Peaking", freq: 80, gain: Number(eqSettings.saturation) * 0.25, q: 1.5 } };
+    }
   }
 
-  // --- 1. DEFINE THE MASTER ARCHITECTURE FILTERS ---
-  config.filters.subsonic_cut = { type: "Biquad", parameters: { type: "Highpass", freq: 18, q: 0.707 } };
-  config.filters.harman_bass_shelf = { type: "Biquad", parameters: { type: "LowShelf", freq: 105, gain: 5.5, q: 0.707 } };
-  config.filters.vocal_clarity_dip = { type: "Biquad", parameters: { type: "Peaking", freq: 250, gain: -1.2, q: 0.6 } };
-  config.filters.presence_definition = { type: "Biquad", parameters: { type: "Peaking", freq: 3000, gain: 1.0, q: 0.8 } };
-  config.filters.harman_treble_tilt = { type: "Biquad", parameters: { type: "HighShelf", freq: 4500, gain: -2.0, q: 0.5 } };
-  config.filters.spatial_air_sparkle = { type: "Biquad", parameters: { type: "Peaking", freq: 14000, gain: 1.5, q: 1.8 } }; // Fixed to Peaking
+  // Build Noise Floor filter
+  if (profile.noiseFloorLevel !== null) {
+    config.filters.analog_noise_floor = {
+      type: "Gain",
+      parameters: { gain: profile.noiseFloorLevel, inverted: false }
+    };
+  }
 
-  const masterCurveFilters = [
-    "subsonic_cut",
-    "harman_bass_shelf",
-    "vocal_clarity_dip",
-    "presence_definition",
-    "harman_treble_tilt",
-    "spatial_air_sparkle"
-  ];
-
-  // --- 2. HANDLE MIXING AND USER CHANNELS ---
-  let isSubwooferSetup = answers.q1_setup === "2 Speakers + 1 Subwoofer";
-  
+  // Setup Crossovers and Crossover Caster Filters
   if (isSubwooferSetup) {
     config.devices.playback.channels = 3;
     config.mixers.speaker_map = {
       channels: { in: 2, out: 3 },
       mapping: [
-        { dest: 0, sources: [{ channel: 0, gain: 0 }] }, // Left
-        { dest: 1, sources: [{ channel: 1, gain: 0 }] }, // Right
-        { dest: 2, sources: [{ channel: 0, gain: -3.0 }, { channel: 1, gain: -3.0 }] } // Sub mono sum
+        { dest: 0, sources: [{ channel: 0, gain: 0 }] },
+        { dest: 1, sources: [{ channel: 1, gain: 0 }] },
+        { dest: 2, sources: [{ channel: 0, gain: -3.0 }, { channel: 1, gain: -3.0 }] }
       ]
     };
   } else {
@@ -361,86 +445,99 @@ function generateCamillaConfig(answers, dacInfo) {
     };
   }
 
-  // Create isolated filter queues starting with your Master Curve
-  let leftPipeline = [...masterCurveFilters];
-  let rightPipeline = [...masterCurveFilters];
-  let subPipeline = []; // Subwoofer should skip high-treble master filters
+  let leftPipeline = [];
+  let rightPipeline = [];
+  let subPipeline = [];
 
-  // --- 3. DYNAMIC USER ADJUSTMENTS (LAYERED AFTER THE MASTER CURVE) ---
-  
-  // Q5: Speaker Size Safety
-  if (answers.q5_size === "Small / Desktop") {
-    config.filters.speaker_safety = { type: "Biquad", parameters: { type: "Highpass", freq: 85, q: 0.707 } };
-    leftPipeline.push("speaker_safety");
-    rightPipeline.push("speaker_safety");
-  } else if (answers.q5_size === "Medium / Bookshelf") {
-    config.filters.speaker_safety = { type: "Biquad", parameters: { type: "Highpass", freq: 45, q: 0.707 } };
-    leftPipeline.push("speaker_safety");
-    rightPipeline.push("speaker_safety");
+  // --- STAGE A: ROOM CALIBRATION MASTER STACK ---
+  if (isDspActive) {
+    config.filters.subsonic_cut = { type: "Biquad", parameters: { type: "Highpass", freq: 18, q: 0.707 } };
+    config.filters.harman_bass_shelf = { type: "Biquad", parameters: { type: "LowShelf", freq: 105, gain: 5.5, q: 0.707 } };
+    config.filters.vocal_clarity_dip = { type: "Biquad", parameters: { type: "Peaking", freq: 250, gain: -1.2, q: 0.6 } };
+    config.filters.presence_definition = { type: "Biquad", parameters: { type: "Peaking", freq: 3000, gain: 1.0, q: 0.8 } };
+    config.filters.harman_treble_tilt = { type: "Biquad", parameters: { type: "HighShelf", freq: 4500, gain: -2.0, q: 0.5 } };
+    config.filters.spatial_air_sparkle = { type: "Biquad", parameters: { type: "Peaking", freq: 14000, gain: 1.5, q: 1.8 } };
+
+    const masterCurveFilters = [
+      "subsonic_cut",
+      "harman_bass_shelf",
+      "vocal_clarity_dip",
+      "presence_definition",
+      "harman_treble_tilt",
+      "spatial_air_sparkle"
+    ];
+
+    leftPipeline.push(...masterCurveFilters);
+    rightPipeline.push(...masterCurveFilters);
   }
 
-  // Q2: Room Acoustics
-  if (answers.q2_acoustics === "Echoey") {
-    config.filters.room_tamer = { type: "Biquad", parameters: { type: "HighShelf", freq: 4000, gain: -2.5, q: 0.7 } };
-    leftPipeline.push("room_tamer");
-    rightPipeline.push("room_tamer");
+  // --- STAGE B: INJECT PROFILE EQ BANDS ---
+  profile.bands.forEach((band, index) => {
+    const filterKey = `profile_band_${index + 1}`;
+    leftPipeline.push(filterKey);
+    rightPipeline.push(filterKey);
+    if (isSubwooferSetup && index < 2 && band.type !== "Highpass") {
+      subPipeline.push(filterKey);
+    }
+  });
+
+  if (profile.useSaturation) {
+    leftPipeline.push("analog_saturation");
+    rightPipeline.push("analog_saturation");
+  }
+  if (profile.noiseFloorLevel !== null) {
+    leftPipeline.push("analog_noise_floor");
+    rightPipeline.push("analog_noise_floor");
   }
 
-  // Q7: Wall Placement
-  if (answers.q7_walls === "Pushed against a wall") {
-    config.filters.wall_correction = { type: "Biquad", parameters: { type: "LowShelf", freq: 150, gain: -2.0, q: 0.7 } };
-    leftPipeline.push("wall_correction");
-    rightPipeline.push("wall_correction");
-  } else if (answers.q7_walls === "Tucked in a corner / Shelf") {
-    config.filters.wall_correction = { type: "Biquad", parameters: { type: "LowShelf", freq: 150, gain: -4.0, q: 0.7 } };
-    leftPipeline.push("wall_correction");
-    rightPipeline.push("wall_correction");
+  // --- STAGE C: DYNAMIC SURVEY ADJUSTMENTS ---
+  if (isDspActive) {
+    if (answers.q5_size === "Small / Desktop") {
+      config.filters.speaker_safety = { type: "Biquad", parameters: { type: "Highpass", freq: 85, q: 0.707 } };
+      leftPipeline.push("speaker_safety");
+      rightPipeline.push("speaker_safety");
+    } else if (answers.q5_size === "Medium / Bookshelf") {
+      config.filters.speaker_safety = { type: "Biquad", parameters: { type: "Highpass", freq: 45, q: 0.707 } };
+      leftPipeline.push("speaker_safety");
+      rightPipeline.push("speaker_safety");
+    }
+
+    if (answers.q2_acoustics === "Echoey") {
+      config.filters.room_tamer = { type: "Biquad", parameters: { type: "HighShelf", freq: 4000, gain: -2.5, q: 0.7 } };
+      leftPipeline.push("room_tamer");
+      rightPipeline.push("room_tamer");
+    }
+
+    if (answers.q7_walls === "Pushed against a wall") {
+      config.filters.wall_correction = { type: "Biquad", parameters: { type: "LowShelf", freq: 150, gain: -2.0, q: 0.7 } };
+      leftPipeline.push("wall_correction");
+      rightPipeline.push("wall_correction");
+    } else if (answers.q7_walls === "Tucked in a corner / Shelf") {
+      config.filters.wall_correction = { type: "Biquad", parameters: { type: "LowShelf", freq: 150, gain: -4.0, q: 0.7 } };
+      leftPipeline.push("wall_correction");
+      rightPipeline.push("wall_correction");
+    }
+
+    if (answers.q3_placement === "Closer to the Left Speaker") {
+      config.filters.left_delay = { type: "Delay", parameters: { delay: 1.5, unit: "ms" } };
+      leftPipeline.push("left_delay");
+    } else if (answers.q3_placement === "Closer to the Right Speaker") {
+      config.filters.right_delay = { type: "Delay", parameters: { delay: 1.5, unit: "ms" } };
+      rightPipeline.push("right_delay");
+    }
   }
 
-  // Q4: Sound Signature Preference (additional preferences)
-  if (answers.q4_signature === "Warm & Bass Punchy") {
-    config.filters.user_pref_eq = { type: "Biquad", parameters: { type: "LowShelf", freq: 100, gain: 3.5, q: 0.7 } };
-    leftPipeline.push("user_pref_eq");
-    rightPipeline.push("user_pref_eq");
-    if (isSubwooferSetup) subPipeline.push("user_pref_eq");
-  } else if (answers.q4_signature === "Clear & Detailed") {
-    config.filters.user_pref_eq = { type: "Biquad", parameters: { type: "Peaking", freq: 2500, gain: 2.0, q: 1.0 } };
-    leftPipeline.push("user_pref_eq");
-    rightPipeline.push("user_pref_eq");
-  }
-
-  // Q6: Listening Volume
-  if (answers.q6_volume === "Quiet / Background") {
-    config.filters.loudness_bass = { type: "Biquad", parameters: { type: "LowShelf", freq: 80, gain: 4.0, q: 0.7 } };
-    config.filters.loudness_treble = { type: "Biquad", parameters: { type: "HighShelf", freq: 8000, gain: 2.5, q: 0.7 } };
-    leftPipeline.push("loudness_bass", "loudness_treble");
-    rightPipeline.push("loudness_bass", "loudness_treble");
-    if (isSubwooferSetup) subPipeline.push("loudness_bass");
-  }
-
-  // Q3: Speaker Distance Time Alignment
-  if (answers.q3_placement === "Closer to the Left Speaker") {
-    config.filters.left_delay = { type: "Delay", parameters: { delay: 1.5, unit: "ms" } };
-    leftPipeline.push("left_delay");
-  } else if (answers.q3_placement === "Closer to the Right Speaker") {
-    config.filters.right_delay = { type: "Delay", parameters: { delay: 1.5, unit: "ms" } };
-    rightPipeline.push("right_delay");
-  }
-
-  // --- 4. SUBWOOFER SPECIFIC FILTERS ---
+  // --- STAGE D: CROSSOVERS (ALWAYS EXECUTE FIRST IN MIX MATRIX) ---
   if (isSubwooferSetup) {
     config.filters.sub_lowpass = { type: "Biquad", parameters: { type: "Lowpass", freq: 80, q: 0.707 } };
-    config.filters.mains_highpass = { type: "Biquad", parameters: { type: "Highpass", freq: 80, q: 0.707 } };
+    config.filters.crossover_mains_highpass = { type: "Biquad", parameters: { type: "Highpass", freq: 80, q: 0.707 } };
     
-    // Crossovers must run first before anything else
-    leftPipeline.unshift("mains_highpass");
-    rightPipeline.unshift("mains_highpass");
-    
-    // Subwoofer only needs bass management, not the vocal/treble filters
-    subPipeline.push("sub_lowpass", "harman_bass_shelf"); 
+    leftPipeline.unshift("crossover_mains_highpass");
+    rightPipeline.unshift("crossover_mains_highpass");
+    subPipeline.unshift("sub_lowpass");
   }
 
-  // --- 5. COMPILE THE PIPELINE MATRIX ---
+  // --- STAGE E: COMPILE THE PIPELINE MATRIX ---
   config.pipeline.push({ type: "Mixer", mapping: "speaker_map" });
   config.pipeline.push({ type: "Filter", channel: 0, names: leftPipeline });
   config.pipeline.push({ type: "Filter", channel: 1, names: rightPipeline });
@@ -512,36 +609,7 @@ router.post('/dsp-calibration', async (req, res) => {
     await setSetting('dsp_calibration', JSON.stringify(answers));
     console.log('[CamillaDSP] Saved calibration profile:', answers);
 
-    // Auto-configure ALSA Loopback routing
-    await ensureAsoundConf();
-
-    // Scan for DAC capability automatically
-    const dacInfo = detectDac();
-    console.log('[CamillaDSP] Detected audio device capabilities:', dacInfo);
-
-    // Apply adjustments if sub-woofer is enabled
-    if (answers.q1_setup === "2 Speakers + 1 Subwoofer") {
-      dacInfo.channels = 3;
-    } else {
-      dacInfo.channels = 2;
-    }
-
-    // Generate CamillaDSP yaml configuration
-    const configObj = generateCamillaConfig(answers, dacInfo);
-    const yamlString = YAML.stringify(configObj, { indent: 2 });
-
-    // Save configuration file
-    const configPath = path.resolve(__dirname, '../camilladsp.yml');
-    fs.writeFileSync(configPath, yamlString, 'utf8');
-    console.log(`[CamillaDSP] Generated sound profile successfully: ${configPath}`);
-
-    // Reload CamillaDSP service to apply the configuration profile
-    try {
-      await execPromise('sudo systemctl restart camilladsp');
-      console.log('[CamillaDSP] Restarted camilladsp service successfully.');
-    } catch (err) {
-      console.warn('[CamillaDSP] Failed to restart camilladsp service (might not be installed yet):', err.message);
-    }
+    const dacInfo = await updateCamillaConfigFromSettings();
 
     res.json({ success: true, dacInfo });
   } catch (err) {
@@ -560,4 +628,47 @@ router.get('/dsp-calibration', async (req, res) => {
   }
 });
 
+// Exportable helper to update configuration on any settings change
+export async function updateCamillaConfigFromSettings() {
+  const dspVal = await getSetting('dsp_calibration');
+  const eqVal = await getSetting('eq_settings');
+
+  const answers = dspVal ? JSON.parse(dspVal) : null;
+  const eqSettings = eqVal ? JSON.parse(eqVal) : null;
+
+  // Auto-configure ALSA Loopback routing
+  await ensureAsoundConf();
+
+  // Scan for DAC capability automatically
+  const dacInfo = detectDac();
+  console.log('[CamillaDSP] Detected audio device capabilities:', dacInfo);
+
+  // Apply adjustments if sub-woofer is enabled
+  if (answers && answers.q1_setup === "2 Speakers + 1 Subwoofer") {
+    dacInfo.channels = 3;
+  } else {
+    dacInfo.channels = 2;
+  }
+
+  // Generate CamillaDSP yaml configuration
+  const configObj = generateCamillaConfig(answers, eqSettings, dacInfo);
+  const yamlString = YAML.stringify(configObj, { indent: 2 });
+
+  // Save configuration file
+  const configPath = path.resolve(__dirname, '../camilladsp.yml');
+  fs.writeFileSync(configPath, yamlString, 'utf8');
+  console.log(`[CamillaDSP] Generated sound profile successfully: ${configPath}`);
+
+  // Reload CamillaDSP service to apply the configuration profile
+  try {
+    await execPromise('sudo systemctl restart camilladsp');
+    console.log('[CamillaDSP] Restarted camilladsp service successfully.');
+  } catch (err) {
+    console.warn('[CamillaDSP] Failed to restart camilladsp service (might not be installed yet):', err.message);
+  }
+
+  return dacInfo;
+}
+
 export default router;
+
