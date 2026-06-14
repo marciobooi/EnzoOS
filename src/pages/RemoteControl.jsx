@@ -293,8 +293,10 @@ export default function RemoteControl() {
   }, [radioSearch, favoriteStations]);
 
   useEffect(() => {
-    fetchFavorites();
-  }, []);
+    if (isConnected) {
+      fetchFavorites();
+    }
+  }, [isConnected]);
 
   const handleToggleFavoriteRadio = async (station) => {
     const isFavorite = favoriteStations.some(s => s.url === station.url);

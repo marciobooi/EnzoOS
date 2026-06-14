@@ -1,13 +1,13 @@
 import paramiko
+import sys
 
 client = paramiko.SSHClient()
 client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
 client.connect("192.168.178.199", username="pi", password="1234", timeout=10)
 
-stdin, stdout, stderr = client.exec_command("pm2 flush && sleep 1")
-stdin, stdout, stderr = client.exec_command("tail -n 100 /home/pi/.pm2/logs/resonance-api-out.log /home/pi/.pm2/logs/resonance-api-error.log")
-print("=== PM2 Logs after flush ===")
-print(stdout.read().decode())
-print(stderr.read().decode())
+stdin, stdout, stderr = client.exec_command("echo '=== favorite_radios ==='; sqlite3 /home/pi/EnzoOS/resonance.db 'SELECT * FROM favorite_radios;'; echo '=== settings ==='; sqlite3 /home/pi/EnzoOS/resonance.db 'SELECT * FROM settings;'")
+print("=== SQLite Data ===")
+sys.stdout.buffer.write(stdout.read())
+sys.stderr.buffer.write(stderr.read())
 
 client.close()

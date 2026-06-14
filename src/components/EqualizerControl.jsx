@@ -183,7 +183,7 @@ export default function EqualizerControl({
                   <Sparkles className="w-3.5 h-3.5 text-[var(--theme-color)]" /> Pre-Amp
                 </span>
                 <span className="font-mono text-[var(--theme-color)]">
-                  {preAmp > 0 ? `+${preAmp.toFixed(1)}` : preAmp.toFixed(1)} dB
+                  {Number(preAmp) > 0 ? `+${Number(preAmp).toFixed(1)}` : Number(preAmp).toFixed(1)} dB
                 </span>
               </div>
               <input
@@ -218,52 +218,55 @@ export default function EqualizerControl({
             <div className="absolute left-0 right-0 bottom-0 border-t border-white/5 pointer-events-none" />
 
             {/* EQ Frequency Sliders */}
-            {bands.map((bandVal, index) => (
-              <div key={index} className="flex flex-col items-center h-full relative z-10 w-12 justify-end">
-                {/* dB Tracker value overlay */}
-                <span className="font-mono text-[9px] text-[var(--theme-color)] font-bold mb-1">
-                  {bandVal > 0 ? `+${bandVal.toFixed(0)}` : bandVal.toFixed(0)}
-                </span>
-                
-                {/* Wider interactive container for the vertical slider */}
-                <div className="relative w-10 h-[65px] flex items-center justify-center">
-                  {/* Visual groove and knob (events disabled to prevent blocking clicks) */}
-                  <div className="absolute left-1/2 -translate-x-1/2 w-1.5 bg-zinc-800 h-full rounded-full pointer-events-none">
-                    {/* Styled slider track */}
-                    <div 
-                      className="absolute bottom-0 w-full rounded-full bg-gradient-to-t from-[var(--theme-color)]/70 to-[var(--theme-color)]" 
-                      style={{ height: `${((bandVal + 12) / 24) * 100}%` }}
-                    />
-                    {/* Styled slider knob */}
-                    <div 
-                      className="absolute left-1/2 w-3.5 h-3.5 rounded-full bg-white border-2 border-[var(--theme-color)] shadow-[0_0_6px_var(--theme-color-glow)]"
-                      style={{ 
-                        bottom: `${((bandVal + 12) / 24) * 100}%`,
-                        transform: 'translate(-50%, 50%)'
-                      }}
+            {(bands || [0,0,0,0,0]).map((rawBandVal, index) => {
+              const bandVal = Number(rawBandVal) || 0;
+              return (
+                <div key={index} className="flex flex-col items-center h-full relative z-10 w-12 justify-end">
+                  {/* dB Tracker value overlay */}
+                  <span className="font-mono text-[9px] text-[var(--theme-color)] font-bold mb-1">
+                    {bandVal > 0 ? `+${bandVal.toFixed(0)}` : bandVal.toFixed(0)}
+                  </span>
+                  
+                  {/* Wider interactive container for the vertical slider */}
+                  <div className="relative w-10 h-[65px] flex items-center justify-center">
+                    {/* Visual groove and knob (events disabled to prevent blocking clicks) */}
+                    <div className="absolute left-1/2 -translate-x-1/2 w-1.5 bg-zinc-800 h-full rounded-full pointer-events-none">
+                      {/* Styled slider track */}
+                      <div 
+                        className="absolute bottom-0 w-full rounded-full bg-gradient-to-t from-[var(--theme-color)]/70 to-[var(--theme-color)]" 
+                        style={{ height: `${((bandVal + 12) / 24) * 100}%` }}
+                      />
+                      {/* Styled slider knob */}
+                      <div 
+                        className="absolute left-1/2 w-3.5 h-3.5 rounded-full bg-white border-2 border-[var(--theme-color)] shadow-[0_0_6px_var(--theme-color-glow)]"
+                        style={{ 
+                          bottom: `${((bandVal + 12) / 24) * 100}%`,
+                          transform: 'translate(-50%, 50%)'
+                        }}
+                      />
+                    </div>
+
+                    {/* Hidden input overlaying the entire wide container */}
+                    <input
+                      type="range"
+                      min="-12"
+                      max="12"
+                      step="1"
+                      value={bandVal}
+                      orient="vertical" /* Backwards compatibility */
+                      style={{ writingMode: 'bt-lr', WebkitAppearance: 'slider-vertical' }}
+                      onChange={(e) => onBandChange(index, Number(e.target.value))}
+                      className="absolute inset-0 w-full h-full opacity-0 cursor-row-resize z-20"
                     />
                   </div>
-
-                  {/* Hidden input overlaying the entire wide container */}
-                  <input
-                    type="range"
-                    min="-12"
-                    max="12"
-                    step="1"
-                    value={bandVal}
-                    orient="vertical" /* Backwards compatibility */
-                    style={{ writingMode: 'bt-lr', WebkitAppearance: 'slider-vertical' }}
-                    onChange={(e) => onBandChange(index, Number(e.target.value))}
-                    className="absolute inset-0 w-full h-full opacity-0 cursor-row-resize z-20"
-                  />
+                  
+                  {/* Freq Label */}
+                  <span className="font-mono text-[8px] text-zinc-400 tracking-wider mt-1.5 uppercase select-none">
+                    {bandLabels[index]}
+                  </span>
                 </div>
-                
-                {/* Freq Label */}
-                <span className="font-mono text-[8px] text-zinc-400 tracking-wider mt-1.5 uppercase select-none">
-                  {bandLabels[index]}
-                </span>
-              </div>
-            ))}
+              );
+            })}
           </div>
           <p className="font-mono text-[8px] text-center text-zinc-500 mt-2 leading-tight">
             Peaking Bi-quadratic filter units. Harmonic alignment is calculated at 44.1kHz standard routing depth.

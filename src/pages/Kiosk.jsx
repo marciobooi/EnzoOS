@@ -208,8 +208,10 @@ export default function Kiosk() {
   }, [radioSearch, favoriteStations]);
 
   useEffect(() => {
-    fetchFavorites();
-  }, []);
+    if (isConnected) {
+      fetchFavorites();
+    }
+  }, [isConnected]);
 
   useEffect(() => {
     async function loadDspStatus() {
@@ -275,7 +277,7 @@ export default function Kiosk() {
   }, [token]);
 
   // Connect to the centralized WebSocket hook
-  const { ws, sendUpdate } = useResonanceWS({
+  const { isConnected, ws, sendUpdate } = useResonanceWS({
     token,
     setToken,
     setPlaybackState,
