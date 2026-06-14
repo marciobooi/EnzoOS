@@ -87,8 +87,10 @@ export default function DefinitionsMenu({
         if (setOtaProgress) setOtaProgress([]);
         if (setOtaPercent) setOtaPercent(0);
         setUpdateStatus('updating');
+        localStorage.setItem('resonance_updating', 'true');
         await api.triggerUpdate();
       } catch (err) {
+        localStorage.removeItem('resonance_updating');
         setUpdateStatus('error');
         setErrorMessage(err.message || 'Update failed.');
       }

@@ -30,7 +30,7 @@ echo -e "Project directory: $PROJECT_DIR"
 echo -e "${YELLOW}Clearing local modifications...${NC}"
 echo "[PROGRESS: 15]"
 git reset --hard HEAD
-git clean -fd
+git clean -fd -e resonance.db
 
 # Fetch changes from GitHub
 echo -e "${YELLOW}Fetching latest modifications from GitHub...${NC}"

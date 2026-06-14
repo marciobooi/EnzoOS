@@ -558,8 +558,10 @@ export default function RemoteControl() {
       setOtaProgress([]);
       setOtaPercent(0);
       setUpdateStatus('updating');
+      localStorage.setItem('resonance_updating', 'true');
       await api.triggerUpdate();
     } catch (err) {
+      localStorage.removeItem('resonance_updating');
       console.error('[OTA] Failed to trigger update installation:', err);
       setUpdateStatus('error');
       setErrorMessage(err.message || 'Failed to start update.');

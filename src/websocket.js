@@ -71,6 +71,13 @@ export function useResonanceWS({
           setIsConnected(true);
           console.log(`[Resonance Client] Connected to WebSocket. Remote: ${isRemote}`);
           
+          if (localStorage.getItem('resonance_updating') === 'true') {
+            localStorage.removeItem('resonance_updating');
+            console.log('[Resonance WS] Successfully reconnected after system update. Reloading screen...');
+            window.location.reload();
+            return;
+          }
+          
           if (setUpdateStatus) {
             setUpdateStatus(null);
           }

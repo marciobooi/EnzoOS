@@ -387,8 +387,57 @@ export default function PlayerDisplay({
   const trackAlbumName = currentTrack?.album?.name || 'No Album Loaded';
   const isCurrentFavorite = currentTrack?.url ? favoriteStations.some(s => s.url === currentTrack.url) : false;
 
+  const [extractedRgb, setExtractedRgb] = useState('5, 10, 20');
+
+  useEffect(() => {
+    if (activeTheme !== 'minimalist') {
+      setExtractedRgb('5, 10, 20');
+      return;
+    }
+    if (!albumImage) {
+      setExtractedRgb('5, 10, 20');
+      return;
+    }
+    const img = new Image();
+    img.crossOrigin = 'Anonymous';
+    img.src = albumImage;
+    img.onload = () => {
+      try {
+        const canvas = document.createElement('canvas');
+        canvas.width = 1;
+        canvas.height = 1;
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.drawImage(img, 0, 0, 1, 1);
+          const data = ctx.getImageData(0, 0, 1, 1).data;
+          const r = data[0];
+          const g = data[1];
+          const b = data[2];
+          
+          // Darken the dominant color slightly (factor 0.18) to keep contrast high for white text
+          const factor = 0.18;
+          const dr = Math.round(r * factor);
+          const dg = Math.round(g * factor);
+          const db = Math.round(b * factor);
+          
+          setExtractedRgb(`${dr}, ${dg}, ${db}`);
+        }
+      } catch (err) {
+        console.warn('Failed to extract dominant color:', err);
+        setExtractedRgb('5, 10, 20');
+      }
+    };
+    img.onerror = () => {
+      setExtractedRgb('5, 10, 20');
+    };
+  }, [albumImage, activeTheme]);
+
   return (
-    <article className={`music-player ${isPlaying ? 'is-playing' : ''}`} aria-label="music-player">
+    <article 
+      className={`music-player ${isPlaying ? 'is-playing' : ''}`} 
+      aria-label="music-player"
+      style={{ '--extracted-rgb': extractedRgb }}
+    >
       
       {/* 1. Album Column */}
       <section className="album-column cursor-pointer" aria-label="Album artwork" onClick={onToggleMenu} title="Click to Open Configuration Menu">
