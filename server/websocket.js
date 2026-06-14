@@ -49,30 +49,62 @@ export const setHardwareBrightness = async (brightness) => {
 export const loadCachedStateFromDB = async () => {
   await dbReady;
   try {
-    const standbyVal = await getSetting('standby');
+    let standbyVal = await getSetting('standby');
+    if (!standbyVal) {
+      standbyVal = 'false';
+      await setSetting('standby', 'false');
+      console.log('[Resonance DB] Initialized default standby in DB.');
+    }
     cachedStandbyState = standbyVal === 'true';
     console.log(`[Resonance WS] Loaded standby state from DB: ${cachedStandbyState}`);
 
-    const themeSettingsVal = await getSetting('theme_settings');
-    if (themeSettingsVal) {
-      try {
-        const themeSettings = JSON.parse(themeSettingsVal);
-        if (themeSettings && themeSettings.brightness !== undefined) {
-          console.log(`[Resonance WS] Loaded brightness from DB: ${themeSettings.brightness}`);
-          await setHardwareBrightness(themeSettings.brightness);
-        }
-      } catch (e) {
-        console.warn('[Resonance WS] Failed parsing theme_settings from DB:', e);
+    let themeSettingsVal = await getSetting('theme_settings');
+    if (!themeSettingsVal) {
+      const defaultTheme = { themeColor: 'amber', activeTheme: 'dot-matrix', brightness: 100 };
+      await setSetting('theme_settings', JSON.stringify(defaultTheme));
+      themeSettingsVal = JSON.stringify(defaultTheme);
+      console.log('[Resonance DB] Initialized default theme_settings in DB.');
+    }
+    try {
+      const themeSettings = JSON.parse(themeSettingsVal);
+      if (themeSettings && themeSettings.brightness !== undefined) {
+        console.log(`[Resonance WS] Loaded brightness from DB: ${themeSettings.brightness}`);
+        await setHardwareBrightness(themeSettings.brightness);
       }
+    } catch (e) {
+      console.warn('[Resonance WS] Failed parsing theme_settings from DB:', e);
     }
 
-    const activeSource = await getSetting('active_source');
-    if (activeSource) {
-      cachedSourceState = {
-        spotify: activeSource === 'spotify',
-        source: activeSource
+    let eqSettingsVal = await getSetting('eq_settings');
+    if (!eqSettingsVal) {
+      const defaultEq = {
+        preset: 'Clinical Reference',
+        bands: [
+          { name: 'b1', freq: 30, gain: 0, q: 0.707 },
+          { name: 'b2', freq: 105, gain: -1.5, q: 0.707 },
+          { name: 'b3', freq: 250, gain: -1.0, q: 0.5 },
+          { name: 'b4', freq: 3200, gain: 1.0, q: 1.0 },
+          { name: 'b5', freq: 10000, gain: 0.0, q: 0.707 }
+        ],
+        saturation: false,
+        noiseFloor: null,
+        preAmp: 0
       };
-      console.log(`[Resonance WS] Loaded active source from DB: ${activeSource}`);
+      await setSetting('eq_settings', JSON.stringify(defaultEq));
+      console.log('[Resonance DB] Initialized default eq_settings in DB.');
+    }
+
+    let activeSource = await getSetting('active_source');
+    if (!activeSource) {
+      activeSource = 'spotify';
+      await setSetting('active_source', 'spotify');
+      console.log('[Resonance DB] Initialized default active_source in DB.');
+    }
+    cachedSourceState = {
+      spotify: activeSource === 'spotify',
+      source: activeSource
+    };
+    console.log(`[Resonance WS] Loaded active source from DB: ${activeSource}`);
       
       if (activeSource === 'radio') {
         const url = await getSetting('last_radio_url');
