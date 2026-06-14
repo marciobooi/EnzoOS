@@ -451,6 +451,140 @@ export default function Kiosk() {
     };
   }, []);
 
+  // Liquid Glass Interaction Layer for Glassplayer and Dreamplayer Themes
+  useEffect(() => {
+    if (activeTheme !== 'glassplayer' && activeTheme !== 'dreamplayer') return;
+
+    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (prefersReducedMotion) return;
+
+    const root = document.documentElement;
+    const screenEl = containerRef.current;
+    if (!screenEl) return;
+
+    let pointerX = 50;
+    let pointerY = 50;
+    let targetTiltX = 0;
+    let targetTiltY = 0;
+    let currentTiltX = 0;
+    let currentTiltY = 0;
+    let rafId = null;
+
+    const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
+
+    const updatePointer = (event) => {
+      const rect = screenEl.getBoundingClientRect();
+      const x = clamp(event.clientX - rect.left, 0, rect.width);
+      const y = clamp(event.clientY - rect.top, 0, rect.height);
+
+      pointerX = (x / rect.width) * 100;
+      pointerY = (y / rect.height) * 100;
+
+      targetTiltX = ((pointerY - 50) / 50) * -1.15;
+      targetTiltY = ((pointerX - 50) / 50) * 1.45;
+
+      root.style.setProperty('--pointer-x', `${pointerX.toFixed(2)}%`);
+      root.style.setProperty('--pointer-y', `${pointerY.toFixed(2)}%`);
+      root.style.setProperty('--pointer-x-raw', pointerX.toFixed(2));
+      root.style.setProperty('--pointer-y-raw', pointerY.toFixed(2));
+
+      if (!rafId) rafId = requestAnimationFrame(animateGlass);
+    };
+
+    const animateGlass = () => {
+      currentTiltX += (targetTiltX - currentTiltX) * 0.08;
+      currentTiltY += (targetTiltY - currentTiltY) * 0.08;
+
+      screenEl.style.setProperty('--tilt-x', `${currentTiltX.toFixed(3)}deg`);
+      screenEl.style.setProperty('--tilt-y', `${currentTiltY.toFixed(3)}deg`);
+
+      const albumShiftX = ((pointerX - 50) / 50) * 5;
+      const albumShiftY = ((pointerY - 50) / 50) * 4;
+      const albumCol = screenEl.querySelector('.album-column');
+      if (albumCol) {
+        albumCol.style.setProperty('--album-shift-x', `${albumShiftX.toFixed(2)}px`);
+        albumCol.style.setProperty('--album-shift-y', `${albumShiftY.toFixed(2)}px`);
+      }
+
+      if (Math.abs(targetTiltX - currentTiltX) > 0.01 || Math.abs(targetTiltY - currentTiltY) > 0.01) {
+        rafId = requestAnimationFrame(animateGlass);
+      } else {
+        rafId = null;
+      }
+    };
+
+    const resetPointer = () => {
+      pointerX = 50;
+      pointerY = 50;
+      targetTiltX = 0;
+      targetTiltY = 0;
+
+      root.style.setProperty('--pointer-x', '50%');
+      root.style.setProperty('--pointer-y', '50%');
+      root.style.setProperty('--pointer-x-raw', '50');
+      root.style.setProperty('--pointer-y-raw', '50');
+
+      const buttons = [...screenEl.querySelectorAll('.icon-button')];
+      buttons.forEach((button) => {
+        button.style.setProperty('--button-x', '50%');
+        button.style.setProperty('--button-y', '18%');
+        button.style.transform = '';
+      });
+
+      const albumCol = screenEl.querySelector('.album-column');
+      if (albumCol) {
+        albumCol.style.setProperty('--album-shift-x', '0px');
+        albumCol.style.setProperty('--album-shift-y', '0px');
+      }
+
+      if (!rafId) rafId = requestAnimationFrame(animateGlass);
+    };
+
+    const updateButtonLens = (event) => {
+      const button = event.currentTarget;
+      const rect = button.getBoundingClientRect();
+      const x = ((event.clientX - rect.left) / rect.width) * 100;
+      const y = ((event.clientY - rect.top) / rect.height) * 100;
+
+      button.style.setProperty('--button-x', `${clamp(x, 0, 100).toFixed(1)}%`);
+      button.style.setProperty('--button-y', `${clamp(y, 0, 100).toFixed(1)}%`);
+
+      const moveX = ((x - 50) / 50) * 3.5;
+      const moveY = ((y - 50) / 50) * 3.5;
+      button.style.transform = `translate(${moveX.toFixed(2)}px, ${moveY.toFixed(2)}px) scale(1.035)`;
+    };
+
+    const resetButtonLens = (event) => {
+      const button = event.currentTarget;
+      button.style.setProperty('--button-x', '50%');
+      button.style.setProperty('--button-y', '18%');
+      button.style.transform = '';
+    };
+
+    screenEl.addEventListener('pointermove', updatePointer, { passive: true });
+    screenEl.addEventListener('pointerleave', resetPointer, { passive: true });
+
+    // Initial binding
+    const buttons = [...screenEl.querySelectorAll('.icon-button')];
+    buttons.forEach((button) => {
+      button.style.setProperty('--button-x', '50%');
+      button.style.setProperty('--button-y', '18%');
+      button.addEventListener('pointermove', updateButtonLens, { passive: true });
+      button.addEventListener('pointerleave', resetButtonLens, { passive: true });
+    });
+
+    // Cleanup listeners
+    return () => {
+      screenEl.removeEventListener('pointermove', updatePointer);
+      screenEl.removeEventListener('pointerleave', resetPointer);
+      buttons.forEach((button) => {
+        button.removeEventListener('pointermove', updateButtonLens);
+        button.removeEventListener('pointerleave', resetButtonLens);
+      });
+      if (rafId) cancelAnimationFrame(rafId);
+    };
+  }, [activeTheme, isMenuOpen, isEqualizerOpen, source, showSearch]);
+
   // Derived Librespot states
   const resonanceDevice = devices.find(d => d.name === 'Resonance Connect');
   const resonanceDeviceId = resonanceDevice?.id || '';
@@ -808,6 +942,7 @@ export default function Kiosk() {
         ref={containerRef}
         className="music-player-container"
         style={{
+          '--scale-kiosk': scale,
           transform: `scale(${scale})`,
           transformOrigin: 'center center',
           width: '1400px',

@@ -1,8 +1,8 @@
 /* ==============================================================================
-   Neo Glass Retrofuture - Dreamplayer Theme (Kiosk View Exclusive)
+   Neo Glass Retrofuture - Glassplayer Theme (Kiosk View Exclusive)
    ============================================================================== */
 
-div[data-active-theme="dreamplayer"] {
+div[data-active-theme="glassplayer"] {
   --white: 255 255 255;
   --ink: rgb(var(--white) / 0.94);
   --ink-2: rgb(var(--white) / 0.72);
@@ -39,7 +39,7 @@ div[data-active-theme="dreamplayer"] {
 }
 
 /* Page liquid effect underlay */
-div[data-active-theme="dreamplayer"]::before {
+div[data-active-theme="glassplayer"]::before {
   content: "" !important;
   position: absolute;
   inset: -18%;
@@ -56,7 +56,7 @@ div[data-active-theme="dreamplayer"]::before {
 }
 
 /* Background grid overlay */
-div[data-active-theme="dreamplayer"]::after {
+div[data-active-theme="glassplayer"]::after {
   content: "";
   position: absolute;
   inset: 0;
@@ -72,13 +72,13 @@ div[data-active-theme="dreamplayer"]::after {
 @keyframes pageLiquid { to { transform: rotate(360deg); } }
 
 /* Hide CRT scanlines for digital glass look */
-div[data-active-theme="dreamplayer"] .dot-matrix-grid,
-div[data-active-theme="dreamplayer"] .crt-scanlines {
+div[data-active-theme="glassplayer"] .dot-matrix-grid,
+div[data-active-theme="glassplayer"] .crt-scanlines {
   display: none !important;
 }
 
 /* Ambient Orbs */
-div[data-active-theme="dreamplayer"] .ambient-orb {
+div[data-active-theme="glassplayer"] .ambient-orb {
   position: absolute;
   border-radius: 999px;
   pointer-events: none;
@@ -86,7 +86,7 @@ div[data-active-theme="dreamplayer"] .ambient-orb {
   opacity: 0.72;
   z-index: 1;
 }
-div[data-active-theme="dreamplayer"] .orb-a {
+div[data-active-theme="glassplayer"] .orb-a {
   width: 210px;
   height: 210px;
   left: 4%;
@@ -94,7 +94,7 @@ div[data-active-theme="dreamplayer"] .orb-a {
   background: rgb(var(--cyan) / 0.34);
   animation: orbFloatA 14s ease-in-out infinite alternate;
 }
-div[data-active-theme="dreamplayer"] .orb-b {
+div[data-active-theme="glassplayer"] .orb-b {
   width: 240px;
   height: 240px;
   right: 7%;
@@ -102,7 +102,7 @@ div[data-active-theme="dreamplayer"] .orb-b {
   background: rgb(var(--pearl) / 0.24);
   animation: orbFloatB 16s ease-in-out infinite alternate;
 }
-div[data-active-theme="dreamplayer"] .orb-c {
+div[data-active-theme="glassplayer"] .orb-c {
   width: 170px;
   height: 170px;
   right: 30%;
@@ -115,7 +115,7 @@ div[data-active-theme="dreamplayer"] .orb-c {
 @keyframes orbFloatC { to { transform: translate(20px, 34px) scale(1.14); } }
 
 /* The physical Waveshare screen glass frame wrapper */
-div[data-active-theme="dreamplayer"] .music-player-container {
+div[data-active-theme="glassplayer"] .music-player-container {
   padding: 12px !important;
   border-radius: 48px !important;
   background:
@@ -132,7 +132,7 @@ div[data-active-theme="dreamplayer"] .music-player-container {
 }
 
 /* Inner Waveshare screen background simulation */
-div[data-active-theme="dreamplayer"] .music-player-container::before {
+div[data-active-theme="glassplayer"] .music-player-container::before {
   content: "" !important;
   position: absolute;
   inset: 7px;
@@ -142,7 +142,7 @@ div[data-active-theme="dreamplayer"] .music-player-container::before {
   pointer-events: none;
 }
 
-div[data-active-theme="dreamplayer"] .music-player-container::after {
+div[data-active-theme="glassplayer"] .music-player-container::after {
   content: "" !important;
   position: absolute;
   inset: 0;
@@ -154,7 +154,7 @@ div[data-active-theme="dreamplayer"] .music-player-container::after {
 }
 
 /* Glassmorphic Music Player */
-div[data-active-theme="dreamplayer"] .music-player {
+div[data-active-theme="glassplayer"] .music-player {
   background:
     linear-gradient(145deg, rgb(var(--white) / 0.25), rgb(var(--white) / 0.07) 42%, rgb(var(--white) / 0.135)),
     radial-gradient(circle at 12% 8%, rgb(var(--white) / 0.30), transparent 23%),
@@ -171,7 +171,7 @@ div[data-active-theme="dreamplayer"] .music-player {
   border-radius: 36px !important;
 }
 
-div[data-active-theme="dreamplayer"] .music-player.is-playing {
+div[data-active-theme="glassplayer"] .music-player.is-playing {
   box-shadow:
     0 36px 100px rgb(0 0 0 / 0.36),
     0 0 80px rgb(var(--cyan) / 0.16),
@@ -180,12 +180,12 @@ div[data-active-theme="dreamplayer"] .music-player.is-playing {
 }
 
 /* Album Stack Rotation / Highlights */
-div[data-active-theme="dreamplayer"] .album-column {
+div[data-active-theme="glassplayer"] .album-column {
   position: relative;
 }
 
-div[data-active-theme="dreamplayer"] .album-column::before,
-div[data-active-theme="dreamplayer"] .album-column::after {
+div[data-active-theme="glassplayer"] .album-column::before,
+div[data-active-theme="glassplayer"] .album-column::after {
   content: "";
   position: absolute;
   border-radius: 42px;
@@ -193,7 +193,7 @@ div[data-active-theme="dreamplayer"] .album-column::after {
   z-index: 1;
 }
 
-div[data-active-theme="dreamplayer"] .album-column::before {
+div[data-active-theme="glassplayer"] .album-column::before {
   inset: 10px -5px -8px 18px;
   background: rgb(var(--white) / 0.09);
   border: 1px solid rgb(var(--white) / 0.18);
@@ -202,7 +202,7 @@ div[data-active-theme="dreamplayer"] .album-column::before {
   -webkit-backdrop-filter: blur(22px);
 }
 
-div[data-active-theme="dreamplayer"] .album-column::after {
+div[data-active-theme="glassplayer"] .album-column::after {
   inset: -7px 18px 16px -8px;
   background: rgb(var(--white) / 0.07);
   border: 1px solid rgb(var(--white) / 0.15);
@@ -212,7 +212,7 @@ div[data-active-theme="dreamplayer"] .album-column::after {
 }
 
 /* Album Art Glass Cover */
-div[data-active-theme="dreamplayer"] .album-art {
+div[data-active-theme="glassplayer"] .album-art {
   width: 204px !important;
   height: 204px !important;
   position: relative;
@@ -234,13 +234,13 @@ div[data-active-theme="dreamplayer"] .album-art {
   transition: transform 0.3s ease, box-shadow 0.3s ease;
 }
 
-div[data-active-theme="dreamplayer"] .album-art img {
+div[data-active-theme="glassplayer"] .album-art img {
   border-radius: 30px !important;
   filter: saturate(1.03) contrast(0.98) brightness(1.02) !important;
   opacity: 0.92 !important;
 }
 
-div[data-active-theme="dreamplayer"] .music-player.is-playing .album-art {
+div[data-active-theme="glassplayer"] .music-player.is-playing .album-art {
   animation: albumDrift 3.8s ease-in-out infinite alternate !important;
 }
 
@@ -250,7 +250,7 @@ div[data-active-theme="dreamplayer"] .music-player.is-playing .album-art {
 }
 
 /* Status Pill overrides */
-div[data-active-theme="dreamplayer"] .status-pill {
+div[data-active-theme="glassplayer"] .status-pill {
   padding: 0.43rem 0.8rem !important;
   color: rgb(var(--white) / 0.86) !important;
   background: rgb(var(--white) / 0.12) !important;
@@ -261,18 +261,18 @@ div[data-active-theme="dreamplayer"] .status-pill {
   border-radius: 999px !important;
 }
 
-div[data-active-theme="dreamplayer"] .status-dot {
+div[data-active-theme="glassplayer"] .status-dot {
   background: rgb(var(--pearl)) !important;
   box-shadow: 0 0 18px rgb(var(--pearl) / 0.8) !important;
 }
 
-div[data-active-theme="dreamplayer"] .music-player.is-playing .status-dot {
+div[data-active-theme="glassplayer"] .music-player.is-playing .status-dot {
   background: rgb(var(--mint)) !important;
   box-shadow: 0 0 22px rgb(var(--mint) / 0.85) !important;
 }
 
 /* Text Stylings */
-div[data-active-theme="dreamplayer"] .track-title {
+div[data-active-theme="glassplayer"] .track-title {
   color: rgb(var(--white) / 0.97) !important;
   font-size: clamp(1.8rem, 2.8vw, 3rem) !important;
   line-height: 0.95 !important;
@@ -281,20 +281,20 @@ div[data-active-theme="dreamplayer"] .track-title {
   text-shadow: 0 4px 24px rgb(7 14 30 / 0.32), 0 0 26px rgb(var(--white) / 0.12) !important;
 }
 
-div[data-active-theme="dreamplayer"] .track-artist {
+div[data-active-theme="glassplayer"] .track-artist {
   color: rgb(var(--white) / 0.86) !important;
   font-size: 0.95rem !important;
   font-weight: 800 !important;
   letter-spacing: 0.08em !important;
 }
 
-div[data-active-theme="dreamplayer"] .track-album {
+div[data-active-theme="glassplayer"] .track-album {
   color: var(--ink-2) !important;
   font-size: 0.8rem !important;
 }
 
 /* Visualizer Glass wrapper styling */
-div[data-active-theme="dreamplayer"] .hifi-visualizer {
+div[data-active-theme="glassplayer"] .hifi-visualizer {
   background: rgb(var(--white) / 0.09) !important;
   border: 1px solid rgb(var(--white) / 0.20) !important;
   box-shadow: inset 0 1px 0 rgb(var(--white) / 0.18) !important;
@@ -304,14 +304,14 @@ div[data-active-theme="dreamplayer"] .hifi-visualizer {
   padding: 5px !important;
 }
 
-div[data-active-theme="dreamplayer"] .vu-channel-box {
+div[data-active-theme="glassplayer"] .vu-channel-box {
   background: transparent !important;
   border: none !important;
   box-shadow: none !important;
 }
 
 /* Premium Glass Buttons */
-div[data-active-theme="dreamplayer"] .icon-button {
+div[data-active-theme="glassplayer"] .icon-button {
   border-radius: 999px !important;
   border: 1px solid rgb(var(--white) / 0.40) !important;
   color: rgb(var(--white) / 0.92) !important;
@@ -327,7 +327,7 @@ div[data-active-theme="dreamplayer"] .icon-button {
   transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease, color 0.2s ease !important;
 }
 
-div[data-active-theme="dreamplayer"] .icon-button::before {
+div[data-active-theme="glassplayer"] .icon-button::before {
   content: "" !important;
   position: absolute;
   inset: 2px;
@@ -336,7 +336,7 @@ div[data-active-theme="dreamplayer"] .icon-button::before {
   pointer-events: none;
 }
 
-div[data-active-theme="dreamplayer"] .icon-button::after {
+div[data-active-theme="glassplayer"] .icon-button::after {
   content: "" !important;
   position: absolute;
   inset: -36% 18% 52% -12%;
@@ -347,8 +347,8 @@ div[data-active-theme="dreamplayer"] .icon-button::after {
   pointer-events: none;
 }
 
-div[data-active-theme="dreamplayer"] .icon-button:hover,
-div[data-active-theme="dreamplayer"] .icon-button:focus-visible {
+div[data-active-theme="glassplayer"] .icon-button:hover,
+div[data-active-theme="glassplayer"] .icon-button:focus-visible {
   transform: translateY(-3px) scale(1.035) !important;
   border-color: rgb(var(--white) / 0.62) !important;
   color: white !important;
@@ -361,11 +361,11 @@ div[data-active-theme="dreamplayer"] .icon-button:focus-visible {
     inset 0 1px 0 rgb(var(--white) / 0.70) !important;
 }
 
-div[data-active-theme="dreamplayer"] .icon-button:active {
+div[data-active-theme="glassplayer"] .icon-button:active {
   transform: translateY(0) scale(0.96) !important;
 }
 
-div[data-active-theme="dreamplayer"] .icon-button.active {
+div[data-active-theme="glassplayer"] .icon-button.active {
   color: #142033 !important;
   background:
     radial-gradient(circle at 30% 16%, rgb(var(--white) / 0.84), transparent 30%),
@@ -374,7 +374,7 @@ div[data-active-theme="dreamplayer"] .icon-button.active {
   box-shadow: 0 0 34px rgb(var(--theme-color) / 0.22), inset 0 1px 0 rgb(var(--white) / 0.74) !important;
 }
 
-div[data-active-theme="dreamplayer"] .icon-button.play {
+div[data-active-theme="glassplayer"] .icon-button.play {
   width: 58px !important;
   height: 58px !important;
   color: #142033 !important;
@@ -389,14 +389,14 @@ div[data-active-theme="dreamplayer"] .icon-button.play {
     inset 0 -1px 0 rgb(var(--white) / 0.28) !important;
 }
 
-div[data-active-theme="dreamplayer"] .music-player.is-playing .icon-button.play {
+div[data-active-theme="glassplayer"] .music-player.is-playing .icon-button.play {
   background:
     radial-gradient(circle at 30% 16%, rgb(var(--white) / 0.96), transparent 32%),
     linear-gradient(145deg, rgb(var(--mint) / 0.84), rgb(var(--cyan) / 0.52)) !important;
 }
 
 /* Home button */
-div[data-active-theme="dreamplayer"] .icon-button.home {
+div[data-active-theme="glassplayer"] .icon-button.home {
   color: #142033 !important;
   background:
     radial-gradient(circle at 30% 16%, rgb(var(--white) / 0.84), transparent 30%),
@@ -404,7 +404,7 @@ div[data-active-theme="dreamplayer"] .icon-button.home {
 }
 
 /* Seek Bar / Progress Indicators */
-div[data-active-theme="dreamplayer"] .progress-bar-dots {
+div[data-active-theme="glassplayer"] .progress-bar-dots {
   height: 14px !important;
   border-radius: 999px !important;
   background: rgb(var(--white) / 0.09) !important;
@@ -414,22 +414,22 @@ div[data-active-theme="dreamplayer"] .progress-bar-dots {
   -webkit-backdrop-filter: blur(16px) !important;
 }
 
-div[data-active-theme="dreamplayer"] .progress-bar-dots::before {
+div[data-active-theme="glassplayer"] .progress-bar-dots::before {
   display: none !important;
 }
 
-div[data-active-theme="dreamplayer"] .progress-fill-dots {
+div[data-active-theme="glassplayer"] .progress-fill-dots {
   border-radius: 999px !important;
   background: linear-gradient(90deg, rgb(var(--white) / 0.84), rgb(var(--cyan) / 0.76), rgb(var(--lilac) / 0.68)) !important;
   box-shadow: 0 0 24px rgb(var(--cyan) / 0.40), inset 0 1px 0 rgb(var(--white) / 0.48) !important;
 }
 
-div[data-active-theme="dreamplayer"] .progress-fill-dots::before {
+div[data-active-theme="glassplayer"] .progress-fill-dots::before {
   display: none !important;
 }
 
 /* Thumb controller indicator */
-div[data-active-theme="dreamplayer"] .progress-fill-dots::after {
+div[data-active-theme="glassplayer"] .progress-fill-dots::after {
   content: "" !important;
   position: absolute;
   right: -7px;
@@ -443,12 +443,12 @@ div[data-active-theme="dreamplayer"] .progress-fill-dots::after {
   box-shadow: 0 0 20px rgb(var(--cyan) / 0.45), inset 0 1px 0 rgb(var(--white) / 0.9);
 }
 
-div[data-active-theme="dreamplayer"] .progress-times {
+div[data-active-theme="glassplayer"] .progress-times {
   color: var(--ink-2) !important;
 }
 
 /* Volume control popups */
-div[data-active-theme="dreamplayer"] .volume-feedback {
+div[data-active-theme="glassplayer"] .volume-feedback {
   color: #142033 !important;
   background: linear-gradient(145deg, rgb(var(--white) / 0.80), rgb(var(--white) / 0.34)) !important;
   border: 1px solid rgb(var(--white) / 0.58) !important;

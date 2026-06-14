@@ -552,6 +552,7 @@ div[data-theme="ruby"] *::selection {
 /* Import theme-specific stylesheet files at the end to overlay standard layout styles */
 @import "./dot-matrix.css";
 @import "./dreamplayer.css";
+@import "./glassplayer.css";
 
 /* Optimize touch interaction latency and disable double-tap zooming on kiosk/mobile */
 button, 
