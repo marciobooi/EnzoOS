@@ -76,22 +76,31 @@ export const loadCachedStateFromDB = async () => {
     }
 
     let eqSettingsVal = await getSetting('eq_settings');
-    if (!eqSettingsVal) {
+    let needsResetOrMigrate = false;
+    if (eqSettingsVal) {
+      try {
+        const parsed = JSON.parse(eqSettingsVal);
+        if (!parsed || !Array.isArray(parsed.bands) || typeof parsed.bands[0] === 'object') {
+          needsResetOrMigrate = true;
+        }
+      } catch (e) {
+        needsResetOrMigrate = true;
+      }
+    } else {
+      needsResetOrMigrate = true;
+    }
+
+    if (needsResetOrMigrate) {
       const defaultEq = {
         preset: 'Clinical Reference',
-        bands: [
-          { name: 'b1', freq: 30, gain: 0, q: 0.707 },
-          { name: 'b2', freq: 105, gain: -1.5, q: 0.707 },
-          { name: 'b3', freq: 250, gain: -1.0, q: 0.5 },
-          { name: 'b4', freq: 3200, gain: 1.0, q: 1.0 },
-          { name: 'b5', freq: 10000, gain: 0.0, q: 0.707 }
-        ],
-        saturation: false,
-        noiseFloor: null,
-        preAmp: 0
+        bands: [0, 0, 0, 0, 0],
+        saturation: 0,
+        noiseFloor: 0,
+        preAmp: 0.0
       };
       await setSetting('eq_settings', JSON.stringify(defaultEq));
-      console.log('[Resonance DB] Initialized default eq_settings in DB.');
+      eqSettingsVal = JSON.stringify(defaultEq);
+      console.log('[Resonance DB] Initialized/migrated default eq_settings in DB.');
     }
 
     let activeSource = await getSetting('active_source');
@@ -112,27 +121,36 @@ export const loadCachedStateFromDB = async () => {
       console.log('[Resonance DB] Initialized default remote_access_enabled in DB.');
     }
       
-      if (activeSource === 'radio') {
-        const url = await getSetting('last_radio_url');
-        const name = await getSetting('last_radio_name');
-        const favicon = await getSetting('last_radio_favicon');
-        if (url) {
-          cachedPlaybackState = {
-            paused: true, // Start paused on reboot/standby
-            position: 0,
-            duration: 0,
-            track_window: {
-              current_track: {
-                name: name || 'WEB RADIO',
-                artists: [{ name: 'Live Stream' }],
-                album: { name: 'Web Radio Broadcast', images: favicon ? [{ url: favicon }] : [] },
-                url: url
-              }
+    if (activeSource === 'radio') {
+      const url = await getSetting('last_radio_url');
+      const name = await getSetting('last_radio_name');
+      const favicon = await getSetting('last_radio_favicon');
+      if (url) {
+        cachedPlaybackState = {
+          paused: true, // Start paused on reboot/standby
+          position: 0,
+          duration: 0,
+          track_window: {
+            current_track: {
+              name: name || 'WEB RADIO',
+              artists: [{ name: 'Live Stream' }],
+              album: { name: 'Web Radio Broadcast', images: favicon ? [{ url: favicon }] : [] },
+              url: url
             }
-          };
-          console.log(`[Resonance WS] Loaded last played radio from DB: ${name} (${url})`);
-        }
+          }
+        };
+        console.log(`[Resonance WS] Loaded last played radio from DB: ${name} (${url})`);
       }
+    }
+
+    // Restore CamillaDSP configuration on startup to persist state across reboots
+    try {
+      const { updateCamillaConfigFromSettings } = await import('./player.js');
+      await updateCamillaConfigFromSettings();
+      console.log('[Resonance WS] Successfully restored and verified CamillaDSP config on startup.');
+    } catch (err) {
+      console.error('[Resonance WS] Failed to restore CamillaDSP config on startup:', err.message);
+    }
   } catch (err) {
     console.warn('[Resonance WS] Failed to load cached state from DB:', err.message);
   }

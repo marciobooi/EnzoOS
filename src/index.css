@@ -362,6 +362,7 @@ div[data-theme="ruby"] *::selection {
   transform-origin: 50% 100%;
   transform: translateX(-50%) rotate(-45deg);
   box-shadow: 0 0 3px var(--theme-color-glow);
+  transition: transform 0.12s cubic-bezier(0.25, 0.8, 0.25, 1);
 }
 
 .vu-needle.active-l {

@@ -45,6 +45,8 @@ export default function PlayerDisplay({
   const volumePopupRef = useRef(null);
   const dbLRef = useRef(null);
   const dbRRef = useRef(null);
+  const needleLRef = useRef(null);
+  const needleRRef = useRef(null);
 
   useEffect(() => {
     function handleClickOutside(event) {
@@ -71,6 +73,8 @@ export default function PlayerDisplay({
     if (!isPlaying) {
       if (dbLRef.current) dbLRef.current.textContent = '-45.0 DB';
       if (dbRRef.current) dbRRef.current.textContent = '-45.0 DB';
+      if (needleLRef.current) needleLRef.current.style.transform = 'translateX(-50%) rotate(-45deg)';
+      if (needleRRef.current) needleRRef.current.style.transform = 'translateX(-50%) rotate(-45deg)';
       return;
     }
 
@@ -83,6 +87,24 @@ export default function PlayerDisplay({
 
       if (dbLRef.current) dbLRef.current.textContent = leftText;
       if (dbRRef.current) dbRRef.current.textContent = rightText;
+
+      // Map simulated DB (e.g. -16.5 to +1.5) to physical needle rotation (e.g. -40deg to +10deg)
+      const leftNum = Number(leftVal);
+      const rightNum = Number(rightVal);
+      
+      // Normalize between -20dB and +3dB
+      const leftPct = Math.max(0, Math.min(1, (leftNum + 20) / 23));
+      const rightPct = Math.max(0, Math.min(1, (rightNum + 20) / 23));
+
+      const leftDeg = -45 + leftPct * 55; // maps to -45deg to +10deg
+      const rightDeg = -45 + rightPct * 55;
+
+      if (needleLRef.current) {
+        needleLRef.current.style.transform = `translateX(-50%) rotate(${leftDeg}deg)`;
+      }
+      if (needleRRef.current) {
+        needleRRef.current.style.transform = `translateX(-50%) rotate(${rightDeg}deg)`;
+      }
     }, 150);
 
     return () => clearInterval(interval);
@@ -314,7 +336,7 @@ export default function PlayerDisplay({
                       <span>-10dB</span>
                       <span>0dB</span>
                     </div>
-                    <div className={`vu-needle ${isPlaying ? 'active-l' : ''}`} />
+                    <div ref={needleLRef} className="vu-needle" />
                   </div>
                   <div className="vu-readout-line">
                     <span className="text-zinc-400">LINE LEVEL L</span>
@@ -332,7 +354,7 @@ export default function PlayerDisplay({
                       <span>-10dB</span>
                       <span>0dB</span>
                     </div>
-                    <div className={`vu-needle ${isPlaying ? 'active-r' : ''}`} />
+                    <div ref={needleRRef} className="vu-needle" />
                   </div>
                   <div className="vu-readout-line">
                     <span className="text-zinc-400">LINE LEVEL R</span>
