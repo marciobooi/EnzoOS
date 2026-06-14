@@ -557,75 +557,60 @@ export default function PlayerDisplay({
                 <div className="track-album truncate">{trackAlbumName}</div>
               </div>
 
-              {/* Precision Mechanical VU Meters or 7-Band Digital (Click to Open EQ, Float button to toggle style) */}
-              <div className="relative group shrink-0 w-[216px] h-[67px]">
-                <button
-                  onClick={onToggleEqualizer}
-                  className="w-full h-full hifi-visualizer shrink-0 cursor-pointer hover:opacity-90 transition-opacity bg-transparent border-0 p-0 flex items-stretch gap-[15px]"
-                  title="Open Parametric Equalizer"
-                  type="button"
-                >
-                  {visualizerMode === 'vu' ? (
-                    <>
-                      {/* Left Channel Mechanical VU */}
-                      <div className="vu-channel-box">
-                        <div className="vu-dial-area">
-                          <div className="vu-dot-grid" />
-                          <div className="vu-glow-overlay" />
-                          <div className="vu-scale-marks">
-                            <span>-20dB</span>
-                            <span>-10dB</span>
-                            <span>0dB</span>
-                          </div>
-                          <div ref={needleLRef} className="vu-needle" />
+              {/* Precision Mechanical VU Meters or 7-Band Digital (Click to Open EQ) */}
+              <button
+                onClick={onToggleEqualizer}
+                className="hifi-visualizer shrink-0 cursor-pointer hover:opacity-90 transition-opacity bg-transparent border-0 p-0 flex items-stretch gap-[15px]"
+                title="Open Parametric Equalizer"
+                type="button"
+              >
+                {visualizerMode === 'vu' ? (
+                  <>
+                    {/* Left Channel Mechanical VU */}
+                    <div className="vu-channel-box">
+                      <div className="vu-dial-area">
+                        <div className="vu-dot-grid" />
+                        <div className="vu-glow-overlay" />
+                        <div className="vu-scale-marks">
+                          <span>-20dB</span>
+                          <span>-10dB</span>
+                          <span>0dB</span>
                         </div>
-                        <div className="vu-readout-line">
-                          <span className="text-zinc-400">LINE LEVEL L</span>
-                          <span ref={dbLRef} className="text-[var(--theme-color)]">-45.0 DB</span>
-                        </div>
+                        <div ref={needleLRef} className="vu-needle" />
                       </div>
-
-                      {/* Right Channel Mechanical VU */}
-                      <div className="vu-channel-box">
-                        <div className="vu-dial-area">
-                          <div className="vu-dot-grid" />
-                          <div className="vu-glow-overlay" />
-                          <div className="vu-scale-marks">
-                            <span>-20dB</span>
-                            <span>-10dB</span>
-                            <span>0dB</span>
-                          </div>
-                          <div ref={needleRRef} className="vu-needle" />
-                        </div>
-                        <div className="vu-readout-line">
-                          <span className="text-zinc-400">LINE LEVEL R</span>
-                          <span ref={dbRRef} className="text-[var(--theme-color)]">-45.0 DB</span>
-                        </div>
+                      <div className="vu-readout-line">
+                        <span className="text-zinc-400">LINE LEVEL L</span>
+                        <span ref={dbLRef} className="text-[var(--theme-color)]">-45.0 DB</span>
                       </div>
-                    </>
-                  ) : (
-                    <div className="w-full h-full p-1 relative overflow-hidden flex items-center justify-center bg-black/20 rounded-xl border border-white/5">
-                      <canvas 
-                        ref={canvasRef} 
-                        className="w-full h-full block"
-                      />
                     </div>
-                  )}
-                </button>
 
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    if (onVisualizerModeChange) {
-                      onVisualizerModeChange(visualizerMode === 'vu' ? 'digital' : 'vu');
-                    }
-                  }}
-                  className="absolute bottom-1.5 right-2.5 z-[60] bg-black/75 hover:bg-black border border-white/10 text-[6.5px] font-extrabold tracking-wider uppercase px-1.5 py-0.5 rounded text-zinc-400 hover:text-[var(--theme-color)] transition-all cursor-pointer opacity-70 hover:opacity-100"
-                  title="Toggle Visualizer Mode"
-                >
-                  {visualizerMode === 'vu' ? 'VU' : '7-Band'}
-                </button>
-              </div>
+                    {/* Right Channel Mechanical VU */}
+                    <div className="vu-channel-box">
+                      <div className="vu-dial-area">
+                        <div className="vu-dot-grid" />
+                        <div className="vu-glow-overlay" />
+                        <div className="vu-scale-marks">
+                          <span>-20dB</span>
+                          <span>-10dB</span>
+                          <span>0dB</span>
+                        </div>
+                        <div ref={needleRRef} className="vu-needle" />
+                      </div>
+                      <div className="vu-readout-line">
+                        <span className="text-zinc-400">LINE LEVEL R</span>
+                        <span ref={dbRRef} className="text-[var(--theme-color)]">-45.0 DB</span>
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  <div className="w-full h-full p-1 relative overflow-hidden flex items-center justify-center bg-black/20 rounded-xl border border-white/5">
+                    <canvas 
+                      ref={canvasRef} 
+                      className="w-full h-full block"
+                    />
+                  </div>
+                )}
+              </button>
             </div>
           </div>
 
