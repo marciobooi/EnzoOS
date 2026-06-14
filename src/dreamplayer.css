@@ -290,3 +290,88 @@ div[data-active-theme="dreamplayer"] .volume-feedback {
   height: auto !important;
   line-height: 1.2 !important;
 }
+
+/* Volume Popup Overlay */
+div[data-active-theme="dreamplayer"] .volume-popup {
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.17), rgba(255, 255, 255, 0.055)) !important;
+  border: 1px solid var(--border) !important;
+  box-shadow:
+    var(--shadow-glow),
+    0 24px 70px rgba(0,0,0,0.32),
+    inset 0 1px 0 rgba(255,255,255,0.28) !important;
+  backdrop-filter: blur(28px) saturate(160%) !important;
+  -webkit-backdrop-filter: blur(28px) saturate(160%) !important;
+  border-radius: var(--radius-md) !important;
+}
+
+div[data-active-theme="dreamplayer"] .volume-popup button {
+  color: var(--text) !important;
+  background: none !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+div[data-active-theme="dreamplayer"] .volume-popup button:hover {
+  transform: scale(1.1) !important;
+  color: var(--cyan) !important;
+}
+
+div[data-active-theme="dreamplayer"] .volume-popup span {
+  color: var(--text) !important;
+  font-family: 'Space Mono', monospace !important;
+}
+
+/* Web Radio Search and List Overrides */
+div[data-active-theme="dreamplayer"] .radio-search-input {
+  font-family: 'Space Mono', monospace !important;
+  background: rgba(255, 255, 255, 0.05) !important;
+  border: 1px solid var(--border) !important;
+  color: var(--text) !important;
+  border-radius: var(--radius-sm) !important;
+}
+
+div[data-active-theme="dreamplayer"] .radio-search-input:focus {
+  border-color: var(--cyan) !important;
+  box-shadow: 0 0 14px rgba(84, 242, 255, 0.25) !important;
+}
+
+div[data-active-theme="dreamplayer"] .radio-search-btn {
+  border-radius: var(--radius-sm) !important;
+  background: linear-gradient(135deg, var(--cyan), var(--violet)) !important;
+  color: #07101e !important;
+  font-family: 'Inter', sans-serif !important;
+  font-weight: 800 !important;
+  box-shadow: 0 4px 14px rgba(84, 242, 255, 0.2) !important;
+  border: none !important;
+}
+
+div[data-active-theme="dreamplayer"] .radio-search-btn:hover {
+  transform: translateY(-2px) !important;
+  box-shadow: 0 6px 18px rgba(84, 242, 255, 0.3) !important;
+}
+
+div[data-active-theme="dreamplayer"] .radio-station-card {
+  background: rgba(255, 255, 255, 0.06) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: var(--radius-md) !important;
+}
+
+div[data-active-theme="dreamplayer"] .radio-station-card:hover {
+  border-color: var(--cyan) !important;
+  background: rgba(255, 255, 255, 0.1) !important;
+}
+
+div[data-active-theme="dreamplayer"] .radio-play-btn {
+  border-radius: var(--radius-sm) !important;
+  background: linear-gradient(135deg, var(--cyan), var(--violet)) !important;
+  color: #07101e !important;
+  font-family: 'Inter', sans-serif !important;
+  font-weight: 800 !important;
+  border: none !important;
+}
+
+div[data-active-theme="dreamplayer"] .radio-play-btn:hover {
+  transform: scale(1.05) !important;
+}
+
+

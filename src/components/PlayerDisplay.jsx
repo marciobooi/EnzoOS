@@ -169,12 +169,12 @@ export default function PlayerDisplay({
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') handleRadioSearch();
                 }}
-                className="flex-grow bg-black/40 border border-white/10 rounded-xl px-4 py-2 font-mono text-xs text-zinc-200 placeholder:text-zinc-650 focus:outline-none focus:border-[var(--theme-color)]"
+                className="radio-search-input flex-grow bg-black/40 border border-white/10 rounded-xl px-4 py-2 font-mono text-xs text-zinc-200 placeholder:text-zinc-650 focus:outline-none focus:border-[var(--theme-color)]"
               />
               <button
                 onClick={handleRadioSearch}
                 disabled={isSearching}
-                className="px-4 py-2 bg-[var(--theme-color)] text-black font-extrabold text-[10px] uppercase tracking-wider rounded-xl hover:opacity-85 active:scale-95 transition-all cursor-pointer disabled:opacity-50"
+                className="radio-search-btn px-4 py-2 bg-[var(--theme-color)] text-black font-extrabold text-[10px] uppercase tracking-wider rounded-xl hover:opacity-85 active:scale-95 transition-all cursor-pointer disabled:opacity-50"
               >
                 {isSearching ? '...' : 'SEARCH'}
               </button>
@@ -193,7 +193,7 @@ export default function PlayerDisplay({
                 return (
                   <div
                     key={`${station.url}-${idx}`}
-                    className="p-2.5 rounded-xl bg-white/5 border border-white/10 hover:border-[var(--theme-color)] text-left flex items-center justify-between transition-all group"
+                    className="radio-station-card p-2.5 rounded-xl bg-white/5 border border-white/10 hover:border-[var(--theme-color)] text-left flex items-center justify-between transition-all group"
                   >
                     <button
                       onClick={() => {
@@ -233,7 +233,7 @@ export default function PlayerDisplay({
                           onPlayRadio(station.url, station.name, station.favicon);
                           setShowSearch(false);
                         }}
-                        className="text-[8px] bg-white/5 border border-white/10 group-hover:border-[var(--theme-color)] group-hover:text-black group-hover:bg-[var(--theme-color)] px-2 py-0.5 rounded font-extrabold text-zinc-350 uppercase tracking-wider shrink-0 transition-colors cursor-pointer"
+                        className="radio-play-btn text-[8px] bg-white/5 border border-white/10 group-hover:border-[var(--theme-color)] group-hover:text-black group-hover:bg-[var(--theme-color)] px-2 py-0.5 rounded font-extrabold text-zinc-350 uppercase tracking-wider shrink-0 transition-colors cursor-pointer"
                       >
                         PLAY
                       </button>
@@ -496,7 +496,7 @@ export default function PlayerDisplay({
           </button>
 
           {showVolumePopup && (
-            <div className="absolute right-14 bottom-0 bg-[#0d1527] border border-white/10 rounded-2xl p-4 flex items-center gap-3 shadow-2xl z-[150] w-64 animate-fade-in">
+            <div className="volume-popup absolute right-14 bottom-0 bg-[#0d1527] border border-white/10 rounded-2xl p-4 flex items-center gap-3 shadow-2xl z-[150] w-64 animate-fade-in">
               <button
                 onClick={handleToggleMute}
                 className="text-zinc-400 hover:text-white transition-colors flex-shrink-0 cursor-pointer"
