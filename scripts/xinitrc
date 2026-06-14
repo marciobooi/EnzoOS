@@ -83,6 +83,7 @@ while true; do
     --app=http://localhost:5000/kiosk \
     --window-size=800,480 \
     --autoplay-policy=no-user-gesture-required \
+    --touch-events=enabled \
     --user-data-dir="$HOME/.config/spotify-kiosk" \
     --disk-cache-dir="$HOME/.cache/spotify-kiosk" \
     --disable-restore-session-state \
