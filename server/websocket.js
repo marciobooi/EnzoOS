@@ -107,6 +107,12 @@ export function setupWebSocket(server, app, isLocalIP) {
       ws.send(JSON.stringify({ type: 'EQ_SETTINGS', payload: JSON.parse(eqSettings) }));
     }
 
+    // Send the active DSP calibration status on connect
+    const dspCalibration = await getSetting('dsp_calibration');
+    if (dspCalibration) {
+      ws.send(JSON.stringify({ type: 'DSP_CALIBRATION', payload: JSON.parse(dspCalibration) }));
+    }
+
     // Send the server-managed access token (auto-refreshed if needed)
     const serverToken = await getValidAccessToken();
     if (serverToken) {

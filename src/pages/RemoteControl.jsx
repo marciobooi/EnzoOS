@@ -374,7 +374,8 @@ export default function RemoteControl() {
     setEqBands,
     setEqSaturation,
     setEqNoiseFloor,
-    setEqPreAmp
+    setEqPreAmp,
+    setDspActive
   });
 
   const handleToggleStandby = (enabled) => {

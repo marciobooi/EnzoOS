@@ -611,6 +611,12 @@ router.post('/dsp-calibration', async (req, res) => {
 
     const dacInfo = await updateCamillaConfigFromSettings();
 
+    // Broadcast update to all WebSocket clients
+    const broadcast = req.app.get('wssBroadcast');
+    if (broadcast) {
+      broadcast({ type: 'DSP_CALIBRATION', payload: answers });
+    }
+
     res.json({ success: true, dacInfo });
   } catch (err) {
     console.error('[CamillaDSP] Error compiling tuning configuration:', err);

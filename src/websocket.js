@@ -30,7 +30,8 @@ export function useResonanceWS({
     setEqBands,
     setEqSaturation,
     setEqNoiseFloor,
-    setEqPreAmp
+    setEqPreAmp,
+    setDspActive
   }) {
     const [isConnected, setIsConnected] = useState(false);
     const ws = useRef(null);
@@ -146,6 +147,12 @@ export function useResonanceWS({
               localStorage.setItem('resonance_eq_saturation', payload.saturation);
               localStorage.setItem('resonance_eq_noise', payload.noiseFloor);
               localStorage.setItem('resonance_eq_preamp', payload.preAmp);
+            }
+
+            if (type === 'DSP_CALIBRATION') {
+              if (setDspActive) {
+                setDspActive(payload && (payload[0] === 'dsp' || payload['0'] === 'dsp'));
+              }
             }
   
             if (type === 'CLEAR_TOKEN') {

@@ -257,7 +257,8 @@ export default function Kiosk() {
     setEqBands,
     setEqSaturation,
     setEqNoiseFloor,
-    setEqPreAmp
+    setEqPreAmp,
+    setDspActive
   });
 
   const handleToggleStandby = (enabled) => {
