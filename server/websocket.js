@@ -127,7 +127,6 @@ export const loadCachedStateFromDB = async () => {
           console.log(`[Resonance WS] Loaded last played radio from DB: ${name} (${url})`);
         }
       }
-    }
   } catch (err) {
     console.warn('[Resonance WS] Failed to load cached state from DB:', err.message);
   }
