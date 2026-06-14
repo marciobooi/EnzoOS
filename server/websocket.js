@@ -27,6 +27,22 @@ export const setStandbyState = async (enabled) => {
   }
 };
 
+export const setHardwareBrightness = async (brightness) => {
+  if (brightness === undefined || brightness === null) return;
+  try {
+    const { exec } = await import('child_process');
+    exec(`sudo /usr/local/bin/kiosk-brightness.sh ${brightness}`, (err, stdout, stderr) => {
+      if (err) {
+        console.error('[Brightness] Failed to set hardware brightness:', err);
+      } else {
+        console.log(`[Brightness] Successfully set hardware brightness to ${brightness}%:`, stdout.trim());
+      }
+    });
+  } catch (err) {
+    console.error('[Brightness] Error executing brightness script:', err);
+  }
+};
+
 /**
  * Helper to load cached state from DB on startup.
  */
@@ -36,6 +52,19 @@ export const loadCachedStateFromDB = async () => {
     const standbyVal = await getSetting('standby');
     cachedStandbyState = standbyVal === 'true';
     console.log(`[Resonance WS] Loaded standby state from DB: ${cachedStandbyState}`);
+
+    const themeSettingsVal = await getSetting('theme_settings');
+    if (themeSettingsVal) {
+      try {
+        const themeSettings = JSON.parse(themeSettingsVal);
+        if (themeSettings && themeSettings.brightness !== undefined) {
+          console.log(`[Resonance WS] Loaded brightness from DB: ${themeSettings.brightness}`);
+          await setHardwareBrightness(themeSettings.brightness);
+        }
+      } catch (e) {
+        console.warn('[Resonance WS] Failed parsing theme_settings from DB:', e);
+      }
+    }
 
     const activeSource = await getSetting('active_source');
     if (activeSource) {
@@ -187,6 +216,9 @@ export function setupWebSocket(server, app, isLocalIP) {
         if (type === 'SET_THEME_SETTINGS') {
           console.log('[Resonance WS] Theme settings update received:', payload);
           await setSetting('theme_settings', JSON.stringify(payload));
+          if (payload && payload.brightness !== undefined) {
+            await setHardwareBrightness(payload.brightness);
+          }
           
           // Broadcast theme settings to all other clients
           broadcast({ type: 'THEME_SETTINGS', payload }, ws);

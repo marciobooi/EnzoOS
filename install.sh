@@ -299,7 +299,7 @@ echo -e "${GREEN}Raspotify Spotify Connect service configured and started.${NC}"
 # Configure passwordless sudo for Spotify and CamillaDSP daemon management
 echo -e "${YELLOW}Configuring sudo permissions for Spotify and CamillaDSP daemon management...${NC}"
 cat <<EOF > /etc/sudoers.d/resonance
-$TARGET_USER ALL=(ALL) NOPASSWD: /usr/bin/tee /etc/raspotify/conf, /bin/tee /etc/raspotify/conf, /usr/bin/tee /etc/asound.conf, /bin/tee /etc/asound.conf, /usr/bin/systemctl restart raspotify, /bin/systemctl restart raspotify, /usr/bin/systemctl restart camilladsp, /bin/systemctl restart camilladsp, /usr/bin/systemctl reload camilladsp, /bin/systemctl reload camilladsp, /usr/local/bin/kiosk-power.sh
+$TARGET_USER ALL=(ALL) NOPASSWD: /usr/bin/tee /etc/raspotify/conf, /bin/tee /etc/raspotify/conf, /usr/bin/tee /etc/asound.conf, /bin/tee /etc/asound.conf, /usr/bin/systemctl restart raspotify, /bin/systemctl restart raspotify, /usr/bin/systemctl restart camilladsp, /bin/systemctl restart camilladsp, /usr/bin/systemctl reload camilladsp, /bin/systemctl reload camilladsp, /usr/local/bin/kiosk-power.sh, /usr/local/bin/kiosk-brightness.sh
 EOF
 chmod 440 /etc/sudoers.d/resonance
 
@@ -337,6 +337,10 @@ echo -e "${YELLOW}Deploying kiosk power management and wake monitor scripts...${
 cp "$PROJECT_DIR/scripts/kiosk-power.sh" "/usr/local/bin/kiosk-power.sh"
 chmod +x "/usr/local/bin/kiosk-power.sh"
 chown root:root "/usr/local/bin/kiosk-power.sh"
+
+cp "$PROJECT_DIR/scripts/kiosk-brightness.sh" "/usr/local/bin/kiosk-brightness.sh"
+chmod +x "/usr/local/bin/kiosk-brightness.sh"
+chown root:root "/usr/local/bin/kiosk-brightness.sh"
 
 cp "$PROJECT_DIR/scripts/kiosk-wake-monitor.sh" "/usr/local/bin/kiosk-wake-monitor.sh"
 chmod +x "/usr/local/bin/kiosk-wake-monitor.sh"
