@@ -90,23 +90,25 @@ div[data-active-theme="minimalist"] .album-column {
   z-index: 2;
 }
 
-/* Linear-gradient overlay to fade the image from transparent on the right to opaque dominant color on the left */
-div[data-active-theme="minimalist"] .album-column::after {
+/* Linear-gradient overlay on the album art to fade it smoothly into the background */
+div[data-active-theme="minimalist"] .album-art::after {
   content: "" !important;
   position: absolute;
-  inset: -1px;
+  inset: 0;
   background: linear-gradient(90deg, 
     var(--deep) 0%, 
-    var(--deep) 10%, 
-    rgba(var(--extracted-rgb, 5 10 20) / 0.85) 35%, 
+    var(--deep) 15%, 
+    rgba(var(--extracted-rgb, 5 10 20) / 0.85) 40%, 
     rgba(var(--extracted-rgb, 5 10 20) / 0.4) 65%, 
     rgba(var(--extracted-rgb, 5 10 20) / 0.1) 85%, 
     transparent 100%) !important;
   pointer-events: none;
-  z-index: 5;
+  z-index: 5 !important;
+  opacity: 1 !important;
 }
 
-div[data-active-theme="minimalist"] .album-column::before {
+div[data-active-theme="minimalist"] .album-column::before,
+div[data-active-theme="minimalist"] .album-column::after {
   display: none !important;
 }
 
