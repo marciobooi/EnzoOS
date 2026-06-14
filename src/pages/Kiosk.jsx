@@ -207,11 +207,7 @@ export default function Kiosk() {
     }
   }, [radioSearch, favoriteStations]);
 
-  useEffect(() => {
-    if (isConnected) {
-      fetchFavorites();
-    }
-  }, [isConnected]);
+
 
   useEffect(() => {
     async function loadDspStatus() {
@@ -310,6 +306,12 @@ export default function Kiosk() {
     setBrightness,
     setRemoteAccessEnabled
   });
+
+  useEffect(() => {
+    if (isConnected) {
+      fetchFavorites();
+    }
+  }, [isConnected]);
 
   const handleToggleStandby = (enabled) => {
     setStandby(enabled);

@@ -292,11 +292,7 @@ export default function RemoteControl() {
     }
   }, [radioSearch, favoriteStations]);
 
-  useEffect(() => {
-    if (isConnected) {
-      fetchFavorites();
-    }
-  }, [isConnected]);
+
 
   const handleToggleFavoriteRadio = async (station) => {
     const isFavorite = favoriteStations.some(s => s.url === station.url);
@@ -430,6 +426,12 @@ export default function RemoteControl() {
     setBrightness,
     setRemoteAccessEnabled
   });
+
+  useEffect(() => {
+    if (isConnected) {
+      fetchFavorites();
+    }
+  }, [isConnected]);
 
   const handleToggleStandby = (enabled) => {
     setStandby(enabled);
