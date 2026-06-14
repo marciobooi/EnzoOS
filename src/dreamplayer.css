@@ -1,0 +1,292 @@
+/* ==============================================================================
+   Neo Glass Retrofuture - Dreamplayer Theme (Kiosk View Exclusive)
+   ============================================================================== */
+div[data-active-theme="dreamplayer"] {
+  --bg-0: #040612;
+  --bg-1: #0b1020;
+  --bg-2: #121a31;
+
+  --surface: rgba(255, 255, 255, 0.085);
+  --surface-strong: rgba(255, 255, 255, 0.16);
+  --border: rgba(255, 255, 255, 0.18);
+  --border-strong: rgba(255, 255, 255, 0.32);
+
+  --text: #f8fbff;
+  --muted: #9ba8bd;
+  --muted-2: #718096;
+
+  --cyan: #54f2ff;
+  --violet: #a879ff;
+  --pink: #ff4ecd;
+  --orange: #ff9d42;
+  --green: #4ade80;
+
+  --radius-xl: 32px;
+  --radius-lg: 24px;
+  --radius-md: 18px;
+  --radius-sm: 14px;
+
+  --shadow-soft: 0 28px 90px rgba(0, 0, 0, 0.5);
+  --shadow-glow: 0 0 48px rgba(84, 242, 255, 0.18);
+  
+  background:
+    radial-gradient(circle at 15% 16%, rgba(168, 121, 255, 0.3), transparent 30%),
+    radial-gradient(circle at 84% 78%, rgba(84, 242, 255, 0.24), transparent 32%),
+    radial-gradient(circle at 52% 108%, rgba(255, 78, 205, 0.18), transparent 34%),
+    linear-gradient(135deg, var(--bg-0), var(--bg-1) 52%, #050715) !important;
+  font-family: 'Inter', sans-serif !important;
+}
+
+div[data-active-theme="dreamplayer"]::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.025) 1px, transparent 1px);
+  background-size: 28px 28px;
+  mask-image: radial-gradient(circle at center, black, transparent 75%);
+  z-index: 1;
+}
+
+/* Hide CRT / matrix-grid scanlines */
+div[data-active-theme="dreamplayer"] .dot-matrix-grid,
+div[data-active-theme="dreamplayer"] .crt-scanlines {
+  display: none !important;
+}
+
+/* Container Frame styling */
+div[data-active-theme="dreamplayer"] .music-player-container {
+  padding: 14px;
+  border-radius: 42px;
+  background:
+    linear-gradient(145deg, rgba(255,255,255,0.22), rgba(255,255,255,0.04)),
+    linear-gradient(135deg, rgba(84,242,255,0.18), rgba(255,78,205,0.1));
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-soft), inset 0 1px 0 rgba(255,255,255,0.28);
+}
+
+/* Kiosk Music Player Panel Override */
+div[data-active-theme="dreamplayer"] .music-player {
+  background: linear-gradient(145deg, rgba(255,255,255,0.17), rgba(255,255,255,0.055)) !important;
+  border: 1px solid var(--border) !important;
+  box-shadow:
+    var(--shadow-glow),
+    0 24px 70px rgba(0,0,0,0.32),
+    inset 0 1px 0 rgba(255,255,255,0.28) !important;
+  backdrop-filter: blur(28px) saturate(160%) !important;
+  -webkit-backdrop-filter: blur(28px) saturate(160%) !important;
+  border-radius: var(--radius-xl) !important;
+  font-family: 'Inter', sans-serif !important;
+  animation: none !important;
+}
+
+div[data-active-theme="dreamplayer"] .music-player.is-playing {
+  border-color: rgba(84, 242, 255, 0.32) !important;
+  box-shadow:
+    0 0 68px rgba(84, 242, 255, 0.22),
+    0 24px 80px rgba(0,0,0,0.36),
+    inset 0 1px 0 rgba(255,255,255,0.32) !important;
+}
+
+/* Album art style override */
+div[data-active-theme="dreamplayer"] .album-art {
+  width: 220px !important;
+  height: 220px !important;
+  border-radius: 30px !important;
+  padding: 6px !important;
+  background: linear-gradient(135deg, var(--cyan), var(--violet), var(--pink)) !important;
+  box-shadow:
+    0 18px 50px rgba(0,0,0,0.35),
+    0 0 38px rgba(168,121,255,0.28) !important;
+  transform: rotate(-2deg) !important;
+  transition: transform 0.35s ease, box-shadow 0.35s ease !important;
+}
+
+div[data-active-theme="dreamplayer"] .album-art::after {
+  display: none !important;
+}
+
+div[data-active-theme="dreamplayer"] .album-art img {
+  border-radius: 24px !important;
+  filter: none !important;
+}
+
+div[data-active-theme="dreamplayer"] .music-player.is-playing .album-art {
+  transform: rotate(0deg) scale(1.035) !important;
+  box-shadow:
+    0 24px 70px rgba(0,0,0,0.48),
+    0 0 58px rgba(84,242,255,0.34) !important;
+}
+
+/* Square buttons overrides */
+div[data-active-theme="dreamplayer"] .icon-button {
+  border-radius: 0px !important;
+  font-family: 'Inter', sans-serif !important;
+  background: linear-gradient(145deg, rgba(255,255,255,0.18), rgba(255,255,255,0.06)) !important;
+  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+  box-shadow:
+    8px 8px 20px rgba(0,0,0,0.22),
+    inset 1px 1px 0 rgba(255,255,255,0.22) !important;
+  color: var(--text) !important;
+  transition: transform 0.18s ease, background 0.18s ease, color 0.18s ease, box-shadow 0.18s ease !important;
+}
+
+div[data-active-theme="dreamplayer"] .icon-button:hover,
+div[data-active-theme="dreamplayer"] .icon-button:focus-visible {
+  transform: translateY(-3px) !important;
+  background: linear-gradient(135deg, var(--cyan), var(--violet)) !important;
+  color: #07101e !important;
+  box-shadow:
+    0 14px 32px rgba(84,242,255,0.2),
+    inset 1px 1px 0 rgba(255,255,255,0.28) !important;
+}
+
+div[data-active-theme="dreamplayer"] .icon-button:active {
+  transform: translateY(0) scale(0.96) !important;
+}
+
+div[data-active-theme="dreamplayer"] .icon-button.active {
+  background: linear-gradient(135deg, var(--pink), var(--violet)) !important;
+  color: white !important;
+  border-color: var(--pink) !important;
+}
+
+div[data-active-theme="dreamplayer"] .icon-button.play {
+  border-radius: 0px !important;
+  background: linear-gradient(135deg, var(--orange), var(--pink)) !important;
+  color: white !important;
+  box-shadow:
+    0 14px 36px rgba(255,78,205,0.32),
+    inset 1px 1px 0 rgba(255,255,255,0.28) !important;
+}
+
+div[data-active-theme="dreamplayer"] .music-player.is-playing .icon-button.play {
+  background: linear-gradient(135deg, var(--green), var(--cyan)) !important;
+  color: #041012 !important;
+}
+
+div[data-active-theme="dreamplayer"] .icon-button.home {
+  background: linear-gradient(135deg, var(--violet), var(--pink)) !important;
+  color: white !important;
+}
+
+/* Text & Headings */
+div[data-active-theme="dreamplayer"] .track-title {
+  font-family: 'Syne', sans-serif !important;
+  font-size: 2.5rem !important;
+  font-weight: 800 !important;
+  letter-spacing: -0.05em !important;
+  text-transform: uppercase !important;
+  color: var(--text) !important;
+  text-shadow:
+    0 0 24px rgba(84,242,255,0.22),
+    0 0 48px rgba(255,78,205,0.14) !important;
+}
+
+div[data-active-theme="dreamplayer"] .track-artist {
+  font-family: 'Syne', sans-serif !important;
+  font-weight: 800 !important;
+  color: var(--cyan) !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.08em !important;
+}
+
+div[data-active-theme="dreamplayer"] .track-album {
+  font-family: 'Space Mono', monospace !important;
+  color: var(--muted) !important;
+}
+
+div[data-active-theme="dreamplayer"] .hifi-topline {
+  font-family: 'Space Mono', monospace !important;
+  color: var(--muted) !important;
+}
+
+div[data-active-theme="dreamplayer"] .system-readout {
+  font-family: 'Space Mono', monospace !important;
+  color: var(--muted) !important;
+}
+
+div[data-active-theme="dreamplayer"] .status-pill {
+  font-family: 'Space Mono', monospace !important;
+  border-radius: 999px !important;
+  color: rgba(248, 251, 255, 0.82) !important;
+  background: rgba(255,255,255,0.08) !important;
+  border: 1px solid rgba(255,255,255,0.12) !important;
+}
+
+div[data-active-theme="dreamplayer"] .status-dot {
+  background: var(--orange) !important;
+  box-shadow: 0 0 16px rgba(255,157,66,0.8) !important;
+}
+
+div[data-active-theme="dreamplayer"] .music-player.is-playing .status-dot {
+  background: var(--green) !important;
+  box-shadow: 0 0 18px rgba(74,222,128,0.85) !important;
+}
+
+/* Dials and VU boxes */
+div[data-active-theme="dreamplayer"] .vu-channel-box {
+  background: rgba(255, 255, 255, 0.04) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  border-radius: 12px !important;
+  box-shadow: none !important;
+}
+
+div[data-active-theme="dreamplayer"] .vu-dot-grid {
+  display: none !important;
+}
+
+div[data-active-theme="dreamplayer"] .vu-needle {
+  background: var(--cyan) !important;
+  box-shadow: 0 0 8px var(--cyan) !important;
+}
+
+div[data-active-theme="dreamplayer"] .vu-scale-marks span {
+  font-family: 'Space Mono', monospace !important;
+  color: var(--muted) !important;
+}
+
+div[data-active-theme="dreamplayer"] .vu-readout-line span {
+  font-family: 'Space Mono', monospace !important;
+}
+
+/* Seek Bar / Progress Indicators */
+div[data-active-theme="dreamplayer"] .progress-bar-dots {
+  height: 12px !important;
+  border-radius: 999px !important;
+  background: rgba(255,255,255,0.11) !important;
+  box-shadow: inset 0 2px 6px rgba(0,0,0,0.35) !important;
+}
+
+div[data-active-theme="dreamplayer"] .progress-bar-dots::before {
+  display: none !important;
+}
+
+div[data-active-theme="dreamplayer"] .progress-fill-dots {
+  border-radius: 999px !important;
+  background: linear-gradient(90deg, var(--cyan), var(--violet), var(--pink)) !important;
+  box-shadow: 0 0 24px rgba(84,242,255,0.42) !important;
+}
+
+div[data-active-theme="dreamplayer"] .progress-fill-dots::before {
+  display: none !important;
+}
+
+div[data-active-theme="dreamplayer"] .progress-times {
+  color: var(--muted) !important;
+}
+
+/* Volume Indicator */
+div[data-active-theme="dreamplayer"] .volume-feedback {
+  font-family: 'Space Mono', monospace !important;
+  color: #061019 !important;
+  background: linear-gradient(135deg, var(--cyan), var(--green)) !important;
+  box-shadow: 0 0 26px rgba(84,242,255,0.24) !important;
+  border-radius: 999px !important;
+  padding: 0.25rem 0.85rem !important;
+  font-size: 1.1rem !important;
+  height: auto !important;
+  line-height: 1.2 !important;
+}

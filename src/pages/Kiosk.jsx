@@ -755,7 +755,7 @@ export default function Kiosk() {
   };
 
   return (
-    <div data-theme={theme} className="w-screen h-screen flex items-center justify-center relative overflow-hidden p-6 select-none font-sans">
+    <div data-theme={theme} data-active-theme={activeTheme} className="w-screen h-screen flex items-center justify-center relative overflow-hidden p-6 select-none font-sans">
       
       {standby && (
         <div className="absolute inset-0 bg-black z-[9999] flex items-center justify-center flex-col animate-fade-in">

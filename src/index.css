@@ -1,4 +1,5 @@
 @import url('https://fonts.googleapis.com/css2?family=Doto:wght@100..900&family=JetBrains+Mono:ital,wght@0,100..800;1,100..800&family=Outfit:wght@100..900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Mono:wght@400;700&family=Syne:wght@700;800&display=swap');
 @import "tailwindcss";
 
 @theme {
@@ -20,63 +21,7 @@ body {
   background-color: white !important;
 }
 
-/* Custom global styles for the Dot-Matrix LED Screen */
-.dot-matrix-screen {
-  position: relative;
-  background-color: #0b0c10;
-  border: 1px solid rgba(255, 255, 255, 0.03);
-  box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.9), 0 4px 30px rgba(0, 0, 0, 0.4);
-}
 
-/* Background overlay simulating the pixel physical grid of LEDs */
-.dot-matrix-grid {
-  position: absolute;
-  inset: 0;
-  background-image: radial-gradient(var(--theme-color-dim) 20%, transparent 20%);
-  background-size: 5px 5px;
-  pointer-events: none;
-  z-index: 2;
-  opacity: 0.85;
-}
-
-.dot-matrix-grid-green {
-  position: absolute;
-  inset: 0;
-  background-image: radial-gradient(var(--color-green-matrix-dim) 20%, transparent 20%);
-  background-size: 5px 5px;
-  pointer-events: none;
-  z-index: 2;
-  opacity: 0.85;
-}
-
-/* Scanline animation for realistic CRT screen effect */
-.crt-scanlines {
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(
-    rgba(18, 16, 16, 0) 50%, 
-    rgba(0, 0, 0, 0.25) 50%
-  ), linear-gradient(
-    90deg, 
-    rgba(255, 0, 0, 0.06), 
-    rgba(0, 255, 0, 0.02), 
-    rgba(0, 0, 255, 0.06)
-  );
-  background-size: 100% 4px, 6px 100%;
-  pointer-events: none;
-  z-index: 3;
-}
-
-/* Flicker animation for organic hardware display emulation */
-@keyframes crt-flicker {
-  0% { opacity: 0.98; }
-  50% { opacity: 1; }
-  100% { opacity: 0.99; }
-}
-
-.crt-flicker {
-  animation: crt-flicker 0.15s infinite;
-}
 
 /* Premium Custom Scrollbars */
 .custom-scrollbar::-webkit-scrollbar {
@@ -94,26 +39,7 @@ body {
   background: rgba(255, 255, 255, 0.15);
 }
 
-/* Hardware Glow Animations */
-@keyframes pulse-glow-amber {
-  0%, 100% { text-shadow: 0 0 4px var(--color-amber-matrix), 0 0 12px var(--color-amber-matrix-glow); }
-  50% { text-shadow: 0 0 6px var(--color-amber-matrix), 0 0 16px var(--color-amber-matrix-glow); }
-}
 
-.glow-text-amber {
-  color: var(--color-amber-matrix);
-  animation: pulse-glow-amber 2s infinite ease-in-out;
-}
-
-@keyframes pulse-glow-green {
-  0%, 100% { text-shadow: 0 0 4px var(--color-green-matrix), 0 0 12px var(--color-green-matrix-glow); }
-  50% { text-shadow: 0 0 6px var(--color-green-matrix), 0 0 16px var(--color-green-matrix-glow); }
-}
-
-.glow-text-green {
-  color: var(--color-green-matrix);
-  animation: pulse-glow-green 2s infinite ease-in-out;
-}
 
 /* Scrolling Marquee */
 @keyframes marquee {
@@ -617,3 +543,7 @@ div[data-theme="ruby"] *::selection {
 .screensaver-float {
   animation: screensaver-drift 120s ease-in-out infinite;
 }
+
+/* Import theme-specific stylesheet files at the end to overlay standard layout styles */
+@import "./dot-matrix.css";
+@import "./dreamplayer.css";

@@ -11,6 +11,7 @@ export const THEME_COLORS = [
 
 export const SCREEN_THEMES = [
   { id: 'dot-matrix', name: 'Retro Dot-Matrix', desc: 'Phosphor LED grid matrix simulation' },
+  { id: 'dreamplayer', name: 'Dreamplayer Theme', desc: 'Neo Glass Retrofuture (Square Buttons)' },
   { id: 'neon-glow', name: 'Cyberpunk Neon (Future)', desc: 'Vibrant neon tube display mode', disabled: true },
   { id: 'vfd-chamber', name: 'VFD Vacuum Tube (Future)', desc: 'Vacuum fluorescent display styling', disabled: true }
 ];

@@ -128,7 +128,7 @@ export default function PlayerDisplay({
   const isCurrentFavorite = currentTrack?.url ? favoriteStations.some(s => s.url === currentTrack.url) : false;
 
   return (
-    <article className="music-player" aria-label="Music player">
+    <article className={`music-player ${isPlaying ? 'is-playing' : ''}`} aria-label="music-player">
       
       {/* 1. Album Column */}
       <section className="album-column" aria-label="Album artwork">
