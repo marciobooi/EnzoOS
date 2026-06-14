@@ -559,26 +559,36 @@ export default function PlayerDisplay({
                 {/* Audiophile HUD Telemetry & Signal Path */}
                 <div className="flex items-center gap-1.5 mt-1 text-[8px] font-mono text-zinc-400 tracking-wider">
                   <span className={`px-1 py-0.25 rounded-[3px] font-extrabold text-[7px] ${
-                    source === 'spotify' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 
-                    source === 'radio' ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20' : 
-                    'bg-cyan-500/10 text-cyan-400 border border-cyan-500/20'
+                    !playbackState || trackName === 'SYSTEM IDLE' || trackName === 'Ready to Stream'
+                      ? 'bg-zinc-800/40 text-zinc-500 border border-zinc-700/30'
+                      : source === 'spotify' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 
+                      source === 'radio' ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20' : 
+                      'bg-cyan-500/10 text-cyan-400 border border-cyan-500/20'
                   }`}>
-                    {source === 'spotify' ? 'OGG VORBIS' : source === 'radio' ? 'AAC STREAM' : 'FLAC LOSSLESS'}
+                    {!playbackState || trackName === 'SYSTEM IDLE' || trackName === 'Ready to Stream'
+                      ? 'OFFLINE'
+                      : source === 'spotify' ? 'OGG VORBIS' : source === 'radio' ? 'AAC STREAM' : 'FLAC LOSSLESS'}
                   </span>
                   <span>
-                    {source === 'spotify' ? '16-bit / 44.1kHz • 320kbps' : 
-                     source === 'radio' ? '16-bit / 48.0kHz • 192kbps' : 
-                     '24-bit / 96.0kHz • 2822kbps'}
+                    {!playbackState || trackName === 'SYSTEM IDLE' || trackName === 'Ready to Stream'
+                      ? '-- / -- • -- kbps'
+                      : source === 'spotify' ? '16-bit / 44.1kHz • 320kbps' : 
+                      source === 'radio' ? '16-bit / 48.0kHz • 192kbps' : 
+                      '24-bit / 96.0kHz • 2822kbps'}
                   </span>
                   <span className="opacity-45">|</span>
                   <span className="text-[7.5px] opacity-75 truncate max-w-[120px] lg:max-w-none" title={
-                    source === 'spotify' ? 'Spotify → Resampler 96kHz → CamillaDSP → DAC' : 
-                    source === 'radio' ? 'Stream → Resampler 96kHz → CamillaDSP → DAC' : 
-                    'Local → Direct Audio → CamillaDSP → DAC'
+                    !playbackState || trackName === 'SYSTEM IDLE' || trackName === 'Ready to Stream'
+                      ? 'DSP Pipeline Suspended'
+                      : source === 'spotify' ? 'Spotify → Resampler 96kHz → CamillaDSP → DAC' : 
+                      source === 'radio' ? 'Stream → Resampler 96kHz → CamillaDSP → DAC' : 
+                      'Local → Direct Audio → CamillaDSP → DAC'
                   }>
-                    {source === 'spotify' ? 'Spotify → Resampler 96kHz → CamillaDSP → DAC' : 
-                     source === 'radio' ? 'Stream → Resampler 96kHz → CamillaDSP → DAC' : 
-                     'Local → Direct Audio → CamillaDSP → DAC'}
+                    {!playbackState || trackName === 'SYSTEM IDLE' || trackName === 'Ready to Stream'
+                      ? 'DSP Pipeline Suspended'
+                      : source === 'spotify' ? 'Spotify → Resampler 96kHz → CamillaDSP → DAC' : 
+                      source === 'radio' ? 'Stream → Resampler 96kHz → CamillaDSP → DAC' : 
+                      'Local → Direct Audio → CamillaDSP → DAC'}
                   </span>
                 </div>
               </div>
