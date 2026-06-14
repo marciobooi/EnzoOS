@@ -1,6 +1,6 @@
 /* ==============================================================================
-   Minimalist Theme - 2-Column Audio Console
-   ============================================================================== */
+   Minimalist Theme - 2-Column Audio Console (Widescreen Poster Fade)
+   ============================================================================= */
 
 div[data-active-theme="minimalist"] {
   --white: 255 255 255;
@@ -34,75 +34,96 @@ div[data-active-theme="minimalist"] .music-player-container {
   transform-origin: center center !important;
 }
 
-/* 2-Column Grid Layout */
+/* 2-Column Grid Layout: Text on Left (1fr), Image on Right (750px) */
 div[data-active-theme="minimalist"] .music-player {
   display: grid !important;
-  grid-template-columns: 260px 1fr !important;
-  gap: 2.25rem !important;
-  padding: 1.5rem !important;
+  grid-template-columns: 1fr 750px !important;
+  gap: 0 !important;
+  padding: 0 !important;
   border-radius: inherit !important;
   border: none !important;
   box-shadow: none !important;
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
-  background: linear-gradient(90deg, rgba(5, 10, 20, 0.1) 0%, rgba(5, 10, 20, 0.98) 55%) !important;
-  position: relative;
-  isolation: isolate;
+  background: #050a14 !important;
   height: 100% !important;
   width: 100% !important;
+  position: relative;
+  isolation: isolate;
 }
 
-/* Blurred Dominant Color Background (using album artwork image variable) */
+/* Blurred Dominant Color Backdrop Layer (stretches on the left to extract colors) */
 div[data-active-theme="minimalist"] .music-player::before {
   content: "" !important;
   position: absolute;
-  inset: 0;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 50% !important;
   background-image: var(--album-art-url);
   background-size: cover;
-  background-position: left center;
-  filter: blur(50px) saturate(180%) brightness(0.8);
-  opacity: 0.65;
-  z-index: -2;
+  background-position: center;
+  filter: blur(140px) saturate(220%) brightness(0.24); /* High saturation, low brightness for elegant backdrop */
+  opacity: 0.95 !important;
+  z-index: 1;
   pointer-events: none;
 }
 
-/* Column 1: Album Artwork */
-div[data-active-theme="minimalist"] .album-column {
+/* Column 1: Details Column (Moved to Left via grid order) */
+div[data-active-theme="minimalist"] .details-column {
+  grid-column: 1 !important;
+  order: 1 !important;
   justify-content: center !important;
-  align-items: center !important;
-  z-index: 1;
+  align-items: flex-start !important;
+  z-index: 10;
+  padding: 3rem 4.5rem !important;
+  background: rgba(5, 10, 20, 0.5) !important; /* Semi-transparent so dominant color shines through */
 }
-div[data-active-theme="minimalist"] .album-column::before,
+
+/* Column 2: Album Artwork (Moved to Right via grid order) */
+div[data-active-theme="minimalist"] .album-column {
+  grid-column: 2 !important;
+  order: 2 !important;
+  width: 100% !important;
+  height: 100% !important;
+  position: relative !important;
+  z-index: 2;
+}
+
+/* Linear-gradient overlay to fade the image from transparent on the right to opaque dark blue on the left */
 div[data-active-theme="minimalist"] .album-column::after {
+  content: "" !important;
+  position: absolute;
+  inset: -1px;
+  background: linear-gradient(90deg, #050a14 0%, rgba(5, 10, 20, 0.45) 55%, transparent 100%) !important;
+  pointer-events: none;
+  z-index: 5;
+}
+
+div[data-active-theme="minimalist"] .album-column::before {
   display: none !important;
 }
+
 div[data-active-theme="minimalist"] .album-art {
-  width: 220px !important;
-  height: 220px !important;
-  border-radius: 16px !important;
-  border: 1px solid rgba(255, 255, 255, 0.15) !important;
-  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.5) !important;
+  width: 100% !important;
+  height: 100% !important;
+  border-radius: 0 !important;
+  border: none !important;
+  box-shadow: none !important;
   background: none !important;
   backdrop-filter: none !important;
   padding: 0 !important;
   transform: none !important;
   overflow: hidden !important;
 }
+
 div[data-active-theme="minimalist"] .album-art img {
-  border-radius: 15px !important;
+  border-radius: 0 !important;
   width: 100% !important;
   height: 100% !important;
   object-fit: cover !important;
   filter: none !important;
   opacity: 1 !important;
-}
-
-/* Column 2: Details Column */
-div[data-active-theme="minimalist"] .details-column {
-  justify-content: center !important;
-  align-items: flex-start !important;
-  z-index: 1;
-  padding-right: 1rem;
 }
 
 /* Hide unneeded components in minimalist mode */
@@ -119,31 +140,31 @@ div[data-active-theme="minimalist"] .progress-area {
 div[data-active-theme="minimalist"] .track-details {
   display: flex !important;
   flex-direction: column !important;
-  gap: 0.35rem !important;
+  gap: 0.5rem !important;
 }
 div[data-active-theme="minimalist"] .track-title {
-  font-size: 2.3rem !important;
-  font-weight: 800 !important;
+  font-size: 3.2rem !important;
+  font-weight: 950 !important;
   color: #fff !important;
-  letter-spacing: -0.03em !important;
-  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.5) !important;
+  letter-spacing: -0.04em !important;
   line-height: 1.05 !important;
+  text-wrap: balance !important;
 }
 div[data-active-theme="minimalist"] .track-artist {
-  font-size: 1.1rem !important;
+  font-size: 1.25rem !important;
   font-weight: 500 !important;
   color: var(--ink-2) !important;
   letter-spacing: normal !important;
   text-transform: none !important;
 }
 div[data-active-theme="minimalist"] .track-album {
-  font-size: 0.85rem !important;
+  font-size: 0.95rem !important;
   color: rgba(255, 255, 255, 0.4) !important;
 }
 
 /* Play/Pause Controls layout */
 div[data-active-theme="minimalist"] .music-controls {
-  margin-top: 1rem !important;
+  margin-top: 1.5rem !important;
   display: flex !important;
   align-items: center !important;
   justify-content: flex-start !important;
@@ -152,20 +173,20 @@ div[data-active-theme="minimalist"] .music-controls > button:not(.play) {
   display: none !important;
 }
 div[data-active-theme="minimalist"] .icon-button.play {
-  width: 52px !important;
-  height: 52px !important;
+  width: 62px !important;
+  height: 62px !important;
   border-radius: 50% !important;
   background: #fff !important;
   color: #050a14 !important;
   border: none !important;
-  box-shadow: 0 8px 20px rgba(255, 255, 255, 0.2) !important;
+  box-shadow: 0 10px 24px rgba(255, 255, 255, 0.25) !important;
   display: grid !important;
   place-items: center !important;
   transition: transform 0.2s ease, box-shadow 0.2s ease !important;
 }
 div[data-active-theme="minimalist"] .icon-button.play:hover {
   transform: scale(1.05) !important;
-  box-shadow: 0 10px 24px rgba(255, 255, 255, 0.3) !important;
+  box-shadow: 0 12px 28px rgba(255, 255, 255, 0.35) !important;
 }
 div[data-active-theme="minimalist"] .icon-button.play:active {
   transform: scale(0.95) !important;
