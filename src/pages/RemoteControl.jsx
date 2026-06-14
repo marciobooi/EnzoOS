@@ -18,11 +18,15 @@ import {
   LogOut,
   Radio,
   Heart,
-  Power
+  Power,
+  Sliders,
+  Cpu
 } from 'lucide-react';
 import { api } from '../api';
 import { toast, Toaster } from 'sonner';
 import { useResonanceWS } from '../websocket';
+import EqualizerControl, { EQ_PRESETS } from '../components/EqualizerControl';
+import DspWizard from '../components/DspWizard';
 
 // Helper utilities for managing cookies
 const setCookie = (name, value, days = 365) => {
@@ -86,6 +90,94 @@ export default function RemoteControl() {
   const [daemonPassword, setDaemonPassword] = useState('');
   const [isSavingDaemonCreds, setIsSavingDaemonCreds] = useState(false);
   const [standby, setStandby] = useState(false);
+
+  // Equalizer & Wizard Remote states
+  const [isDspWizardOpen, setIsDspWizardOpen] = useState(false);
+  const [dspActive, setDspActive] = useState(false);
+  const [eqPreset, setEqPreset] = useState(() => localStorage.getItem('resonance_eq_preset') || 'Clinical Reference');
+  const [eqBands, setEqBands] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem('resonance_eq_bands')) || [0, 0, 0, 0, 0];
+    } catch {
+      return [0, 0, 0, 0, 0];
+    }
+  });
+  const [eqSaturation, setEqSaturation] = useState(() => Number(localStorage.getItem('resonance_eq_saturation')) || 0);
+  const [eqNoiseFloor, setEqNoiseFloor] = useState(() => Number(localStorage.getItem('resonance_eq_noise')) || 0);
+  const [eqPreAmp, setEqPreAmp] = useState(() => Number(localStorage.getItem('resonance_eq_preamp')) || 0.0);
+
+  const handleEqPresetChange = (presetName) => {
+    setEqPreset(presetName);
+    localStorage.setItem('resonance_eq_preset', presetName);
+    const found = EQ_PRESETS.find(p => p.name === presetName);
+    if (found) {
+      setEqBands(found.bands);
+      setEqSaturation(found.saturation);
+      setEqNoiseFloor(found.noiseFloor);
+      setEqPreAmp(found.preAmp);
+      localStorage.setItem('resonance_eq_bands', JSON.stringify(found.bands));
+      localStorage.setItem('resonance_eq_saturation', found.saturation);
+      localStorage.setItem('resonance_eq_noise', found.noiseFloor);
+      localStorage.setItem('resonance_eq_preamp', found.preAmp);
+    }
+  };
+
+  const handleBandChange = (index, val) => {
+    const nextBands = [...eqBands];
+    nextBands[index] = val;
+    setEqBands(nextBands);
+    localStorage.setItem('resonance_eq_bands', JSON.stringify(nextBands));
+    setEqPreset('Custom');
+    localStorage.setItem('resonance_eq_preset', 'Custom');
+  };
+
+  const handleSaturationChange = (val) => {
+    setEqSaturation(val);
+    localStorage.setItem('resonance_eq_saturation', val);
+    setEqPreset('Custom');
+    localStorage.setItem('resonance_eq_preset', 'Custom');
+  };
+
+  const handleNoiseFloorChange = (val) => {
+    setEqNoiseFloor(val);
+    localStorage.setItem('resonance_eq_noise', val);
+    setEqPreset('Custom');
+    localStorage.setItem('resonance_eq_preset', 'Custom');
+  };
+
+  const handlePreAmpChange = (val) => {
+    setEqPreAmp(val);
+    localStorage.setItem('resonance_eq_preamp', val);
+    setEqPreset('Custom');
+    localStorage.setItem('resonance_eq_preset', 'Custom');
+  };
+
+  useEffect(() => {
+    async function loadDspStatus() {
+      try {
+        const calibration = await api.getDspCalibration();
+        if (calibration && calibration[0] === 'dsp') {
+          setDspActive(true);
+        } else {
+          setDspActive(false);
+        }
+      } catch (err) {
+        console.warn('Failed to load initial DSP active state:', err);
+      }
+    }
+    loadDspStatus();
+  }, []);
+
+  async function handleDeactivateDsp() {
+    try {
+      const calibration = await api.getDspCalibration() || {};
+      calibration[0] = 'eq';
+      await api.saveDspCalibration(calibration);
+      setDspActive(false);
+    } catch (err) {
+      console.warn('Failed to change audio processing mode:', err);
+    }
+  }
 
   const hasCheckedInitialSource = useRef(false);
   useEffect(() => {
@@ -1227,6 +1319,42 @@ export default function RemoteControl() {
               </div>
             )}
 
+            {/* TAB 4: EQUALIZER */}
+            {activeTab === 'eq' && (
+              <div className="w-full flex flex-col gap-4 text-left px-1 h-full min-h-[380px]">
+                <div className="flex justify-between items-center shrink-0">
+                  <div className="flex flex-col gap-0.5">
+                    <h3 className="text-sm font-extrabold text-zinc-950 uppercase tracking-wider font-sans">Sound Tuning</h3>
+                    <p className="text-[9px] text-zinc-400 uppercase tracking-wider font-extrabold font-sans">Equalizer & DSP configurations</p>
+                  </div>
+                  <button
+                    onClick={() => setIsDspWizardOpen(true)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-zinc-900 border border-zinc-950 hover:bg-zinc-800 text-white font-extrabold text-[9px] uppercase tracking-wider active:scale-95 transition-all cursor-pointer font-sans"
+                  >
+                    <Cpu className="h-3 w-3 animate-pulse text-[var(--theme-color)]" />
+                    <span>Run Calibration</span>
+                  </button>
+                </div>
+
+                <div className="flex-grow min-h-0 bg-[#0b0f19] border border-white/10 rounded-2xl overflow-hidden p-3 relative flex flex-col justify-between">
+                  <EqualizerControl
+                    currentPreset={eqPreset}
+                    onPresetChange={handleEqPresetChange}
+                    bands={eqBands}
+                    onBandChange={handleBandChange}
+                    saturation={eqSaturation}
+                    onSaturationChange={handleSaturationChange}
+                    noiseFloor={eqNoiseFloor}
+                    onNoiseFloorChange={handleNoiseFloorChange}
+                    preAmp={eqPreAmp}
+                    onPreAmpChange={handlePreAmpChange}
+                    dspActive={dspActive}
+                    onDeactivateDsp={handleDeactivateDsp}
+                  />
+                </div>
+              </div>
+            )}
+
           </main>
 
           {/* Sleek bottom Volume control bar and Footer Tabs stacked */}
@@ -1290,6 +1418,16 @@ export default function RemoteControl() {
               </button>
 
               <button
+                onClick={() => setActiveTab('eq')}
+                className={`flex flex-col items-center justify-center py-1 flex-1 cursor-pointer transition-all active:scale-95 ${
+                  activeTab === 'eq' ? 'text-zinc-900 font-bold' : 'text-zinc-400 hover:text-zinc-700'
+                }`}
+              >
+                <Sliders className="h-4 w-4 mb-0.5" />
+                <span className="text-[8px] uppercase tracking-wider font-extrabold font-sans">Equalizer</span>
+              </button>
+
+              <button
                 onClick={() => setActiveTab('settings')}
                 className={`flex flex-col items-center justify-center py-1 flex-1 cursor-pointer transition-all active:scale-95 ${
                   activeTab === 'settings' ? 'text-zinc-900 font-bold' : 'text-zinc-400 hover:text-zinc-700'
@@ -1302,6 +1440,25 @@ export default function RemoteControl() {
           </footer>
 
         </div>
+        
+        {/* Full-Screen Calibration Wizard Overlay */}
+        {isDspWizardOpen && (
+          <div className="absolute inset-0 bg-[#050d1c] z-[9999] flex flex-col animate-fade-in">
+            <DspWizard
+              onClose={() => {
+                setIsDspWizardOpen(false);
+                // Refresh DSP active status
+                api.getDspCalibration().then(cal => {
+                  setDspActive(cal && cal[0] === 'dsp');
+                }).catch(() => {});
+              }}
+              onCalibrationComplete={(active) => {
+                setDspActive(active);
+              }}
+            />
+          </div>
+        )}
+
         <Toaster theme="dark" closeButton richColors position="bottom-right" visibleToasts={1} />
       </>
     );
