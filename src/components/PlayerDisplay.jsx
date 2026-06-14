@@ -391,7 +391,7 @@ export default function PlayerDisplay({
     <article className={`music-player ${isPlaying ? 'is-playing' : ''}`} aria-label="music-player">
       
       {/* 1. Album Column */}
-      <section className="album-column" aria-label="Album artwork">
+      <section className="album-column cursor-pointer" aria-label="Album artwork" onClick={onToggleMenu} title="Click to Open Configuration Menu">
         <div className="album-art" aria-label="Dot matrix album art">
           <img src={albumImage} alt="Album art" />
         </div>

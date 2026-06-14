@@ -553,6 +553,7 @@ div[data-theme="ruby"] *::selection {
 @import "./dot-matrix.css";
 @import "./dreamplayer.css";
 @import "./glassplayer.css";
+@import "./minimalist.css";
 
 /* Optimize touch interaction latency and disable double-tap zooming on kiosk/mobile */
 button, 
