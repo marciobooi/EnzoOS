@@ -600,7 +600,7 @@ export default function Kiosk() {
       });
       if (rafId) cancelAnimationFrame(rafId);
     };
-  }, [activeTheme, isMenuOpen, isEqualizerOpen, source, showSearch]);
+  }, [activeTheme, isMenuOpen, isEqualizerOpen, source]);
 
   // Derived Librespot states
   const resonanceDevice = devices.find(d => d.name === 'Resonance Connect');
