@@ -804,6 +804,8 @@ export default function Kiosk() {
         }}
       >
         <PlayerDisplay
+          theme={theme}
+          activeTheme={activeTheme}
           isPlaying={isPlaying}
           isLocalDeviceActive={isLocalDeviceActive}
           trackName={trackName}

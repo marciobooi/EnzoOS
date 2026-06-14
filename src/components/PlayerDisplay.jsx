@@ -2,6 +2,8 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Play, Pause, SkipForward, SkipBack, Shuffle, Repeat, Volume2, VolumeX, Home, Volume1, Sliders, Radio, Heart, Power } from 'lucide-react';
 
 export default function PlayerDisplay({
+  theme = 'amber',
+  activeTheme = 'dot-matrix',
   isPlaying,
   isLocalDeviceActive,
   trackName,
@@ -47,6 +49,8 @@ export default function PlayerDisplay({
   const dbRRef = useRef(null);
   const needleLRef = useRef(null);
   const needleRRef = useRef(null);
+  const [visualizerMode, setVisualizerMode] = useState(() => localStorage.getItem('resonance_visualizer_mode') || 'vu');
+  const canvasRef = useRef(null);
 
   useEffect(() => {
     function handleClickOutside(event) {
@@ -135,6 +139,213 @@ export default function PlayerDisplay({
       if (fallbackInterval) clearInterval(fallbackInterval);
     };
   }, [isPlaying]);
+
+  // Handle 7-band digital frequency visualizer rendering
+  useEffect(() => {
+    if (visualizerMode !== 'digital') return;
+
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    const dpr = window.devicePixelRatio || 1;
+    const rect = canvas.getBoundingClientRect();
+    canvas.width = rect.width * dpr;
+    canvas.height = rect.height * dpr;
+    ctx.scale(dpr, dpr);
+
+    const numBars = 7;
+    const gap = 6;
+    const heights = new Array(numBars).fill(0);
+    const peaks = new Array(numBars).fill(0);
+    const peakDecay = 0.35;
+    const riseSpeed = 0.25;
+    const fallSpeed = 0.08;
+
+    let localDbL = -45;
+    let localDbR = -45;
+    let lastEventTime = Date.now();
+
+    const handleLevels = (e) => {
+      lastEventTime = Date.now();
+      const { dbL, dbR } = e.detail;
+      localDbL = dbL;
+      localDbR = dbR;
+    };
+    window.addEventListener('resonance-audio-levels', handleLevels);
+
+    // Dynamic color maps matching THEME_COLORS
+    const colorMap = {
+      amber: { base: 'rgba(217, 119, 6, 0.8)', mid: '#f59e0b', peak: '#fcd307', glow: 'rgba(245, 158, 11, 0.4)' },
+      emerald: { base: 'rgba(5, 150, 105, 0.8)', mid: '#10b981', peak: '#34d399', glow: 'rgba(16, 185, 129, 0.4)' },
+      cyan: { base: 'rgba(8, 145, 178, 0.8)', mid: '#06b6d4', peak: '#22d3ee', glow: 'rgba(6, 182, 212, 0.4)' },
+      amethyst: { base: 'rgba(124, 58, 237, 0.8)', mid: '#a855f7', peak: '#c084fc', glow: 'rgba(168, 85, 247, 0.4)' },
+      ruby: { base: 'rgba(220, 38, 38, 0.8)', mid: '#ef4444', peak: '#f87171', glow: 'rgba(239, 68, 68, 0.4)' }
+    };
+    const activeColor = colorMap[theme] || colorMap.amber;
+
+    let animationId;
+
+    const animate = (time) => {
+      ctx.clearRect(0, 0, rect.width, rect.height);
+
+      const isSimulated = !isPlaying || (Date.now() - lastEventTime > 2000);
+
+      for (let i = 0; i < numBars; i++) {
+        let target = 0.05;
+
+        if (isSimulated) {
+          if (isPlaying) {
+            if (i === 0 || i === 1) { // Bass
+              const slowWave = Math.sin(time * 0.006 + i * 1.5) * 0.35 + 0.35;
+              const fastJitter = Math.random() * 0.3;
+              target = Math.max(0.1, slowWave + fastJitter);
+            } else if (i === 2 || i === 3 || i === 4) { // Mids
+              const midWave = Math.sin(time * 0.003 - i * 0.8) * 0.25 + 0.25;
+              const jitter = Math.random() * 0.2;
+              target = Math.max(0.08, midWave + jitter);
+            } else { // Treble
+              const highWave = Math.sin(time * 0.01 + i * 2.0) * 0.15 + 0.15;
+              const highNoise = Math.random() * 0.25;
+              target = Math.max(0.05, highWave + highNoise);
+            }
+            target = Math.min(1.0, target);
+          } else {
+            target = 0.05 + Math.sin(time * 0.002 + i * 0.5) * 0.03;
+          }
+        } else {
+          // Live levels
+          const dbVal = (i < 3) ? localDbL : (i > 3 ? localDbR : (localDbL + localDbR) / 2);
+          const rawPct = Math.max(0, Math.min(1, (dbVal + 45) / 45));
+
+          if (i === 0 || i === 1) {
+            target = rawPct * (0.8 + Math.random() * 0.2);
+          } else if (i === 2 || i === 3 || i === 4) {
+            const waveOffset = Math.sin(time * 0.008 + i) * 0.12;
+            target = Math.max(0.05, rawPct * 0.75 + waveOffset);
+          } else {
+            target = Math.max(0.05, rawPct * 0.7 + (Math.random() * 0.2 - 0.1));
+          }
+          target = Math.min(1.0, target);
+        }
+
+        if (target > heights[i]) {
+          heights[i] += (target - heights[i]) * riseSpeed;
+        } else {
+          heights[i] -= (heights[i] - target) * fallSpeed;
+        }
+        heights[i] = Math.max(0, Math.min(1, heights[i]));
+
+        if (heights[i] >= peaks[i]) {
+          peaks[i] = heights[i];
+        } else {
+          peaks[i] = Math.max(heights[i], peaks[i] - (peakDecay / 60));
+        }
+      }
+
+      const isDotMatrix = activeTheme.includes('dot') || activeTheme.includes('matrix');
+      const barWidth = Math.floor((rect.width - (numBars - 1) * gap) / numBars);
+      const totalWidth = numBars * barWidth + (numBars - 1) * gap;
+      const startX = (rect.width - totalWidth) / 2;
+
+      for (let i = 0; i < numBars; i++) {
+        const x = startX + i * (barWidth + gap);
+        const maxBarH = rect.height - 12;
+        const currentH = heights[i] * maxBarH;
+
+        if (isDotMatrix) {
+          const dotSize = 3;
+          const dotGap = 2;
+          const maxDots = Math.floor(maxBarH / (dotSize + dotGap));
+          const activeDots = Math.ceil(heights[i] * maxDots);
+          const peakDotIdx = Math.floor(peaks[i] * maxDots);
+
+          for (let dot = 0; dot < maxDots; dot++) {
+            const dotY = rect.height - 6 - dot * (dotSize + dotGap);
+            const isDotActive = dot < activeDots;
+            const isPeakDot = dot === peakDotIdx;
+
+            if (isDotActive) {
+              ctx.fillStyle = activeColor.mid;
+              ctx.shadowColor = activeColor.glow;
+              ctx.shadowBlur = 4;
+            } else if (isPeakDot && isPlaying) {
+              ctx.fillStyle = activeColor.peak;
+              ctx.shadowColor = activeColor.glow;
+              ctx.shadowBlur = 6;
+            } else {
+              ctx.fillStyle = 'rgba(255, 255, 255, 0.05)';
+              ctx.shadowBlur = 0;
+            }
+
+            ctx.beginPath();
+            ctx.arc(x + barWidth / 2, dotY, dotSize / 2, 0, Math.PI * 2);
+            ctx.fill();
+          }
+          ctx.shadowBlur = 0;
+        } else {
+          // Solid bars
+          const barH = Math.max(2, currentH);
+          const y = rect.height - 6 - barH;
+
+          const gradient = ctx.createLinearGradient(x, rect.height - 6, x, y);
+          gradient.addColorStop(0, activeColor.base);
+          gradient.addColorStop(0.7, activeColor.mid);
+          gradient.addColorStop(1.0, activeColor.peak);
+
+          ctx.fillStyle = gradient;
+          ctx.shadowColor = activeColor.glow;
+          ctx.shadowBlur = 6;
+
+          ctx.beginPath();
+          if (ctx.roundRect) {
+            ctx.roundRect(x, y, barWidth, barH, 1.5);
+          } else {
+            ctx.rect(x, y, barWidth, barH);
+          }
+          ctx.fill();
+
+          if (isPlaying) {
+            const peakY = rect.height - 6 - peaks[i] * maxBarH;
+            ctx.fillStyle = activeColor.peak;
+            ctx.shadowBlur = 4;
+            ctx.beginPath();
+            if (ctx.roundRect) {
+              ctx.roundRect(x, Math.max(0, peakY - 2), barWidth, 1.5, 0.5);
+            } else {
+              ctx.rect(x, Math.max(0, peakY - 2), barWidth, 1.5);
+            }
+            ctx.fill();
+          }
+          ctx.shadowBlur = 0;
+        }
+      }
+
+      animationId = requestAnimationFrame(animate);
+    };
+
+    animationId = requestAnimationFrame(animate);
+
+    const resizeObserver = new ResizeObserver((entries) => {
+      for (let entry of entries) {
+        const { width, height } = entry.contentRect;
+        canvas.width = width * dpr;
+        canvas.height = height * dpr;
+        ctx.resetTransform();
+        ctx.scale(dpr, dpr);
+      }
+    });
+
+    resizeObserver.observe(canvas.parentElement);
+
+    return () => {
+      window.removeEventListener('resonance-audio-levels', handleLevels);
+      cancelAnimationFrame(animationId);
+      resizeObserver.disconnect();
+    };
+  }, [visualizerMode, isPlaying, theme, activeTheme]);
 
   // Trigger volume feedback pop-up on change
   useEffect(() => {
@@ -345,49 +556,77 @@ export default function PlayerDisplay({
                 <div className="track-album truncate">{trackAlbumName}</div>
               </div>
 
-              {/* Precision Mechanical VU Meters (Click to Open EQ) */}
-              <button
-                onClick={onToggleEqualizer}
-                className="hifi-visualizer shrink-0 cursor-pointer hover:opacity-90 transition-opacity bg-transparent border-0 p-0"
-                title="Open Parametric Equalizer"
-                type="button"
-              >
-                {/* Left Channel Mechanical VU */}
-                <div className="vu-channel-box">
-                  <div className="vu-dial-area">
-                    <div className="vu-dot-grid" />
-                    <div className="vu-glow-overlay" />
-                    <div className="vu-scale-marks">
-                      <span>-20dB</span>
-                      <span>-10dB</span>
-                      <span>0dB</span>
-                    </div>
-                    <div ref={needleLRef} className="vu-needle" />
-                  </div>
-                  <div className="vu-readout-line">
-                    <span className="text-zinc-400">LINE LEVEL L</span>
-                    <span ref={dbLRef} className="text-[var(--theme-color)]">-45.0 DB</span>
-                  </div>
-                </div>
+              {/* Precision Mechanical VU Meters or 7-Band Digital (Click to Open EQ, Float button to toggle style) */}
+              <div className="relative group shrink-0 w-[216px] h-[67px]">
+                <button
+                  onClick={onToggleEqualizer}
+                  className="w-full h-full hifi-visualizer shrink-0 cursor-pointer hover:opacity-90 transition-opacity bg-transparent border-0 p-0 flex items-stretch gap-[15px]"
+                  title="Open Parametric Equalizer"
+                  type="button"
+                >
+                  {visualizerMode === 'vu' ? (
+                    <>
+                      {/* Left Channel Mechanical VU */}
+                      <div className="vu-channel-box">
+                        <div className="vu-dial-area">
+                          <div className="vu-dot-grid" />
+                          <div className="vu-glow-overlay" />
+                          <div className="vu-scale-marks">
+                            <span>-20dB</span>
+                            <span>-10dB</span>
+                            <span>0dB</span>
+                          </div>
+                          <div ref={needleLRef} className="vu-needle" />
+                        </div>
+                        <div className="vu-readout-line">
+                          <span className="text-zinc-400">LINE LEVEL L</span>
+                          <span ref={dbLRef} className="text-[var(--theme-color)]">-45.0 DB</span>
+                        </div>
+                      </div>
 
-                {/* Right Channel Mechanical VU */}
-                <div className="vu-channel-box">
-                  <div className="vu-dial-area">
-                    <div className="vu-dot-grid" />
-                    <div className="vu-glow-overlay" />
-                    <div className="vu-scale-marks">
-                      <span>-20dB</span>
-                      <span>-10dB</span>
-                      <span>0dB</span>
+                      {/* Right Channel Mechanical VU */}
+                      <div className="vu-channel-box">
+                        <div className="vu-dial-area">
+                          <div className="vu-dot-grid" />
+                          <div className="vu-glow-overlay" />
+                          <div className="vu-scale-marks">
+                            <span>-20dB</span>
+                            <span>-10dB</span>
+                            <span>0dB</span>
+                          </div>
+                          <div ref={needleRRef} className="vu-needle" />
+                        </div>
+                        <div className="vu-readout-line">
+                          <span className="text-zinc-400">LINE LEVEL R</span>
+                          <span ref={dbRRef} className="text-[var(--theme-color)]">-45.0 DB</span>
+                        </div>
+                      </div>
+                    </>
+                  ) : (
+                    <div className="w-full h-full p-1 relative overflow-hidden flex items-center justify-center bg-black/20 rounded-xl border border-white/5">
+                      <canvas 
+                        ref={canvasRef} 
+                        className="w-full h-full block"
+                      />
                     </div>
-                    <div ref={needleRRef} className="vu-needle" />
-                  </div>
-                  <div className="vu-readout-line">
-                    <span className="text-zinc-400">LINE LEVEL R</span>
-                    <span ref={dbRRef} className="text-[var(--theme-color)]">-45.0 DB</span>
-                  </div>
-                </div>
-              </button>
+                  )}
+                </button>
+
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setVisualizerMode(prev => {
+                      const next = prev === 'vu' ? 'digital' : 'vu';
+                      localStorage.setItem('resonance_visualizer_mode', next);
+                      return next;
+                    });
+                  }}
+                  className="absolute bottom-1.5 right-2.5 z-[60] bg-black/75 hover:bg-black border border-white/10 text-[6.5px] font-extrabold tracking-wider uppercase px-1.5 py-0.5 rounded text-zinc-400 hover:text-[var(--theme-color)] transition-all cursor-pointer opacity-0 group-hover:opacity-100"
+                  title="Toggle Visualizer Mode"
+                >
+                  {visualizerMode === 'vu' ? 'VU' : '7-Band'}
+                </button>
+              </div>
             </div>
           </div>
 
