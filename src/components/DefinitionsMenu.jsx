@@ -1,4 +1,5 @@
 import { Sliders, Music, Download, LogOut, Radio, Waves, Smartphone } from 'lucide-react';
+import { api } from '../api';
 
 export default function DefinitionsMenu({
   token,
