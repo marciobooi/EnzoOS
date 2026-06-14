@@ -88,6 +88,7 @@ div[data-active-theme="minimalist"] .album-column {
   height: 100% !important;
   position: relative !important;
   z-index: 2;
+  display: block !important; /* Reset flexbox display from index.css to fill layout height completely */
 }
 
 /* Linear-gradient overlay on the album art to fade it smoothly into the background */
@@ -132,6 +133,7 @@ div[data-active-theme="minimalist"] .album-art img {
   object-fit: cover !important;
   filter: none !important;
   opacity: 1 !important;
+  display: block !important; /* Prevent inline descender text-line-height spacing gap at the bottom */
 }
 
 /* Hide unneeded components in minimalist mode */

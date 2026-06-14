@@ -392,10 +392,12 @@ export default function PlayerDisplay({
   useEffect(() => {
     if (activeTheme !== 'minimalist') {
       setExtractedRgb('5, 10, 20');
+      document.documentElement.style.removeProperty('--extracted-rgb');
       return;
     }
     if (!albumImage) {
       setExtractedRgb('5, 10, 20');
+      document.documentElement.style.setProperty('--extracted-rgb', '5, 10, 20');
       return;
     }
     const img = new Image();
@@ -420,15 +422,23 @@ export default function PlayerDisplay({
           const dg = Math.round(g * factor);
           const db = Math.round(b * factor);
           
-          setExtractedRgb(`${dr}, ${dg}, ${db}`);
+          const val = `${dr}, ${dg}, ${db}`;
+          setExtractedRgb(val);
+          document.documentElement.style.setProperty('--extracted-rgb', val);
         }
       } catch (err) {
         console.warn('Failed to extract dominant color:', err);
         setExtractedRgb('5, 10, 20');
+        document.documentElement.style.setProperty('--extracted-rgb', '5, 10, 20');
       }
     };
     img.onerror = () => {
       setExtractedRgb('5, 10, 20');
+      document.documentElement.style.setProperty('--extracted-rgb', '5, 10, 20');
+    };
+
+    return () => {
+      document.documentElement.style.removeProperty('--extracted-rgb');
     };
   }, [albumImage, activeTheme]);
 
