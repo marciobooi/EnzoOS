@@ -399,5 +399,13 @@ export const api = {
   async getDspCalibration() {
     const response = await fetch('/api/player/dsp-calibration');
     return response.json();
+  },
+
+  /**
+   * Fetch local CPU, RAM and Wi-Fi system telemetry.
+   */
+  async getSystemHealth() {
+    const response = await fetch('/api/system/update/health');
+    return response.json();
   }
 };

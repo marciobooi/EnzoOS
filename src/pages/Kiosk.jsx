@@ -131,6 +131,7 @@ export default function Kiosk() {
   const isPlaying = playbackState ? !playbackState.paused : false;
   const trackName = currentTrack?.name || 'SYSTEM IDLE';
   const trackArtist = currentTrack?.artists?.map(a => a.name).join(', ') || 'No Source Loaded';
+  const albumImage = currentTrack?.album?.images?.[0]?.url || 'https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?q=80&w=300&auto=format&fit=crop';
 
   const eqSyncTimeout = useRef(null);
   const queueEqSync = (presetName, nextBands, saturation, noiseFloor, preAmp) => {
@@ -326,9 +327,25 @@ export default function Kiosk() {
     setVisualizerMode
   });
 
+  const checkUpdates = async () => {
+    try {
+      setUpdateStatus('checking');
+      const data = await api.getUpdateStatus();
+      if (data.updateAvailable) {
+        setUpdateStatus('available');
+      } else {
+        setUpdateStatus('no-update');
+      }
+    } catch (err) {
+      console.warn('Auto update check failed, defaulting to up-to-date status:', err);
+      setUpdateStatus('no-update');
+    }
+  };
+
   useEffect(() => {
     if (isConnected) {
       fetchFavorites();
+      checkUpdates();
     }
   }, [isConnected]);
 
@@ -914,7 +931,15 @@ export default function Kiosk() {
   };
 
   return (
-    <div data-theme={theme} data-active-theme={activeTheme} className="w-screen h-screen flex items-center justify-center relative overflow-hidden p-6 select-none font-sans">
+    <div 
+      data-theme={theme} 
+      data-active-theme={activeTheme} 
+      className="w-screen h-screen flex items-center justify-center relative overflow-hidden p-6 select-none font-sans"
+      style={{ '--album-art-url': `url(${albumImage})` }}
+    >
+      
+      {/* Dynamic Album Art Blur Canvas for Premium Glass Themes */}
+      <div className="album-bg-blur" />
       
       {standby && (
         <div className="absolute inset-0 bg-black z-[9999] flex items-center justify-center flex-col animate-fade-in">

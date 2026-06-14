@@ -462,3 +462,20 @@ div[data-active-theme="glassplayer"] .volume-feedback {
   height: auto !important;
   line-height: normal !important;
 }
+
+/* Animated shifting background blur zone */
+div[data-active-theme="glassplayer"] .album-bg-blur {
+  position: absolute;
+  inset: -15%;
+  background-image: var(--album-art-url);
+  background-size: cover;
+  background-position: center;
+  filter: blur(110px) opacity(0.35) saturate(180%);
+  z-index: 0;
+  pointer-events: none;
+  animation: bgDrift 50s linear infinite alternate;
+}
+@keyframes bgDrift {
+  0% { transform: scale(1) translate(0, 0); }
+  100% { transform: scale(1.15) translate(4%, 3%); }
+}

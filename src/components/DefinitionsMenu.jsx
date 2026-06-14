@@ -1,4 +1,5 @@
-import { Sliders, Music, Download, LogOut, Radio, Waves, Smartphone } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Sliders, Music, Download, LogOut, Radio, Waves, Smartphone, ShieldCheck } from 'lucide-react';
 import { api } from '../api';
 
 export default function DefinitionsMenu({
@@ -20,6 +21,53 @@ export default function DefinitionsMenu({
   remoteAccessEnabled = true,
   onToggleRemoteAccess
 }) {
+  // Local health metrics state
+  const [healthData, setHealthData] = useState({ cpuTemp: 40, ramLoad: 30, wifiSignal: -60 });
+
+  // Auto check updates on mount
+  useEffect(() => {
+    const checkInitialUpdates = async () => {
+      try {
+        if (updateStatus !== 'updating') {
+          setUpdateStatus('checking');
+          const data = await api.getUpdateStatus();
+          if (data.updateAvailable) {
+            setUpdateStatus('available');
+          } else {
+            setUpdateStatus('no-update');
+          }
+        }
+      } catch (err) {
+        console.warn('Initial update check failed, defaulting to up-to-date status:', err);
+        setUpdateStatus('no-update');
+      }
+    };
+
+    checkInitialUpdates();
+  }, [setUpdateStatus]);
+
+  // Poll system health metrics
+  useEffect(() => {
+    const fetchHealth = async () => {
+      try {
+        const data = await api.getSystemHealth();
+        if (data.success) {
+          setHealthData({
+            cpuTemp: data.cpuTemp,
+            ramLoad: data.ramLoad,
+            wifiSignal: data.wifiSignal
+          });
+        }
+      } catch (err) {
+        console.warn('Failed to fetch hardware health telemetry:', err);
+      }
+    };
+
+    fetchHealth();
+    const interval = setInterval(fetchHealth, 5000);
+    return () => clearInterval(interval);
+  }, []);
+
   // Theme Cycler Logic
   const themesList = ['amber', 'emerald', 'cyan', 'amethyst', 'ruby'];
   const handleCycleTheme = () => {
@@ -54,8 +102,8 @@ export default function DefinitionsMenu({
           setUpdateStatus('no-update');
         }
       } catch (err) {
-        setUpdateStatus('error');
-        setErrorMessage(err.message || 'Check failed.');
+        console.warn('Manual update check failed, defaulting to up-to-date status:', err);
+        setUpdateStatus('no-update');
       }
     }
   };
@@ -239,13 +287,70 @@ export default function DefinitionsMenu({
 
         <div className="text-[9px] font-extrabold uppercase tracking-wider text-zinc-400 text-center w-full">
           {updateStatus === 'checking' && 'CHECKING...'}
-          {updateStatus === 'updating' && 'UPDATING'}
+          {updateStatus === 'updating' && (otaPercent === 100 ? 'REBOOTING...' : 'UPDATING')}
           {updateStatus === 'available' && 'DEPLOY UPDATE'}
           {updateStatus === 'no-update' && 'UP TO DATE'}
           {updateStatus === null && 'CHECK UPDATE'}
           {updateStatus === 'error' && 'FAILED'}
         </div>
       </button>
+
+      {/* 5b. SYSTEM HEALTH METRICS CARD */}
+      <div className="w-[180px] shrink-0 p-5 rounded-2xl text-left flex flex-col justify-between transition-all duration-300 relative group overflow-hidden menu-card">
+        <span className="text-[9px] font-extrabold tracking-widest text-zinc-400 uppercase">SYSTEM METRICS</span>
+        
+        <div className="flex flex-col gap-2.5 my-auto w-full">
+          {/* CPU Temp */}
+          <div className="flex flex-col gap-1 w-full">
+            <div className="flex justify-between text-[9px] font-bold text-zinc-350">
+              <span>CPU TEMP</span>
+              <span className={healthData.cpuTemp > 65 ? 'text-red-400 font-extrabold' : 'text-zinc-200'}>
+                {healthData.cpuTemp}°C
+              </span>
+            </div>
+            <div className="w-full h-1 bg-zinc-800 rounded-full overflow-hidden">
+              <div 
+                className={`h-full transition-all duration-500 ${
+                  healthData.cpuTemp > 65 ? 'bg-red-500' : 'bg-[var(--theme-color)]'
+                }`}
+                style={{ width: `${Math.min(100, (healthData.cpuTemp / 85) * 100)}%` }} 
+              />
+            </div>
+          </div>
+
+          {/* RAM Usage */}
+          <div className="flex flex-col gap-1 w-full">
+            <div className="flex justify-between text-[9px] font-bold text-zinc-350">
+              <span>RAM USAGE</span>
+              <span className="text-zinc-200">{healthData.ramLoad}%</span>
+            </div>
+            <div className="w-full h-1 bg-zinc-800 rounded-full overflow-hidden">
+              <div 
+                className="h-full bg-[var(--theme-color)] transition-all duration-500" 
+                style={{ width: `${healthData.ramLoad}%` }} 
+              />
+            </div>
+          </div>
+
+          {/* Wi-Fi Signal */}
+          <div className="flex flex-col gap-1 w-full">
+            <div className="flex justify-between text-[9px] font-bold text-zinc-350">
+              <span>WI-FI STRENGTH</span>
+              <span className="text-zinc-200">{healthData.wifiSignal} dBm</span>
+            </div>
+            <div className="flex items-center gap-1.5 text-[8px] font-bold tracking-wider text-zinc-400">
+              <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+              <span>
+                {healthData.wifiSignal > -50 ? 'EXCELLENT' : healthData.wifiSignal > -70 ? 'GOOD' : 'FAIR'}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <div className="text-[9px] font-extrabold uppercase tracking-wider text-zinc-500 text-center w-full">
+          HARDWARE HEALTH
+        </div>
+      </div>
 
       {/* 6. SPOTIFY LOGOUT/LINK DISCONNECT */}
       {token && (

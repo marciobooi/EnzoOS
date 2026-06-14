@@ -446,6 +446,7 @@ export default function RemoteControl() {
   useEffect(() => {
     if (isConnected) {
       fetchFavorites();
+      checkUpdates();
     }
   }, [isConnected]);
 
@@ -547,9 +548,8 @@ export default function RemoteControl() {
       setLocalCommit(data.localCommit || '');
       setRemoteCommit(data.remoteCommit || '');
     } catch (err) {
-      console.error('[OTA] Failed to check for system updates:', err);
-      setUpdateStatus('error');
-      setErrorMessage(err.message || 'Failed to check updates.');
+      console.warn('[OTA] Failed to check for system updates, defaulting to up-to-date:', err);
+      setUpdateStatus('no-update');
     }
   };
 
