@@ -14,11 +14,16 @@ export default function DefinitionsMenu({
   setOtaProgress,
   errorMessage,
   setErrorMessage,
-  onOpenDspWizard
+  onOpenDspWizard,
+  onOpenThemeSettings
 }) {
   // Theme Cycler Logic
   const themesList = ['amber', 'emerald', 'cyan', 'amethyst', 'ruby'];
   const handleCycleTheme = () => {
+    if (onOpenThemeSettings) {
+      onOpenThemeSettings();
+      return;
+    }
     const currentIdx = themesList.indexOf(theme || 'amber');
     const nextTheme = themesList[(currentIdx + 1) % themesList.length];
     onThemeChange(nextTheme);
@@ -147,8 +152,8 @@ export default function DefinitionsMenu({
         </div>
 
         <div className="flex items-center justify-between text-[9px] font-bold uppercase tracking-wider w-full">
-          <span className="text-zinc-400">THEME</span>
-          <span className="text-white font-extrabold">{theme?.toUpperCase()}</span>
+          <span className="text-zinc-400">THEME SETTINGS</span>
+          <span className="text-white font-extrabold">EDIT</span>
         </div>
       </button>
 

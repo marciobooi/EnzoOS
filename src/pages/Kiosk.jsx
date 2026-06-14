@@ -9,6 +9,7 @@ import PlayerDisplay from '../components/PlayerDisplay';
 import DefinitionsMenu from '../components/DefinitionsMenu';
 import EqualizerControl, { EQ_PRESETS } from '../components/EqualizerControl';
 import DspWizard from '../components/DspWizard';
+import ThemeSettingsControl from '../components/ThemeSettingsControl';
 
 export default function Kiosk() {
   // Authentication state (server-managed, synchronized via WebSocket)
@@ -47,6 +48,48 @@ export default function Kiosk() {
   const [eqPreAmp, setEqPreAmp] = useState(() => Number(localStorage.getItem('resonance_eq_preamp')) || 0.0);
 
   const [theme, setTheme] = useState(localStorage.getItem('resonance_theme') || 'amber');
+  const [activeTheme, setActiveTheme] = useState(() => localStorage.getItem('resonance_theme_active') || 'dot-matrix');
+  const [brightness, setBrightness] = useState(() => Number(localStorage.getItem('resonance_theme_brightness')) || 100);
+  const [isThemeSettingsOpen, setIsThemeSettingsOpen] = useState(false);
+
+  const themeSyncTimeout = useRef(null);
+  const queueThemeSync = (themeColor, activeThemeVal, brightnessVal) => {
+    if (themeSyncTimeout.current) clearTimeout(themeSyncTimeout.current);
+    themeSyncTimeout.current = setTimeout(() => {
+      sendUpdate('SET_THEME_SETTINGS', {
+        themeColor,
+        activeTheme: activeThemeVal,
+        brightness: brightnessVal
+      });
+    }, 400);
+  };
+
+  const handleThemeColorChange = (newColor) => {
+    setTheme(newColor);
+    localStorage.setItem('resonance_theme', newColor);
+    sendUpdate('SET_THEME_SETTINGS', {
+      themeColor: newColor,
+      activeTheme,
+      brightness
+    });
+  };
+
+  const handleActiveThemeChange = (newTheme) => {
+    setActiveTheme(newTheme);
+    localStorage.setItem('resonance_theme_active', newTheme);
+    sendUpdate('SET_THEME_SETTINGS', {
+      themeColor: theme,
+      activeTheme: newTheme,
+      brightness
+    });
+  };
+
+  const handleBrightnessChange = (newVal) => {
+    setBrightness(newVal);
+    localStorage.setItem('resonance_theme_brightness', newVal);
+    queueThemeSync(theme, activeTheme, newVal);
+  };
+
   const lastVolumeChangeTime = useRef(0);
   const volumeApiTimeout = useRef(null);
   const [favoriteStations, setFavoriteStations] = useState([]);
@@ -258,7 +301,10 @@ export default function Kiosk() {
     setEqSaturation,
     setEqNoiseFloor,
     setEqPreAmp,
-    setDspActive
+    setDspActive,
+    setTheme,
+    setActiveTheme,
+    setBrightness
   });
 
   const handleToggleStandby = (enabled) => {
@@ -836,7 +882,7 @@ export default function Kiosk() {
               onTransferPlayback={transferPlayback}
               onRefreshDevices={fetchDevices}
               theme={theme}
-              onThemeChange={handleThemeChange}
+              onThemeChange={handleThemeColorChange}
               otaProgress={otaProgress}
               setOtaProgress={setOtaProgress}
               otaPercent={otaPercent}
@@ -854,8 +900,29 @@ export default function Kiosk() {
                 setIsDspWizardOpen(true);
                 setIsMenuOpen(false);
               }}
+              onOpenThemeSettings={() => {
+                setIsThemeSettingsOpen(true);
+                setIsMenuOpen(false);
+              }}
             />
           </div>
+        </div>
+
+        {/* Full-Screen Theme Settings Overlay */}
+        <div 
+          className={`absolute inset-0 bg-[#0b0f19] border border-white/10 rounded-3xl shadow-2xl z-50 transform transition-all duration-300 ease-in-out flex flex-col p-1.5 font-sans ${
+            isThemeSettingsOpen ? 'opacity-100 scale-100 pointer-events-auto' : 'opacity-0 scale-95 pointer-events-none'
+          }`}
+        >
+          <ThemeSettingsControl
+            activeTheme={activeTheme}
+            onThemeChange={handleActiveThemeChange}
+            themeColor={theme}
+            onColorChange={handleThemeColorChange}
+            brightness={brightness}
+            onBrightnessChange={handleBrightnessChange}
+            onClose={() => setIsThemeSettingsOpen(false)}
+          />
         </div>
 
         {/* Full-Screen CamillaDSP Calibration Wizard Overlay */}
@@ -872,6 +939,12 @@ export default function Kiosk() {
 
         <Toaster theme="dark" closeButton richColors position="bottom-right" visibleToasts={1} />
       </div>
+
+      {/* Backlight Brightness hardware simulation overlay */}
+      <div 
+        className="fixed inset-0 bg-black pointer-events-none z-[99999] transition-opacity duration-300" 
+        style={{ opacity: (100 - brightness) / 100 }} 
+      />
     </div>
   );
 }

@@ -20,13 +20,15 @@ import {
   Heart,
   Power,
   Sliders,
-  Cpu
+  Cpu,
+  Palette
 } from 'lucide-react';
 import { api } from '../api';
 import { toast, Toaster } from 'sonner';
 import { useResonanceWS } from '../websocket';
 import EqualizerControl, { EQ_PRESETS } from '../components/EqualizerControl';
 import DspWizard from '../components/DspWizard';
+import ThemeSettingsControl from '../components/ThemeSettingsControl';
 
 // Helper utilities for managing cookies
 const setCookie = (name, value, days = 365) => {
@@ -105,6 +107,49 @@ export default function RemoteControl() {
   const [eqSaturation, setEqSaturation] = useState(() => Number(localStorage.getItem('resonance_eq_saturation')) || 0);
   const [eqNoiseFloor, setEqNoiseFloor] = useState(() => Number(localStorage.getItem('resonance_eq_noise')) || 0);
   const [eqPreAmp, setEqPreAmp] = useState(() => Number(localStorage.getItem('resonance_eq_preamp')) || 0.0);
+
+  const [theme, setTheme] = useState(() => localStorage.getItem('resonance_theme') || 'amber');
+  const [activeTheme, setActiveTheme] = useState(() => localStorage.getItem('resonance_theme_active') || 'dot-matrix');
+  const [brightness, setBrightness] = useState(() => Number(localStorage.getItem('resonance_theme_brightness')) || 100);
+  const [isThemeSettingsOpen, setIsThemeSettingsOpen] = useState(false);
+
+  const themeSyncTimeout = useRef(null);
+  const queueThemeSync = (themeColor, activeThemeVal, brightnessVal) => {
+    if (themeSyncTimeout.current) clearTimeout(themeSyncTimeout.current);
+    themeSyncTimeout.current = setTimeout(() => {
+      sendUpdate('SET_THEME_SETTINGS', {
+        themeColor,
+        activeTheme: activeThemeVal,
+        brightness: brightnessVal
+      });
+    }, 400);
+  };
+
+  const handleThemeColorChange = (newColor) => {
+    setTheme(newColor);
+    localStorage.setItem('resonance_theme', newColor);
+    sendUpdate('SET_THEME_SETTINGS', {
+      themeColor: newColor,
+      activeTheme,
+      brightness
+    });
+  };
+
+  const handleActiveThemeChange = (newTheme) => {
+    setActiveTheme(newTheme);
+    localStorage.setItem('resonance_theme_active', newTheme);
+    sendUpdate('SET_THEME_SETTINGS', {
+      themeColor: theme,
+      activeTheme: newTheme,
+      brightness
+    });
+  };
+
+  const handleBrightnessChange = (newVal) => {
+    setBrightness(newVal);
+    localStorage.setItem('resonance_theme_brightness', newVal);
+    queueThemeSync(theme, activeTheme, newVal);
+  };
 
   const eqSyncTimeout = useRef(null);
   const queueEqSync = (presetName, nextBands, saturation, noiseFloor, preAmp) => {
@@ -375,7 +420,10 @@ export default function RemoteControl() {
     setEqSaturation,
     setEqNoiseFloor,
     setEqPreAmp,
-    setDspActive
+    setDspActive,
+    setTheme,
+    setActiveTheme,
+    setBrightness
   });
 
   const handleToggleStandby = (enabled) => {
@@ -799,7 +847,7 @@ export default function RemoteControl() {
   // 2. Render normal remote dashboard if authenticated
     return (
       <>
-        <div className="w-full min-h-screen text-zinc-800 font-sans flex flex-col items-center justify-between pb-6 pt-6 px-6 relative overflow-hidden select-none">
+        <div data-theme={theme} className="w-full min-h-screen text-zinc-800 font-sans flex flex-col items-center justify-between pb-6 pt-6 px-6 relative overflow-hidden select-none">
           
           {/* Background Ambience Glow */}
           <div className="absolute top-[-20%] left-1/2 -translate-x-1/2 w-[120%] aspect-square rounded-full bg-gradient-to-b from-zinc-100 to-transparent blur-3xl pointer-events-none" />
@@ -1242,6 +1290,21 @@ export default function RemoteControl() {
                     )}
                   </div>
                 </div>
+
+                {/* Appearance & Display Settings */}
+                <div className="border border-zinc-100 p-3 rounded-xl bg-zinc-50/50 flex flex-col gap-2">
+                  <div className="flex justify-between items-center text-[10px] uppercase tracking-wider text-zinc-700 font-semibold">
+                    <span>Appearance & Display</span>
+                    <span className="text-[8px] bg-zinc-100 border border-zinc-200 px-1.5 py-0.5 rounded text-zinc-700">Settings</span>
+                  </div>
+                  <button
+                    onClick={() => setIsThemeSettingsOpen(true)}
+                    className="w-full py-2.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 active:scale-95 transition-all text-xs font-bold uppercase tracking-wider text-white flex items-center justify-center gap-2 cursor-pointer"
+                  >
+                    <Palette className="h-4 w-4 text-[var(--theme-color)]" />
+                    <span>Open Theme & Display Controls</span>
+                  </button>
+                </div>
      
                 {/* System Updates */}
                 <div className="border border-zinc-100 p-3 rounded-xl bg-zinc-50/50 flex flex-col gap-2">
@@ -1475,6 +1538,31 @@ export default function RemoteControl() {
                 setDspActive(active);
               }}
             />
+          </div>
+        )}
+
+        {/* Full-Screen Theme Settings Overlay */}
+        {isThemeSettingsOpen && (
+          <div className="absolute inset-0 bg-[#050d1c] z-[9999] flex flex-col animate-fade-in p-4">
+            <div className="flex justify-between items-center mb-3 select-none shrink-0 text-white">
+              <span className="text-[10px] uppercase tracking-wider text-zinc-400 font-bold">Theme settings</span>
+              <button 
+                onClick={() => setIsThemeSettingsOpen(false)}
+                className="text-zinc-400 hover:text-white transition-colors cursor-pointer text-[10px] font-extrabold font-sans px-3.5 py-1 rounded-lg bg-white/5 border border-white/10 shadow-sm active:scale-95"
+              >
+                CLOSE [X]
+              </button>
+            </div>
+            <div className="flex-grow min-h-0">
+              <ThemeSettingsControl
+                activeTheme={activeTheme}
+                onThemeChange={handleActiveThemeChange}
+                themeColor={theme}
+                onColorChange={handleThemeColorChange}
+                brightness={brightness}
+                onBrightnessChange={handleBrightnessChange}
+              />
+            </div>
           </div>
         )}
 

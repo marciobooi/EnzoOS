@@ -31,7 +31,10 @@ export function useResonanceWS({
     setEqSaturation,
     setEqNoiseFloor,
     setEqPreAmp,
-    setDspActive
+    setDspActive,
+    setTheme,
+    setActiveTheme,
+    setBrightness
   }) {
     const [isConnected, setIsConnected] = useState(false);
     const ws = useRef(null);
@@ -153,6 +156,16 @@ export function useResonanceWS({
               if (setDspActive) {
                 setDspActive(payload && (payload[0] === 'dsp' || payload['0'] === 'dsp'));
               }
+            }
+
+            if (type === 'THEME_SETTINGS') {
+              if (setTheme) setTheme(payload.themeColor);
+              if (setActiveTheme) setActiveTheme(payload.activeTheme);
+              if (setBrightness) setBrightness(payload.brightness);
+
+              localStorage.setItem('resonance_theme', payload.themeColor);
+              localStorage.setItem('resonance_theme_active', payload.activeTheme);
+              localStorage.setItem('resonance_theme_brightness', payload.brightness);
             }
   
             if (type === 'CLEAR_TOKEN') {

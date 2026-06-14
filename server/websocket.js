@@ -116,6 +116,12 @@ export function setupWebSocket(server, app, isLocalIP) {
       ws.send(JSON.stringify({ type: 'DSP_CALIBRATION', payload: JSON.parse(dspCalibration) }));
     }
 
+    // Send the active Theme/Display settings on connect
+    const themeSettings = await getSetting('theme_settings');
+    if (themeSettings) {
+      ws.send(JSON.stringify({ type: 'THEME_SETTINGS', payload: JSON.parse(themeSettings) }));
+    }
+
     // Send the server-managed access token (auto-refreshed if needed)
     const serverToken = await getValidAccessToken();
     if (serverToken) {
@@ -176,6 +182,14 @@ export function setupWebSocket(server, app, isLocalIP) {
           
           // Broadcast the new EQ settings to all other clients so their UI updates
           broadcast({ type: 'EQ_SETTINGS', payload }, ws);
+        }
+
+        if (type === 'SET_THEME_SETTINGS') {
+          console.log('[Resonance WS] Theme settings update received:', payload);
+          await setSetting('theme_settings', JSON.stringify(payload));
+          
+          // Broadcast theme settings to all other clients
+          broadcast({ type: 'THEME_SETTINGS', payload }, ws);
         }
 
         if (type === 'CLEAR_TOKEN') {
