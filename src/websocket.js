@@ -35,7 +35,8 @@ export function useResonanceWS({
     setTheme,
     setActiveTheme,
     setBrightness,
-    setRemoteAccessEnabled
+    setRemoteAccessEnabled,
+    onAudioLevels
   }) {
     const [isConnected, setIsConnected] = useState(false);
     const ws = useRef(null);
@@ -171,6 +172,10 @@ export function useResonanceWS({
 
             if (type === 'SET_REMOTE_ACCESS') {
               if (setRemoteAccessEnabled) setRemoteAccessEnabled(payload.enabled);
+            }
+
+            if (type === 'AUDIO_LEVELS') {
+              if (onAudioLevels) onAudioLevels(payload);
             }
   
             if (type === 'CLEAR_TOKEN') {

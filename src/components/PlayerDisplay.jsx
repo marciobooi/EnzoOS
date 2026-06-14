@@ -68,7 +68,7 @@ export default function PlayerDisplay({
     }
   }, [source]);
 
-  // Simulate dynamic VU meter levels directly in DOM to avoid React re-render lag
+  // Handle VU meter levels directly in DOM to avoid React re-render lag, with live ALSA audio updates and simulated watchdog fallback
   useEffect(() => {
     if (!isPlaying) {
       if (dbLRef.current) dbLRef.current.textContent = '-45.0 DB';
@@ -78,23 +78,19 @@ export default function PlayerDisplay({
       return;
     }
 
-    const interval = setInterval(() => {
-      const leftVal = (Math.random() * 18 - 16.5).toFixed(1);
-      const rightVal = (Math.random() * 18 - 16.5).toFixed(1);
-      
-      const leftText = `${Number(leftVal) > 0 ? '+' : ''}${leftVal} DB`;
-      const rightText = `${Number(rightVal) > 0 ? '+' : ''}${rightVal} DB`;
+    let lastEventTime = Date.now();
+    let fallbackInterval = null;
+
+    const updateVU = (dbL, dbR) => {
+      const leftText = `${dbL > 0 ? '+' : ''}${dbL.toFixed(1)} DB`;
+      const rightText = `${dbR > 0 ? '+' : ''}${dbR.toFixed(1)} DB`;
 
       if (dbLRef.current) dbLRef.current.textContent = leftText;
       if (dbRRef.current) dbRRef.current.textContent = rightText;
 
-      // Map simulated DB (e.g. -16.5 to +1.5) to physical needle rotation (e.g. -40deg to +10deg)
-      const leftNum = Number(leftVal);
-      const rightNum = Number(rightVal);
-      
-      // Normalize between -20dB and +3dB
-      const leftPct = Math.max(0, Math.min(1, (leftNum + 20) / 23));
-      const rightPct = Math.max(0, Math.min(1, (rightNum + 20) / 23));
+      // Normalize between -45dB and +3dB
+      const leftPct = Math.max(0, Math.min(1, (dbL + 45) / 48));
+      const rightPct = Math.max(0, Math.min(1, (dbR + 45) / 48));
 
       const leftDeg = -45 + leftPct * 55; // maps to -45deg to +10deg
       const rightDeg = -45 + rightPct * 55;
@@ -105,9 +101,39 @@ export default function PlayerDisplay({
       if (needleRRef.current) {
         needleRRef.current.style.transform = `translateX(-50%) rotate(${rightDeg}deg)`;
       }
-    }, 150);
+    };
 
-    return () => clearInterval(interval);
+    const handleLevels = (e) => {
+      lastEventTime = Date.now();
+      if (fallbackInterval) {
+        clearInterval(fallbackInterval);
+        fallbackInterval = null;
+      }
+      const { dbL, dbR } = e.detail;
+      updateVU(dbL, dbR);
+    };
+
+    // Watchdog checking if we are receiving real events from WS
+    const watchdogInterval = setInterval(() => {
+      if (Date.now() - lastEventTime > 2000) {
+        // Fall back to simulation if no real events received in 2 seconds
+        if (!fallbackInterval) {
+          fallbackInterval = setInterval(() => {
+            const leftVal = Math.random() * 18 - 16.5;
+            const rightVal = Math.random() * 18 - 16.5;
+            updateVU(leftVal, rightVal);
+          }, 150);
+        }
+      }
+    }, 1000);
+
+    window.addEventListener('resonance-audio-levels', handleLevels);
+    
+    return () => {
+      window.removeEventListener('resonance-audio-levels', handleLevels);
+      clearInterval(watchdogInterval);
+      if (fallbackInterval) clearInterval(fallbackInterval);
+    };
   }, [isPlaying]);
 
   // Trigger volume feedback pop-up on change

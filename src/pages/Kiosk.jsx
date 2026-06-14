@@ -304,7 +304,10 @@ export default function Kiosk() {
     setTheme,
     setActiveTheme,
     setBrightness,
-    setRemoteAccessEnabled
+    setRemoteAccessEnabled,
+    onAudioLevels: (payload) => {
+      window.dispatchEvent(new CustomEvent('resonance-audio-levels', { detail: payload }));
+    }
   });
 
   useEffect(() => {

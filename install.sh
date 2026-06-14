@@ -146,6 +146,19 @@ pcm.loop_monitor {
     device 1
     subdevice 0
 }
+
+# Share loopback capture side so multiple processes can read simultaneously without locks
+pcm.loop_dsnoop {
+    type dsnoop
+    ipc_key 2048
+    ipc_perm 0666
+    slave {
+        pcm "hw:Loopback,1,0"
+        channels 2
+        rate 44100
+        format S16_LE
+    }
+}
 EOF
 
 # Configure MPD software volume control targeting Loopback device

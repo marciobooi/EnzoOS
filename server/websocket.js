@@ -1,4 +1,5 @@
 import { WebSocketServer, WebSocket } from 'ws';
+import { spawn } from 'child_process';
 import { getValidAccessToken } from './spotify-auth.js';
 import { getSetting, setSetting, dbReady } from './db.js';
 
@@ -12,6 +13,12 @@ export const setStandbyState = async (enabled) => {
   await setSetting('standby', enabled ? 'true' : 'false');
   if (wssBroadcast) {
     wssBroadcast({ type: 'SET_STANDBY', payload: { enabled } });
+  }
+
+  if (enabled) {
+    stopAudioLevelMonitor();
+  } else {
+    startAudioLevelMonitor();
   }
 
   try {
@@ -151,6 +158,9 @@ export const loadCachedStateFromDB = async () => {
     } catch (err) {
       console.error('[Resonance WS] Failed to restore CamillaDSP config on startup:', err.message);
     }
+
+    // Start audio level monitoring
+    startAudioLevelMonitor();
   } catch (err) {
     console.warn('[Resonance WS] Failed to load cached state from DB:', err.message);
   }
@@ -323,3 +333,121 @@ export function setupWebSocket(server, app, isLocalIP) {
 
   return { wss, broadcast };
 }
+
+let arecordProcess = null;
+let arecordRetryCount = 0;
+const MAX_RETRY_COUNT = 5;
+let arecordRetryTimeout = null;
+
+export function startAudioLevelMonitor() {
+  if (arecordProcess) return;
+  if (cachedStandbyState) {
+    arecordRetryCount = 0;
+    return;
+  }
+
+  if (arecordRetryCount >= MAX_RETRY_COUNT) {
+    console.warn('[Audio Monitor] Max retry count reached. Monitor disabled.');
+    return;
+  }
+
+  console.log('[Audio Monitor] Starting arecord loopback level monitor...');
+  
+  try {
+    arecordProcess = spawn('arecord', [
+      '-D', 'loop_dsnoop',
+      '-f', 'S16_LE',
+      '-c', '2',
+      '-r', '44100',
+      '-t', 'raw',
+      '-q'
+    ]);
+  } catch (err) {
+    console.error('[Audio Monitor] Failed to spawn arecord:', err.message);
+    arecordProcess = null;
+    scheduleRetry();
+    return;
+  }
+
+  let bufferAccumulator = Buffer.alloc(0);
+  const CHUNK_SIZE = 8820; // 50ms at 44.1kHz stereo 16-bit
+
+  arecordProcess.stdout.on('data', (chunk) => {
+    // We successfully got data, reset retry count
+    arecordRetryCount = 0;
+    
+    bufferAccumulator = Buffer.concat([bufferAccumulator, chunk]);
+    
+    while (bufferAccumulator.length >= CHUNK_SIZE) {
+      const chunkToProcess = bufferAccumulator.subarray(0, CHUNK_SIZE);
+      bufferAccumulator = bufferAccumulator.subarray(CHUNK_SIZE);
+      
+      let maxL = 0;
+      let maxR = 0;
+      
+      for (let i = 0; i < chunkToProcess.length; i += 4) {
+        if (i + 3 >= chunkToProcess.length) break;
+        
+        const sampleL = chunkToProcess.readInt16LE(i);
+        const sampleR = chunkToProcess.readInt16LE(i + 2);
+        
+        const absL = Math.abs(sampleL);
+        const absR = Math.abs(sampleR);
+        
+        if (absL > maxL) maxL = absL;
+        if (absR > maxR) maxR = absR;
+      }
+      
+      const calcDb = (val) => {
+        if (val <= 0) return -45.0;
+        const db = 20 * Math.log10(val / 32767.0);
+        return Math.max(-45.0, Math.round(db * 10) / 10);
+      };
+      
+      const dbL = calcDb(maxL);
+      const dbR = calcDb(maxR);
+      
+      if (wssBroadcast) {
+        wssBroadcast({
+          type: 'AUDIO_LEVELS',
+          payload: { dbL, dbR }
+        });
+      }
+    }
+  });
+
+  arecordProcess.on('error', (err) => {
+    console.error('[Audio Monitor] arecord process error:', err.message);
+  });
+
+  arecordProcess.on('exit', (code) => {
+    console.log(`[Audio Monitor] arecord process exited with code ${code}`);
+    arecordProcess = null;
+    if (!cachedStandbyState) {
+      scheduleRetry();
+    }
+  });
+}
+
+function scheduleRetry() {
+  if (arecordRetryTimeout) clearTimeout(arecordRetryTimeout);
+  arecordRetryCount++;
+  console.log(`[Audio Monitor] Scheduling retry ${arecordRetryCount}/${MAX_RETRY_COUNT} in 15 seconds...`);
+  arecordRetryTimeout = setTimeout(() => {
+    startAudioLevelMonitor();
+  }, 15000);
+}
+
+export function stopAudioLevelMonitor() {
+  if (arecordRetryTimeout) {
+    clearTimeout(arecordRetryTimeout);
+    arecordRetryTimeout = null;
+  }
+  arecordRetryCount = 0;
+  if (arecordProcess) {
+    console.log('[Audio Monitor] Stopping arecord loopback level monitor...');
+    arecordProcess.kill('SIGTERM');
+    arecordProcess = null;
+  }
+}
+

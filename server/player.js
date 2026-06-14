@@ -378,7 +378,7 @@ function generateCamillaConfig(answers, eqSettings, dacInfo) {
       samplerate: dacInfo.samplerate || 44100,
       chunksize: 1024,
       queuelimit: 4,
-      capture: { type: "Alsa", channels: 2, device: "hw:Loopback,1,0", format: "S16LE" },
+      capture: { type: "Alsa", channels: 2, device: "loop_dsnoop", format: "S16LE" },
       playback: { 
         type: "Alsa", 
         channels: dacInfo.channels || 2, 
@@ -577,6 +577,19 @@ pcm.loop_monitor {
     card Loopback
     device 1
     subdevice 0
+}
+
+# Share loopback capture side so multiple processes can read simultaneously without locks
+pcm.loop_dsnoop {
+    type dsnoop
+    ipc_key 2048
+    ipc_perm 0666
+    slave {
+        pcm "hw:Loopback,1,0"
+        channels 2
+        rate 44100
+        format S16_LE
+    }
 }
 `;
 
