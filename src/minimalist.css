@@ -44,14 +44,11 @@ div[data-active-theme="minimalist"] .music-player {
   height: 100% !important;
   width: 100% !important;
   isolation: isolate;
-
-
-
-
-  background-image: var(--album-art-url) no-repeat center center / cover, linear-gradient(to left, rgba(0,0,0,0.5), transparent);
+  background-image: var(--album-art-url), linear-gradient(to left, rgba(0,0,0,0), transparent);
+  background-position: center, center;
+  background-size: cover;
+  background-repeat: no-repeat;
   background-blend-mode: overlay;
-
-
 }
 
 /* Remove the blurred pseudo-element since the layout background handles it now */
