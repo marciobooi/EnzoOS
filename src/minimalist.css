@@ -34,6 +34,17 @@ div[data-active-theme="minimalist"] .music-player-container {
   transform-origin: center center !important;
 }
 
+div[data-active-theme="minimalist"] .music-player {
+  background-image: linear-gradient(to left, #00000000,#00000043, #0000009f, #000000), var(--album-art-url);
+  background-blend-mode: multiply;  
+  /* 1. Size the image to 67% width and 100% height */
+  background-size: 67% 100%;  
+  /* 2. Push the image to the right edge */
+  background-position: right center;  
+  /* 3. Stop the image from repeating on the left side */
+  background-repeat: no-repeat; 
+}
+
 /* 2-Column Grid Layout with Integrated Smooth Multi-Stop Gradient Background */
 div[data-active-theme="minimalist"] .music-player {
   display: grid !important;
@@ -44,38 +55,16 @@ div[data-active-theme="minimalist"] .music-player {
   height: 100% !important;
   width: 100% !important;
   isolation: isolate;
-  /* background-image: var(--album-art-url), linear-gradient(to left, rgba(0,0,0,0), transparent);
-  background-position: center, center;
-  background-size: cover;
-  background-repeat: no-repeat;
-  background-blend-mode: overlay; */
-
-
-  background-image: linear-gradient(to left, #00000000,#00000043, #0000009f, #000000), var(--album-art-url);
-  background-blend-mode: multiply;
-
-  
-  /* 1. Size the image to 67% width and 100% height */
-  background-size: 67% 100%;
-  
-  /* 2. Push the image to the right edge */
-  background-position: right center;
-  
-  /* 3. Stop the image from repeating on the left side */
-  background-repeat: no-repeat;
-
-  object-fit: cover;  
-  
- 
-
-
-
-
 }
 
-.music-player {
+div[data-active-theme="minimalist"] .music-player {
   background-color: transparent;
+      box-shadow: none;
 }
+
+
+
+
 
 /* Remove the blurred pseudo-element since the layout background handles it now */
 div[data-active-theme="minimalist"] .music-player:before {
