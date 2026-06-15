@@ -136,6 +136,12 @@ router.get('/login', (req, res) => {
     'user-read-currently-playing',
     'user-read-private',
     'user-read-email',
+    'streaming',
+    'user-library-read',
+    'playlist-read-private',
+    'playlist-read-collaborative',
+    'user-top-read',
+    'user-read-recently-played',
   ].join(' ');
 
   pendingOAuthState = crypto.randomBytes(16).toString('hex') + (req.query.from === 'remote' ? '_remote' : '');

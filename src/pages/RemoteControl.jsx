@@ -22,7 +22,8 @@ import {
   Sliders,
   Cpu,
   Palette,
-  Smartphone
+  Smartphone,
+  Search
 } from 'lucide-react';
 import { api } from '../api';
 import { toast, Toaster } from 'sonner';
@@ -30,6 +31,7 @@ import { useResonanceWS } from '../websocket';
 import EqualizerControl, { EQ_PRESETS } from '../components/EqualizerControl';
 import DspWizard from '../components/DspWizard';
 import ThemeSettingsControl from '../components/ThemeSettingsControl';
+import TrackSearch from '../components/TrackSearch';
 
 // Helper utilities for managing cookies
 const setCookie = (name, value, days = 365) => {
@@ -681,6 +683,36 @@ export default function RemoteControl() {
     }
   };
 
+  // Play a searched track on the active device
+  const handlePlayTrack = async (trackUri) => {
+    try {
+      const targetId = activeDevice?.id || resonanceDevice?.id || null;
+      await api.play(token, targetId, null, [trackUri]);
+      setActiveTab('player');
+      setTimeout(() => {
+        localSync();
+        requestWSStateSync();
+      }, 800);
+    } catch (err) {
+      toast.error(`Play error: ${err.message}`);
+    }
+  };
+
+  // Play an album or playlist context on the active device
+  const handlePlayContext = async (contextUri) => {
+    try {
+      const targetId = activeDevice?.id || resonanceDevice?.id || null;
+      await api.play(token, targetId, contextUri);
+      setActiveTab('player');
+      setTimeout(() => {
+        localSync();
+        requestWSStateSync();
+      }, 800);
+    } catch (err) {
+      toast.error(`Play error: ${err.message}`);
+    }
+  };
+
   const handleSeek = async (e) => {
     const seekMs = parseInt(e.target.value, 10);
     setTrackPosition(seekMs);
@@ -1217,7 +1249,34 @@ export default function RemoteControl() {
               </div>
             )}
 
-            {/* TAB 3: SETTINGS */}
+            {/* TAB 3: SPOTIFY SEARCH */}
+            {activeTab === 'search' && (
+              <div className="w-full flex flex-col text-left px-1" style={{ minHeight: 0, flex: '1 1 0' }}>
+                {token ? (
+                  <TrackSearch
+                    token={token}
+                    onPlayTrack={handlePlayTrack}
+                    onPlayContext={handlePlayContext}
+                    isDrawer={true}
+                  />
+                ) : (
+                  <div className="flex flex-col items-center justify-center gap-4 py-12">
+                    <Search className="h-8 w-8 text-zinc-300" />
+                    <p className="text-xs text-zinc-500 text-center leading-relaxed">
+                      Connect your Spotify account to search and play music.
+                    </p>
+                    <a
+                      href="/auth/spotify/login?from=remote"
+                      className="py-2.5 px-5 rounded-xl bg-[#1ed760] hover:bg-[#1fdf64] active:scale-95 text-xs text-black font-extrabold uppercase tracking-wider transition-all cursor-pointer no-underline"
+                    >
+                      Login with Spotify
+                    </a>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* TAB 4: SETTINGS */}
             {activeTab === 'settings' && (
               <div className="w-full flex flex-col gap-4 text-left px-1">
                 <div className="flex flex-col gap-0.5">
@@ -1525,6 +1584,16 @@ export default function RemoteControl() {
               >
                 <Music className="h-4 w-4 mb-0.5" />
                 <span className="text-[8px] uppercase tracking-wider font-extrabold font-sans">Player</span>
+              </button>
+
+              <button
+                onClick={() => setActiveTab('search')}
+                className={`flex flex-col items-center justify-center py-1 flex-1 cursor-pointer transition-all active:scale-95 ${
+                  activeTab === 'search' ? 'text-zinc-900 font-bold' : 'text-zinc-400 hover:text-zinc-700'
+                }`}
+              >
+                <Search className="h-4 w-4 mb-0.5" />
+                <span className="text-[8px] uppercase tracking-wider font-extrabold font-sans">Search</span>
               </button>
 
               <button

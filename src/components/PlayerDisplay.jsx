@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Play, Pause, SkipForward, SkipBack, Shuffle, Repeat, Volume2, VolumeX, Home, Volume1, Sliders, Radio, Heart, Power } from 'lucide-react';
+import { Play, Pause, SkipForward, SkipBack, Shuffle, Repeat, Volume2, VolumeX, Home, Volume1, Sliders, Radio, Heart, Power, Search } from 'lucide-react';
 
 export default function PlayerDisplay({
   theme = 'amber',
@@ -40,7 +40,8 @@ export default function PlayerDisplay({
   onPlayRadio,
   favoriteStations = [],
   onToggleFavoriteRadio,
-  onToggleStandby
+  onToggleStandby,
+  onToggleSearch
 }) {
   const [showVolumeFeedback, setShowVolumeFeedback] = useState(false);
   const [showSearch, setShowSearch] = useState(true);
@@ -842,6 +843,19 @@ export default function PlayerDisplay({
         >
           <Sliders className="h-5 w-5" />
         </button>
+
+        {/* Spotify Search Button */}
+        {spotify && hasToken && onToggleSearch && (
+          <button 
+            onClick={onToggleSearch}
+            className="icon-button search"
+            type="button" 
+            aria-label="Search Spotify"
+            title="Search & Browse Spotify"
+          >
+            <Search className="h-5 w-5" />
+          </button>
+        )}
         
         {/* Volume Button & Popup */}
         <div ref={volumePopupRef} className="relative flex items-center justify-center">

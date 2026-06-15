@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { toast, Toaster } from 'sonner';
 import { api } from '../api';
 import { useResonanceWS } from '../websocket';
-import { Power } from 'lucide-react';
+import { Power, Search } from 'lucide-react';
 
 // Subcomponents
 import PlayerDisplay from '../components/PlayerDisplay';
@@ -10,6 +10,7 @@ import DefinitionsMenu from '../components/DefinitionsMenu';
 import EqualizerControl, { EQ_PRESETS } from '../components/EqualizerControl';
 import DspWizard from '../components/DspWizard';
 import ThemeSettingsControl from '../components/ThemeSettingsControl';
+import TrackSearch from '../components/TrackSearch';
 
 export default function Kiosk() {
   // Authentication state (server-managed, synchronized via WebSocket)
@@ -35,6 +36,7 @@ export default function Kiosk() {
 
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isEqualizerOpen, setIsEqualizerOpen] = useState(false);
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [eqPreset, setEqPreset] = useState(() => localStorage.getItem('resonance_eq_preset') || 'Clinical Reference');
   const [eqBands, setEqBands] = useState(() => {
     try {
@@ -669,6 +671,19 @@ export default function Kiosk() {
     try {
       const activeId = resonanceDeviceId || (devices.find(d => d.is_active)?.id);
       await api.play(token, activeId, null, [trackUri]);
+      setIsSearchOpen(false);
+      setTimeout(syncCurrentState, 800);
+    } catch (err) {
+      toast.error(`Play error: ${err.message}`);
+    }
+  };
+
+  // Play an album or playlist context on the active device
+  const handlePlayContext = async (contextUri) => {
+    try {
+      const activeId = resonanceDeviceId || (devices.find(d => d.is_active)?.id);
+      await api.play(token, activeId, contextUri);
+      setIsSearchOpen(false);
       setTimeout(syncCurrentState, 800);
     } catch (err) {
       toast.error(`Play error: ${err.message}`);
@@ -1008,6 +1023,7 @@ export default function Kiosk() {
           spotify={spotify}
           onToggleSource={handleToggleSource}
           onToggleEqualizer={() => setIsEqualizerOpen(!isEqualizerOpen)}
+          onToggleSearch={() => setIsSearchOpen(!isSearchOpen)}
           source={source}
           radioSearch={radioSearch}
           setRadioSearch={setRadioSearch}
@@ -1097,6 +1113,34 @@ export default function Kiosk() {
                 setRemoteAccessEnabled(enabled);
                 sendUpdate('SET_REMOTE_ACCESS', { enabled });
               }}
+            />
+          </div>
+        </div>
+
+        {/* Full-Screen Spotify Search & Browse Overlay */}
+        <div 
+          className={`absolute inset-0 bg-[#0b0f19] border border-white/10 rounded-3xl shadow-2xl z-50 transform transition-all duration-300 ease-in-out flex flex-col p-5 font-sans ${
+            isSearchOpen ? 'opacity-100 scale-100 pointer-events-auto' : 'opacity-0 scale-95 pointer-events-none'
+          }`}
+        >
+          <div className="flex justify-between items-center mb-3 select-none shrink-0">
+            <h4 className="text-[11px] font-extrabold uppercase tracking-[0.2em] text-zinc-700 flex items-center gap-2">
+              <Search className="h-3.5 w-3.5" />
+              Spotify Search & Browse
+            </h4>
+            <button 
+              onClick={() => setIsSearchOpen(false)}
+              className="text-zinc-600 hover:text-zinc-900 transition-colors cursor-pointer text-[10px] font-extrabold font-sans px-3.5 py-1 rounded-lg bg-white border border-zinc-250 shadow-sm active:scale-95"
+            >
+              CLOSE [X]
+            </button>
+          </div>
+          <div className="flex-grow min-h-0 overflow-hidden">
+            <TrackSearch
+              token={token}
+              onPlayTrack={handlePlayTrack}
+              onPlayContext={handlePlayContext}
+              isDrawer={false}
             />
           </div>
         </div>

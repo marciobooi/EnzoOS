@@ -172,10 +172,82 @@ export const api = {
   },
 
   /**
-   * Searches for track items on Spotify matching a query.
+   * Searches Spotify for tracks, albums, playlists, and artists matching a query.
    */
   async searchTracks(token, query) {
     const response = await fetch(`${SPOTIFY_API_URL}/search?q=${encodeURIComponent(query)}&type=track&limit=10`, {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+    return handleResponse(response);
+  },
+
+  /**
+   * Full search across tracks, albums, playlists, and artists.
+   */
+  async searchAll(token, query, types = 'track,album,playlist,artist', limit = 10) {
+    const response = await fetch(`${SPOTIFY_API_URL}/search?q=${encodeURIComponent(query)}&type=${types}&limit=${limit}`, {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+    return handleResponse(response);
+  },
+
+  /**
+   * Fetches the current user's playlists.
+   */
+  async getUserPlaylists(token, limit = 30) {
+    const response = await fetch(`${SPOTIFY_API_URL}/me/playlists?limit=${limit}`, {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+    return handleResponse(response);
+  },
+
+  /**
+   * Fetches tracks from a specific playlist.
+   */
+  async getPlaylistTracks(token, playlistId, limit = 50) {
+    const response = await fetch(`${SPOTIFY_API_URL}/playlists/${playlistId}/tracks?limit=${limit}`, {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+    return handleResponse(response);
+  },
+
+  /**
+   * Fetches the user's recently played tracks.
+   */
+  async getRecentlyPlayed(token, limit = 20) {
+    const response = await fetch(`${SPOTIFY_API_URL}/me/player/recently-played?limit=${limit}`, {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+    return handleResponse(response);
+  },
+
+  /**
+   * Fetches the user's top tracks.
+   */
+  async getUserTopTracks(token, limit = 20, timeRange = 'short_term') {
+    const response = await fetch(`${SPOTIFY_API_URL}/me/top/tracks?limit=${limit}&time_range=${timeRange}`, {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+    return handleResponse(response);
+  },
+
+  /**
+   * Fetches tracks from a specific album.
+   */
+  async getAlbumTracks(token, albumId, limit = 50) {
+    const response = await fetch(`${SPOTIFY_API_URL}/albums/${albumId}/tracks?limit=${limit}`, {
       headers: {
         'Authorization': `Bearer ${token}`
       }
