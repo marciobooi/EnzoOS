@@ -151,6 +151,7 @@ div[data-active-theme="minimalist"] .track-title {
   letter-spacing: -0.04em !important;
   line-height: 1.05 !important;
   text-wrap: balance !important;
+      width: 100% !important;
 }
 div[data-active-theme="minimalist"] .track-artist {
   font-size: 1.25rem !important;
