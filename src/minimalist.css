@@ -52,11 +52,11 @@ div[data-active-theme="minimalist"] .music-player {
   isolation: isolate;
 }
 
-/* Blurred Dominant Color Backdrop Layer - Expanded to fill the container */
+/* Blurred Dominant Color Backdrop Layer (Fills the entire background framework) */
 div[data-active-theme="minimalist"] .music-player:before {
   content: "" !important;
   position: absolute;
-  inset: 0 !important; /* Stretch across the entire container, not just 50% */
+  inset: 0 !important; /* Spans full container width so no middle cut-off line exists */
   background-image: var(--album-art-url);
   background-size: cover;
   background-position: center;
@@ -64,12 +64,7 @@ div[data-active-theme="minimalist"] .music-player:before {
   opacity: 0.95 !important;
   z-index: 1;
   pointer-events: none;
-
-  /* Smoothly mask out the right side completely where the real artwork lives */
-  -webkit-mask-image: linear-gradient(to right, rgba(0,0,0,1) 30%, rgba(0,0,0,0) 65%) !important;
-  mask-image: linear-gradient(to right, rgba(0,0,0,1) 30%, rgba(0,0,0,0) 65%) !important;
 }
-
 
 /* Column 1: Details Column (Moved to Left via grid order) */
 div[data-active-theme="minimalist"] .details-column {
@@ -79,7 +74,7 @@ div[data-active-theme="minimalist"] .details-column {
   align-items: flex-start !important;
   z-index: 10;
   padding: 3rem 4.5rem !important;
-  background: rgba(var(--extracted-rgb, 5 10 20) / 0.5) !important; /* Semi-transparent so dominant color shines through */
+  background: transparent !important; /* Lets the dynamic colorful blur glow neatly behind text */
 }
 
 /* Column 2: Album Artwork (Moved to Right via grid order) */
@@ -90,27 +85,17 @@ div[data-active-theme="minimalist"] .album-column {
   height: 100% !important;
   position: relative !important;
   z-index: 2;
-  display: block !important; /* Reset flexbox display from index.css to fill layout height completely */
+  display: block !important;
+
+  /* Physically fades the hard left border edge of the poster into complete transparency */
+  -webkit-mask-image: linear-gradient(to right, rgba(0,0,0,0) 0%, rgba(0,0,0,1) 25%) !important;
+  mask-image: linear-gradient(to right, rgba(0,0,0,0) 0%, rgba(0,0,0,1) 25%) !important;
 }
 
-/* Linear-gradient overlay on the album art to fade it smoothly into the backdrop */
+/* Disable old overlapping color gradient styles */
 div[data-active-theme="minimalist"] .album-art::after {
-  content: "" !important;
-  position: absolute;
-  inset: 0;
-  /* Use transparent on the left so it blends directly into the blurred backdrop */
-  background: linear-gradient(90deg, 
-    transparent 0%, 
-    rgba(var(--extracted-rgb, 5 10 20) / 0.1) 15%, 
-    rgba(var(--extracted-rgb, 5 10 20) / 0.4) 35%, 
-    rgba(var(--extracted-rgb, 5 10 20) / 0.85) 60%, 
-    var(--deep) 85%,
-    var(--deep) 100%) !important;
-  pointer-events: none;
-  z-index: 5 !important;
-  opacity: 1 !important;
+  display: none !important;
 }
-
 div[data-active-theme="minimalist"] .album-column::before,
 div[data-active-theme="minimalist"] .album-column::after {
   display: none !important;
@@ -136,7 +121,7 @@ div[data-active-theme="minimalist"] .album-art img {
   object-fit: cover !important;
   filter: none !important;
   opacity: 1 !important;
-  display: block !important; /* Prevent inline descender text-line-height spacing gap at the bottom */
+  display: block !important;
 }
 
 /* Hide unneeded components in minimalist mode */
