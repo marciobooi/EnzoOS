@@ -44,11 +44,26 @@ div[data-active-theme="minimalist"] .music-player {
   height: 100% !important;
   width: 100% !important;
   isolation: isolate;
-  background-image: var(--album-art-url), linear-gradient(to left, rgba(0,0,0,0), transparent);
+  /* background-image: var(--album-art-url), linear-gradient(to left, rgba(0,0,0,0), transparent);
   background-position: center, center;
   background-size: cover;
   background-repeat: no-repeat;
-  background-blend-mode: overlay;
+  background-blend-mode: overlay; */
+
+
+
+
+  background-image: var(--album-art-url);
+  background-size: 100% 100%;
+  mask-image: var(--album-art-url);
+  mask-size: 100% 100%;
+  background-color: black;
+  background-blend-mode: multiply;
+
+
+
+
+
 }
 
 /* Remove the blurred pseudo-element since the layout background handles it now */
