@@ -51,15 +51,29 @@ div[data-active-theme="minimalist"] .music-player {
   background-blend-mode: overlay; */
 
 
-  background-image: linear-gradient(to left, rgba(255,255,255,0), #000000), var(--album-art-url);
+  background-image: linear-gradient(to left, #00000000, #000000db, #000000), var(--album-art-url);
   background-blend-mode: multiply;
-  background-size: cover;
-  background-position: center;
+
+  
+  /* 1. Size the image to 67% width and 100% height */
+  background-size: 67% 100%;
+  
+  /* 2. Push the image to the right edge */
+  background-position: right center;
+  
+  /* 3. Stop the image from repeating on the left side */
+  background-repeat: no-repeat;
+  
+  /* 4. Make the leftover 33% space on the left pure black */
+  background-color: black; 
 
 
 
 
+}
 
+.music-player {
+  background-color: transparent;
 }
 
 /* Remove the blurred pseudo-element since the layout background handles it now */
