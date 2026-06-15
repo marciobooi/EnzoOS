@@ -253,8 +253,7 @@ export default function EqualizerControl({
                       max="12"
                       step="1"
                       value={bandVal}
-                      orient="vertical" /* Backwards compatibility */
-                      style={{ writingMode: 'bt-lr', WebkitAppearance: 'slider-vertical' }}
+                      style={{ writingMode: 'vertical-lr', direction: 'rtl' }}
                       onChange={(e) => onBandChange(index, Number(e.target.value))}
                       className="absolute inset-0 w-full h-full opacity-0 cursor-row-resize z-20"
                     />
