@@ -34,13 +34,7 @@ div[data-active-theme="minimalist"] .music-player-container {
   transform-origin: center center !important;
 }
 
-div[data-active-theme="minimalist"] .music-player {
-  background-image: linear-gradient(to left, #00000000,#00000043, #0000009f, #000000), var(--album-art-url);
-  background-blend-mode: multiply;  
-  background-repeat: no-repeat; 
-  background-size: contain;
-  background-position: right center;
-}
+
 
 /* 2-Column Grid Layout with Integrated Smooth Multi-Stop Gradient Background */
 div[data-active-theme="minimalist"] .music-player {
@@ -57,6 +51,14 @@ div[data-active-theme="minimalist"] .music-player {
 div[data-active-theme="minimalist"] .music-player {
   background-color: transparent;
       box-shadow: none;
+}
+
+div[data-active-theme="minimalist"] .music-player {
+  background-image: linear-gradient(to left, #00000000,#00000043, #0000009f, #000000), var(--album-art-url);
+  background-blend-mode: multiply;  
+  background-repeat: no-repeat; 
+  background-size: contain;
+  background-position: right center;
 }
 
 
