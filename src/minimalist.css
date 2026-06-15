@@ -52,14 +52,11 @@ div[data-active-theme="minimalist"] .music-player {
   isolation: isolate;
 }
 
-/* Blurred Dominant Color Backdrop Layer (stretches on the left to extract colors) */
+/* Blurred Dominant Color Backdrop Layer - Expanded to fill the container */
 div[data-active-theme="minimalist"] .music-player:before {
   content: "" !important;
   position: absolute;
-  left: 0;
-  top: 0;
-  bottom: 0;
-  width: 50% !important;
+  inset: 0 !important; /* Stretch across the entire container, not just 50% */
   background-image: var(--album-art-url);
   background-size: cover;
   background-position: center;
@@ -68,9 +65,9 @@ div[data-active-theme="minimalist"] .music-player:before {
   z-index: 1;
   pointer-events: none;
 
-  /* Fade effect from opaque on the left to transparent on the right */
-  -webkit-mask-image: linear-gradient(to right, rgba(0,0,0,1) 70%, rgba(0,0,0,0) 100%) !important;
-  mask-image: linear-gradient(to right, rgba(0,0,0,1) 70%, rgba(0,0,0,0) 100%) !important;
+  /* Smoothly mask out the right side completely where the real artwork lives */
+  -webkit-mask-image: linear-gradient(to right, rgba(0,0,0,1) 30%, rgba(0,0,0,0) 65%) !important;
+  mask-image: linear-gradient(to right, rgba(0,0,0,1) 30%, rgba(0,0,0,0) 65%) !important;
 }
 
 
@@ -96,18 +93,19 @@ div[data-active-theme="minimalist"] .album-column {
   display: block !important; /* Reset flexbox display from index.css to fill layout height completely */
 }
 
-/* Linear-gradient overlay on the album art to fade it smoothly into the background */
+/* Linear-gradient overlay on the album art to fade it smoothly into the backdrop */
 div[data-active-theme="minimalist"] .album-art::after {
   content: "" !important;
   position: absolute;
   inset: 0;
+  /* Use transparent on the left so it blends directly into the blurred backdrop */
   background: linear-gradient(90deg, 
-    var(--deep) 0%, 
-    var(--deep) 15%, 
-    rgba(var(--extracted-rgb, 5 10 20) / 0.85) 40%, 
-    rgba(var(--extracted-rgb, 5 10 20) / 0.4) 65%, 
-    rgba(var(--extracted-rgb, 5 10 20) / 0.1) 85%, 
-    transparent 100%) !important;
+    transparent 0%, 
+    rgba(var(--extracted-rgb, 5 10 20) / 0.1) 15%, 
+    rgba(var(--extracted-rgb, 5 10 20) / 0.4) 35%, 
+    rgba(var(--extracted-rgb, 5 10 20) / 0.85) 60%, 
+    var(--deep) 85%,
+    var(--deep) 100%) !important;
   pointer-events: none;
   z-index: 5 !important;
   opacity: 1 !important;
