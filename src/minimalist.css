@@ -52,11 +52,11 @@ div[data-active-theme="minimalist"] .music-player {
   isolation: isolate;
 }
 
-/* Blurred Dominant Color Backdrop Layer (Fills the entire background framework) */
+/* Blurred Dominant Color Backdrop Layer (Spans full frame underneath) */
 div[data-active-theme="minimalist"] .music-player:before {
   content: "" !important;
   position: absolute;
-  inset: 0 !important; /* Spans full container width so no middle cut-off line exists */
+  inset: 0 !important; 
   background-image: var(--album-art-url);
   background-size: cover;
   background-position: center;
@@ -74,7 +74,7 @@ div[data-active-theme="minimalist"] .details-column {
   align-items: flex-start !important;
   z-index: 10;
   padding: 3rem 4.5rem !important;
-  background: transparent !important; /* Lets the dynamic colorful blur glow neatly behind text */
+  background: transparent !important; 
 }
 
 /* Column 2: Album Artwork (Moved to Right via grid order) */
@@ -86,16 +86,25 @@ div[data-active-theme="minimalist"] .album-column {
   position: relative !important;
   z-index: 2;
   display: block !important;
-
-  /* Physically fades the hard left border edge of the poster into complete transparency */
-  -webkit-mask-image: linear-gradient(to right, rgba(0,0,0,0) 0%, rgba(0,0,0,1) 25%) !important;
-  mask-image: linear-gradient(to right, rgba(0,0,0,0) 0%, rgba(0,0,0,1) 25%) !important;
 }
 
-/* Disable old overlapping color gradient styles */
+/* Linear-gradient overlay: Completely blocks the left edge using your dark custom property */
 div[data-active-theme="minimalist"] .album-art::after {
-  display: none !important;
+  content: "" !important;
+  position: absolute;
+  inset: 0;
+  /* Fades from your solid dynamic background color into absolute transparency */
+  background: linear-gradient(to right, 
+    var(--deep) 0%, 
+    rgba(var(--extracted-rgb, 5 10 20) / 0.9) 15%, 
+    rgba(var(--extracted-rgb, 5 10 20) / 0.5) 40%, 
+    rgba(var(--extracted-rgb, 5 10 20) / 0.15) 70%, 
+    transparent 100%) !important;
+  pointer-events: none;
+  z-index: 5 !important;
+  opacity: 1 !important;
 }
+
 div[data-active-theme="minimalist"] .album-column::before,
 div[data-active-theme="minimalist"] .album-column::after {
   display: none !important;
