@@ -35,7 +35,18 @@ div[data-active-theme="minimalist"] .music-player-container {
 }
 
 div[data-active-theme="minimalist"] .music-player {
-  background-image: linear-gradient(to left, #00000000,#00000043, #0000009f, #000000), var(--album-art-url);
+  background-image: linear-gradient(to left, 
+      rgba(0, 0, 0, 0) 0%,
+    rgba(var(--extracted-rgb), 0.26) 35%, 
+    rgba(var(--extracted-rgb), 0.62) 60%, 
+    var(--deep) 100%),
+   var(--album-art-url);
+ 
+  
+
+  
+  
+  
   background-blend-mode: multiply;  
   /* 1. Size the image to 67% width and 100% height */
   background-position-y: 100%;
