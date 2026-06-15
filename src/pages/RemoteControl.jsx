@@ -1013,7 +1013,7 @@ export default function RemoteControl() {
                       Resonance is not authenticated to Spotify. Connect your account to synchronize playback.
                     </p>
                     <a
-                      href="/auth/spotify/kiosk-login"
+                      href="/auth/spotify/login?from=remote"
                       className="w-full py-2.5 px-3 rounded-xl bg-[#1ed760] hover:bg-[#1fdf64] active:scale-95 text-xs text-black font-extrabold uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center gap-2 no-underline"
                     >
                       <svg viewBox="0 0 24 24" className="h-4 w-4 fill-black shrink-0"><path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm4.586 14.424a.622.622 0 01-.857.207c-2.348-1.435-5.304-1.76-8.785-.964a.622.622 0 01-.277-1.215c3.809-.87 7.077-.496 9.712 1.115a.622.622 0 01.207.857zm1.223-2.722a.779.779 0 01-1.07.257c-2.687-1.652-6.785-2.131-9.965-1.166a.78.78 0 01-.973-.519.781.781 0 01.519-.972c3.632-1.102 8.147-.568 11.233 1.33a.779.779 0 01.256 1.07zm.105-2.835C14.692 8.95 9.375 8.775 6.297 9.71a.935.935 0 11-.543-1.79c3.533-1.072 9.404-.866 13.115 1.338a.936.936 0 01-.955 1.609z"/></svg>
@@ -1266,7 +1266,7 @@ export default function RemoteControl() {
                       Connect your Spotify account to search and play music.
                     </p>
                     <a
-                      href="/auth/spotify/kiosk-login"
+                      href="/auth/spotify/login?from=remote"
                       className="py-2.5 px-5 rounded-xl bg-[#1ed760] hover:bg-[#1fdf64] active:scale-95 text-xs text-black font-extrabold uppercase tracking-wider transition-all cursor-pointer no-underline"
                     >
                       Login with Spotify
@@ -1321,7 +1321,7 @@ export default function RemoteControl() {
                   
                   {!token ? (
                     <a
-                      href="/auth/spotify/kiosk-login"
+                      href="/auth/spotify/login?from=remote"
                       className="w-full py-2.5 px-3 rounded-xl bg-[#1ed760] hover:bg-[#1fdf64] active:scale-95 text-xs text-black font-extrabold uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center gap-2 no-underline"
                     >
                       <svg viewBox="0 0 24 24" className="h-4 w-4 fill-black shrink-0"><path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm4.586 14.424a.622.622 0 01-.857.207c-2.348-1.435-5.304-1.76-8.785-.964a.622.622 0 01-.277-1.215c3.809-.87 7.077-.496 9.712 1.115a.622.622 0 01.207.857zm1.223-2.722a.779.779 0 01-1.07.257c-2.687-1.652-6.785-2.131-9.965-1.166a.78.78 0 01-.973-.519.781.781 0 01.519-.972c3.632-1.102 8.147-.568 11.233 1.33a.779.779 0 01.256 1.07zm.105-2.835C14.692 8.95 9.375 8.775 6.297 9.71a.935.935 0 11-.543-1.79c3.533-1.072 9.404-.866 13.115 1.338a.936.936 0 01-.955 1.609z"/></svg>

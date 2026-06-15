@@ -217,15 +217,19 @@ router.get('/callback', async (req, res) => {
   const clientId = process.env.SPOTIFY_CLIENT_ID;
   const clientSecret = process.env.SPOTIFY_CLIENT_SECRET;
   const redirectUri = process.env.SPOTIFY_REDIRECT_URI;
+  const stateValue = typeof state === 'string' ? state : '';
+  const pendingWasRemote = typeof pendingOAuthState === 'string' && pendingOAuthState.endsWith('_remote');
+  const isFromRemote = stateValue.endsWith('_remote') || pendingWasRemote;
+  const redirectBase = isFromRemote ? '/remote' : '/';
 
   if (error) {
-    return res.redirect(`/?auth_error=${encodeURIComponent(error)}`);
+    return res.redirect(`${redirectBase}?auth_error=${encodeURIComponent(error)}`);
   }
 
   if (!state || state !== pendingOAuthState) {
-    return res.redirect('/?auth_error=state_mismatch');
+    pendingOAuthState = null;
+    return res.redirect(`${redirectBase}?auth_error=state_mismatch`);
   }
-  const isFromRemote = state.endsWith('_remote');
   pendingOAuthState = null;
 
   try {
@@ -272,11 +276,11 @@ router.get('/callback', async (req, res) => {
     console.log(`[Resonance Auth] Authenticated as: ${tokenState.display_name}`);
 
     // Redirect back to the app root cleanly
-    res.redirect(isFromRemote ? '/remote' : '/');
+    res.redirect(redirectBase);
 
   } catch (err) {
     console.error('[Resonance Auth] OAuth callback error:', err.message);
-    res.redirect(`/?auth_error=${encodeURIComponent(err.message)}`);
+    res.redirect(`${redirectBase}?auth_error=${encodeURIComponent(err.message)}`);
   }
 });
 
