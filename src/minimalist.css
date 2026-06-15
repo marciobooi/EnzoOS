@@ -48,7 +48,7 @@ div[data-active-theme="minimalist"] .music-player {
 
 
 
-  background-image: var(--album-art-url), linear-gradient(to bottom, rgba(0,0,0,0.5), transparent);
+  background-image: var(--album-art-url) no-repeat center center / cover, linear-gradient(to left, rgba(0,0,0,0.5), transparent);
   background-blend-mode: overlay;
 
 
