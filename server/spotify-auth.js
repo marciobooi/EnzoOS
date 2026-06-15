@@ -105,8 +105,8 @@ setInterval(async () => {
   }
 }, 5 * 60 * 1000);
 
-// State param to prevent CSRF
-let pendingOAuthState = null;
+// State param to prevent CSRF + callback URI tracking
+let pendingOAuth = null;
 
 // GET /auth/spotify/login  →  redirect to Spotify OAuth
 
@@ -164,7 +164,13 @@ router.get('/kiosk-login', (req, res) => {
 
 router.get('/login', (req, res) => {
   const clientId = process.env.SPOTIFY_CLIENT_ID;
-  const redirectUri = process.env.SPOTIFY_REDIRECT_URI;
+  const isFromRemote = req.query.from === 'remote';
+  const protocol = req.headers['x-forwarded-proto'] || req.protocol || 'http';
+  const host = req.get('host');
+  const dynamicRedirectUri = host ? `${protocol}://${host}/auth/spotify/callback` : null;
+  const redirectUri = isFromRemote
+    ? dynamicRedirectUri
+    : (process.env.SPOTIFY_REDIRECT_URI || dynamicRedirectUri);
 
   if (!clientId || !redirectUri) {
     return res.status(500).send(`
@@ -198,14 +204,19 @@ router.get('/login', (req, res) => {
     'user-read-recently-played',
   ].join(' ');
 
-  pendingOAuthState = crypto.randomBytes(16).toString('hex') + (req.query.from === 'remote' ? '_remote' : '');
+  const state = crypto.randomBytes(16).toString('hex') + (isFromRemote ? '_remote' : '');
+  pendingOAuth = {
+    state,
+    redirectUri,
+    isFromRemote,
+  };
 
   const params = new URLSearchParams({
     response_type: 'code',
     client_id: clientId,
     scope: scopes,
     redirect_uri: redirectUri,
-    state: pendingOAuthState,
+    state,
   });
 
   res.redirect(`https://accounts.spotify.com/authorize?${params.toString()}`);
@@ -216,21 +227,24 @@ router.get('/callback', async (req, res) => {
   const { code, state, error } = req.query;
   const clientId = process.env.SPOTIFY_CLIENT_ID;
   const clientSecret = process.env.SPOTIFY_CLIENT_SECRET;
-  const redirectUri = process.env.SPOTIFY_REDIRECT_URI;
   const stateValue = typeof state === 'string' ? state : '';
-  const pendingWasRemote = typeof pendingOAuthState === 'string' && pendingOAuthState.endsWith('_remote');
+  const pendingWasRemote = !!pendingOAuth?.isFromRemote;
   const isFromRemote = stateValue.endsWith('_remote') || pendingWasRemote;
   const redirectBase = isFromRemote ? '/remote' : '/';
+  const protocol = req.headers['x-forwarded-proto'] || req.protocol || 'http';
+  const host = req.get('host');
+  const fallbackRedirectUri = host ? `${protocol}://${host}/auth/spotify/callback` : process.env.SPOTIFY_REDIRECT_URI;
+  const redirectUri = pendingOAuth?.redirectUri || fallbackRedirectUri;
 
   if (error) {
     return res.redirect(`${redirectBase}?auth_error=${encodeURIComponent(error)}`);
   }
 
-  if (!state || state !== pendingOAuthState) {
-    pendingOAuthState = null;
+  if (!state || !pendingOAuth || state !== pendingOAuth.state) {
+    pendingOAuth = null;
     return res.redirect(`${redirectBase}?auth_error=state_mismatch`);
   }
-  pendingOAuthState = null;
+  pendingOAuth = null;
 
   try {
     const tokenResponse = await fetch('https://accounts.spotify.com/api/token', {
