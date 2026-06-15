@@ -40,13 +40,7 @@ div[data-active-theme="minimalist"] .music-player {
     rgba(var(--extracted-rgb), 0.26) 35%, 
     rgba(var(--extracted-rgb), 0.62) 60%, 
     var(--deep) 100%),
-   var(--album-art-url);
- 
-  
-
-  
-  
-  
+   var(--album-art-url); 
   background-blend-mode: multiply;  
   /* 1. Size the image to 67% width and 100% height */
   background-position-y: 100%;
