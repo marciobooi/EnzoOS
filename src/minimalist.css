@@ -43,7 +43,9 @@ div[data-active-theme="minimalist"] .music-player {
   background-position: right center;  
   /* 3. Stop the image from repeating on the left side */
   background-repeat: no-repeat; 
-  background-size: 150% !important; 
+  background-size: 56% !important; 
+      border: none;
+    border-radius: 0;
 }
 
 /* 2-Column Grid Layout with Integrated Smooth Multi-Stop Gradient Background */
