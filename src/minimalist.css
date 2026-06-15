@@ -51,14 +51,10 @@ div[data-active-theme="minimalist"] .music-player {
   background-blend-mode: overlay; */
 
 
-
-
-  background-image: var(--album-art-url);
-  background-size: 100% 100%;
-  mask-image: var(--album-art-url);
-  mask-size: 100% 100%;
-  background-color: black;
+  background-image: linear-gradient(to left, rgba(255,255,255,0), #000000), var(--album-art-url);
   background-blend-mode: multiply;
+  background-size: cover;
+  background-position: center;
 
 
 
