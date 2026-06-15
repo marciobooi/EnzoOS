@@ -45,15 +45,13 @@ div[data-active-theme="minimalist"] .music-player {
   width: 100% !important;
   isolation: isolate;
 
-  /* MERGED SHORTHAND: Layers the smooth gradient right on top of the album art image safely */
-  background: linear-gradient(to left, 
-    rgba(0, 0, 0, 0.0) 8%, 
-    rgba(0, 0, 0, 0.0) 17%, 
-    rgba(0, 0, 0, 0.2) 27%, 
-    rgba(0, 0, 0, 0.7) 51%, 
-    rgba(0, 0, 0, 0.9) 59%, 
-    rgba(0, 0, 0, 1.0) 82%
-  ), var(--album-art-url) no-repeat center center / cover !important;
+
+
+
+  background-image: var(--album-art-url), linear-gradient(to bottom, rgba(0,0,0,0.5), transparent);
+  background-blend-mode: overlay;
+
+
 }
 
 /* Remove the blurred pseudo-element since the layout background handles it now */
@@ -112,7 +110,7 @@ div[data-active-theme="minimalist"] .album-art img {
   object-fit: cover !important;
   filter: none !important;
   opacity: 1 !important;
-  display: block !important;
+  display: none !important;
 }
 
 /* Hide unneeded components in minimalist mode */
