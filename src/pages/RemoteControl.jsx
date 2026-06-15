@@ -387,7 +387,6 @@ export default function RemoteControl() {
     }
     setSource(nextSource);
     const isSpotify = nextSource === 'spotify';
-    setSpotify(isSpotify);
     sendUpdate('SET_SOURCE', { spotify: isSpotify, source: nextSource });
     
     const sourceNames = { spotify: 'Spotify', local: 'Local Media', radio: 'Web Radio' };
@@ -1159,10 +1158,8 @@ export default function RemoteControl() {
                           onClick={async () => {
                             try {
                               await api.localPlayRadio(station.url, station.name, station.favicon);
-                              if (spotify) {
-                                setSpotify(false);
-                                sendUpdate('SET_SOURCE', { spotify: false });
-                              }
+                              setSource('radio');
+                              sendUpdate('SET_SOURCE', { spotify: false, source: 'radio' });
                             } catch (err) {
                               toast.error(`Failed to play radio: ${err.message}`);
                             }
@@ -1202,10 +1199,8 @@ export default function RemoteControl() {
                             onClick={async () => {
                               try {
                                 await api.localPlayRadio(station.url, station.name, station.favicon);
-                                if (spotify) {
-                                  setSpotify(false);
-                                  sendUpdate('SET_SOURCE', { spotify: false });
-                                }
+                                setSource('radio');
+                                sendUpdate('SET_SOURCE', { spotify: false, source: 'radio' });
                               } catch (err) {
                                 toast.error(`Failed to play radio: ${err.message}`);
                               }

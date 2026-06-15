@@ -375,7 +375,6 @@ export default function Kiosk() {
     }
     setSource(nextSource);
     const isSpotify = nextSource === 'spotify';
-    setSpotify(isSpotify);
     sendUpdate('SET_SOURCE', { spotify: isSpotify, source: nextSource });
     
     const sourceNames = { spotify: 'Spotify', local: 'Local Media', radio: 'Web Radio' };
