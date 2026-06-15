@@ -38,12 +38,29 @@ export const setHardwareBrightness = async (brightness) => {
   if (brightness === undefined || brightness === null) return;
   try {
     const { exec } = await import('child_process');
-    exec(`sudo /usr/local/bin/kiosk-brightness.sh ${brightness}`, (err, stdout, stderr) => {
-      if (err) {
-        console.error('[Brightness] Failed to set hardware brightness:', err);
-      } else {
+    const sanitized = Number(brightness);
+    if (!Number.isFinite(sanitized)) {
+      console.warn('[Brightness] Ignoring invalid brightness value:', brightness);
+      return;
+    }
+
+    const script = `/usr/local/bin/kiosk-brightness.sh ${Math.max(0, Math.min(100, Math.round(sanitized)))}`;
+
+    // Run without sudo first. On many kiosk setups the script can execute as the app user.
+    exec(script, (err, stdout) => {
+      if (!err) {
         console.log(`[Brightness] Successfully set hardware brightness to ${brightness}%:`, stdout.trim());
+        return;
       }
+
+      console.warn('[Brightness] Non-sudo call failed, retrying with sudo:', err.message);
+      exec(`sudo ${script}`, (sudoErr, sudoStdout) => {
+        if (sudoErr) {
+          console.error('[Brightness] Failed to set hardware brightness:', sudoErr.message);
+        } else {
+          console.log(`[Brightness] Successfully set hardware brightness to ${brightness}% via sudo:`, sudoStdout.trim());
+        }
+      });
     });
   } catch (err) {
     console.error('[Brightness] Error executing brightness script:', err);
