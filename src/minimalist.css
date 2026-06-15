@@ -51,7 +51,7 @@ div[data-active-theme="minimalist"] .music-player {
   background-blend-mode: overlay; */
 
 
-  background-image: linear-gradient(to left, #00000000, #000000db, #000000), var(--album-art-url);
+  background-image: linear-gradient(to left, #00000000,#00000043, #0000009f, #000000), var(--album-art-url);
   background-blend-mode: multiply;
 
   
@@ -63,9 +63,10 @@ div[data-active-theme="minimalist"] .music-player {
   
   /* 3. Stop the image from repeating on the left side */
   background-repeat: no-repeat;
+
+  object-fit: cover;  
   
-  /* 4. Make the leftover 33% space on the left pure black */
-  background-color: black; 
+ 
 
 
 
