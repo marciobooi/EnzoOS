@@ -1,6 +1,7 @@
 import express from 'express';
 import fetch from 'node-fetch';
 import crypto from 'crypto';
+import { exec } from 'child_process';
 import { getSetting, setSetting, deleteSetting } from './db.js';
 
 const router = express.Router();
@@ -108,6 +109,59 @@ setInterval(async () => {
 let pendingOAuthState = null;
 
 // GET /auth/spotify/login  →  redirect to Spotify OAuth
+
+// GET /auth/spotify/kiosk-login
+// Called by phone remote. Opens Spotify login on the Pi/kiosk browser.
+router.get('/kiosk-login', (req, res) => {
+  const loginUrl = 'http://127.0.0.1:5000/auth/spotify/login';
+
+  exec(
+    `xdg-open "${loginUrl}"`,
+    {
+      env: {
+        ...process.env,
+        DISPLAY: ':0',
+        XAUTHORITY: '/home/pi/.Xauthority',
+      },
+    },
+    (err) => {
+      if (err) {
+        console.error('[Resonance Auth] Failed to open Spotify login on kiosk:', err.message);
+        return res.status(500).send(`
+          <html>
+            <body style="font-family:sans-serif;background:#111;color:#fff;padding:24px;">
+              <h2>Could not open Spotify login on kiosk</h2>
+              <p>Please open this URL directly on the kiosk:</p>
+              <code>${loginUrl}</code>
+            </body>
+          </html>
+        `);
+      }
+
+      res.send(`
+        <html>
+          <head>
+            <meta name="viewport" content="width=device-width,initial-scale=1" />
+            <title>Spotify Login Sent</title>
+          </head>
+          <body style="font-family:sans-serif;background:#090b0e;color:#fff;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;padding:24px;">
+            <div style="max-width:420px;text-align:center;background:#141820;padding:28px;border-radius:18px;">
+              <h2>Spotify login opened on kiosk</h2>
+              <p style="color:#9aa4b2;line-height:1.5;">
+                Please complete the Spotify login on the kiosk screen.
+                After login, return to the remote.
+              </p>
+              <a href="/remote" style="display:inline-block;margin-top:16px;background:#1ed760;color:#000;padding:12px 22px;border-radius:999px;text-decoration:none;font-weight:800;">
+                Back to Remote
+              </a>
+            </div>
+          </body>
+        </html>
+      `);
+    }
+  );
+});
+
 router.get('/login', (req, res) => {
   const clientId = process.env.SPOTIFY_CLIENT_ID;
   const redirectUri = process.env.SPOTIFY_REDIRECT_URI;
