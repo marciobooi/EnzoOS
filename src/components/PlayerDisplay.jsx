@@ -664,6 +664,7 @@ export default function PlayerDisplay({
                   <>
                     {/* Left Channel Mechanical VU */}
                     <div className="vu-channel-box">
+                      <span className="text-zinc-400">LINE LEVEL L</span>
                       <div className="vu-dial-area">
                         <div className="vu-dot-grid" />
                         <div className="vu-glow-overlay" />
@@ -675,13 +676,15 @@ export default function PlayerDisplay({
                         <div ref={needleLRef} className="vu-needle" />
                       </div>
                       <div className="vu-readout-line">
-                        <span className="text-zinc-400">LINE LEVEL L</span>
+                        
                         <span ref={dbLRef} className="text-[var(--theme-color)]">-45.0 DB</span>
                       </div>
                     </div>
 
                     {/* Right Channel Mechanical VU */}
                     <div className="vu-channel-box">
+                      
+                        <span className="text-zinc-400">LINE LEVEL R</span>
                       <div className="vu-dial-area">
                         <div className="vu-dot-grid" />
                         <div className="vu-glow-overlay" />
@@ -693,7 +696,6 @@ export default function PlayerDisplay({
                         <div ref={needleRRef} className="vu-needle" />
                       </div>
                       <div className="vu-readout-line">
-                        <span className="text-zinc-400">LINE LEVEL R</span>
                         <span ref={dbRRef} className="text-[var(--theme-color)]">-45.0 DB</span>
                       </div>
                     </div>
