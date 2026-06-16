@@ -117,11 +117,11 @@ if ! grep -q "snd-aloop" /etc/modules; then
   echo "snd-aloop" >> /etc/modules
 fi
 
-# Configure ALSA Default Device to route to Loopback using type plug (handles format/rate conversions automatically)
+# Configure ALSA Default Device to route to Loopback using dmix (shared write access)
 echo -e "${YELLOW}Creating default ALSA configuration (/etc/asound.conf) routing to Loopback...${NC}"
 cat <<EOF > /etc/asound.conf
 # Resonance HiFi - Default ALSA Route to Loopback
-# This forces Volumio, Spotify, AirPlay, etc., to send audio to the virtual pipe instead of a physical card.
+# dmix on camilla_input lets raspotify and MPD share the loopback write side.
 pcm.!default {
     type plug
     slave.pcm "camilla_input"
@@ -132,23 +132,22 @@ ctl.!default {
     card Loopback
 }
 
-# Define the entry point to the Loopback pipe
+# dmix allows multiple writers (raspotify + MPD) to share the loopback simultaneously
 pcm.camilla_input {
-    type hw
-    card Loopback
-    device 0
-    subdevice 0
+    type dmix
+    ipc_key 1024
+    ipc_perm 0666
+    slave {
+        pcm "hw:Loopback,0,0"
+        channels 2
+        rate 44100
+        format S16_LE
+        period_size 8192
+        buffer_size 32768
+    }
 }
 
-# Fix for duplex output (duplex safety PCM configurations)
-pcm.loop_monitor {
-    type hw
-    card Loopback
-    device 1
-    subdevice 0
-}
-
-# Share loopback capture side so multiple processes can read simultaneously without locks
+# Share loopback capture side so CamillaDSP can read without exclusive locks
 pcm.loop_dsnoop {
     type dsnoop
     ipc_key 2048
@@ -158,23 +157,45 @@ pcm.loop_dsnoop {
         channels 2
         rate 44100
         format S16_LE
+        period_size 8192
     }
 }
 EOF
 
-# Configure MPD software volume control targeting Loopback device
-if ! grep -q "ALSA Software Volume" /etc/mpd.conf; then
-  echo -e "${YELLOW}Configuring software volume mixer for MPD...${NC}"
-  cat <<EOF >> /etc/mpd.conf
+# Disable PulseAudio autospawn — PulseAudio intercepts pcm.!default and routes to its
+# null sink, preventing audio from reaching the loopback → CamillaDSP chain.
+echo -e "${YELLOW}Disabling PulseAudio autospawn (conflicts with ALSA loopback routing)...${NC}"
+mkdir -p /etc/pulse
+cat <<EOF > /etc/pulse/client.conf
+# Resonance HiFi: do not auto-start PulseAudio daemon; use ALSA directly.
+autospawn = no
+daemon-binary = /bin/true
+EOF
+# Also disable for the target user
+mkdir -p "$USER_HOME/.config/pulse"
+echo "autospawn = no" > "$USER_HOME/.config/pulse/client.conf"
+chown -R $TARGET_USER:$TARGET_USER "$USER_HOME/.config/pulse"
+
+# Write complete MPD configuration (always overwrite to prevent partial configs)
+echo -e "${YELLOW}Writing complete MPD configuration (/etc/mpd.conf)...${NC}"
+cat <<EOF > /etc/mpd.conf
+music_directory         "/var/lib/mpd/music"
+playlist_directory      "/var/lib/mpd/playlists"
+db_file                 "/var/lib/mpd/tag_cache"
+state_file              "/var/lib/mpd/state"
+sticker_file            "/var/lib/mpd/sticker.sql"
+
+user                    "mpd"
+bind_to_address         "any"
+port                    "6600"
 
 audio_output {
     type            "alsa"
     name            "ALSA Software Volume"
-    device          "hw:Loopback,0,0"
+    device          "camilla_input"
     mixer_type      "software"
 }
 EOF
-fi
 
 # Enable and start MPD service
 echo -e "${YELLOW}Enabling and starting Media Player Daemon (MPD)...${NC}"
