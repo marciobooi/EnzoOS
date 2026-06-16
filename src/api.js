@@ -479,5 +479,65 @@ export const api = {
   async getSystemHealth() {
     const response = await fetch('/api/system/update/health');
     return response.json();
-  }
+  },
+
+  async getServices() {
+    const r = await fetch('/api/system/services');
+    return r.json();
+  },
+
+  async restartService(name) {
+    const r = await fetch(`/api/system/service/${encodeURIComponent(name)}/restart`, { method: 'POST' });
+    return r.json();
+  },
+
+  async rebootSystem() {
+    const r = await fetch('/api/system/reboot', { method: 'POST' });
+    return r.json();
+  },
+
+  async shutdownSystem() {
+    const r = await fetch('/api/system/shutdown', { method: 'POST' });
+    return r.json();
+  },
+
+  async getLibraryArtists() {
+    const r = await fetch('/api/player/library/artists');
+    return r.json();
+  },
+
+  async getLibraryAlbums(artist) {
+    const url = artist
+      ? `/api/player/library/albums?artist=${encodeURIComponent(artist)}`
+      : '/api/player/library/albums';
+    const r = await fetch(url);
+    return r.json();
+  },
+
+  async getLibraryTracks(album, artist) {
+    const params = new URLSearchParams();
+    if (album) params.set('album', album);
+    if (artist) params.set('artist', artist);
+    const r = await fetch(`/api/player/library/tracks?${params}`);
+    return r.json();
+  },
+
+  async getQueue() {
+    const r = await fetch('/api/player/queue');
+    return r.json();
+  },
+
+  async clearQueue() {
+    const r = await fetch('/api/player/queue/clear', { method: 'POST' });
+    return r.json();
+  },
+
+  async addToQueue(filePath, play = false) {
+    const r = await fetch('/api/player/queue/add', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ path: filePath, play }),
+    });
+    return r.json();
+  },
 };

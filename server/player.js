@@ -688,6 +688,79 @@ export async function updateCamillaConfigFromSettings() {
   return dacInfo;
 }
 
+// GET /api/player/library/artists
+router.get('/library/artists', async (req, res) => {
+  try {
+    const { stdout } = await execPromise('mpc list artist');
+    const artists = stdout.split('\n').map(s => s.trim()).filter(Boolean).sort((a, b) => a.localeCompare(b));
+    res.json({ artists });
+  } catch {
+    res.json({ artists: [] });
+  }
+});
+
+// GET /api/player/library/albums?artist=X
+router.get('/library/albums', async (req, res) => {
+  const { artist } = req.query;
+  try {
+    const arg = artist ? ` artist "${artist.replace(/"/g, '\\"')}"` : '';
+    const { stdout } = await execPromise(`mpc list album${arg}`);
+    const albums = stdout.split('\n').map(s => s.trim()).filter(Boolean).sort((a, b) => a.localeCompare(b));
+    res.json({ albums });
+  } catch {
+    res.json({ albums: [] });
+  }
+});
+
+// GET /api/player/library/tracks?album=X&artist=Y
+router.get('/library/tracks', async (req, res) => {
+  const { album, artist } = req.query;
+  try {
+    let cmd = 'mpc find';
+    if (artist) cmd += ` artist "${artist.replace(/"/g, '\\"')}"`;
+    if (album) cmd += ` album "${album.replace(/"/g, '\\"')}"`;
+    const { stdout } = await execPromise(cmd);
+    const tracks = stdout.split('\n').map(s => s.trim()).filter(Boolean);
+    res.json({ tracks });
+  } catch {
+    res.json({ tracks: [] });
+  }
+});
+
+// GET /api/player/queue
+router.get('/queue', async (req, res) => {
+  try {
+    const { stdout } = await execPromise('mpc playlist');
+    const tracks = stdout.split('\n').map(s => s.trim()).filter(Boolean);
+    res.json({ tracks });
+  } catch {
+    res.json({ tracks: [] });
+  }
+});
+
+// POST /api/player/queue/clear
+router.post('/queue/clear', async (req, res) => {
+  try {
+    await execPromise('mpc clear');
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/player/queue/add
+router.post('/queue/add', async (req, res) => {
+  const { path: filePath, play = false } = req.body;
+  if (!filePath) return res.status(400).json({ error: 'path required' });
+  try {
+    await execPromise(`mpc add "${filePath.replace(/"/g, '\\"')}"`);
+    if (play) await execPromise('mpc play');
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // POST /api/player/standby -> Set standby state (used by wake monitor scripts or external triggers)
 router.post('/standby', async (req, res) => {
   const { enabled } = req.body;

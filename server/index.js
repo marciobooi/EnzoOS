@@ -7,6 +7,7 @@ import http from 'http';
 import https from 'https';
 import fs from 'fs';
 import updateRouter from './update.js';
+import systemRouter from './system.js';
 import spotifyAuthRouter from './spotify-auth.js';
 import playerRouter from './player.js';
 import spotifyDaemonRouter from './spotify-daemon.js';
@@ -27,6 +28,9 @@ app.use(express.static(path.join(__dirname, '../dist')));
 
 // System OTA Update Router API Integration
 app.use('/api/system/update', updateRouter);
+
+// System control routes (services, reboot, shutdown)
+app.use('/api/system', systemRouter);
 
 // Spotify OAuth routes
 app.use('/auth/spotify', spotifyAuthRouter);

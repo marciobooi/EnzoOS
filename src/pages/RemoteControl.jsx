@@ -3,8 +3,8 @@ import {
   Play, Pause, SkipForward, SkipBack, Volume2, VolumeX,
   Shuffle, Repeat, Laptop, Music, Search, Radio, Heart,
   Power, Sliders, Cpu, Palette, RefreshCw, LogOut,
-  Settings, Smartphone, ChevronRight, Waves, Cast,
-  MoreHorizontal
+  Settings, Smartphone, ChevronRight, ChevronLeft, Waves, Cast,
+  MoreHorizontal, Library, Timer, Activity, User, Disc2
 } from 'lucide-react';
 import { api } from '../api';
 import { toast, Toaster } from 'sonner';
@@ -146,6 +146,23 @@ export default function RemoteControl() {
   const [visualizerMode, setVisualizerMode] = useState(() => localStorage.getItem('resonance_visualizer_mode') || 'vu');
   const [isThemeSettingsOpen, setIsThemeSettingsOpen] = useState(false);
 
+  // Library browser
+  const [libraryView, setLibraryView]       = useState('artists');
+  const [selectedArtist, setSelectedArtist] = useState(null);
+  const [selectedAlbum, setSelectedAlbum]   = useState(null);
+  const [libraryItems, setLibraryItems]     = useState([]);
+  const [libraryLoading, setLibraryLoading] = useState(false);
+
+  // System / Services
+  const [systemHealth, setSystemHealth] = useState(null);
+  const [services, setServices]         = useState(null);
+  const [serviceLoading, setServiceLoading] = useState({});
+
+  // Sleep timer (client-side)
+  const [sleepMinutes, setSleepMinutes]     = useState(0);
+  const [sleepRemaining, setSleepRemaining] = useState(0);
+  const [showSleepTimer, setShowSleepTimer] = useState(false);
+
   const themeSyncTimeout = useRef(null);
   const eqSyncTimeout    = useRef(null);
   const progressInterval = useRef(null);
@@ -232,6 +249,38 @@ export default function RemoteControl() {
     const id = setInterval(() => { fetchDevices(); localSync(); }, 3000);
     return () => clearInterval(id);
   }, [token, isAuthenticated, spotify]);
+  // Library tab: load artists on first visit
+  useEffect(() => {
+    if (activeTab === 'library' && libraryItems.length === 0 && libraryView === 'artists') {
+      fetchLibraryArtists();
+    }
+  }, [activeTab]);
+
+  // More tab: refresh health + services on open
+  useEffect(() => {
+    if (activeTab === 'more') { fetchSystemHealth(); fetchServices(); }
+  }, [activeTab]);
+
+  // Sleep timer countdown — fires standby command at 0
+  useEffect(() => {
+    if (sleepRemaining <= 0) return;
+    const id = setInterval(() => {
+      setSleepRemaining(r => {
+        if (r <= 1) {
+          clearInterval(id);
+          if (ws.current?.readyState === WebSocket.OPEN)
+            ws.current.send(JSON.stringify({ type: 'SET_STANDBY', payload: { enabled: true } }));
+          setSleepMinutes(0);
+          setShowSleepTimer(false);
+          toast.success('Sleep timer: kiosk standby');
+          return 0;
+        }
+        return r - 1;
+      });
+    }, 1000);
+    return () => clearInterval(id);
+  }, [sleepRemaining]);
+
   useEffect(() => {
     if (isAuthenticated && playbackState && isPlaying) {
       progressInterval.current = setInterval(() => {
@@ -319,6 +368,71 @@ export default function RemoteControl() {
     if (usernameInput === 'enzo' && passwordInput === 'enzoOS') { setCookie('remote_auth', 'true', 365); setIsAuthenticated(true); } else toast.error('Invalid credentials');
   };
   const handleDeactivateDsp = async () => { try { const c = await api.getDspCalibration() || {}; c[0] = 'eq'; await api.saveDspCalibration(c); setDspActive(false); } catch {} };
+
+  // ── library ─────────────────────────────────────────────────────────────────
+  const fetchLibraryArtists = async () => {
+    setLibraryLoading(true);
+    try { setLibraryItems((await api.getLibraryArtists()).artists || []); } catch {}
+    setLibraryLoading(false);
+  };
+  const fetchLibraryAlbums = async artist => {
+    setLibraryLoading(true);
+    try { setLibraryItems((await api.getLibraryAlbums(artist)).albums || []); } catch {}
+    setLibraryLoading(false);
+  };
+  const fetchLibraryTracks = async (album, artist) => {
+    setLibraryLoading(true);
+    try { setLibraryItems((await api.getLibraryTracks(album, artist)).tracks || []); } catch {}
+    setLibraryLoading(false);
+  };
+  const handleLibraryBack = () => {
+    if (libraryView === 'tracks') {
+      setLibraryView('albums'); fetchLibraryAlbums(selectedArtist);
+    } else {
+      setLibraryView('artists'); setSelectedArtist(null); fetchLibraryArtists();
+    }
+  };
+  const handleLibraryPlayTrack = async filePath => {
+    try {
+      wakeKiosk();
+      await api.clearQueue();
+      await api.addToQueue(filePath, true);
+      handleToggleSource('local');
+      setActiveTab('player');
+      toast.success('Playing');
+    } catch (e) { toast.error(e.message); }
+  };
+
+  // ── system / services ────────────────────────────────────────────────────────
+  const fetchSystemHealth = async () => {
+    try { setSystemHealth(await api.getSystemHealth()); } catch {}
+  };
+  const fetchServices = async () => {
+    try { setServices((await api.getServices()).services || {}); } catch {}
+  };
+  const handleRestartService = async name => {
+    setServiceLoading(p => ({ ...p, [name]: true }));
+    try {
+      await api.restartService(name);
+      toast.success(`${name} restarting…`);
+      setTimeout(fetchServices, 3000);
+    } catch (e) { toast.error(e.message); }
+    setServiceLoading(p => ({ ...p, [name]: false }));
+  };
+  const handleReboot = async () => {
+    try { await api.rebootSystem(); toast.success('Rebooting kiosk…'); } catch (e) { toast.error(e.message); }
+  };
+  const handleShutdown = async () => {
+    try { await api.shutdownSystem(); toast.success('Shutting down…'); } catch (e) { toast.error(e.message); }
+  };
+
+  // ── sleep timer ──────────────────────────────────────────────────────────────
+  const handleSetSleepTimer = minutes => {
+    setSleepMinutes(minutes);
+    setSleepRemaining(minutes * 60);
+    if (!minutes) { setSleepRemaining(0); toast.success('Sleep timer off'); }
+    else toast.success(`Sleep in ${minutes < 60 ? `${minutes}m` : `${minutes / 60}h`}`);
+  };
 
   // ── disabled ────────────────────────────────────────────────────────────────
   if (!remoteAccessEnabled) return (
@@ -638,6 +752,87 @@ export default function RemoteControl() {
             </div>
           )}
 
+          {/* ══════════════════════ LIBRARY TAB (Local MPD) ═════════════════ */}
+          {activeTab === 'library' && (
+            <div className="flex flex-col pt-6 pb-2">
+              {/* Header */}
+              <div className="flex items-center gap-3 px-5 mb-5">
+                {libraryView !== 'artists' && (
+                  <button onClick={handleLibraryBack}
+                    className="w-9 h-9 rounded-full flex items-center justify-center active:scale-90 transition-all cursor-pointer shrink-0"
+                    style={{ background: 'rgba(255,255,255,0.07)', color: S.t2 }}>
+                    <ChevronLeft className="h-5 w-5" />
+                  </button>
+                )}
+                <div className="flex-1 min-w-0">
+                  <p className="text-[28px] font-semibold text-white truncate" style={{ letterSpacing: '-0.5px' }}>
+                    {libraryView === 'artists' ? 'Library' : libraryView === 'albums' ? selectedArtist : selectedAlbum || 'Tracks'}
+                  </p>
+                  {libraryView !== 'artists' && (
+                    <p className="text-[13px] mt-0.5" style={{ color: S.t2 }}>
+                      {libraryView === 'albums' ? 'Albums' : selectedArtist}
+                    </p>
+                  )}
+                </div>
+                <button onClick={libraryView === 'artists' ? fetchLibraryArtists : libraryView === 'albums' ? () => fetchLibraryAlbums(selectedArtist) : () => fetchLibraryTracks(selectedAlbum, selectedArtist)}
+                  className="w-9 h-9 rounded-full flex items-center justify-center active:scale-90 transition-all cursor-pointer shrink-0"
+                  style={{ color: S.t3 }}>
+                  <RefreshCw className={`h-4 w-4 ${libraryLoading ? 'animate-spin' : ''}`} />
+                </button>
+              </div>
+
+              {libraryLoading ? (
+                <div className="flex justify-center py-16">
+                  <div className="w-8 h-8 rounded-full border-2 animate-spin" style={{ borderColor: 'rgba(255,255,255,0.2)', borderTopColor: 'var(--theme-color)' }} />
+                </div>
+              ) : libraryItems.length === 0 ? (
+                <div className="flex flex-col items-center gap-4 py-16 px-8 text-center">
+                  <Library className="h-12 w-12" style={{ color: 'rgba(255,255,255,0.1)' }} />
+                  <div>
+                    <p className="text-[17px] font-semibold text-white mb-1" style={{ letterSpacing: '-0.2px' }}>No Music Found</p>
+                    <p className="text-[14px]" style={{ color: S.t2 }}>Add music to your MPD library and run mpc update.</p>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex flex-col mx-4 rounded-[14px] overflow-hidden" style={{ background: S.card, border: `1px solid ${S.cardBd}` }}>
+                  {libraryItems.map((item, idx) => {
+                    const isTrack = libraryView === 'tracks';
+                    const displayName = isTrack ? item.split('/').pop().replace(/\.[^.]+$/, '') : item;
+                    const IconEl = libraryView === 'artists' ? User : libraryView === 'albums' ? Disc2 : Music;
+                    return (
+                      <React.Fragment key={`${item}-${idx}`}>
+                        {idx > 0 && <div className="ml-16" style={{ height: '0.5px', background: S.sep }} />}
+                        <button
+                          className="w-full flex items-center gap-3 px-4 py-3.5 active:opacity-60 transition-opacity cursor-pointer text-left"
+                          onClick={() => {
+                            if (libraryView === 'artists') {
+                              setSelectedArtist(item); setLibraryView('albums'); fetchLibraryAlbums(item);
+                            } else if (libraryView === 'albums') {
+                              setSelectedAlbum(item); setLibraryView('tracks'); fetchLibraryTracks(item, selectedArtist);
+                            } else {
+                              handleLibraryPlayTrack(item);
+                            }
+                          }}
+                        >
+                          <span className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+                            style={{ background: 'rgba(255,255,255,0.06)' }}>
+                            <IconEl className="h-4 w-4" style={{ color: isTrack ? S.t2 : 'var(--theme-color)' }} />
+                          </span>
+                          <span className="flex-1 text-[15px] font-medium text-white truncate" style={{ letterSpacing: '-0.15px' }}>
+                            {displayName}
+                          </span>
+                          {!isTrack
+                            ? <ChevronRight className="h-4 w-4 shrink-0" style={{ color: S.t3 }} />
+                            : <Play className="h-4 w-4 shrink-0" style={{ color: S.t3 }} />}
+                        </button>
+                      </React.Fragment>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+
           {/* ══════════════════════ SEARCH TAB (Spotify) ════════════════════ */}
           {activeTab === 'search' && (
             <div className="flex flex-col pt-6 pb-2 px-4 h-full min-h-[60vh]">
@@ -686,6 +881,25 @@ export default function RemoteControl() {
                 <Row label="Room Calibration" icon={<Cpu className="h-4 w-4" style={{ color: '#ff9f0a' }} />}
                   value={dspActive ? 'Active' : 'Off'}
                   onPress={() => setIsDspWizardOpen(true)} />
+                <Row
+                  label={sleepRemaining > 0 ? `Sleep Timer · ${Math.floor(sleepRemaining / 60)}:${(sleepRemaining % 60).toString().padStart(2, '0')}` : 'Sleep Timer'}
+                  icon={<Timer className="h-4 w-4" style={{ color: sleepRemaining > 0 ? 'var(--theme-color)' : S.t2 }} />}
+                  value={sleepMinutes ? (sleepMinutes < 60 ? `${sleepMinutes}m` : `${sleepMinutes / 60}h`) : 'Off'}
+                  onPress={() => setShowSleepTimer(v => !v)} chevron={false} />
+                {showSleepTimer && (
+                  <div className="px-4 pb-4 flex gap-2 flex-wrap">
+                    {[0, 15, 30, 60, 120].map(m => (
+                      <button key={m}
+                        onClick={() => { handleSetSleepTimer(m); setShowSleepTimer(false); }}
+                        className="px-4 py-2 rounded-full text-[13px] font-semibold active:scale-95 transition-all cursor-pointer"
+                        style={sleepMinutes === m
+                          ? { background: 'var(--theme-color)', color: '#000', fontFamily: S.font }
+                          : { background: 'rgba(255,255,255,0.08)', color: S.t2, fontFamily: S.font }}>
+                        {m === 0 ? 'Off' : m < 60 ? `${m}m` : `${m / 60}h`}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </Section>
 
               {/* Display */}
@@ -729,7 +943,47 @@ export default function RemoteControl() {
                 </Section>
               )}
 
+              {/* Services */}
+              <Section title="Services">
+                {[
+                  { id: 'mpd',        label: 'MPD',        icon: <Music className="h-4 w-4" style={{ color: S.t2 }} /> },
+                  { id: 'camilladsp', label: 'CamillaDSP', icon: <Sliders className="h-4 w-4" style={{ color: S.t2 }} /> },
+                  { id: 'raspotify',  label: 'Raspotify',  icon: <svg viewBox="0 0 24 24" className="h-4 w-4" style={{ fill: S.t2 }}><path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm4.586 14.424a.622.622 0 01-.857.207c-2.348-1.435-5.304-1.76-8.785-.964a.622.622 0 01-.277-1.215c3.809-.87 7.077-.496 9.712 1.115a.622.622 0 01.207.857zm1.223-2.722a.779.779 0 01-1.07.257c-2.687-1.652-6.785-2.131-9.965-1.166a.78.78 0 01-.973-.519.781.781 0 01.519-.972c3.632-1.102 8.147-.568 11.233 1.33a.779.779 0 01.256 1.07zm.105-2.835C14.692 8.95 9.375 8.775 6.297 9.71a.935.935 0 11-.543-1.79c3.533-1.072 9.404-.866 13.115 1.338a.936.936 0 01-.955 1.609z"/></svg> },
+                ].map(svc => {
+                  const status = services?.[svc.id];
+                  const isActive = status === 'active';
+                  return (
+                    <Row key={svc.id}
+                      label={svc.label}
+                      icon={
+                        <span className="relative">
+                          {svc.icon}
+                          <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full border border-black"
+                            style={{ background: services ? (isActive ? S.green : S.red) : 'rgba(255,255,255,0.2)' }} />
+                        </span>
+                      }
+                      value={serviceLoading[svc.id] ? 'restarting…' : (status || '…')}
+                      chevron={false}
+                      onPress={() => handleRestartService(svc.id)} />
+                  );
+                })}
+              </Section>
+
               {/* System */}
+              {systemHealth && (
+                <div className="mx-4 mb-3 rounded-[14px] p-4 flex justify-around" style={{ background: S.card, border: `1px solid ${S.cardBd}` }}>
+                  {[
+                    { label: 'CPU', value: `${systemHealth.cpuTemp}°C` },
+                    { label: 'RAM', value: `${systemHealth.ramLoad}%` },
+                    { label: 'Wi-Fi', value: `${systemHealth.wifiSignal} dBm` },
+                  ].map(m => (
+                    <div key={m.label} className="flex flex-col items-center gap-1">
+                      <span className="text-[20px] font-semibold text-white" style={{ letterSpacing: '-0.3px' }}>{m.value}</span>
+                      <span className="text-[11px] font-medium uppercase tracking-widest" style={{ color: S.t3 }}>{m.label}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
               <Section title="System">
                 <Row label="Check for Updates" icon={<RefreshCw className={`h-4 w-4 ${updateStatus === 'checking' ? 'animate-spin' : ''}`} style={{ color: '#30d158' }} />}
                   value={updateStatus === 'no-update' ? 'Up to date' : updateStatus === 'available' ? 'Available!' : updateStatus === 'updating' ? `${otaPercent}%` : ''}
@@ -745,6 +999,10 @@ export default function RemoteControl() {
                     </div>
                   </div>
                 )}
+                <Row label="Reboot Kiosk" icon={<RefreshCw className="h-4 w-4" style={{ color: '#ff9f0a' }} />}
+                  onPress={handleReboot} />
+                <Row label="Shut Down" icon={<Power className="h-4 w-4" style={{ color: S.red }} />}
+                  destructive onPress={handleShutdown} />
               </Section>
 
               {/* Account */}
@@ -762,17 +1020,18 @@ export default function RemoteControl() {
           <div className="absolute inset-0" style={{ background: 'rgba(0,0,0,0.82)', backdropFilter: 'saturate(180%) blur(20px)', borderTop: '0.5px solid rgba(255,255,255,0.12)' }} />
           <div className="relative flex items-start justify-around pt-2 px-2">
             {[
-              { id: 'player', Icon: Music,          label: 'Now Playing' },
-              { id: 'search', Icon: Search,          label: 'Search'      },
-              { id: 'radio',  Icon: Radio,           label: 'Radio'       },
-              { id: 'more',   Icon: MoreHorizontal,  label: 'More'        },
+              { id: 'player',  Icon: Music,          label: 'Player'  },
+              { id: 'radio',   Icon: Radio,           label: 'Radio'   },
+              { id: 'library', Icon: Library,         label: 'Library' },
+              { id: 'search',  Icon: Search,          label: 'Search'  },
+              { id: 'more',    Icon: MoreHorizontal,  label: 'More'    },
             ].map(({ id, Icon, label }) => {
               const active = activeTab === id;
               return (
                 <button key={id} onClick={() => setActiveTab(id)}
                   className="flex flex-col items-center gap-1 py-1 flex-1 cursor-pointer transition-all active:scale-90"
                   style={{ color: active ? 'var(--theme-color)' : S.t3 }}>
-                  <Icon className="h-6 w-6" strokeWidth={active ? 2 : 1.5} />
+                  <Icon className="h-5 w-5" strokeWidth={active ? 2 : 1.5} />
                   <span className="text-[10px] font-medium" style={{ fontFamily: S.font, letterSpacing: '-0.05px' }}>{label}</span>
                 </button>
               );
