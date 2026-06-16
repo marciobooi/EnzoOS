@@ -379,12 +379,11 @@ function generateCamillaConfig(answers, eqSettings, dacInfo) {
       chunksize: 1024,
       queuelimit: 4,
       capture: { type: "Alsa", channels: 2, device: "loop_dsnoop", format: "S16LE" },
-      playback: { 
-        type: "Alsa", 
-        channels: dacInfo.channels || 2, 
-        device: dacInfo.device || "hw:CARD=DAC,DEV=0", 
-        format: dacInfo.format || "S24LE",
-        gain: isDspActive ? (profile.preampGain - 6.0) : profile.preampGain
+      playback: {
+        type: "Alsa",
+        channels: dacInfo.channels || 2,
+        device: dacInfo.device || "hw:CARD=DAC,DEV=0",
+        format: dacInfo.format || "S24LE"
       }
     },
     mixers: {},
@@ -537,7 +536,14 @@ function generateCamillaConfig(answers, eqSettings, dacInfo) {
     subPipeline.unshift("sub_lowpass");
   }
 
-  // --- STAGE E: COMPILE THE PIPELINE MATRIX ---
+  // --- STAGE E: PREAMP GAIN (CamillaDSP v2 removed gain from device section) ---
+  const preampGainDb = Number(isDspActive ? (profile.preampGain - 6.0) : profile.preampGain) || 0;
+  config.filters.preamp_gain = { type: "Gain", parameters: { gain: preampGainDb, inverted: false, mute: false } };
+  leftPipeline.push("preamp_gain");
+  rightPipeline.push("preamp_gain");
+  if (isSubwooferSetup) subPipeline.push("preamp_gain");
+
+  // --- STAGE F: COMPILE THE PIPELINE MATRIX ---
   config.pipeline.push({ type: "Mixer", mapping: "speaker_map" });
   config.pipeline.push({ type: "Filter", channel: 0, names: leftPipeline });
   config.pipeline.push({ type: "Filter", channel: 1, names: rightPipeline });
