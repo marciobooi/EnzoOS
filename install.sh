@@ -90,7 +90,31 @@ else
   echo -e "${YELLOW}Node.js $(node -v) already installed.${NC}"
 fi
 
-# 7. Install GUI, Kiosk Display Stack, Audio, SSH, Librespot, and MPD
+# 7. Remove PulseAudio before installing PipeWire to avoid conflicts.
+# PA installs /etc/alsa/conf.d/99-pulse.conf which overrides pcm.!default to its
+# null sink, silencing all ALSA audio. It also restarts via systemd socket
+# activation, bypassing autospawn=no. Must be fully purged before PipeWire setup.
+echo -e "\n${YELLOW}Stopping and removing PulseAudio (replaced by PipeWire)...${NC}"
+# Stop any running PulseAudio instances (system and all user sessions)
+systemctl --global stop pulseaudio.socket pulseaudio.service 2>/dev/null || true
+systemctl --global disable pulseaudio.socket pulseaudio.service 2>/dev/null || true
+pkill -x pulseaudio 2>/dev/null || true
+# Purge all PulseAudio packages and their config files
+apt-get remove --purge -y \
+  pulseaudio \
+  pulseaudio-utils \
+  pulseaudio-module-bluetooth \
+  pulseaudio-alsa \
+  pulseaudio-module-gsettings \
+  gstreamer1.0-pulseaudio \
+  libpulse0 2>/dev/null || true
+apt-get autoremove -y 2>/dev/null || true
+# Remove the ALSA override file PulseAudio leaves behind even after purge
+rm -f /etc/alsa/conf.d/99-pulse.conf
+rm -f /usr/share/alsa/alsa.conf.d/99-pulse.conf
+echo -e "${GREEN}PulseAudio removed.${NC}"
+
+# Install GUI, Kiosk Display Stack, Audio, SSH, Librespot, and MPD
 echo -e "\n${GREEN}[5/7] Installing display server, window manager, browser, audio, SSH, MPD, and dependencies...${NC}"
 apt-get install -y \
   xserver-xorg \
@@ -114,12 +138,6 @@ apt-get install -y \
   xinput \
   evtest
 
-# Remove PulseAudio if it was previously installed — PipeWire replaces it.
-# PA restarts via systemd socket activation even with autospawn=no, causing
-# it to intercept pcm.!default and route audio to its null sink (silence).
-echo -e "${YELLOW}Removing PulseAudio (replaced by PipeWire)...${NC}"
-apt-get remove --purge -y pulseaudio pulseaudio-utils pulseaudio-module-bluetooth pulseaudio-alsa 2>/dev/null || true
-apt-get autoremove -y 2>/dev/null || true
 # Enable ALSA Loopback kernel module immediately and on boot
 echo -e "${YELLOW}Enabling ALSA Loopback device module (snd-aloop)...${NC}"
 modprobe snd-aloop || true
