@@ -150,8 +150,17 @@ export const loadCachedStateFromDB = async () => {
       const name = await getSetting('last_radio_name');
       const favicon = await getSetting('last_radio_favicon');
       if (url) {
+        let isPlaying = false;
+        try {
+          const { exec } = await import('child_process');
+          const mpcStatus = await new Promise((resolve) => {
+            exec('mpc status', (err, stdout) => resolve(stdout || ''));
+          });
+          isPlaying = mpcStatus.includes('[playing]');
+        } catch (e) {}
+
         cachedPlaybackState = {
-          paused: true, // Start paused on reboot/standby
+          paused: !isPlaying,
           position: 0,
           duration: 0,
           track_window: {
@@ -163,7 +172,7 @@ export const loadCachedStateFromDB = async () => {
             }
           }
         };
-        console.log(`[Resonance WS] Loaded last played radio from DB: ${name} (${url})`);
+        console.log(`[Resonance WS] Loaded last played radio from DB: ${name} (${url}), playing=${isPlaying}`);
       }
     }
 

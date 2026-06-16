@@ -414,13 +414,8 @@ function generateCamillaConfig(answers, eqSettings, dacInfo) {
     }
   }
 
-  // Build Noise Floor filter
-  if (profile.noiseFloorLevel !== null) {
-    config.filters.analog_noise_floor = {
-      type: "Gain",
-      parameters: { gain: profile.noiseFloorLevel, inverted: false }
-    };
-  }
+  // analog_noise_floor intentionally omitted: a series Gain filter at -95dB attenuates
+  // the signal to silence rather than adding noise. Disabled until implemented correctly.
 
   // Setup Crossovers and Crossover Caster Filters
   if (isSubwooferSetup) {
@@ -483,10 +478,6 @@ function generateCamillaConfig(answers, eqSettings, dacInfo) {
   if (profile.useSaturation) {
     leftPipeline.push("analog_saturation");
     rightPipeline.push("analog_saturation");
-  }
-  if (profile.noiseFloorLevel !== null) {
-    leftPipeline.push("analog_noise_floor");
-    rightPipeline.push("analog_noise_floor");
   }
 
   // --- STAGE C: DYNAMIC SURVEY ADJUSTMENTS ---
@@ -561,7 +552,6 @@ function generateCamillaConfig(answers, eqSettings, dacInfo) {
 async function ensureAsoundConf() {
   const asoundConfPath = '/etc/asound.conf';
   const expectedContent = `# Resonance HiFi - Default ALSA Route to Loopback
-# This forces Volumio, Spotify, AirPlay, etc., to send audio to the virtual pipe instead of a physical card.
 pcm.!default {
     type plug
     slave.pcm "camilla_input"
@@ -572,23 +562,22 @@ ctl.!default {
     card Loopback
 }
 
-# Define the entry point to the Loopback pipe
+# dmix allows MPD and raspotify to write simultaneously (no exclusive lock)
 pcm.camilla_input {
-    type hw
-    card Loopback
-    device 0
-    subdevice 0
+    type dmix
+    ipc_key 1024
+    ipc_perm 0666
+    slave {
+        pcm "hw:Loopback,0,0"
+        channels 2
+        rate 44100
+        format S16_LE
+        period_size 8192
+        buffer_size 32768
+    }
 }
 
-# Fix for duplex output (duplex safety PCM configurations)
-pcm.loop_monitor {
-    type hw
-    card Loopback
-    device 1
-    subdevice 0
-}
-
-# Share loopback capture side so multiple processes can read simultaneously without locks
+# dsnoop allows CamillaDSP and arecord monitor to read simultaneously
 pcm.loop_dsnoop {
     type dsnoop
     ipc_key 2048
@@ -598,6 +587,7 @@ pcm.loop_dsnoop {
         channels 2
         rate 44100
         format S16_LE
+        period_size 8192
     }
 }
 `;
