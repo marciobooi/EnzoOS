@@ -111,15 +111,9 @@ let pendingOAuth = null;
 
 router.get('/login', (req, res) => {
   const clientId = process.env.SPOTIFY_CLIENT_ID;
-  const isFromRemote = req.query.from === 'remote';
-  const protocol = req.headers['x-forwarded-proto'] || req.protocol || 'http';
-  const host = req.get('host');
-  const dynamicRedirectUri = host ? `${protocol}://${host}/auth/spotify/callback` : null;
-  const redirectUri = isFromRemote
-    ? dynamicRedirectUri
-    : (process.env.SPOTIFY_REDIRECT_URI || dynamicRedirectUri);
+  const clientSecret = process.env.SPOTIFY_CLIENT_SECRET;
 
-  if (!clientId || !redirectUri) {
+  if (!clientId || !clientSecret) {
     return res.status(500).send(`
       <html>
         <head><title>Resonance — Setup Required</title><meta name="viewport" content="width=device-width,initial-scale=1"/></head>
@@ -128,7 +122,7 @@ router.get('/login', (req, res) => {
             <h1 style="color:#ff3366;font-size:1.2rem;margin:0 0 12px;text-transform:uppercase;letter-spacing:0.1em;">Setup Required</h1>
             <p style="color:#8695a7;font-size:0.85rem;line-height:1.6;margin:0 0 20px;">
               Spotify credentials are not configured on this server.<br/><br/>
-              Add <strong style="color:#fff;">SPOTIFY_CLIENT_ID</strong>, <strong style="color:#fff;">SPOTIFY_CLIENT_SECRET</strong> and <strong style="color:#fff;">SPOTIFY_REDIRECT_URI</strong> to the <code style="color:#c788ff;">.env</code> file in the project root, then restart the server.
+              Add <strong style="color:#fff;">SPOTIFY_CLIENT_ID</strong> and <strong style="color:#fff;">SPOTIFY_CLIENT_SECRET</strong> to the <code style="color:#c788ff;">.env</code> file in the project root, then restart the server.
             </p>
             <a href="/" style="display:inline-block;padding:10px 24px;background:#1ed760;color:#000;border-radius:50px;font-weight:800;text-decoration:none;font-size:0.8rem;text-transform:uppercase;letter-spacing:0.08em;">Back to App</a>
           </div>
@@ -136,6 +130,14 @@ router.get('/login', (req, res) => {
       </html>
     `);
   }
+
+  // Always derive the redirect URI from the request's Host header.
+  // This makes login work regardless of how the user reaches the server
+  // (IP address, resonance.local, localhost, etc.)
+  const protocol = req.headers['x-forwarded-proto'] || req.protocol || 'http';
+  const host = req.get('host');
+  const redirectUri = `${protocol}://${host}/auth/spotify/callback`;
+  const isFromRemote = req.query.from === 'remote';
 
   const scopes = [
     'user-read-playback-state',
@@ -157,6 +159,8 @@ router.get('/login', (req, res) => {
     redirectUri,
     isFromRemote,
   };
+
+  console.log(`[Resonance Auth] Starting OAuth flow. Redirect URI: ${redirectUri}`);
 
   const params = new URLSearchParams({
     response_type: 'code',
@@ -180,7 +184,7 @@ router.get('/callback', async (req, res) => {
   const redirectBase = isFromRemote ? '/remote' : '/';
   const protocol = req.headers['x-forwarded-proto'] || req.protocol || 'http';
   const host = req.get('host');
-  const fallbackRedirectUri = host ? `${protocol}://${host}/auth/spotify/callback` : process.env.SPOTIFY_REDIRECT_URI;
+  const fallbackRedirectUri = `${protocol}://${host}/auth/spotify/callback`;
   const redirectUri = pendingOAuth?.redirectUri || fallbackRedirectUri;
 
   if (error) {
