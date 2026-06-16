@@ -360,10 +360,12 @@ cp "$PROJECT_DIR/scripts/kiosk-wake-monitor.sh" "/usr/local/bin/kiosk-wake-monit
 chmod +x "/usr/local/bin/kiosk-wake-monitor.sh"
 chown root:root "/usr/local/bin/kiosk-wake-monitor.sh"
 
-# Ensure Chromium profile and cache directories exist with correct user permissions
+# Ensure Chromium snap profile directories exist — snap Chromium's AppArmor policy
+# only allows writes inside ~/snap/chromium/common/, not ~/.config/
 echo -e "${YELLOW}Creating Chromium kiosk profile data directories...${NC}"
-mkdir -p "$USER_HOME/.config/spotify-kiosk"
-mkdir -p "$USER_HOME/.cache/spotify-kiosk"
+mkdir -p "$USER_HOME/snap/chromium/common/kiosk-profile"
+mkdir -p "$USER_HOME/snap/chromium/common/kiosk-cache"
+chown -R $TARGET_USER:$TARGET_USER "$USER_HOME/snap/chromium/common/kiosk-profile" "$USER_HOME/snap/chromium/common/kiosk-cache"
 
 # Deploy .xinitrc from the repository to the target user home directory
 echo -e "${YELLOW}Deploying kiosk startup xinitrc config...${NC}"

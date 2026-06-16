@@ -48,15 +48,22 @@ until curl -sf http://localhost:5000 > /dev/null 2>&1; do
 done
 echo "[Resonance] Server ready."
 
-# Clean up both standard and snap-specific hardware profile locks safely
-[ -d "$HOME/.config" ] && find "$HOME/.config" -name "*[lL]ock" -delete 2>/dev/null || true
-[ -d "$HOME/snap" ] && find "$HOME/snap" -name "*[lL]ock" -delete 2>/dev/null || true
+# Clean up singleton locks so Chromium doesn't think it crashed
+for lock_dir in \
+  "$HOME/.config/spotify-kiosk" \
+  "$HOME/snap/chromium/common/kiosk-profile" \
+  "$HOME/snap/chromium/current/.config/chromium"; do
+  [ -d "$lock_dir" ] && find "$lock_dir" -maxdepth 2 -name "*[lL]ock" -delete 2>/dev/null || true
+done
 
-# Fix preferences across both standard and snap configuration files
-for prefs_file in "$HOME/.config/chromium/Default/Preferences" "$HOME/snap/chromium/current/.config/chromium/Default/Preferences"; do
+# Fix "Chromium crashed" banner across all known profile locations
+for prefs_file in \
+  "$HOME/.config/chromium/Default/Preferences" \
+  "$HOME/snap/chromium/current/.config/chromium/Default/Preferences" \
+  "$HOME/snap/chromium/common/kiosk-profile/Default/Preferences"; do
   if [ -f "$prefs_file" ]; then
-      sed -i 's/"exit_type":"Crashed"/"exit_type":"Normal"/' "$prefs_file"
-      sed -i 's/"exited_cleanly":false/"exited_cleanly":true/' "$prefs_file"
+    sed -i 's/"exit_type":"Crashed"/"exit_type":"Normal"/' "$prefs_file"
+    sed -i 's/"exited_cleanly":false/"exited_cleanly":true/' "$prefs_file"
   fi
 done
 
@@ -84,8 +91,8 @@ while true; do
     --window-size=800,480 \
     --autoplay-policy=no-user-gesture-required \
     --touch-events=enabled \
-    --user-data-dir="$HOME/.config/spotify-kiosk" \
-    --disk-cache-dir="$HOME/.cache/spotify-kiosk" \
+    --user-data-dir="$HOME/snap/chromium/common/kiosk-profile" \
+    --disk-cache-dir="$HOME/snap/chromium/common/kiosk-cache" \
     --disable-restore-session-state \
     --noerrdialogs \
     --disable-infobars \
