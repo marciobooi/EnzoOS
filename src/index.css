@@ -314,6 +314,14 @@ div[data-theme="ruby"] *::selection {
   padding: 4px;
 }
 
+.vu-title span {
+  font-size: 6px;
+  color: var(--color-faded);
+  opacity: 0.75;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+}
+
 .vu-dial-area {
   position: relative;
   width: 100%;

@@ -664,7 +664,9 @@ export default function PlayerDisplay({
                   <>
                     {/* Left Channel Mechanical VU */}
                     <div className="vu-channel-box">
+                      <div className="vu-title"> 
                       <span className="text-zinc-400">LINE LEVEL L</span>
+                      </div>
                       <div className="vu-dial-area">
                         <div className="vu-dot-grid" />
                         <div className="vu-glow-overlay" />
@@ -683,8 +685,10 @@ export default function PlayerDisplay({
 
                     {/* Right Channel Mechanical VU */}
                     <div className="vu-channel-box">
-                      
-                        <span className="text-zinc-400">LINE LEVEL R</span>
+                      <div className="vu-title"> 
+<span className="text-zinc-400">LINE LEVEL R</span>
+                      </div>
+                        
                       <div className="vu-dial-area">
                         <div className="vu-dot-grid" />
                         <div className="vu-glow-overlay" />
