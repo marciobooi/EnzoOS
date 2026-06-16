@@ -99,7 +99,10 @@ apt-get install -y \
   openbox \
   chromium-browser \
   alsa-utils \
-  pulseaudio \
+  pipewire \
+  pipewire-pulse \
+  pipewire-alsa \
+  wireplumber \
   openssh-server \
   unclutter \
   avahi-daemon \
@@ -110,6 +113,13 @@ apt-get install -y \
   libsqlite3-dev \
   xinput \
   evtest
+
+# Remove PulseAudio if it was previously installed — PipeWire replaces it.
+# PA restarts via systemd socket activation even with autospawn=no, causing
+# it to intercept pcm.!default and route audio to its null sink (silence).
+echo -e "${YELLOW}Removing PulseAudio (replaced by PipeWire)...${NC}"
+apt-get remove --purge -y pulseaudio pulseaudio-utils pulseaudio-module-bluetooth pulseaudio-alsa 2>/dev/null || true
+apt-get autoremove -y 2>/dev/null || true
 # Enable ALSA Loopback kernel module immediately and on boot
 echo -e "${YELLOW}Enabling ALSA Loopback device module (snd-aloop)...${NC}"
 modprobe snd-aloop || true
@@ -162,19 +172,58 @@ pcm.loop_dsnoop {
 }
 EOF
 
-# Disable PulseAudio autospawn — PulseAudio intercepts pcm.!default and routes to its
-# null sink, preventing audio from reaching the loopback → CamillaDSP chain.
-echo -e "${YELLOW}Disabling PulseAudio autospawn (conflicts with ALSA loopback routing)...${NC}"
-mkdir -p /etc/pulse
-cat <<EOF > /etc/pulse/client.conf
-# Resonance HiFi: do not auto-start PulseAudio daemon; use ALSA directly.
-autospawn = no
-daemon-binary = /bin/true
-EOF
-# Also disable for the target user
-mkdir -p "$USER_HOME/.config/pulse"
-echo "autospawn = no" > "$USER_HOME/.config/pulse/client.conf"
-chown -R $TARGET_USER:$TARGET_USER "$USER_HOME/.config/pulse"
+# Configure PipeWire to route all audio through the ALSA loopback → CamillaDSP chain.
+# PipeWire replaces PulseAudio as the sound server. Chromium/Spotify Web SDK uses
+# PipeWire natively. MPD and Raspotify use ALSA dmix directly. All paths meet at
+# the camilla_input dmix which feeds hw:Loopback,0,0 → CamillaDSP → DAC.
+echo -e "${YELLOW}Configuring PipeWire to route audio through ALSA loopback → CamillaDSP...${NC}"
+
+# PipeWire sink that writes to our dmix loopback device (shared with MPD/Raspotify)
+mkdir -p /etc/pipewire/pipewire.conf.d
+cat <<'PWEOF' > /etc/pipewire/pipewire.conf.d/50-resonance-sink.conf
+# Resonance HiFi: PipeWire output sink → ALSA loopback dmix → CamillaDSP
+context.objects = [
+  {   factory = adapter
+      args = {
+        factory.name      = api.alsa.pcm.sink
+        node.name         = "alsa_output.resonance_loopback"
+        node.description  = "Resonance HiFi (via CamillaDSP)"
+        media.class       = "Audio/Sink"
+        api.alsa.path     = "camilla_input"
+        audio.format      = "S16LE"
+        audio.rate        = 44100
+        audio.channels    = 2
+        audio.allowed-rates = [ 44100 ]
+        node.pause-on-idle = false
+        priority.session  = 2000
+      }
+  }
+]
+PWEOF
+
+# WirePlumber rule: set the loopback sink as the default audio output
+mkdir -p /etc/wireplumber/wireplumber.conf.d
+cat <<'WPEOF' > /etc/wireplumber/wireplumber.conf.d/51-resonance-default-sink.conf
+# Resonance HiFi: route all PipeWire audio to loopback → CamillaDSP by default
+wireplumber.settings = {
+  default-configured-audio-sink = "alsa_output.resonance_loopback"
+}
+WPEOF
+
+# Copy WirePlumber config to user config dir (user-level WirePlumber reads this)
+mkdir -p "$USER_HOME/.config/wireplumber/wireplumber.conf.d"
+cp /etc/wireplumber/wireplumber.conf.d/51-resonance-default-sink.conf \
+   "$USER_HOME/.config/wireplumber/wireplumber.conf.d/"
+chown -R $TARGET_USER:$TARGET_USER "$USER_HOME/.config/wireplumber"
+
+# Enable lingering so PipeWire user services survive before X session starts
+loginctl enable-linger $TARGET_USER 2>/dev/null || true
+
+# Enable and start PipeWire user services for the kiosk user
+sudo -u $TARGET_USER XDG_RUNTIME_DIR=/run/user/$(id -u $TARGET_USER) \
+  systemctl --user enable pipewire pipewire-pulse wireplumber 2>/dev/null || true
+
+echo -e "${GREEN}PipeWire configured: Chromium/Spotify → PipeWire → loopback → CamillaDSP.${NC}"
 
 # Write complete MPD configuration (always overwrite to prevent partial configs)
 echo -e "${YELLOW}Writing complete MPD configuration (/etc/mpd.conf)...${NC}"
@@ -232,12 +281,12 @@ echo -e "${YELLOW}Creating initial flat CamillaDSP configuration...${NC}"
 cat <<EOF > "$PROJECT_DIR/camilladsp.yml"
 devices:
   samplerate: 44100
-  chunksize: 1024
+  chunksize: 8192
   queuelimit: 4
   capture:
     type: Alsa
     channels: 2
-    device: hw:Loopback,1,0
+    device: loop_dsnoop
     format: S16LE
   playback:
     type: Alsa
@@ -260,7 +309,7 @@ mixers:
             gain: 0
 pipeline:
   - type: Mixer
-    mapping: speaker_map
+    name: speaker_map
 EOF
 chown $TARGET_USER:$TARGET_USER "$PROJECT_DIR/camilladsp.yml"
 
@@ -317,11 +366,11 @@ sed -i 's/#LIBRESPOT_BITRATE=160/LIBRESPOT_BITRATE=320/g' /etc/raspotify/conf
 sed -i 's/LIBRESPOT_DISABLE_CREDENTIAL_CACHE=/#LIBRESPOT_DISABLE_CREDENTIAL_CACHE=/g' /etc/raspotify/conf
 sed -i 's/#LIBRESPOT_INITIAL_VOLUME=50/LIBRESPOT_INITIAL_VOLUME=50/g' /etc/raspotify/conf
 sed -i 's/#LIBRESPOT_BACKEND=/LIBRESPOT_BACKEND=alsa/g' /etc/raspotify/conf
-# Route Spotify connect to ALSA Loopback
+# Route Spotify Connect to the dmix loopback (shared with PipeWire and MPD)
 if grep -q "LIBRESPOT_DEVICE=" /etc/raspotify/conf; then
-  sed -i 's/.*LIBRESPOT_DEVICE=.*/LIBRESPOT_DEVICE="hw:Loopback,0,0"/g' /etc/raspotify/conf
+  sed -i 's/.*LIBRESPOT_DEVICE=.*/LIBRESPOT_DEVICE="camilla_input"/g' /etc/raspotify/conf
 else
-  echo 'LIBRESPOT_DEVICE="hw:Loopback,0,0"' >> /etc/raspotify/conf
+  echo 'LIBRESPOT_DEVICE="camilla_input"' >> /etc/raspotify/conf
 fi
 
 # Enable and start native Raspotify systemd daemon
