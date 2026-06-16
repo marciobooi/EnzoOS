@@ -376,7 +376,7 @@ function generateCamillaConfig(answers, eqSettings, dacInfo) {
   let config = {
     devices: {
       samplerate: dacInfo.samplerate || 44100,
-      chunksize: 1024,
+      chunksize: 8192,
       queuelimit: 4,
       capture: { type: "Alsa", channels: 2, device: "loop_dsnoop", format: "S16LE" },
       playback: {
