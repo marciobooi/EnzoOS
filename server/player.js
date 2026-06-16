@@ -292,10 +292,10 @@ const presetDatabase = {
     useSaturation: false,
     bands: [
       { type: "Highpass", freq: 30, q: 0.707 },
-      { type: "LowShelf", freq: 105, gain: -1.5, q: 0.707 },
+      { type: "Lowshelf", freq: 105, gain: -1.5, q: 0.707 },
       { type: "Peaking", freq: 250, gain: -1.0, q: 0.5 },
       { type: "Peaking", freq: 3200, gain: 1.0, q: 1.0 },
-      { type: "HighShelf", freq: 10000, gain: 0.0, q: 0.707 }
+      { type: "Highshelf", freq: 10000, gain: 0.0, q: 0.707 }
     ]
   },
   "Warm Valve": {
@@ -303,11 +303,11 @@ const presetDatabase = {
     noiseFloorLevel: -85.0,  // Subtle, lush organic analog tube glow hiss
     useSaturation: true,     // Excite lower-octave tube warmth
     bands: [
-      { type: "LowShelf", freq: 40, gain: 2.0, q: 0.707 },
+      { type: "Lowshelf", freq: 40, gain: 2.0, q: 0.707 },
       { type: "Peaking", freq: 120, gain: 1.5, q: 0.6 },
       { type: "Peaking", freq: 400, gain: 1.0, q: 0.8 },
       { type: "Peaking", freq: 3000, gain: -1.5, q: 1.0 },
-      { type: "HighShelf", freq: 8500, gain: -2.5, q: 0.5 }
+      { type: "Highshelf", freq: 8500, gain: -2.5, q: 0.5 }
     ]
   },
   "Bass Boost": {
@@ -316,10 +316,10 @@ const presetDatabase = {
     useSaturation: true,     // Heavy punch transformer saturation element
     bands: [
       { type: "Peaking", freq: 45, gain: 5.5, q: 1.2 },
-      { type: "LowShelf", freq: 110, gain: 3.5, q: 0.707 },
+      { type: "Lowshelf", freq: 110, gain: 3.5, q: 0.707 },
       { type: "Peaking", freq: 280, gain: -2.5, q: 1.0 },
       { type: "Peaking", freq: 2500, gain: 1.0, q: 0.7 },
-      { type: "HighShelf", freq: 12000, gain: 1.5, q: 0.707 }
+      { type: "Highshelf", freq: 12000, gain: 1.5, q: 0.707 }
     ]
   },
   "Vocal Clarity": {
@@ -339,11 +339,11 @@ const presetDatabase = {
     noiseFloorLevel: -90.0,  // Light premium vinyl background
     useSaturation: true,     // Upper register high-frequency spatial acoustic exciter
     bands: [
-      { type: "LowShelf", freq: 50, gain: 4.5, q: 0.707 },
+      { type: "Lowshelf", freq: 50, gain: 4.5, q: 0.707 },
       { type: "Peaking", freq: 130, gain: 1.0, q: 0.8 },
       { type: "Peaking", freq: 1000, gain: -2.0, q: 0.5 },
       { type: "Peaking", freq: 6500, gain: 2.2, q: 1.2 },
-      { type: "HighShelf", freq: 15000, gain: 4.0, q: 0.707 }
+      { type: "Highshelf", freq: 15000, gain: 4.0, q: 0.707 }
     ]
   }
 };
@@ -362,11 +362,11 @@ function generateCamillaConfig(answers, eqSettings, dacInfo) {
       noiseFloorLevel: (eqSettings.noiseFloor > 0) ? (-105.0 + (Number(eqSettings.noiseFloor) * 2.0)) : null,
       useSaturation: (eqSettings.saturation > 0),
       bands: [
-        { type: "LowShelf", freq: 60, gain: Number(eqSettings.bands[0]) || 0, q: 0.707 },
+        { type: "Lowshelf", freq: 60, gain: Number(eqSettings.bands[0]) || 0, q: 0.707 },
         { type: "Peaking", freq: 250, gain: Number(eqSettings.bands[1]) || 0, q: 0.707 },
         { type: "Peaking", freq: 1000, gain: Number(eqSettings.bands[2]) || 0, q: 0.707 },
         { type: "Peaking", freq: 4000, gain: Number(eqSettings.bands[3]) || 0, q: 0.707 },
-        { type: "HighShelf", freq: 16000, gain: Number(eqSettings.bands[4]) || 0, q: 0.707 }
+        { type: "Highshelf", freq: 16000, gain: Number(eqSettings.bands[4]) || 0, q: 0.707 }
       ]
     };
   } else {
@@ -451,10 +451,10 @@ function generateCamillaConfig(answers, eqSettings, dacInfo) {
   // --- STAGE A: ROOM CALIBRATION MASTER STACK ---
   if (isDspActive) {
     config.filters.subsonic_cut = { type: "Biquad", parameters: { type: "Highpass", freq: 18, q: 0.707 } };
-    config.filters.harman_bass_shelf = { type: "Biquad", parameters: { type: "LowShelf", freq: 105, gain: 5.5, q: 0.707 } };
+    config.filters.harman_bass_shelf = { type: "Biquad", parameters: { type: "Lowshelf", freq: 105, gain: 5.5, q: 0.707 } };
     config.filters.vocal_clarity_dip = { type: "Biquad", parameters: { type: "Peaking", freq: 250, gain: -1.2, q: 0.6 } };
     config.filters.presence_definition = { type: "Biquad", parameters: { type: "Peaking", freq: 3000, gain: 1.0, q: 0.8 } };
-    config.filters.harman_treble_tilt = { type: "Biquad", parameters: { type: "HighShelf", freq: 4500, gain: -2.0, q: 0.5 } };
+    config.filters.harman_treble_tilt = { type: "Biquad", parameters: { type: "Highshelf", freq: 4500, gain: -2.0, q: 0.5 } };
     config.filters.spatial_air_sparkle = { type: "Biquad", parameters: { type: "Peaking", freq: 14000, gain: 1.5, q: 1.8 } };
 
     const masterCurveFilters = [
@@ -502,17 +502,17 @@ function generateCamillaConfig(answers, eqSettings, dacInfo) {
     }
 
     if (answers.q2_acoustics === "Echoey") {
-      config.filters.room_tamer = { type: "Biquad", parameters: { type: "HighShelf", freq: 4000, gain: -2.5, q: 0.7 } };
+      config.filters.room_tamer = { type: "Biquad", parameters: { type: "Highshelf", freq: 4000, gain: -2.5, q: 0.7 } };
       leftPipeline.push("room_tamer");
       rightPipeline.push("room_tamer");
     }
 
     if (answers.q7_walls === "Pushed against a wall") {
-      config.filters.wall_correction = { type: "Biquad", parameters: { type: "LowShelf", freq: 150, gain: -2.0, q: 0.7 } };
+      config.filters.wall_correction = { type: "Biquad", parameters: { type: "Lowshelf", freq: 150, gain: -2.0, q: 0.7 } };
       leftPipeline.push("wall_correction");
       rightPipeline.push("wall_correction");
     } else if (answers.q7_walls === "Tucked in a corner / Shelf") {
-      config.filters.wall_correction = { type: "Biquad", parameters: { type: "LowShelf", freq: 150, gain: -4.0, q: 0.7 } };
+      config.filters.wall_correction = { type: "Biquad", parameters: { type: "Lowshelf", freq: 150, gain: -4.0, q: 0.7 } };
       leftPipeline.push("wall_correction");
       rightPipeline.push("wall_correction");
     }
