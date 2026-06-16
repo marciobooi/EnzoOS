@@ -236,10 +236,11 @@ router.get('/callback', async (req, res) => {
 
     saveTokens();
 
-    // Broadcast the new token to all WS clients
+    // Broadcast the new token to all WS clients, then ask the kiosk to sync immediately
     const broadcast = req.app.get('wssBroadcast');
     if (broadcast) {
       broadcast({ type: 'SET_TOKEN', payload: { token: tokenState.access_token } });
+      setTimeout(() => broadcast({ type: 'REQUEST_SYNC' }), 1500);
     }
 
     console.log(`[Resonance Auth] Authenticated as: ${tokenState.display_name}`);
