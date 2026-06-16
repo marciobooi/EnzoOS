@@ -1540,6 +1540,7 @@ export default function RemoteControl() {
                     onPreAmpChange={handlePreAmpChange}
                     dspActive={dspActive}
                     onDeactivateDsp={handleDeactivateDsp}
+                    light={true}
                   />
                 </div>
               </div>
