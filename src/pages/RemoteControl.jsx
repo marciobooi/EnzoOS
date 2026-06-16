@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
   Play, Pause, SkipForward, SkipBack, Volume2, VolumeX,
-  Shuffle, Repeat, Laptop, Music, RefreshCw, Settings,
-  ChevronRight, LogOut, Radio, Heart, Power, Sliders,
-  Cpu, Palette, Smartphone, Search, Waves, Cast
+  Shuffle, Repeat, Laptop, Music, Search, Radio, Heart,
+  Power, Sliders, Cpu, Palette, RefreshCw, LogOut,
+  Settings, Smartphone, ChevronRight, Waves, Cast,
+  MoreHorizontal
 } from 'lucide-react';
 import { api } from '../api';
 import { toast, Toaster } from 'sonner';
@@ -13,43 +14,104 @@ import DspWizard from '../components/DspWizard';
 import ThemeSettingsControl from '../components/ThemeSettingsControl';
 import TrackSearch from '../components/TrackSearch';
 
-// ─── cookie helpers ───────────────────────────────────────────────────────────
-const setCookie = (name, value, days = 365) => {
-  const date = new Date();
-  date.setTime(date.getTime() + days * 24 * 60 * 60 * 1000);
-  document.cookie = `${name}=${value}; expires=${date.toUTCString()}; path=/`;
+// ─── cookies ─────────────────────────────────────────────────────────────────
+const setCookie = (n, v, d = 365) => {
+  const e = new Date(); e.setTime(e.getTime() + d * 86400000);
+  document.cookie = `${n}=${v}; expires=${e.toUTCString()}; path=/`;
 };
-const getCookie = (name) => {
-  const value = `; ${document.cookie}`;
-  const parts = value.split(`; ${name}=`);
-  if (parts.length === 2) return parts.pop().split(';').shift();
-  return null;
+const getCookie = (n) => {
+  const v = `; ${document.cookie}`, p = v.split(`; ${n}=`);
+  return p.length === 2 ? p.pop().split(';').shift() : null;
 };
-const eraseCookie = (name) => {
-  document.cookie = `${name}=; Max-Age=-99999999; path=/`;
+const eraseCookie = (n) => { document.cookie = `${n}=; Max-Age=-99999999; path=/`; };
+
+// ─── style tokens (Apple-inspired) ───────────────────────────────────────────
+const S = {
+  bg:       '#000000',
+  card:     'rgba(28,28,30,0.92)',
+  cardBd:   'rgba(255,255,255,0.08)',
+  sep:      'rgba(255,255,255,0.1)',
+  t1:       '#ffffff',
+  t2:       'rgba(255,255,255,0.55)',
+  t3:       'rgba(255,255,255,0.3)',
+  red:      '#ff453a',
+  green:    '#32d74b',
+  font:     "-apple-system, BlinkMacSystemFont, 'Helvetica Neue', system-ui, sans-serif",
 };
 
+// small helpers
+const fmt = (ms) => {
+  if (!ms || isNaN(ms)) return '0:00';
+  const s = Math.floor(ms / 1000);
+  return `${Math.floor(s / 60)}:${(s % 60).toString().padStart(2, '0')}`;
+};
+
+// ─── sub-components ───────────────────────────────────────────────────────────
+
+function Row({ label, value, onPress, destructive, chevron = true, icon, badge }) {
+  return (
+    <button
+      onClick={onPress}
+      className="w-full flex items-center gap-3 px-4 py-3.5 active:opacity-60 transition-opacity cursor-pointer text-left"
+    >
+      {icon && (
+        <span className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
+          style={{ background: 'rgba(255,255,255,0.07)' }}>
+          {icon}
+        </span>
+      )}
+      <span className="flex-1 text-[15px]" style={{ color: destructive ? S.red : S.t1, fontFamily: S.font, letterSpacing: '-0.2px' }}>
+        {label}
+      </span>
+      {badge && (
+        <span className="text-[12px] font-semibold px-2 py-0.5 rounded-full"
+          style={{ background: 'rgba(255,255,255,0.08)', color: S.t2, fontFamily: S.font }}>
+          {badge}
+        </span>
+      )}
+      {value && <span className="text-[15px]" style={{ color: S.t3, fontFamily: S.font }}>{value}</span>}
+      {chevron && <ChevronRight className="h-4 w-4 shrink-0" style={{ color: S.t3 }} />}
+    </button>
+  );
+}
+
+function Section({ title, children }) {
+  return (
+    <div className="mx-4 mb-3">
+      {title && (
+        <p className="px-1 pb-1.5 text-[12px] font-semibold uppercase tracking-widest" style={{ color: S.t3, fontFamily: S.font }}>
+          {title}
+        </p>
+      )}
+      <div className="rounded-[14px] overflow-hidden" style={{ background: S.card, border: `1px solid ${S.cardBd}` }}>
+        {React.Children.map(children, (child, i) => (
+          <>
+            {i > 0 && <div className="ml-4" style={{ height: '0.5px', background: S.sep }} />}
+            {child}
+          </>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ─── main component ───────────────────────────────────────────────────────────
 export default function RemoteControl() {
-  // Auth
-  const [isAuthenticated, setIsAuthenticated]   = useState(getCookie('remote_auth') === 'true');
-  const [usernameInput, setUsernameInput]        = useState('');
-  const [passwordInput, setPasswordInput]        = useState('');
+  const [isAuthenticated, setIsAuthenticated] = useState(getCookie('remote_auth') === 'true');
+  const [usernameInput, setUsernameInput]     = useState('');
+  const [passwordInput, setPasswordInput]     = useState('');
 
-  // Nav
   const [activeTab, setActiveTab] = useState('player');
 
-  // Radio
-  const [radioSearch, setRadioSearch]     = useState('');
-  const [stationsList, setStationsList]   = useState([]);
-  const [isSearching, setIsSearching]     = useState(false);
+  const [radioSearch, setRadioSearch]       = useState('');
+  const [stationsList, setStationsList]     = useState([]);
+  const [isSearching, setIsSearching]       = useState(false);
   const [favoriteStations, setFavoriteStations] = useState([]);
 
-  // Spotify
-  const [token, setToken]       = useState('');
-  const [devices, setDevices]   = useState([]);
+  const [token, setToken]     = useState('');
+  const [devices, setDevices] = useState([]);
   const [isFetchingDevices, setIsFetchingDevices] = useState(false);
 
-  // Playback
   const [playbackState, setPlaybackState] = useState(null);
   const [shuffleState, setShuffleState]   = useState(false);
   const [repeatState, setRepeatState]     = useState('off');
@@ -58,26 +120,21 @@ export default function RemoteControl() {
   const [volume, setVolume]               = useState(50);
   const [isMuted, setIsMuted]             = useState(false);
 
-  // OTA
-  const [updateStatus, setUpdateStatus]   = useState(null);
-  const [localCommit, setLocalCommit]     = useState('');
-  const [remoteCommit, setRemoteCommit]   = useState('');
-  const [otaProgress, setOtaProgress]     = useState([]);
-  const [otaPercent, setOtaPercent]       = useState(0);
+  const [updateStatus, setUpdateStatus] = useState(null);
+  const [otaProgress, setOtaProgress]   = useState([]);
+  const [otaPercent, setOtaPercent]     = useState(0);
 
-  // Source / misc
-  const [source, setSource]             = useState('spotify');
+  const [source, setSource]   = useState('spotify');
   const spotify = source === 'spotify';
-  const [standby, setStandby]           = useState(false);
+  const [standby, setStandby]               = useState(false);
   const [remoteAccessEnabled, setRemoteAccessEnabled] = useState(true);
 
   // EQ
   const [isDspWizardOpen, setIsDspWizardOpen] = useState(false);
+  const [showEq, setShowEq]                   = useState(false);
   const [dspActive, setDspActive]             = useState(false);
   const [eqPreset, setEqPreset]               = useState(() => localStorage.getItem('resonance_eq_preset') || 'Clinical Reference');
-  const [eqBands, setEqBands]                 = useState(() => {
-    try { return JSON.parse(localStorage.getItem('resonance_eq_bands')) || [0,0,0,0,0]; } catch { return [0,0,0,0,0]; }
-  });
+  const [eqBands, setEqBands]                 = useState(() => { try { return JSON.parse(localStorage.getItem('resonance_eq_bands')) || [0,0,0,0,0]; } catch { return [0,0,0,0,0]; } });
   const [eqSaturation, setEqSaturation]       = useState(() => Number(localStorage.getItem('resonance_eq_saturation')) || 0);
   const [eqNoiseFloor, setEqNoiseFloor]       = useState(() => Number(localStorage.getItem('resonance_eq_noise')) || 0);
   const [eqPreAmp, setEqPreAmp]               = useState(() => Number(localStorage.getItem('resonance_eq_preamp')) || 0.0);
@@ -95,14 +152,13 @@ export default function RemoteControl() {
   const volumeApiTimeout = useRef(null);
   const lastVolumeChangeTime = useRef(0);
 
-  // ── WebSocket ─────────────────────────────────────────────────────────────
   const { isConnected, ws, sendUpdate } = useResonanceWS({
     token, setToken, setPlaybackState, setTrackPosition, setTrackDuration,
     setShuffleState, setRepeatState,
-    setVolume:   (v) => { if (Date.now() - lastVolumeChangeTime.current >= 2500) setVolume(v); },
-    setIsMuted:  (m) => { if (Date.now() - lastVolumeChangeTime.current >= 2500) setIsMuted(m); },
+    setVolume:  v => { if (Date.now() - lastVolumeChangeTime.current >= 2500) setVolume(v); },
+    setIsMuted: m => { if (Date.now() - lastVolumeChangeTime.current >= 2500) setIsMuted(m); },
     setUpdateStatus, setOtaProgress, setOtaPercent,
-    setSpotify: (isSpotify) => setSource(prev => isSpotify ? 'spotify' : (prev === 'spotify' ? 'local' : prev)),
+    setSpotify: isSpotify => setSource(p => isSpotify ? 'spotify' : (p === 'spotify' ? 'local' : p)),
     setSource, setDevices,
     onRequestSync: () => localSync(),
     isAuthenticated, isRemote: true,
@@ -111,844 +167,618 @@ export default function RemoteControl() {
     setRemoteAccessEnabled, setVisualizerMode,
   });
 
-  // ── derived ───────────────────────────────────────────────────────────────
-  const currentTrack   = playbackState?.track_window?.current_track;
-  const isPlaying      = playbackState ? !playbackState.paused : false;
-  const trackName      = currentTrack?.name  || 'Ready to Stream';
-  const trackArtist    = currentTrack?.artists?.map(a => a.name).join(', ') || 'No source active';
-  const albumImage     = currentTrack?.album?.images?.[0]?.url;
-  const activeDevice   = devices.find(d => d.is_active);
+  // derived
+  const currentTrack    = playbackState?.track_window?.current_track;
+  const isPlaying       = playbackState ? !playbackState.paused : false;
+  const trackName       = currentTrack?.name || 'Nothing playing';
+  const trackArtist     = currentTrack?.artists?.map(a => a.name).join(', ') || '';
+  const albumImage      = currentTrack?.album?.images?.[0]?.url;
+  const activeDevice    = devices.find(d => d.is_active);
   const resonanceDevice = devices.find(d => d.name === 'Resonance Connect');
-  const isCurrentFavorite = currentTrack?.url ? favoriteStations.some(s => s.url === currentTrack.url) : false;
+  const isCurrentFav    = currentTrack?.url ? favoriteStations.some(s => s.url === currentTrack.url) : false;
+  const progressPct     = trackDuration ? (trackPosition / trackDuration) * 100 : 0;
 
-  // ── helpers ───────────────────────────────────────────────────────────────
+  // helpers
   const wakeKiosk = () => {
-    if (ws.current && ws.current.readyState === WebSocket.OPEN) {
+    if (ws.current?.readyState === WebSocket.OPEN)
       ws.current.send(JSON.stringify({ type: 'SET_STANDBY', payload: { enabled: false } }));
-    }
   };
   const requestWSStateSync = () => {
-    if (ws.current && ws.current.readyState === WebSocket.OPEN) {
+    if (ws.current?.readyState === WebSocket.OPEN)
       ws.current.send(JSON.stringify({ type: 'REQUEST_SYNC' }));
-    }
-  };
-  const formatTime = (ms) => {
-    if (!ms || isNaN(ms)) return '0:00';
-    const s = Math.floor(ms / 1000);
-    return `${Math.floor(s / 60)}:${(s % 60).toString().padStart(2, '0')}`;
   };
 
-  // ── theme sync ────────────────────────────────────────────────────────────
+  // theme handlers
   const queueThemeSync = (tc, at, br, vm) => {
     clearTimeout(themeSyncTimeout.current);
-    themeSyncTimeout.current = setTimeout(() =>
-      sendUpdate('SET_THEME_SETTINGS', { themeColor: tc, activeTheme: at, brightness: br, visualizerMode: vm }), 400);
+    themeSyncTimeout.current = setTimeout(() => sendUpdate('SET_THEME_SETTINGS', { themeColor: tc, activeTheme: at, brightness: br, visualizerMode: vm }), 400);
   };
-  const handleThemeColorChange = (c) => {
-    setTheme(c); localStorage.setItem('resonance_theme', c);
-    sendUpdate('SET_THEME_SETTINGS', { themeColor: c, activeTheme, brightness, visualizerMode });
-  };
-  const handleActiveThemeChange = (t) => {
-    setActiveTheme(t); localStorage.setItem('resonance_theme_active', t);
-    sendUpdate('SET_THEME_SETTINGS', { themeColor: theme, activeTheme: t, brightness, visualizerMode });
-  };
-  const handleBrightnessChange = (v) => {
-    setBrightness(v); localStorage.setItem('resonance_theme_brightness', v);
-    queueThemeSync(theme, activeTheme, v, visualizerMode);
-  };
-  const handleVisualizerModeChange = (m) => {
-    setVisualizerMode(m); localStorage.setItem('resonance_visualizer_mode', m);
-    sendUpdate('SET_THEME_SETTINGS', { themeColor: theme, activeTheme, brightness, visualizerMode: m });
-  };
+  const handleThemeColorChange = c => { setTheme(c); localStorage.setItem('resonance_theme', c); sendUpdate('SET_THEME_SETTINGS', { themeColor: c, activeTheme, brightness, visualizerMode }); };
+  const handleActiveThemeChange = t => { setActiveTheme(t); localStorage.setItem('resonance_theme_active', t); sendUpdate('SET_THEME_SETTINGS', { themeColor: theme, activeTheme: t, brightness, visualizerMode }); };
+  const handleBrightnessChange = v => { setBrightness(v); localStorage.setItem('resonance_theme_brightness', v); queueThemeSync(theme, activeTheme, v, visualizerMode); };
+  const handleVisualizerModeChange = m => { setVisualizerMode(m); localStorage.setItem('resonance_visualizer_mode', m); sendUpdate('SET_THEME_SETTINGS', { themeColor: theme, activeTheme, brightness, visualizerMode: m }); };
 
-  // ── EQ sync ───────────────────────────────────────────────────────────────
-  const queueEqSync = (preset, nextBands, sat, nf, pa) => {
+  // EQ handlers
+  const queueEqSync = (preset, bands, sat, nf, pa) => {
     clearTimeout(eqSyncTimeout.current);
-    eqSyncTimeout.current = setTimeout(() =>
-      sendUpdate('SET_EQ_SETTINGS', { preset, bands: nextBands, saturation: sat, noiseFloor: nf, preAmp: pa }), 400);
+    eqSyncTimeout.current = setTimeout(() => sendUpdate('SET_EQ_SETTINGS', { preset, bands, saturation: sat, noiseFloor: nf, preAmp: pa }), 400);
   };
-  const handleEqPresetChange = (name) => {
+  const handleEqPresetChange = name => {
     setEqPreset(name); localStorage.setItem('resonance_eq_preset', name);
-    const found = EQ_PRESETS.find(p => p.name === name);
-    if (found) {
-      setEqBands(found.bands); setEqSaturation(found.saturation);
-      setEqNoiseFloor(found.noiseFloor); setEqPreAmp(found.preAmp);
-      localStorage.setItem('resonance_eq_bands', JSON.stringify(found.bands));
-      localStorage.setItem('resonance_eq_saturation', found.saturation);
-      localStorage.setItem('resonance_eq_noise', found.noiseFloor);
-      localStorage.setItem('resonance_eq_preamp', found.preAmp);
-      sendUpdate('SET_EQ_SETTINGS', { preset: name, bands: found.bands, saturation: found.saturation, noiseFloor: found.noiseFloor, preAmp: found.preAmp });
+    const f = EQ_PRESETS.find(p => p.name === name);
+    if (f) {
+      setEqBands(f.bands); setEqSaturation(f.saturation); setEqNoiseFloor(f.noiseFloor); setEqPreAmp(f.preAmp);
+      localStorage.setItem('resonance_eq_bands', JSON.stringify(f.bands));
+      localStorage.setItem('resonance_eq_saturation', f.saturation);
+      localStorage.setItem('resonance_eq_noise', f.noiseFloor);
+      localStorage.setItem('resonance_eq_preamp', f.preAmp);
+      sendUpdate('SET_EQ_SETTINGS', { preset: name, bands: f.bands, saturation: f.saturation, noiseFloor: f.noiseFloor, preAmp: f.preAmp });
     }
   };
-  const handleBandChange = (i, v) => {
-    const next = [...eqBands]; next[i] = v; setEqBands(next);
-    localStorage.setItem('resonance_eq_bands', JSON.stringify(next));
-    setEqPreset('Custom'); localStorage.setItem('resonance_eq_preset', 'Custom');
-    queueEqSync('Custom', next, eqSaturation, eqNoiseFloor, eqPreAmp);
-  };
-  const handleSaturationChange = (v) => {
-    setEqSaturation(v); localStorage.setItem('resonance_eq_saturation', v);
-    setEqPreset('Custom'); localStorage.setItem('resonance_eq_preset', 'Custom');
-    queueEqSync('Custom', eqBands, v, eqNoiseFloor, eqPreAmp);
-  };
-  const handleNoiseFloorChange = (v) => {
-    setEqNoiseFloor(v); localStorage.setItem('resonance_eq_noise', v);
-    setEqPreset('Custom'); localStorage.setItem('resonance_eq_preset', 'Custom');
-    queueEqSync('Custom', eqBands, eqSaturation, v, eqPreAmp);
-  };
-  const handlePreAmpChange = (v) => {
-    setEqPreAmp(v); localStorage.setItem('resonance_eq_preamp', v);
-    setEqPreset('Custom'); localStorage.setItem('resonance_eq_preset', 'Custom');
-    queueEqSync('Custom', eqBands, eqSaturation, eqNoiseFloor, v);
-  };
+  const handleBandChange = (i, v) => { const n = [...eqBands]; n[i] = v; setEqBands(n); localStorage.setItem('resonance_eq_bands', JSON.stringify(n)); setEqPreset('Custom'); localStorage.setItem('resonance_eq_preset', 'Custom'); queueEqSync('Custom', n, eqSaturation, eqNoiseFloor, eqPreAmp); };
+  const handleSaturationChange = v => { setEqSaturation(v); localStorage.setItem('resonance_eq_saturation', v); setEqPreset('Custom'); localStorage.setItem('resonance_eq_preset', 'Custom'); queueEqSync('Custom', eqBands, v, eqNoiseFloor, eqPreAmp); };
+  const handleNoiseFloorChange = v => { setEqNoiseFloor(v); localStorage.setItem('resonance_eq_noise', v); setEqPreset('Custom'); localStorage.setItem('resonance_eq_preset', 'Custom'); queueEqSync('Custom', eqBands, eqSaturation, v, eqPreAmp); };
+  const handlePreAmpChange = v => { setEqPreAmp(v); localStorage.setItem('resonance_eq_preamp', v); setEqPreset('Custom'); localStorage.setItem('resonance_eq_preset', 'Custom'); queueEqSync('Custom', eqBands, eqSaturation, eqNoiseFloor, v); };
 
-  // ── effects ───────────────────────────────────────────────────────────────
-  useEffect(() => {
-    api.getDspCalibration().then(cal => setDspActive(cal && cal[0] === 'dsp')).catch(() => {});
-  }, []);
-
-  const hasCheckedInitialSource = useRef(false);
-  useEffect(() => {
-    if (source === 'radio' && !hasCheckedInitialSource.current) {
-      setActiveTab('radio'); hasCheckedInitialSource.current = true;
-    }
-  }, [source]);
-
-  useEffect(() => {
-    if (isConnected) { fetchFavorites(); checkUpdates(); }
-  }, [isConnected]);
-
-  useEffect(() => {
-    if (!radioSearch.trim()) setStationsList(favoriteStations);
-  }, [radioSearch, favoriteStations]);
-
+  // effects
+  useEffect(() => { api.getDspCalibration().then(c => setDspActive(c && c[0] === 'dsp')).catch(() => {}); }, []);
+  const hasCheckedSource = useRef(false);
+  useEffect(() => { if (source === 'radio' && !hasCheckedSource.current) { setActiveTab('radio'); hasCheckedSource.current = true; } }, [source]);
+  useEffect(() => { if (isConnected) { fetchFavorites(); checkUpdates(); } }, [isConnected]);
+  useEffect(() => { if (!radioSearch.trim()) setStationsList(favoriteStations); }, [radioSearch, favoriteStations]);
   useEffect(() => {
     if (!spotify || !isAuthenticated || !token) return;
     fetchDevices(); localSync();
     const id = setInterval(() => { fetchDevices(); localSync(); }, 3000);
     return () => clearInterval(id);
   }, [token, isAuthenticated, spotify]);
-
   useEffect(() => {
     if (isAuthenticated && playbackState && isPlaying) {
       progressInterval.current = setInterval(() => {
-        setTrackPosition(prev => {
-          if (prev + 1000 >= trackDuration) { clearInterval(progressInterval.current); return trackDuration; }
-          return prev + 1000;
-        });
+        setTrackPosition(p => { if (p + 1000 >= trackDuration) { clearInterval(progressInterval.current); return trackDuration; } return p + 1000; });
       }, 1000);
-    } else {
-      clearInterval(progressInterval.current);
-    }
+    } else clearInterval(progressInterval.current);
     return () => clearInterval(progressInterval.current);
   }, [playbackState, isPlaying, trackDuration, isAuthenticated]);
 
-  // ── data fetchers ─────────────────────────────────────────────────────────
-  const fetchFavorites = async () => {
-    try { setFavoriteStations(await api.getFavoriteRadios() || []); } catch {}
-  };
-  const fetchDevices = async () => {
-    if (!token) return;
-    setIsFetchingDevices(true);
-    try { setDevices((await api.getDevices(token)).devices || []); } catch {} finally { setIsFetchingDevices(false); }
-  };
+  // data
+  const fetchFavorites = async () => { try { setFavoriteStations(await api.getFavoriteRadios() || []); } catch {} };
+  const fetchDevices   = async () => { if (!token) return; setIsFetchingDevices(true); try { setDevices((await api.getDevices(token)).devices || []); } catch {} finally { setIsFetchingDevices(false); } };
   const localSync = async () => {
     if (!spotify || !token) return;
     try {
-      const state = await api.getPlaybackState(token);
-      if (!state) return;
-      setPlaybackState({
-        paused: !state.is_playing, position: state.progress_ms,
-        duration: state.item?.duration_ms || 0,
-        shuffle_state: state.shuffle_state, repeat_state: state.repeat_state,
-        volume: state.device?.volume_percent ?? volume,
-        is_muted: state.device?.volume_percent !== undefined ? state.device.volume_percent === 0 : isMuted,
-        track_window: { current_track: { uri: state.item?.uri, name: state.item?.name, album: { name: state.item?.album?.name, images: state.item?.album?.images || [] }, artists: state.item?.artists || [] } }
-      });
-      setTrackPosition(state.progress_ms);
-      setTrackDuration(state.item?.duration_ms || 0);
-      setShuffleState(state.shuffle_state); setRepeatState(state.repeat_state);
-      if (state.device?.volume_percent !== undefined && Date.now() - lastVolumeChangeTime.current >= 2500) {
-        setVolume(state.device.volume_percent);
-        setIsMuted(state.device.volume_percent === 0);
-      }
+      const s = await api.getPlaybackState(token);
+      if (!s) return;
+      setPlaybackState({ paused: !s.is_playing, position: s.progress_ms, duration: s.item?.duration_ms || 0, shuffle_state: s.shuffle_state, repeat_state: s.repeat_state, volume: s.device?.volume_percent ?? volume, is_muted: s.device?.volume_percent === 0, track_window: { current_track: { uri: s.item?.uri, name: s.item?.name, album: { name: s.item?.album?.name, images: s.item?.album?.images || [] }, artists: s.item?.artists || [] } } });
+      setTrackPosition(s.progress_ms); setTrackDuration(s.item?.duration_ms || 0);
+      setShuffleState(s.shuffle_state); setRepeatState(s.repeat_state);
+      if (s.device?.volume_percent !== undefined && Date.now() - lastVolumeChangeTime.current >= 2500) { setVolume(s.device.volume_percent); setIsMuted(s.device.volume_percent === 0); }
     } catch {}
   };
   const checkUpdates = async () => {
-    try {
-      setUpdateStatus('checking');
-      const data = await api.getUpdateStatus();
-      setUpdateStatus(data.updateAvailable ? 'available' : 'no-update');
-      setLocalCommit(data.localCommit || ''); setRemoteCommit(data.remoteCommit || '');
-    } catch { setUpdateStatus('no-update'); }
+    setUpdateStatus('checking');
+    try { const d = await api.getUpdateStatus(); setUpdateStatus(d.updateAvailable ? 'available' : 'no-update'); } catch { setUpdateStatus('no-update'); }
   };
   const triggerOtaUpdate = async () => {
-    try {
-      setOtaProgress([]); setOtaPercent(0); setUpdateStatus('updating');
-      localStorage.setItem('resonance_updating', 'true');
-      await api.triggerUpdate();
-    } catch (err) {
-      localStorage.removeItem('resonance_updating');
-      setUpdateStatus('error');
-    }
+    try { setOtaProgress([]); setOtaPercent(0); setUpdateStatus('updating'); localStorage.setItem('resonance_updating', 'true'); await api.triggerUpdate(); } catch { localStorage.removeItem('resonance_updating'); setUpdateStatus('error'); }
   };
 
-  // ── transport handlers ────────────────────────────────────────────────────
-  const handleToggleSource = (src) => {
-    setSource(src);
-    sendUpdate('SET_SOURCE', { spotify: src === 'spotify', source: src });
-  };
-  const handleToggleStandby = (enabled) => {
-    setStandby(enabled);
-    if (ws.current?.readyState === WebSocket.OPEN)
-      ws.current.send(JSON.stringify({ type: 'SET_STANDBY', payload: { enabled } }));
-  };
+  // transport
+  const handleToggleSource = src => { setSource(src); sendUpdate('SET_SOURCE', { spotify: src === 'spotify', source: src }); };
+  const handleToggleStandby = en => { setStandby(en); if (ws.current?.readyState === WebSocket.OPEN) ws.current.send(JSON.stringify({ type: 'SET_STANDBY', payload: { enabled: en } })); };
   const handlePlayPause = async () => {
     if (!spotify) {
       try {
-        const isPaused = playbackState ? playbackState.paused : true;
-        if (isPaused) { wakeKiosk(); await api.localPlay(); setPlaybackState(p => ({ ...p, paused: false })); }
-        else           {              await api.localPause(); setPlaybackState(p => ({ ...p, paused: true })); }
-      } catch (err) { toast.error(`Control failed: ${err.message}`); }
+        if (playbackState ? playbackState.paused : true) { wakeKiosk(); await api.localPlay(); setPlaybackState(p => ({ ...p, paused: false })); }
+        else { await api.localPause(); setPlaybackState(p => ({ ...p, paused: true })); }
+      } catch (e) { toast.error(e.message); }
       return;
     }
     if (!token) return;
     try {
-      if (isPlaying) { await api.pause(token); }
+      if (isPlaying) await api.pause(token);
       else { wakeKiosk(); await api.play(token, activeDevice?.id || resonanceDevice?.id || null); }
       requestWSStateSync();
-    } catch (err) { toast.error(`Control failed: ${err.message}`); }
+    } catch (e) { toast.error(e.message); }
   };
-  const handleNext = async () => {
-    if (!spotify) { try { await api.localNext(); } catch (err) { toast.error(err.message); } return; }
-    if (!token) return;
-    try { await api.skipNext(token); requestWSStateSync(); } catch (err) { toast.error(err.message); }
-  };
-  const handlePrevious = async () => {
-    if (!spotify) { try { await api.localPrevious(); } catch (err) { toast.error(err.message); } return; }
-    if (!token) return;
-    try { await api.skipPrevious(token); requestWSStateSync(); } catch (err) { toast.error(err.message); }
-  };
-  const handleShuffle = async () => {
-    if (!spotify || !token) return;
-    const next = !shuffleState; setShuffleState(next);
-    try { await api.setShuffle(token, next); requestWSStateSync(); } catch { setShuffleState(!next); }
-  };
-  const handleRepeat = async () => {
-    if (!spotify || !token) return;
-    const next = { off: 'context', context: 'track', track: 'off' }[repeatState] || 'off';
-    setRepeatState(next);
-    try { await api.setRepeat(token, next); requestWSStateSync(); } catch { setRepeatState(repeatState); }
-  };
-  const handleSeek = async (e) => {
+  const handleNext = async () => { if (!spotify) { try { await api.localNext(); } catch {} return; } if (!token) return; try { await api.skipNext(token); requestWSStateSync(); } catch {} };
+  const handlePrevious = async () => { if (!spotify) { try { await api.localPrevious(); } catch {} return; } if (!token) return; try { await api.skipPrevious(token); requestWSStateSync(); } catch {} };
+  const handleShuffle = async () => { if (!spotify || !token) return; const n = !shuffleState; setShuffleState(n); try { await api.setShuffle(token, n); requestWSStateSync(); } catch { setShuffleState(!n); } };
+  const handleRepeat = async () => { if (!spotify || !token) return; const n = { off: 'context', context: 'track', track: 'off' }[repeatState] || 'off'; setRepeatState(n); try { await api.setRepeat(token, n); requestWSStateSync(); } catch { setRepeatState(repeatState); } };
+  const handleSeek = async e => {
     const ms = parseInt(e.target.value, 10); setTrackPosition(ms);
     if (!spotify) { try { await api.localSeek(`${Math.round((ms / (trackDuration || 1)) * 100)}%`); } catch {} return; }
-    if (!token) return;
-    try { await api.seek(token, ms); requestWSStateSync(); } catch {}
+    if (!token) return; try { await api.seek(token, ms); requestWSStateSync(); } catch {}
   };
-  const handleVolumeChange = (e) => {
-    const v = parseInt(e.target.value, 10); setVolume(v); setIsMuted(v === 0);
-    lastVolumeChangeTime.current = Date.now();
-    if (ws.current?.readyState === WebSocket.OPEN)
-      ws.current.send(JSON.stringify({ type: 'BROADCAST_STATE', payload: { ...playbackState, volume: v, is_muted: v === 0 } }));
+  const handleVolumeChange = e => {
+    const v = parseInt(e.target.value, 10); setVolume(v); setIsMuted(v === 0); lastVolumeChangeTime.current = Date.now();
+    if (ws.current?.readyState === WebSocket.OPEN) ws.current.send(JSON.stringify({ type: 'BROADCAST_STATE', payload: { ...playbackState, volume: v, is_muted: v === 0 } }));
     clearTimeout(volumeApiTimeout.current);
-    volumeApiTimeout.current = setTimeout(async () => {
-      if (!spotify) { try { await api.localSetVolume(v); } catch {} return; }
-      if (!token) return;
-      try { await api.setVolume(token, v); } catch {}
-    }, 180);
+    volumeApiTimeout.current = setTimeout(async () => { if (!spotify) { try { await api.localSetVolume(v); } catch {} return; } if (!token) return; try { await api.setVolume(token, v); } catch {}; }, 180);
   };
   const handleMuteToggle = async () => {
     const m = !isMuted; setIsMuted(m); lastVolumeChangeTime.current = Date.now();
     const tv = m ? 0 : (volume || 50);
-    if (ws.current?.readyState === WebSocket.OPEN)
-      ws.current.send(JSON.stringify({ type: 'BROADCAST_STATE', payload: { ...playbackState, volume: tv, is_muted: m } }));
+    if (ws.current?.readyState === WebSocket.OPEN) ws.current.send(JSON.stringify({ type: 'BROADCAST_STATE', payload: { ...playbackState, volume: tv, is_muted: m } }));
     if (!spotify) { try { await api.localSetVolume(tv); } catch {} return; }
-    if (!token) return;
-    try { await api.setVolume(token, tv); } catch {}
+    if (!token) return; try { await api.setVolume(token, tv); } catch {}
   };
-  const handleCast = async (deviceId) => {
-    try { await api.transferPlayback(token, deviceId); toast.success('Output transferred.'); setTimeout(fetchDevices, 800); requestWSStateSync(); } catch (err) { toast.error(err.message); }
-  };
-  const handleToggleFavoriteRadio = async (station) => {
+  const handleToggleFavRadio = async station => {
     const isFav = favoriteStations.some(s => s.url === station.url);
-    try {
-      if (isFav) await api.deleteFavoriteRadio(station.url);
-      else await api.addFavoriteRadio({ name: station.name, url: station.url, favicon: station.favicon, country: station.country, tags: station.tags });
-      fetchFavorites();
-    } catch (err) { toast.error(err.message); }
+    try { if (isFav) await api.deleteFavoriteRadio(station.url); else await api.addFavoriteRadio({ name: station.name, url: station.url, favicon: station.favicon, country: station.country, tags: station.tags }); fetchFavorites(); } catch (e) { toast.error(e.message); }
   };
   const handleRadioSearch = async () => {
-    const q = radioSearch.trim();
-    if (!q) { setStationsList(favoriteStations); return; }
+    const q = radioSearch.trim(); if (!q) { setStationsList(favoriteStations); return; }
     setIsSearching(true);
-    try {
-      const res = await fetch(`https://de1.api.radio-browser.info/json/stations/byname/${encodeURIComponent(q)}?limit=25&hidebroken=true`);
-      const data = await res.json();
-      const formatted = data.map(s => ({ name: s.name.length > 22 ? s.name.substring(0,20)+'...' : s.name, url: s.url_resolved || s.url, favicon: s.favicon, country: s.country, tags: s.tags }));
-      if (!formatted.length) toast.error('No stations found.');
-      else setStationsList(formatted);
-    } catch { toast.error('Search failed.'); } finally { setIsSearching(false); }
+    try { const r = await fetch(`https://de1.api.radio-browser.info/json/stations/byname/${encodeURIComponent(q)}?limit=25&hidebroken=true`); const d = await r.json(); const f = d.map(s => ({ name: s.name.length > 26 ? s.name.substring(0, 24) + '…' : s.name, url: s.url_resolved || s.url, favicon: s.favicon, country: s.country, tags: s.tags })); if (!f.length) toast.error('No stations found.'); else setStationsList(f); } catch { toast.error('Search failed.'); } finally { setIsSearching(false); }
   };
-  const handlePlayTrack = async (uri) => {
-    try { await api.play(token, activeDevice?.id || resonanceDevice?.id || null, null, [uri]); setActiveTab('player'); setTimeout(() => { localSync(); requestWSStateSync(); }, 800); } catch (err) { toast.error(err.message); }
-  };
-  const handlePlayContext = async (uri) => {
-    try { await api.play(token, activeDevice?.id || resonanceDevice?.id || null, uri); setActiveTab('player'); setTimeout(() => { localSync(); requestWSStateSync(); }, 800); } catch (err) { toast.error(err.message); }
-  };
-  const handleLoginSubmit = (e) => {
+  const handlePlayTrack = async uri => { try { await api.play(token, activeDevice?.id || resonanceDevice?.id || null, null, [uri]); setActiveTab('player'); setTimeout(() => { localSync(); requestWSStateSync(); }, 800); } catch (e) { toast.error(e.message); } };
+  const handlePlayContext = async uri => { try { await api.play(token, activeDevice?.id || resonanceDevice?.id || null, uri); setActiveTab('player'); setTimeout(() => { localSync(); requestWSStateSync(); }, 800); } catch (e) { toast.error(e.message); } };
+  const handleLoginSubmit = e => {
     e.preventDefault();
-    if (usernameInput === 'enzo' && passwordInput === 'enzoOS') {
-      setCookie('remote_auth', 'true', 365); setIsAuthenticated(true); toast.success('Access Authorized');
-    } else { toast.error('Invalid credentials'); }
+    if (usernameInput === 'enzo' && passwordInput === 'enzoOS') { setCookie('remote_auth', 'true', 365); setIsAuthenticated(true); } else toast.error('Invalid credentials');
   };
-  const handleRemoteLogout = () => { eraseCookie('remote_auth'); setIsAuthenticated(false); setActiveTab('player'); };
-  const handleDeactivateDsp = async () => {
-    try { const cal = await api.getDspCalibration() || {}; cal[0] = 'eq'; await api.saveDspCalibration(cal); setDspActive(false); } catch {}
-  };
+  const handleDeactivateDsp = async () => { try { const c = await api.getDspCalibration() || {}; c[0] = 'eq'; await api.saveDspCalibration(c); setDspActive(false); } catch {} };
 
-  // ── disabled screen ───────────────────────────────────────────────────────
-  if (!remoteAccessEnabled) {
-    return (
-      <div className="fixed inset-0 bg-[#080c14] text-white flex flex-col items-center justify-center p-8 font-sans touch-manipulation select-none">
-        <div className="w-20 h-20 rounded-3xl bg-rose-500/10 border border-rose-500/20 flex items-center justify-center text-rose-400 mb-6">
-          <Smartphone className="h-9 w-9" />
-        </div>
-        <h1 className="text-xs font-extrabold uppercase tracking-[0.3em] text-white mb-3">Remote Disabled</h1>
-        <p className="text-[10px] text-white/30 font-mono text-center max-w-xs leading-relaxed">
-          Enable remote control from the kiosk system menu.
-        </p>
+  // ── disabled ────────────────────────────────────────────────────────────────
+  if (!remoteAccessEnabled) return (
+    <div style={{ fontFamily: S.font, background: S.bg }} className="fixed inset-0 flex flex-col items-center justify-center gap-6 p-8 touch-manipulation select-none">
+      <div className="w-24 h-24 rounded-[26px] flex items-center justify-center" style={{ background: 'rgba(255,69,58,0.15)', border: '1px solid rgba(255,69,58,0.3)' }}>
+        <Smartphone className="h-10 w-10" style={{ color: S.red }} />
       </div>
-    );
-  }
+      <div className="text-center">
+        <p className="text-[22px] font-semibold text-white mb-2" style={{ letterSpacing: '-0.3px' }}>Remote Disabled</p>
+        <p className="text-[15px]" style={{ color: S.t2, letterSpacing: '-0.2px' }}>Enable it from the kiosk system menu.</p>
+      </div>
+    </div>
+  );
 
-  // ── login screen ──────────────────────────────────────────────────────────
-  if (!isAuthenticated) {
-    return (
-      <>
-        <div data-theme={theme} className="fixed inset-0 bg-[#080c14] text-white font-sans flex flex-col items-center justify-center p-6 touch-manipulation select-none overflow-hidden">
-          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[120vw] h-[50vh] rounded-full opacity-10 pointer-events-none"
-            style={{ background: 'radial-gradient(ellipse, var(--theme-color) 0%, transparent 70%)' }} />
+  // ── login ───────────────────────────────────────────────────────────────────
+  if (!isAuthenticated) return (
+    <>
+      <div data-theme={theme} style={{ fontFamily: S.font, background: S.bg }} className="fixed inset-0 flex flex-col items-center justify-center px-6 touch-manipulation select-none overflow-hidden">
+        {/* glow */}
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[300px] h-[300px] rounded-full pointer-events-none"
+          style={{ background: 'radial-gradient(ellipse, var(--theme-color) 0%, transparent 70%)', opacity: 0.12 }} />
 
-          <div className="w-full max-w-sm z-10 flex flex-col items-center gap-8">
-            <div className="flex flex-col items-center gap-3">
-              <div className="w-14 h-14 rounded-2xl flex items-center justify-center border"
-                style={{ background: 'var(--theme-color-dim)', borderColor: 'var(--theme-color-glow)' }}>
-                <Waves className="h-6 w-6" style={{ color: 'var(--theme-color)' }} />
-              </div>
-              <div className="text-center">
-                <h1 className="text-sm font-extrabold tracking-[0.3em] uppercase text-white">Resonance</h1>
-                <p className="text-[9px] text-white/30 uppercase tracking-[0.2em] font-mono mt-0.5">Remote Access</p>
-              </div>
+        <div className="w-full max-w-xs z-10 flex flex-col gap-8">
+          {/* logo mark */}
+          <div className="flex flex-col items-center gap-4">
+            <div className="w-16 h-16 rounded-[22px] flex items-center justify-center" style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.1)' }}>
+              <Waves className="h-7 w-7" style={{ color: 'var(--theme-color)' }} />
             </div>
-
-            <form onSubmit={handleLoginSubmit} className="w-full flex flex-col gap-3">
-              <div className="flex flex-col gap-1.5">
-                <label className="text-[9px] uppercase tracking-[0.2em] text-white/30 font-bold font-mono">Username</label>
-                <input type="text" value={usernameInput} onChange={e => setUsernameInput(e.target.value)} placeholder="Enter username" required
-                  className="w-full bg-white/[0.04] border border-white/[0.08] rounded-2xl px-4 py-4 text-sm text-white placeholder:text-white/15 focus:outline-none focus:border-[var(--theme-color)]/40 transition-colors" />
-              </div>
-              <div className="flex flex-col gap-1.5">
-                <label className="text-[9px] uppercase tracking-[0.2em] text-white/30 font-bold font-mono">Password</label>
-                <input type="password" value={passwordInput} onChange={e => setPasswordInput(e.target.value)} placeholder="••••••••" required
-                  className="w-full bg-white/[0.04] border border-white/[0.08] rounded-2xl px-4 py-4 text-sm text-white placeholder:text-white/15 focus:outline-none focus:border-[var(--theme-color)]/40 transition-colors" />
-              </div>
-              <button type="submit"
-                className="w-full py-4 rounded-2xl font-extrabold text-xs uppercase tracking-[0.2em] active:scale-95 transition-all cursor-pointer mt-1 text-black"
-                style={{ background: 'var(--theme-color)' }}>
-                Authorize
-              </button>
-            </form>
+            <div className="text-center">
+              <p className="text-[28px] font-semibold text-white" style={{ letterSpacing: '-0.5px' }}>Resonance</p>
+              <p className="text-[15px] mt-0.5" style={{ color: S.t2 }}>Remote Control</p>
+            </div>
           </div>
-        </div>
-        <Toaster theme="dark" closeButton richColors position="bottom-center" visibleToasts={1} />
-      </>
-    );
-  }
 
-  // ── main remote ───────────────────────────────────────────────────────────
-  const progressPct = trackDuration ? (trackPosition / trackDuration) * 100 : 0;
+          {/* form */}
+          <form onSubmit={handleLoginSubmit} className="flex flex-col gap-3">
+            <input type="text" value={usernameInput} onChange={e => setUsernameInput(e.target.value)} placeholder="Username" required autoCapitalize="none"
+              className="w-full rounded-[14px] px-4 py-4 text-[17px] text-white placeholder:text-white/25 focus:outline-none transition-colors"
+              style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.1)', fontFamily: S.font, letterSpacing: '-0.2px' }} />
+            <input type="password" value={passwordInput} onChange={e => setPasswordInput(e.target.value)} placeholder="Password" required
+              className="w-full rounded-[14px] px-4 py-4 text-[17px] text-white placeholder:text-white/25 focus:outline-none transition-colors"
+              style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.1)', fontFamily: S.font, letterSpacing: '-0.2px' }} />
+            <button type="submit" className="w-full py-4 rounded-full text-[17px] font-semibold text-black active:scale-95 transition-all cursor-pointer mt-1"
+              style={{ background: 'var(--theme-color)', fontFamily: S.font, letterSpacing: '-0.2px' }}>
+              Sign In
+            </button>
+          </form>
+        </div>
+      </div>
+      <Toaster theme="dark" closeButton richColors position="bottom-center" visibleToasts={1} />
+    </>
+  );
+
+  // ── MAIN REMOTE ─────────────────────────────────────────────────────────────
+  const NAV_H = 83;
 
   return (
     <>
       <div
         data-theme={theme}
-        className="fixed inset-0 bg-[#080c14] text-white font-sans flex flex-col overflow-hidden touch-manipulation select-none"
-        style={{ paddingTop: 'env(safe-area-inset-top)', paddingBottom: 'env(safe-area-inset-bottom)' }}
+        style={{ fontFamily: S.font, background: S.bg, paddingTop: 'env(safe-area-inset-top)' }}
+        className="fixed inset-0 text-white flex flex-col overflow-hidden touch-manipulation select-none"
       >
-        {/* ── ambient art glow ── */}
+        {/* ambient glow from album art */}
         {albumImage && (
           <div className="absolute inset-0 pointer-events-none transition-all duration-1000"
-            style={{ backgroundImage: `url(${albumImage})`, backgroundSize: 'cover', backgroundPosition: 'center', filter: 'blur(90px) saturate(2.5)', opacity: 0.12 }} />
+            style={{ backgroundImage: `url(${albumImage})`, backgroundSize: 'cover', backgroundPosition: 'center', filter: 'blur(100px) saturate(3)', opacity: 0.18 }} />
         )}
-        <div className="absolute inset-0 pointer-events-none"
-          style={{ background: 'linear-gradient(to bottom, rgba(8,12,20,0.5) 0%, transparent 40%, rgba(8,12,20,0.7) 70%, rgba(8,12,20,1) 100%)' }} />
+        <div className="absolute inset-0 pointer-events-none" style={{ background: 'linear-gradient(to bottom, rgba(0,0,0,0.3) 0%, transparent 30%, rgba(0,0,0,0.6) 75%, rgba(0,0,0,1) 100%)' }} />
 
-        {/* ── header ── */}
-        <header className="relative z-10 flex items-center justify-between px-5 pt-3 pb-2 shrink-0">
-          <div className="flex items-center gap-2.5">
-            <div className={`w-1.5 h-1.5 rounded-full transition-all ${isConnected ? 'animate-pulse' : ''}`}
-              style={{ background: isConnected ? 'var(--theme-color)' : '#ef4444', boxShadow: isConnected ? '0 0 8px var(--theme-color)' : 'none' }} />
-            <span className="text-[11px] font-extrabold tracking-[0.25em] uppercase text-white/50">Resonance</span>
-          </div>
-          <div className="flex items-center gap-1">
-            <button onClick={() => handleToggleStandby(!standby)}
-              className={`p-2.5 rounded-full transition-all active:scale-90 cursor-pointer ${standby ? 'text-red-400' : 'text-white/30 hover:text-white/60'}`}
-              style={standby ? { background: 'rgba(239,68,68,0.1)' } : { background: 'rgba(255,255,255,0.04)' }}>
-              <Power className="h-4 w-4" />
-            </button>
-            <button onClick={() => { fetchDevices(); localSync(); }}
-              className="p-2.5 rounded-full text-white/30 hover:text-white/60 active:scale-90 transition-all cursor-pointer"
-              style={{ background: 'rgba(255,255,255,0.04)' }}>
-              <RefreshCw className={`h-4 w-4 ${isFetchingDevices ? 'animate-spin' : ''}`} />
-            </button>
-          </div>
-        </header>
+        {/* ── scrollable content ── */}
+        <div className="relative z-10 flex-1 overflow-y-auto overscroll-none" style={{ paddingBottom: NAV_H + 8 }}>
 
-        {/* ── source pills ── */}
-        <div className="relative z-10 flex items-center justify-center gap-2 px-5 pb-2 shrink-0">
-          {['spotify', 'local', 'radio'].map(src => (
-            <button key={src} onClick={() => handleToggleSource(src)}
-              className="px-5 py-1.5 rounded-full text-[9px] font-bold uppercase tracking-[0.15em] transition-all active:scale-95 cursor-pointer"
-              style={source === src
-                ? { background: 'var(--theme-color)', color: '#000' }
-                : { background: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.35)' }}>
-              {src === 'spotify' ? 'Spotify' : src === 'local' ? 'Local' : 'Radio'}
-            </button>
-          ))}
-        </div>
-
-        {/* ── main scrollable area ── */}
-        <main className="relative z-10 flex-1 overflow-y-auto overscroll-none min-h-0">
-
-          {/* ── PLAYER TAB ── */}
+          {/* ════════════════════════ PLAYER TAB ════════════════════════════ */}
           {activeTab === 'player' && (
-            <div className="flex flex-col items-center px-6 pt-2 gap-5">
+            <div className="flex flex-col items-center px-6 pt-4 gap-0">
 
-              {/* Album art */}
-              <div className="relative mt-1" style={{ width: 'min(56vw, 230px)', aspectRatio: '1' }}>
+              {/* mini header: connection + standby */}
+              <div className="w-full flex items-center justify-between mb-6">
+                <div className="flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full" style={{ background: isConnected ? 'var(--theme-color)' : S.red, boxShadow: isConnected ? '0 0 6px var(--theme-color)' : 'none' }} />
+                  <span className="text-[13px] font-semibold" style={{ color: S.t3, letterSpacing: '-0.1px' }}>
+                    {isConnected ? 'Connected' : 'Offline'}
+                  </span>
+                </div>
+                <button onClick={() => handleToggleStandby(!standby)}
+                  className="w-9 h-9 rounded-full flex items-center justify-center active:scale-90 transition-all cursor-pointer"
+                  style={{ background: standby ? 'rgba(255,69,58,0.15)' : 'rgba(255,255,255,0.07)', color: standby ? S.red : S.t2 }}>
+                  <Power className="h-4 w-4" />
+                </button>
+              </div>
+
+              {/* source selector */}
+              <div className="flex items-center gap-1.5 mb-8 p-1 rounded-full" style={{ background: 'rgba(255,255,255,0.08)' }}>
+                {['spotify', 'local', 'radio'].map(src => (
+                  <button key={src} onClick={() => handleToggleSource(src)}
+                    className="px-5 py-1.5 rounded-full text-[13px] font-semibold transition-all active:scale-95 cursor-pointer"
+                    style={source === src
+                      ? { background: 'var(--theme-color)', color: '#000', letterSpacing: '-0.1px' }
+                      : { color: S.t2, letterSpacing: '-0.1px' }}>
+                    {src === 'spotify' ? 'Spotify' : src === 'local' ? 'Local' : 'Radio'}
+                  </button>
+                ))}
+              </div>
+
+              {/* ── artwork ── */}
+              <div className="relative mb-8" style={{ width: 'min(68vw, 280px)', aspectRatio: '1' }}>
                 {albumImage && (
-                  <div className="absolute inset-0 rounded-[2rem] scale-90 blur-2xl"
-                    style={{ backgroundImage: `url(${albumImage})`, backgroundSize: 'cover', opacity: 0.5 }} />
+                  <div className="absolute inset-0 rounded-[2rem] scale-[0.92] blur-3xl -z-10"
+                    style={{ backgroundImage: `url(${albumImage})`, backgroundSize: 'cover', opacity: 0.6 }} />
                 )}
-                <div className="relative w-full h-full rounded-[2rem] overflow-hidden border flex items-center justify-center"
-                  style={{ background: 'rgba(255,255,255,0.04)', borderColor: 'rgba(255,255,255,0.08)' }}>
+                <div className="w-full h-full rounded-[2rem] overflow-hidden flex items-center justify-center"
+                  style={{ background: 'rgba(40,40,42,0.9)', boxShadow: '0 20px 60px rgba(0,0,0,0.6)' }}>
                   {albumImage
                     ? <img src={albumImage} alt={trackName} className="w-full h-full object-cover pointer-events-none" />
-                    : <div className="flex flex-col items-center gap-2" style={{ color: 'rgba(255,255,255,0.15)' }}>
-                        <Music className="h-12 w-12 stroke-[1]" />
-                        <span className="text-[8px] uppercase tracking-widest font-extrabold">Resonance</span>
-                      </div>
-                  }
+                    : <Music className="h-16 w-16" style={{ color: 'rgba(255,255,255,0.1)' }} />}
                 </div>
               </div>
 
-              {/* Track info */}
-              <div className="w-full text-center flex flex-col gap-1 px-2">
-                <h2 className="text-[1.05rem] font-bold text-white leading-tight truncate">{trackName}</h2>
-                <p className="text-[11px] font-medium truncate" style={{ color: 'rgba(255,255,255,0.4)' }}>{trackArtist}</p>
-                {activeDevice && (
-                  <div className="flex items-center justify-center gap-1.5 mt-1">
-                    <Cast className="h-2.5 w-2.5" style={{ color: 'var(--theme-color)' }} />
-                    <span className="text-[8px] font-bold uppercase tracking-[0.15em]" style={{ color: 'var(--theme-color)' }}>{activeDevice.name}</span>
-                  </div>
+              {/* ── track info ── */}
+              <div className="w-full flex items-start justify-between gap-3 mb-5">
+                <div className="flex-1 min-w-0">
+                  <p className="text-[22px] font-semibold text-white truncate" style={{ letterSpacing: '-0.4px' }}>{trackName}</p>
+                  <p className="text-[15px] font-medium truncate mt-0.5" style={{ color: S.t2, letterSpacing: '-0.15px' }}>{trackArtist}</p>
+                  {activeDevice && (
+                    <div className="flex items-center gap-1 mt-1.5">
+                      <Cast className="h-3 w-3 shrink-0" style={{ color: 'var(--theme-color)' }} />
+                      <span className="text-[12px] font-medium truncate" style={{ color: 'var(--theme-color)', letterSpacing: '-0.1px' }}>{activeDevice.name}</span>
+                    </div>
+                  )}
+                </div>
+                {/* heart */}
+                {source === 'radio' && currentTrack?.url ? (
+                  <button onClick={() => handleToggleFavRadio({ name: trackName, url: currentTrack.url, favicon: albumImage || '', country: '', tags: '' })}
+                    className="w-10 h-10 rounded-full flex items-center justify-center active:scale-90 transition-all cursor-pointer mt-0.5 shrink-0"
+                    style={{ color: isCurrentFav ? '#ff453a' : S.t2 }}>
+                    <Heart className={`h-6 w-6 ${isCurrentFav ? 'fill-current' : ''}`} />
+                  </button>
+                ) : (
+                  <button onClick={handleShuffle} disabled={spotify ? !token : true}
+                    className="w-10 h-10 rounded-full flex items-center justify-center active:scale-90 transition-all cursor-pointer mt-0.5 shrink-0 disabled:opacity-30"
+                    style={{ color: shuffleState ? 'var(--theme-color)' : S.t2 }}>
+                    <Shuffle className="h-5 w-5" />
+                  </button>
                 )}
               </div>
 
-              {/* Spotify auth prompt */}
+              {/* Spotify connect prompt */}
               {spotify && !token && (
-                <div className="w-full p-4 rounded-2xl border flex flex-col gap-3 text-center"
-                  style={{ background: 'rgba(255,255,255,0.03)', borderColor: 'rgba(255,255,255,0.07)' }}>
-                  <p className="text-[10px] leading-relaxed" style={{ color: 'rgba(255,255,255,0.35)' }}>
-                    Connect Spotify to sync playback
-                  </p>
+                <div className="w-full rounded-2xl p-5 flex flex-col gap-4 mb-4 text-center" style={{ background: S.card, border: `1px solid ${S.cardBd}` }}>
+                  <div>
+                    <p className="text-[17px] font-semibold text-white mb-1" style={{ letterSpacing: '-0.2px' }}>Connect Spotify</p>
+                    <p className="text-[14px]" style={{ color: S.t2 }}>Sign in to sync your playback.</p>
+                  </div>
                   <a href="/auth/spotify/login?from=remote"
-                    className="w-full py-3 px-3 rounded-xl flex items-center justify-center gap-2 text-xs text-black font-extrabold uppercase tracking-wider active:scale-95 transition-all"
-                    style={{ background: '#1ed760' }}>
-                    <svg viewBox="0 0 24 24" className="h-4 w-4 fill-black shrink-0"><path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm4.586 14.424a.622.622 0 01-.857.207c-2.348-1.435-5.304-1.76-8.785-.964a.622.622 0 01-.277-1.215c3.809-.87 7.077-.496 9.712 1.115a.622.622 0 01.207.857zm1.223-2.722a.779.779 0 01-1.07.257c-2.687-1.652-6.785-2.131-9.965-1.166a.78.78 0 01-.973-.519.781.781 0 01.519-.972c3.632-1.102 8.147-.568 11.233 1.33a.779.779 0 01.256 1.07zm.105-2.835C14.692 8.95 9.375 8.775 6.297 9.71a.935.935 0 11-.543-1.79c3.533-1.072 9.404-.866 13.115 1.338a.936.936 0 01-.955 1.609z"/></svg>
-                    Login with Spotify
+                    className="w-full py-3.5 rounded-full flex items-center justify-center gap-2 text-[15px] font-semibold text-black active:scale-95 transition-all"
+                    style={{ background: '#1ed760', fontFamily: S.font }}>
+                    <svg viewBox="0 0 24 24" className="h-5 w-5 fill-black shrink-0"><path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm4.586 14.424a.622.622 0 01-.857.207c-2.348-1.435-5.304-1.76-8.785-.964a.622.622 0 01-.277-1.215c3.809-.87 7.077-.496 9.712 1.115a.622.622 0 01.207.857zm1.223-2.722a.779.779 0 01-1.07.257c-2.687-1.652-6.785-2.131-9.965-1.166a.78.78 0 01-.973-.519.781.781 0 01.519-.972c3.632-1.102 8.147-.568 11.233 1.33a.779.779 0 01.256 1.07zm.105-2.835C14.692 8.95 9.375 8.775 6.297 9.71a.935.935 0 11-.543-1.79c3.533-1.072 9.404-.866 13.115 1.338a.936.936 0 01-.955 1.609z"/></svg>
+                    Connect with Spotify
                   </a>
                 </div>
               )}
 
-              {/* Progress bar */}
+              {/* ── progress ── */}
               {source !== 'radio' && (
-                <div className="w-full flex flex-col gap-1.5">
-                  <div className="relative h-1 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.08)' }}>
-                    <div className="absolute inset-y-0 left-0 rounded-full transition-none" style={{ width: `${progressPct}%`, background: 'var(--theme-color)' }} />
+                <div className="w-full mb-6">
+                  <div className="relative h-1 rounded-full mb-2 overflow-hidden" style={{ background: 'rgba(255,255,255,0.15)' }}>
+                    <div className="absolute inset-y-0 left-0 rounded-full" style={{ width: `${progressPct}%`, background: 'white', transition: 'none' }} />
                     <input type="range" min="0" max={trackDuration || 0} value={trackPosition}
-                      onChange={handleSeek}
-                      disabled={spotify ? (!token || !trackDuration) : !trackDuration}
+                      onChange={handleSeek} disabled={spotify ? !token || !trackDuration : !trackDuration}
                       className="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-default" />
                   </div>
-                  <div className="flex justify-between text-[9px] font-mono" style={{ color: 'rgba(255,255,255,0.25)' }}>
-                    <span>{formatTime(trackPosition)}</span>
-                    <span>{formatTime(trackDuration)}</span>
+                  <div className="flex justify-between text-[12px] font-medium" style={{ color: S.t3, letterSpacing: '-0.05px' }}>
+                    <span>{fmt(trackPosition)}</span>
+                    <span>{fmt(trackDuration)}</span>
                   </div>
                 </div>
               )}
+              {source === 'radio' && <div className="mb-6" />}
 
-              {/* Transport controls */}
-              <div className="w-full flex items-center justify-between px-1 pb-2">
-                {/* shuffle / heart */}
+              {/* ── transport controls ── */}
+              <div className="w-full flex items-center justify-between mb-8 px-2">
+                {/* repeat (left) */}
                 {source !== 'radio' ? (
-                  <button onClick={handleShuffle} disabled={spotify ? !token : true}
-                    className="p-2.5 rounded-full transition-all active:scale-90 cursor-pointer disabled:opacity-20"
-                    style={{ color: shuffleState ? 'var(--theme-color)' : 'rgba(255,255,255,0.3)' }}>
-                    <Shuffle className="h-4 w-4" />
+                  <button onClick={handleRepeat} disabled={spotify ? !token : true}
+                    className="w-12 h-12 rounded-full flex items-center justify-center active:scale-90 transition-all cursor-pointer disabled:opacity-25"
+                    style={{ color: repeatState !== 'off' ? 'var(--theme-color)' : S.t2 }}>
+                    <Repeat className="h-5 w-5" />
                   </button>
-                ) : currentTrack?.url ? (
-                  <button onClick={() => handleToggleFavoriteRadio({ name: trackName, url: currentTrack.url, favicon: albumImage || '', country: '', tags: '' })}
-                    className="p-2.5 rounded-full transition-all active:scale-90 cursor-pointer"
-                    style={{ color: isCurrentFavorite ? '#fb7185' : 'rgba(255,255,255,0.3)' }}>
-                    <Heart className={`h-4 w-4 ${isCurrentFavorite ? 'fill-current' : ''}`} />
-                  </button>
-                ) : <div className="w-10" />}
+                ) : <div className="w-12" />}
 
                 {/* prev */}
                 {source !== 'radio' ? (
                   <button onClick={handlePrevious} disabled={spotify ? !token : false}
-                    className="p-2.5 transition-all active:scale-90 cursor-pointer disabled:opacity-20"
-                    style={{ color: 'rgba(255,255,255,0.65)' }}>
-                    <SkipBack className="h-6 w-6 fill-current" />
+                    className="w-14 h-14 rounded-full flex items-center justify-center active:scale-90 transition-all cursor-pointer disabled:opacity-25"
+                    style={{ color: 'white' }}>
+                    <SkipBack className="h-7 w-7 fill-current" />
                   </button>
-                ) : <div className="w-10" />}
+                ) : <div className="w-14" />}
 
-                {/* play/pause */}
+                {/* PLAY / PAUSE — the hero button */}
                 <button onClick={handlePlayPause} disabled={spotify ? !token : false}
-                  className="w-16 h-16 rounded-full flex items-center justify-center transition-all active:scale-90 cursor-pointer disabled:opacity-40"
-                  style={{ background: 'var(--theme-color)', boxShadow: '0 0 32px var(--theme-color-glow)' }}>
+                  className="w-20 h-20 rounded-full flex items-center justify-center active:scale-90 transition-all cursor-pointer disabled:opacity-35"
+                  style={{ background: 'white', boxShadow: '0 0 40px rgba(255,255,255,0.2)' }}>
                   {isPlaying
-                    ? <Pause className="h-6 w-6 fill-black text-black" />
-                    : <Play className="h-6 w-6 fill-black text-black ml-0.5" />}
+                    ? <Pause className="h-8 w-8 fill-black text-black" />
+                    : <Play className="h-8 w-8 fill-black text-black ml-1" />}
                 </button>
 
                 {/* next */}
                 {source !== 'radio' ? (
                   <button onClick={handleNext} disabled={spotify ? !token : false}
-                    className="p-2.5 transition-all active:scale-90 cursor-pointer disabled:opacity-20"
-                    style={{ color: 'rgba(255,255,255,0.65)' }}>
-                    <SkipForward className="h-6 w-6 fill-current" />
-                  </button>
-                ) : <div className="w-10" />}
-
-                {/* repeat / radio shortcut */}
-                {source !== 'radio' ? (
-                  <button onClick={handleRepeat} disabled={spotify ? !token : true}
-                    className="p-2.5 rounded-full transition-all active:scale-90 cursor-pointer disabled:opacity-20"
-                    style={{ color: repeatState !== 'off' ? 'var(--theme-color)' : 'rgba(255,255,255,0.3)' }}>
-                    <Repeat className="h-4 w-4" />
+                    className="w-14 h-14 rounded-full flex items-center justify-center active:scale-90 transition-all cursor-pointer disabled:opacity-25"
+                    style={{ color: 'white' }}>
+                    <SkipForward className="h-7 w-7 fill-current" />
                   </button>
                 ) : (
-                  <button onClick={() => setActiveTab('radio')} className="p-2.5 rounded-full active:scale-90 cursor-pointer" style={{ color: 'var(--theme-color)' }}>
-                    <Radio className="h-4 w-4" />
+                  <button onClick={() => setActiveTab('radio')}
+                    className="w-14 h-14 rounded-full flex items-center justify-center active:scale-90 transition-all cursor-pointer"
+                    style={{ color: 'var(--theme-color)' }}>
+                    <Radio className="h-6 w-6" />
                   </button>
                 )}
+
+                {/* shuffle (right) */}
+                {source !== 'radio' ? (
+                  <button onClick={handleShuffle} disabled={spotify ? !token : true}
+                    className="w-12 h-12 rounded-full flex items-center justify-center active:scale-90 transition-all cursor-pointer disabled:opacity-25"
+                    style={{ color: shuffleState ? 'var(--theme-color)' : S.t2 }}>
+                    <Shuffle className="h-5 w-5" />
+                  </button>
+                ) : <div className="w-12" />}
+              </div>
+
+              {/* ── volume ── */}
+              <div className="w-full flex items-center gap-3 mb-2">
+                <button onClick={handleMuteToggle} className="active:scale-90 transition-all cursor-pointer" style={{ color: S.t3 }}>
+                  <VolumeX className="h-4 w-4" />
+                </button>
+                <div className="relative flex-1 h-1 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.2)' }}>
+                  <div className="absolute inset-y-0 left-0 rounded-full" style={{ width: `${isMuted ? 0 : volume}%`, background: 'white', transition: 'none' }} />
+                  <input type="range" min="0" max="100" value={isMuted ? 0 : volume}
+                    onChange={handleVolumeChange} disabled={spotify ? !token : false}
+                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-default" />
+                </div>
+                <button onClick={() => { setIsMuted(false); setVolume(100); handleVolumeChange({ target: { value: 100 } }); }} className="active:scale-90 transition-all cursor-pointer" style={{ color: S.t3 }}>
+                  <Volume2 className="h-4 w-4" />
+                </button>
               </div>
             </div>
           )}
 
-          {/* ── RADIO TAB ── */}
+          {/* ═══════════════════════ RADIO TAB ══════════════════════════════ */}
           {activeTab === 'radio' && (
-            <div className="flex flex-col gap-4 px-5 pt-3 pb-2">
-              <div>
-                <h3 className="text-sm font-extrabold text-white uppercase tracking-wider">Web Radio</h3>
-                <p className="text-[9px] uppercase tracking-wider font-bold mt-0.5" style={{ color: 'rgba(255,255,255,0.3)' }}>Tune into global streams</p>
+            <div className="flex flex-col pt-6 pb-2">
+              <div className="px-5 mb-5">
+                <p className="text-[28px] font-semibold text-white" style={{ letterSpacing: '-0.5px' }}>Web Radio</p>
+                <p className="text-[15px] mt-0.5" style={{ color: S.t2 }}>Search and play global streams</p>
               </div>
 
-              <div className="flex gap-2">
-                <input type="text" placeholder="Search stations..." value={radioSearch}
-                  onChange={e => setRadioSearch(e.target.value)}
-                  onKeyDown={e => e.key === 'Enter' && handleRadioSearch()}
-                  className="flex-grow rounded-xl px-3.5 py-3 text-xs text-white placeholder:text-white/20 focus:outline-none transition-colors"
-                  style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }} />
+              {/* search */}
+              <div className="px-4 mb-4 flex gap-2">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 pointer-events-none" style={{ color: S.t3 }} />
+                  <input type="text" placeholder="Station, genre, country…" value={radioSearch}
+                    onChange={e => setRadioSearch(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleRadioSearch()}
+                    className="w-full rounded-full pl-10 pr-4 py-3.5 text-[15px] text-white placeholder:text-white/25 focus:outline-none"
+                    style={{ background: 'rgba(255,255,255,0.09)', border: '1px solid rgba(255,255,255,0.1)', fontFamily: S.font, letterSpacing: '-0.2px' }} />
+                </div>
                 <button onClick={handleRadioSearch} disabled={isSearching}
-                  className="px-4 py-3 rounded-xl text-black font-extrabold text-[10px] uppercase tracking-wider transition-all active:scale-95 cursor-pointer disabled:opacity-50"
-                  style={{ background: 'var(--theme-color)' }}>
-                  {isSearching ? '…' : 'Search'}
+                  className="px-5 py-3.5 rounded-full text-[15px] font-semibold text-black active:scale-95 transition-all cursor-pointer disabled:opacity-50 shrink-0"
+                  style={{ background: 'var(--theme-color)', fontFamily: S.font }}>
+                  {isSearching ? '…' : 'Go'}
                 </button>
               </div>
 
-              <div className="flex justify-between items-center text-[9px] uppercase tracking-wider font-bold px-1" style={{ color: 'rgba(255,255,255,0.25)' }}>
-                <span>{radioSearch.trim() ? 'Results' : 'Favorites'}</span>
-                <span>{stationsList.length}</span>
-              </div>
+              {/* section label */}
+              <p className="px-6 mb-2 text-[13px] font-semibold uppercase tracking-widest" style={{ color: S.t3 }}>
+                {radioSearch.trim() ? `${stationsList.length} Results` : `${favoriteStations.length} Favorites`}
+              </p>
 
-              <div className="flex flex-col gap-2 overflow-y-auto custom-scrollbar">
+              {/* station list */}
+              <div className="flex flex-col gap-0 mx-4 rounded-[14px] overflow-hidden" style={{ background: S.card, border: `1px solid ${S.cardBd}` }}>
+                {stationsList.length === 0 && (
+                  <div className="px-4 py-8 text-center">
+                    <Radio className="h-8 w-8 mx-auto mb-3" style={{ color: S.t3 }} />
+                    <p className="text-[15px]" style={{ color: S.t2 }}>No favorites yet</p>
+                    <p className="text-[13px] mt-1" style={{ color: S.t3 }}>Search for stations above</p>
+                  </div>
+                )}
                 {stationsList.map((station, idx) => {
                   const isFav = favoriteStations.some(s => s.url === station.url);
                   return (
-                    <div key={`${station.url}-${idx}`} className="w-full rounded-2xl flex items-center justify-between px-3.5 py-3 transition-all"
-                      style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}>
-                      <button className="flex items-center gap-3 min-w-0 flex-grow text-left cursor-pointer bg-transparent border-none p-0 outline-none"
-                        onClick={async () => { try { wakeKiosk(); await api.localPlayRadio(station.url, station.name, station.favicon); setSource('radio'); sendUpdate('SET_SOURCE', { spotify: false, source: 'radio' }); } catch (err) { toast.error(err.message); } }}>
-                        <div className="w-9 h-9 rounded-full overflow-hidden flex items-center justify-center shrink-0 relative"
-                          style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)' }}>
+                    <React.Fragment key={`${station.url}-${idx}`}>
+                      {idx > 0 && <div className="ml-16" style={{ height: '0.5px', background: S.sep }} />}
+                      <div className="flex items-center gap-3 px-4 py-3">
+                        <div className="w-10 h-10 rounded-xl overflow-hidden flex items-center justify-center shrink-0"
+                          style={{ background: 'rgba(255,255,255,0.06)' }}>
                           {station.favicon
                             ? <img src={station.favicon} alt="" className="w-full h-full object-cover" onError={e => { e.target.style.display='none'; }} />
-                            : null}
-                          <Radio className="w-3.5 h-3.5 absolute" style={{ color: 'rgba(255,255,255,0.2)', zIndex: -1 }} />
+                            : <Radio className="h-4 w-4" style={{ color: S.t3 }} />}
                         </div>
-                        <div className="min-w-0">
-                          <span className="block text-[11px] font-bold text-white truncate">{station.name}</span>
-                          <span className="block text-[8px] font-mono uppercase tracking-wider truncate" style={{ color: 'rgba(255,255,255,0.3)' }}>
-                            {station.country || 'Global'}{station.tags ? ` • ${station.tags.split(',')[0]}` : ''}
-                          </span>
+                        <div className="flex-1 min-w-0 cursor-pointer" onClick={async () => { try { wakeKiosk(); await api.localPlayRadio(station.url, station.name, station.favicon); setSource('radio'); sendUpdate('SET_SOURCE', { spotify: false, source: 'radio' }); setActiveTab('player'); } catch (e) { toast.error(e.message); } }}>
+                          <p className="text-[15px] font-medium text-white truncate" style={{ letterSpacing: '-0.15px' }}>{station.name}</p>
+                          <p className="text-[12px] truncate" style={{ color: S.t3 }}>{station.country || 'Global'}{station.tags ? ` · ${station.tags.split(',')[0]}` : ''}</p>
                         </div>
-                      </button>
-                      <div className="flex items-center gap-2 shrink-0 ml-3">
-                        <button onClick={e => { e.stopPropagation(); handleToggleFavoriteRadio(station); }}
-                          className="p-2 rounded-full transition-colors cursor-pointer"
-                          style={{ color: isFav ? '#fb7185' : 'rgba(255,255,255,0.25)' }}>
-                          <Heart className={`w-3.5 h-3.5 ${isFav ? 'fill-current' : ''}`} />
-                        </button>
-                        <button
-                          onClick={async () => { try { wakeKiosk(); await api.localPlayRadio(station.url, station.name, station.favicon); setSource('radio'); sendUpdate('SET_SOURCE', { spotify: false, source: 'radio' }); } catch (err) { toast.error(err.message); } }}
-                          className="text-[8px] px-2.5 py-1 rounded-lg font-extrabold uppercase tracking-wider transition-all cursor-pointer"
-                          style={{ background: 'rgba(255,255,255,0.07)', color: 'rgba(255,255,255,0.5)', border: '1px solid rgba(255,255,255,0.1)' }}>
-                          PLAY
+                        <button onClick={() => handleToggleFavRadio(station)}
+                          className="w-9 h-9 rounded-full flex items-center justify-center active:scale-90 transition-all cursor-pointer shrink-0"
+                          style={{ color: isFav ? '#ff453a' : S.t3 }}>
+                          <Heart className={`h-4 w-4 ${isFav ? 'fill-current' : ''}`} />
                         </button>
                       </div>
-                    </div>
+                    </React.Fragment>
                   );
                 })}
               </div>
             </div>
           )}
 
-          {/* ── SEARCH TAB ── */}
+          {/* ══════════════════════ SEARCH TAB (Spotify) ════════════════════ */}
           {activeTab === 'search' && (
-            <div className="flex flex-col px-5 pt-3 h-full min-h-0" style={{ flex: '1 1 0' }}>
+            <div className="flex flex-col pt-6 pb-2 px-4 h-full min-h-[60vh]">
+              <p className="text-[28px] font-semibold text-white mb-1 px-1" style={{ letterSpacing: '-0.5px' }}>Search</p>
               {token ? (
                 <TrackSearch token={token} onPlayTrack={handlePlayTrack} onPlayContext={handlePlayContext} isDrawer={true} />
               ) : (
                 <div className="flex flex-col items-center justify-center gap-5 py-16">
-                  <Search className="h-10 w-10" style={{ color: 'rgba(255,255,255,0.1)' }} />
-                  <p className="text-[11px] text-center leading-relaxed" style={{ color: 'rgba(255,255,255,0.3)' }}>
-                    Connect Spotify to search and play music.
-                  </p>
+                  <Search className="h-12 w-12" style={{ color: 'rgba(255,255,255,0.1)' }} />
+                  <div className="text-center">
+                    <p className="text-[17px] font-semibold text-white mb-1" style={{ letterSpacing: '-0.2px' }}>Connect Spotify</p>
+                    <p className="text-[14px]" style={{ color: S.t2 }}>Sign in to search your music.</p>
+                  </div>
                   <a href="/auth/spotify/login?from=remote"
-                    className="py-3 px-6 rounded-xl text-xs text-black font-extrabold uppercase tracking-wider active:scale-95 transition-all cursor-pointer"
-                    style={{ background: '#1ed760' }}>
-                    Login with Spotify
+                    className="py-3.5 px-8 rounded-full text-[15px] font-semibold text-black active:scale-95 transition-all cursor-pointer"
+                    style={{ background: '#1ed760', fontFamily: S.font }}>
+                    Connect Spotify
                   </a>
                 </div>
               )}
             </div>
           )}
 
-          {/* ── EQ TAB ── */}
-          {activeTab === 'eq' && (
-            <div className="flex flex-col gap-4 px-5 pt-3 pb-2" style={{ minHeight: '420px' }}>
-              <div className="flex justify-between items-center shrink-0">
-                <div>
-                  <h3 className="text-sm font-extrabold text-white uppercase tracking-wider">Sound Tuning</h3>
-                  <p className="text-[9px] uppercase tracking-wider font-bold mt-0.5" style={{ color: 'rgba(255,255,255,0.3)' }}>Equalizer & DSP</p>
-                </div>
-                <button onClick={() => setIsDspWizardOpen(true)}
-                  className="flex items-center gap-1.5 px-3 py-2 rounded-xl font-extrabold text-[9px] uppercase tracking-wider active:scale-95 transition-all cursor-pointer border"
-                  style={{ background: 'rgba(255,255,255,0.06)', borderColor: 'rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.6)' }}>
-                  <Cpu className="h-3 w-3 animate-pulse" style={{ color: 'var(--theme-color)' }} />
-                  Calibrate
-                </button>
-              </div>
-              <div className="flex-1 min-h-0">
-                <EqualizerControl
-                  currentPreset={eqPreset} onPresetChange={handleEqPresetChange}
-                  bands={eqBands} onBandChange={handleBandChange}
-                  saturation={eqSaturation} onSaturationChange={handleSaturationChange}
-                  noiseFloor={eqNoiseFloor} onNoiseFloorChange={handleNoiseFloorChange}
-                  preAmp={eqPreAmp} onPreAmpChange={handlePreAmpChange}
-                  dspActive={dspActive} onDeactivateDsp={handleDeactivateDsp}
-                />
-              </div>
-            </div>
-          )}
+          {/* ═══════════════════════ MORE TAB ═══════════════════════════════ */}
+          {activeTab === 'more' && (
+            <div className="flex flex-col pt-6 pb-4">
+              <p className="text-[28px] font-semibold text-white mb-6 px-5" style={{ letterSpacing: '-0.5px' }}>More</p>
 
-          {/* ── SETTINGS TAB ── */}
-          {activeTab === 'settings' && (
-            <div className="flex flex-col gap-3 px-5 pt-3 pb-4">
-              <div className="mb-1">
-                <h3 className="text-sm font-extrabold text-white uppercase tracking-wider">Settings</h3>
-                <p className="text-[9px] uppercase tracking-wider font-bold mt-0.5" style={{ color: 'rgba(255,255,255,0.3)' }}>Device & system configuration</p>
-              </div>
-
-              {/* Spotify Auth */}
-              <div className="rounded-2xl p-4 flex flex-col gap-3" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}>
-                <div className="flex justify-between items-center">
-                  <span className="text-[10px] uppercase tracking-wider font-bold" style={{ color: 'rgba(255,255,255,0.5)' }}>Spotify</span>
-                  {token
-                    ? <span className="text-[8px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider" style={{ background: 'rgba(16,185,129,0.1)', color: '#34d399', border: '1px solid rgba(16,185,129,0.2)' }}>Authorized</span>
-                    : <span className="text-[8px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider animate-pulse" style={{ background: 'rgba(239,68,68,0.1)', color: '#f87171', border: '1px solid rgba(239,68,68,0.2)' }}>Required</span>}
-                </div>
-                {!token ? (
-                  <a href="/auth/spotify/login?from=remote"
-                    className="w-full py-3 rounded-xl flex items-center justify-center gap-2 text-xs text-black font-extrabold uppercase tracking-wider active:scale-95 transition-all cursor-pointer"
-                    style={{ background: '#1ed760' }}>
-                    <svg viewBox="0 0 24 24" className="h-4 w-4 fill-black shrink-0"><path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm4.586 14.424a.622.622 0 01-.857.207c-2.348-1.435-5.304-1.76-8.785-.964a.622.622 0 01-.277-1.215c3.809-.87 7.077-.496 9.712 1.115a.622.622 0 01.207.857zm1.223-2.722a.779.779 0 01-1.07.257c-2.687-1.652-6.785-2.131-9.965-1.166a.78.78 0 01-.973-.519.781.781 0 01.519-.972c3.632-1.102 8.147-.568 11.233 1.33a.779.779 0 01.256 1.07zm.105-2.835C14.692 8.95 9.375 8.775 6.297 9.71a.935.935 0 11-.543-1.79c3.533-1.072 9.404-.866 13.115 1.338a.936.936 0 01-.955 1.609z"/></svg>
-                    Login with Spotify
-                  </a>
-                ) : (
-                  <button onClick={async () => { try { await fetch('/auth/spotify/logout', { method: 'POST' }); } catch { toast.error('Logout failed'); } }}
-                    className="w-full py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider active:scale-95 transition-all cursor-pointer"
-                    style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.15)', color: '#f87171' }}>
-                    Disconnect Spotify
-                  </button>
+              {/* Sound */}
+              <Section title="Sound">
+                <Row label={`Equalizer · ${eqPreset}`} icon={<Sliders className="h-4 w-4" style={{ color: 'var(--theme-color)' }} />}
+                  onPress={() => setShowEq(v => !v)} chevron={false}
+                  value={showEq ? '▲' : '▼'} />
+                {showEq && (
+                  <div className="px-0 py-1" style={{ minHeight: 380 }}>
+                    <EqualizerControl
+                      currentPreset={eqPreset} onPresetChange={handleEqPresetChange}
+                      bands={eqBands} onBandChange={handleBandChange}
+                      saturation={eqSaturation} onSaturationChange={handleSaturationChange}
+                      noiseFloor={eqNoiseFloor} onNoiseFloorChange={handleNoiseFloorChange}
+                      preAmp={eqPreAmp} onPreAmpChange={handlePreAmpChange}
+                      dspActive={dspActive} onDeactivateDsp={handleDeactivateDsp}
+                    />
+                  </div>
                 )}
-                <p className="text-[9px] leading-relaxed" style={{ color: 'rgba(255,255,255,0.25)' }}>
-                  To pair, select <strong className="text-white/50">"Resonance Connect"</strong> from your Spotify app on this network.
-                </p>
-              </div>
+                <Row label="Room Calibration" icon={<Cpu className="h-4 w-4" style={{ color: '#ff9f0a' }} />}
+                  value={dspActive ? 'Active' : 'Off'}
+                  onPress={() => setIsDspWizardOpen(true)} />
+              </Section>
+
+              {/* Display */}
+              <Section title="Display">
+                <Row label="Theme & Appearance" icon={<Palette className="h-4 w-4" style={{ color: '#bf5af2' }} />}
+                  onPress={() => setIsThemeSettingsOpen(true)} />
+                <Row label="Kiosk Standby" icon={<Power className="h-4 w-4" style={{ color: standby ? S.red : S.t2 }} />}
+                  value={standby ? 'On' : 'Off'}
+                  onPress={() => handleToggleStandby(!standby)} chevron={false} />
+              </Section>
+
+              {/* Spotify */}
+              <Section title="Spotify">
+                {!token ? (
+                  <div className="px-4 py-4">
+                    <a href="/auth/spotify/login?from=remote"
+                      className="w-full py-3.5 rounded-full flex items-center justify-center gap-2 text-[15px] font-semibold text-black active:scale-95 transition-all"
+                      style={{ background: '#1ed760', display: 'flex', fontFamily: S.font }}>
+                      <svg viewBox="0 0 24 24" className="h-5 w-5 fill-black shrink-0"><path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm4.586 14.424a.622.622 0 01-.857.207c-2.348-1.435-5.304-1.76-8.785-.964a.622.622 0 01-.277-1.215c3.809-.87 7.077-.496 9.712 1.115a.622.622 0 01.207.857zm1.223-2.722a.779.779 0 01-1.07.257c-2.687-1.652-6.785-2.131-9.965-1.166a.78.78 0 01-.973-.519.781.781 0 01.519-.972c3.632-1.102 8.147-.568 11.233 1.33a.779.779 0 01.256 1.07zm.105-2.835C14.692 8.95 9.375 8.775 6.297 9.71a.935.935 0 11-.543-1.79c3.533-1.072 9.404-.866 13.115 1.338a.936.936 0 01-.955 1.609z"/></svg>
+                      Connect with Spotify
+                    </a>
+                  </div>
+                ) : (
+                  <>
+                    <Row label="Connected" value="✓" chevron={false} icon={
+                      <svg viewBox="0 0 24 24" className="h-4 w-4" style={{ fill: '#1ed760' }}><path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm4.586 14.424a.622.622 0 01-.857.207c-2.348-1.435-5.304-1.76-8.785-.964a.622.622 0 01-.277-1.215c3.809-.87 7.077-.496 9.712 1.115a.622.622 0 01.207.857zm1.223-2.722a.779.779 0 01-1.07.257c-2.687-1.652-6.785-2.131-9.965-1.166a.78.78 0 01-.973-.519.781.781 0 01.519-.972c3.632-1.102 8.147-.568 11.233 1.33a.779.779 0 01.256 1.07zm.105-2.835C14.692 8.95 9.375 8.775 6.297 9.71a.935.935 0 11-.543-1.79c3.533-1.072 9.404-.866 13.115 1.338a.936.936 0 01-.955 1.609z"/></svg>
+                    } onPress={() => {}} />
+                    <Row label="Disconnect" destructive onPress={async () => { try { await fetch('/auth/spotify/logout', { method: 'POST' }); } catch { toast.error('Failed'); } }} />
+                  </>
+                )}
+              </Section>
 
               {/* Cast devices */}
-              <div className="rounded-2xl p-4 flex flex-col gap-3" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}>
-                <div className="flex justify-between items-center">
-                  <span className="text-[10px] uppercase tracking-wider font-bold" style={{ color: 'rgba(255,255,255,0.5)' }}>Cast Devices</span>
-                  <span className="text-[8px] px-2 py-0.5 rounded-full" style={{ background: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.4)', border: '1px solid rgba(255,255,255,0.08)' }}>{devices.length} found</span>
-                </div>
-                <div className="flex flex-col gap-1.5 max-h-36 overflow-y-auto custom-scrollbar">
-                  {devices.length > 0 ? devices.map(d => (
-                    <button key={d.id} onClick={() => handleCast(d.id)}
-                      className="w-full p-2.5 rounded-xl flex items-center justify-between text-left transition-all active:scale-98 cursor-pointer"
-                      style={d.is_active
-                        ? { background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.15)' }
-                        : { background: 'transparent', border: '1px solid transparent' }}>
-                      <div className="flex items-center gap-2">
-                        <Laptop className="h-3.5 w-3.5 shrink-0" style={{ color: d.is_active ? 'var(--theme-color)' : 'rgba(255,255,255,0.3)' }} />
-                        <span className="text-[11px] truncate max-w-[160px]" style={{ color: d.is_active ? 'white' : 'rgba(255,255,255,0.45)' }}>{d.name}</span>
-                      </div>
-                      <span className="text-[8px] uppercase tracking-wider" style={{ color: d.is_active ? 'var(--theme-color)' : 'rgba(255,255,255,0.25)' }}>
-                        {d.is_active ? 'Active' : 'Cast →'}
-                      </span>
-                    </button>
-                  )) : (
-                    <p className="text-[10px] text-center py-2 italic" style={{ color: 'rgba(255,255,255,0.2)' }}>No devices found</p>
-                  )}
-                </div>
-              </div>
+              {devices.length > 0 && (
+                <Section title={`Cast · ${devices.length} Devices`}>
+                  {devices.map(d => (
+                    <Row key={d.id} label={d.name} value={d.is_active ? 'Active' : ''}
+                      icon={<Laptop className="h-4 w-4" style={{ color: d.is_active ? 'var(--theme-color)' : S.t2 }} />}
+                      onPress={() => { if (!token) return; api.transferPlayback(token, d.id).then(() => { toast.success('Output transferred'); setTimeout(fetchDevices, 800); requestWSStateSync(); }).catch(e => toast.error(e.message)); }} />
+                  ))}
+                </Section>
+              )}
 
-              {/* Appearance */}
-              <div className="rounded-2xl p-4 flex flex-col gap-3" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}>
-                <span className="text-[10px] uppercase tracking-wider font-bold" style={{ color: 'rgba(255,255,255,0.5)' }}>Appearance</span>
-                <button onClick={() => setIsThemeSettingsOpen(true)}
-                  className="w-full py-3 rounded-xl font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer active:scale-95 transition-all border"
-                  style={{ background: 'rgba(255,255,255,0.05)', borderColor: 'rgba(255,255,255,0.09)', color: 'rgba(255,255,255,0.7)' }}>
-                  <Palette className="h-4 w-4" style={{ color: 'var(--theme-color)' }} />
-                  Theme & Display
-                </button>
-              </div>
-
-              {/* OTA updates */}
-              <div className="rounded-2xl p-4 flex flex-col gap-3" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}>
-                <div className="flex justify-between items-center">
-                  <span className="text-[10px] uppercase tracking-wider font-bold" style={{ color: 'rgba(255,255,255,0.5)' }}>System Updates</span>
-                  <span className="text-[8px] px-2 py-0.5 rounded-full" style={{ background: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.4)', border: '1px solid rgba(255,255,255,0.08)' }}>OTA</span>
-                </div>
-                {updateStatus === null && (
-                  <button onClick={checkUpdates} className="w-full py-2.5 rounded-xl font-bold text-xs uppercase tracking-wider transition-all active:scale-95 cursor-pointer"
-                    style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.09)', color: 'rgba(255,255,255,0.5)' }}>
-                    Check for Updates
-                  </button>
-                )}
-                {updateStatus === 'checking' && (
-                  <div className="flex justify-center items-center gap-2 py-2 text-xs font-bold uppercase tracking-wider" style={{ color: 'rgba(255,255,255,0.4)' }}>
-                    <RefreshCw className="h-4 w-4 animate-spin" /> Checking...
-                  </div>
-                )}
-                {updateStatus === 'no-update' && (
-                  <div className="flex flex-col gap-2">
-                    <div className="p-2.5 rounded-xl text-center text-[10px] font-mono" style={{ background: 'rgba(16,185,129,0.07)', border: '1px solid rgba(16,185,129,0.15)', color: '#34d399' }}>✓ System up to date</div>
-                    <button onClick={checkUpdates} className="text-xs font-bold uppercase tracking-wider py-1 cursor-pointer transition-all" style={{ color: 'rgba(255,255,255,0.25)' }}>Check Again</button>
-                  </div>
-                )}
-                {updateStatus === 'available' && (
-                  <div className="flex flex-col gap-2">
-                    <div className="p-2.5 rounded-xl text-center text-[10px] font-mono" style={{ background: 'rgba(245,158,11,0.07)', border: '1px solid rgba(245,158,11,0.15)', color: '#fbbf24' }}>⚠ Update Available</div>
-                    <button onClick={triggerOtaUpdate} className="w-full py-3 rounded-xl font-extrabold text-xs uppercase tracking-wider active:scale-95 transition-all cursor-pointer text-black" style={{ background: '#f59e0b' }}>
-                      Install Update
-                    </button>
-                  </div>
-                )}
+              {/* System */}
+              <Section title="System">
+                <Row label="Check for Updates" icon={<RefreshCw className={`h-4 w-4 ${updateStatus === 'checking' ? 'animate-spin' : ''}`} style={{ color: '#30d158' }} />}
+                  value={updateStatus === 'no-update' ? 'Up to date' : updateStatus === 'available' ? 'Available!' : updateStatus === 'updating' ? `${otaPercent}%` : ''}
+                  onPress={updateStatus === 'available' ? triggerOtaUpdate : checkUpdates}
+                  chevron={updateStatus === 'available'} />
                 {updateStatus === 'updating' && (
-                  <div className="flex flex-col gap-3 p-2.5 rounded-xl" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}>
-                    <div className="flex justify-between items-center text-[10px] font-bold uppercase" style={{ color: 'rgba(255,255,255,0.6)' }}>
-                      <span>Installing</span><span style={{ color: 'var(--theme-color)' }}>{otaPercent}%</span>
+                  <div className="px-4 pb-4">
+                    <div className="w-full h-1 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.1)' }}>
+                      <div className="h-full rounded-full" style={{ width: `${otaPercent}%`, background: S.green, transition: 'width 0.3s' }} />
                     </div>
-                    <div className="w-full h-1 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.08)' }}>
-                      <div className="h-full rounded-full transition-all" style={{ width: `${otaPercent}%`, background: 'var(--theme-color)' }} />
-                    </div>
-                    <div className="h-20 overflow-y-auto text-[8px] font-mono flex flex-col gap-0.5 custom-scrollbar" style={{ color: 'rgba(255,255,255,0.35)' }}>
-                      {otaProgress.map((line, i) => <div key={i}>{line}</div>)}
+                    <div className="mt-2 max-h-16 overflow-y-auto custom-scrollbar">
+                      {otaProgress.map((l, i) => <p key={i} className="text-[11px] font-mono" style={{ color: S.t3 }}>{l}</p>)}
                     </div>
                   </div>
                 )}
-                {updateStatus === 'error' && (
-                  <div className="flex flex-col gap-2">
-                    <div className="p-2.5 rounded-xl text-center text-[10px] font-mono" style={{ background: 'rgba(239,68,68,0.07)', border: '1px solid rgba(239,68,68,0.15)', color: '#f87171' }}>Update failed</div>
-                    <button onClick={checkUpdates} className="w-full py-2 rounded-xl font-bold text-xs uppercase tracking-wider active:scale-95 transition-all cursor-pointer"
-                      style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.09)', color: 'rgba(255,255,255,0.5)' }}>
-                      Retry
-                    </button>
-                  </div>
-                )}
-              </div>
+              </Section>
 
-              {/* Logout */}
-              <button onClick={handleRemoteLogout}
-                className="w-full py-3 rounded-2xl font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer active:scale-95 transition-all mt-1"
-                style={{ background: 'rgba(239,68,68,0.07)', border: '1px solid rgba(239,68,68,0.13)', color: '#f87171' }}>
-                <LogOut className="h-4 w-4" />
-                De-authorize Remote
-              </button>
+              {/* Account */}
+              <Section>
+                <Row label="Sign Out" destructive chevron={false}
+                  icon={<LogOut className="h-4 w-4" style={{ color: S.red }} />}
+                  onPress={() => { eraseCookie('remote_auth'); setIsAuthenticated(false); setActiveTab('player'); }} />
+              </Section>
             </div>
           )}
-        </main>
+        </div>
 
-        {/* ── footer: volume + nav ── */}
-        <footer className="relative z-10 flex flex-col gap-2 px-4 pt-2 pb-3 shrink-0">
-          {/* Volume */}
-          <div className="flex items-center gap-3 rounded-2xl px-4 py-3"
-            style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)' }}>
-            <button onClick={handleMuteToggle} disabled={spotify ? !token : false}
-              className="transition-all active:scale-90 cursor-pointer disabled:opacity-25"
-              style={{ color: 'rgba(255,255,255,0.4)' }}>
-              {isMuted || volume === 0 ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
-            </button>
-            <div className="relative flex-grow h-1.5 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.08)' }}>
-              <div className="absolute inset-y-0 left-0 rounded-full"
-                style={{ width: `${isMuted ? 0 : volume}%`, background: 'var(--theme-color)', transition: 'none' }} />
-              <input type="range" min="0" max="100" value={isMuted ? 0 : volume}
-                onChange={handleVolumeChange}
-                disabled={spotify ? !token : false}
-                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-default" />
-            </div>
-            <span className="text-[10px] font-mono w-7 text-right" style={{ color: 'rgba(255,255,255,0.3)' }}>
-              {isMuted ? 0 : volume}
-            </span>
-          </div>
-
-          {/* Bottom nav */}
-          <div className="flex items-center justify-around rounded-2xl px-1 py-1"
-            style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.07)', backdropFilter: 'blur(20px)' }}>
+        {/* ── Bottom Tab Bar ── */}
+        <div className="relative z-10 shrink-0" style={{ height: NAV_H, paddingBottom: 'env(safe-area-inset-bottom)' }}>
+          <div className="absolute inset-0" style={{ background: 'rgba(0,0,0,0.82)', backdropFilter: 'saturate(180%) blur(20px)', borderTop: '0.5px solid rgba(255,255,255,0.12)' }} />
+          <div className="relative flex items-start justify-around pt-2 px-2">
             {[
-              { id: 'player',   Icon: Music,    label: 'Player'   },
-              { id: 'search',   Icon: Search,   label: 'Search'   },
-              { id: 'radio',    Icon: Radio,    label: 'Radio'    },
-              { id: 'eq',       Icon: Sliders,  label: 'EQ'       },
-              { id: 'settings', Icon: Settings, label: 'Settings' },
-            ].map(({ id, Icon, label }) => (
-              <button key={id} onClick={() => setActiveTab(id)}
-                className="flex flex-col items-center gap-1 py-2 flex-1 cursor-pointer transition-all active:scale-90"
-                style={activeTab === id ? { color: 'var(--theme-color)' } : { color: 'rgba(255,255,255,0.25)' }}>
-                <Icon className="h-4 w-4" />
-                <span className="text-[7px] uppercase tracking-wider font-extrabold">{label}</span>
-                {activeTab === id && (
-                  <span className="w-3 h-0.5 rounded-full" style={{ background: 'var(--theme-color)' }} />
-                )}
-              </button>
-            ))}
+              { id: 'player', Icon: Music,          label: 'Now Playing' },
+              { id: 'search', Icon: Search,          label: 'Search'      },
+              { id: 'radio',  Icon: Radio,           label: 'Radio'       },
+              { id: 'more',   Icon: MoreHorizontal,  label: 'More'        },
+            ].map(({ id, Icon, label }) => {
+              const active = activeTab === id;
+              return (
+                <button key={id} onClick={() => setActiveTab(id)}
+                  className="flex flex-col items-center gap-1 py-1 flex-1 cursor-pointer transition-all active:scale-90"
+                  style={{ color: active ? 'var(--theme-color)' : S.t3 }}>
+                  <Icon className="h-6 w-6" strokeWidth={active ? 2 : 1.5} />
+                  <span className="text-[10px] font-medium" style={{ fontFamily: S.font, letterSpacing: '-0.05px' }}>{label}</span>
+                </button>
+              );
+            })}
           </div>
-        </footer>
+        </div>
       </div>
 
       {/* ── overlays ── */}
@@ -956,18 +786,18 @@ export default function RemoteControl() {
         <div className="fixed inset-0 bg-[#050d1c] z-[9999] flex flex-col">
           <DspWizard
             onClose={() => { setIsDspWizardOpen(false); api.getDspCalibration().then(c => setDspActive(c && c[0] === 'dsp')).catch(() => {}); }}
-            onCalibrationComplete={(active) => setDspActive(active)}
+            onCalibrationComplete={active => setDspActive(active)}
           />
         </div>
       )}
       {isThemeSettingsOpen && (
-        <div className="fixed inset-0 bg-[#050d1c] z-[9999] flex flex-col p-4">
-          <div className="flex justify-between items-center mb-4 shrink-0">
-            <span className="text-[10px] uppercase tracking-wider font-bold" style={{ color: 'rgba(255,255,255,0.4)' }}>Theme Settings</span>
+        <div className="fixed inset-0 z-[9999] flex flex-col p-5" style={{ background: '#000', fontFamily: S.font }}>
+          <div className="flex justify-between items-center mb-5 shrink-0">
+            <p className="text-[22px] font-semibold text-white" style={{ letterSpacing: '-0.3px' }}>Theme</p>
             <button onClick={() => setIsThemeSettingsOpen(false)}
-              className="text-[10px] font-extrabold px-3.5 py-1.5 rounded-lg cursor-pointer active:scale-95 transition-all"
-              style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.5)' }}>
-              CLOSE ✕
+              className="px-4 py-2 rounded-full text-[15px] font-semibold active:scale-95 transition-all cursor-pointer"
+              style={{ background: 'rgba(255,255,255,0.1)', color: 'var(--theme-color)' }}>
+              Done
             </button>
           </div>
           <div className="flex-grow min-h-0">
