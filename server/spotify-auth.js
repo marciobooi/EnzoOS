@@ -1,9 +1,31 @@
 import express from 'express';
 import fetch from 'node-fetch';
 import crypto from 'crypto';
+import os from 'os';
 import { getSetting, setSetting, deleteSetting } from './db.js';
 
 const router = express.Router();
+
+/**
+ * Resolves .local mDNS hostnames to the server's actual LAN IP.
+ * Spotify Dashboard doesn't accept .local domains as redirect URIs,
+ * so we need to swap them out for the real IP address.
+ */
+function resolveHost(host) {
+  const [hostname, port] = host.split(':');
+  if (hostname.endsWith('.local') || hostname.endsWith('.local.')) {
+    // Find the first non-internal IPv4 address
+    const interfaces = os.networkInterfaces();
+    for (const iface of Object.values(interfaces)) {
+      for (const addr of iface) {
+        if (addr.family === 'IPv4' && !addr.internal) {
+          return port ? `${addr.address}:${port}` : addr.address;
+        }
+      }
+    }
+  }
+  return host;
+}
 
 // In-memory token state
 let tokenState = {
@@ -132,10 +154,10 @@ router.get('/login', (req, res) => {
   }
 
   // Always derive the redirect URI from the request's Host header.
-  // This makes login work regardless of how the user reaches the server
-  // (IP address, resonance.local, localhost, etc.)
+  // If the user accesses via a .local mDNS hostname, resolve it to the real
+  // LAN IP since Spotify Dashboard doesn't accept .local domains.
   const protocol = req.headers['x-forwarded-proto'] || req.protocol || 'http';
-  const host = req.get('host');
+  const host = resolveHost(req.get('host'));
   const redirectUri = `${protocol}://${host}/auth/spotify/callback`;
   const isFromRemote = req.query.from === 'remote';
 
@@ -183,7 +205,7 @@ router.get('/callback', async (req, res) => {
   const isFromRemote = stateValue.endsWith('_remote') || pendingWasRemote;
   const redirectBase = isFromRemote ? '/remote' : '/';
   const protocol = req.headers['x-forwarded-proto'] || req.protocol || 'http';
-  const host = req.get('host');
+  const host = resolveHost(req.get('host'));
   const fallbackRedirectUri = `${protocol}://${host}/auth/spotify/callback`;
   const redirectUri = pendingOAuth?.redirectUri || fallbackRedirectUri;
 

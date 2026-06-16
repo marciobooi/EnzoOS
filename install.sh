@@ -431,6 +431,12 @@ echo -e "${YELLOW}Installing npm dependencies (running as $TARGET_USER)...${NC}"
 sudo -u $TARGET_USER npm install
 sudo -u $TARGET_USER npm install yaml
 
+echo -e "${YELLOW}Removing old build artifacts...${NC}"
+if [ -d "$PROJECT_DIR/dist" ]; then
+  rm -rf "$PROJECT_DIR/dist"
+  echo -e "  Old dist/ removed."
+fi
+
 echo -e "${YELLOW}Compiling production assets (running as $TARGET_USER)...${NC}"
 sudo -u $TARGET_USER npm run build
 
