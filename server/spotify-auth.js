@@ -5,11 +5,11 @@ import { getSetting, setSetting, deleteSetting } from './db.js';
 
 const router = express.Router();
 
-// Use SPOTIFY_REDIRECT_HOST env var when set (needed when accessed via mDNS like
-// resonance.local, which Spotify rejects). Falls back to the request host.
+// OAuth always runs on the kiosk (127.0.0.1), never from a remote browser.
+// Spotify accepts HTTP only for 127.0.0.1/localhost.
 function getOAuthRedirectHost(reqHost) {
-  if (process.env.SPOTIFY_REDIRECT_HOST) return process.env.SPOTIFY_REDIRECT_HOST;
-  return reqHost || `127.0.0.1:5000`;
+  const port = (reqHost || '').split(':')[1] || '5000';
+  return `127.0.0.1:${port}`;
 }
 
 // In-memory token state
