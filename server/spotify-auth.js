@@ -5,16 +5,10 @@ import { getSetting, setSetting, deleteSetting } from './db.js';
 
 const router = express.Router();
 
-/**
- * Returns 127.0.0.1 for Spotify OAuth redirect URIs.
- * Spotify rejects HTTP redirect URIs for non-localhost hosts ("Insecure").
- * Only http://127.0.0.1 and http://localhost are allowed without HTTPS.
- * The port is preserved from the original host.
- */
+// Return the host as-is so callbacks reach the correct address.
+// Both 127.0.0.1 and 192.168.178.199 are registered in the Spotify dashboard.
 function getOAuthRedirectHost(host) {
-  const parts = host.split(':');
-  const port = parts[1] || '5000';
-  return `127.0.0.1:${port}`;
+  return host || `127.0.0.1:5000`;
 }
 
 // In-memory token state
