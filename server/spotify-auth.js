@@ -1,30 +1,20 @@
 import express from 'express';
 import fetch from 'node-fetch';
 import crypto from 'crypto';
-import os from 'os';
 import { getSetting, setSetting, deleteSetting } from './db.js';
 
 const router = express.Router();
 
 /**
- * Resolves .local mDNS hostnames to the server's actual LAN IP.
- * Spotify Dashboard doesn't accept .local domains as redirect URIs,
- * so we need to swap them out for the real IP address.
+ * Returns 127.0.0.1 for Spotify OAuth redirect URIs.
+ * Spotify rejects HTTP redirect URIs for non-localhost hosts ("Insecure").
+ * Only http://127.0.0.1 and http://localhost are allowed without HTTPS.
+ * The port is preserved from the original host.
  */
-function resolveHost(host) {
-  const [hostname, port] = host.split(':');
-  if (hostname.endsWith('.local') || hostname.endsWith('.local.')) {
-    // Find the first non-internal IPv4 address
-    const interfaces = os.networkInterfaces();
-    for (const iface of Object.values(interfaces)) {
-      for (const addr of iface) {
-        if (addr.family === 'IPv4' && !addr.internal) {
-          return port ? `${addr.address}:${port}` : addr.address;
-        }
-      }
-    }
-  }
-  return host;
+function getOAuthRedirectHost(host) {
+  const parts = host.split(':');
+  const port = parts[1] || '5000';
+  return `127.0.0.1:${port}`;
 }
 
 // In-memory token state
@@ -153,12 +143,10 @@ router.get('/login', (req, res) => {
     `);
   }
 
-  // Always derive the redirect URI from the request's Host header.
-  // If the user accesses via a .local mDNS hostname, resolve it to the real
-  // LAN IP since Spotify Dashboard doesn't accept .local domains.
-  const protocol = req.headers['x-forwarded-proto'] || req.protocol || 'http';
-  const host = resolveHost(req.get('host'));
-  const redirectUri = `${protocol}://${host}/auth/spotify/callback`;
+  // Always use 127.0.0.1 for the redirect URI.
+  // Spotify rejects HTTP for non-localhost hosts ("Insecure" error).
+  const host = getOAuthRedirectHost(req.get('host'));
+  const redirectUri = `http://${host}/auth/spotify/callback`;
   const isFromRemote = req.query.from === 'remote';
 
   const scopes = [
@@ -204,9 +192,8 @@ router.get('/callback', async (req, res) => {
   const pendingWasRemote = !!pendingOAuth?.isFromRemote;
   const isFromRemote = stateValue.endsWith('_remote') || pendingWasRemote;
   const redirectBase = isFromRemote ? '/remote' : '/';
-  const protocol = req.headers['x-forwarded-proto'] || req.protocol || 'http';
-  const host = resolveHost(req.get('host'));
-  const fallbackRedirectUri = `${protocol}://${host}/auth/spotify/callback`;
+  const host = getOAuthRedirectHost(req.get('host'));
+  const fallbackRedirectUri = `http://${host}/auth/spotify/callback`;
   const redirectUri = pendingOAuth?.redirectUri || fallbackRedirectUri;
 
   if (error) {

@@ -55,6 +55,13 @@ if ! npm install; then
   exit 1
 fi
 
+# Clean old build artifacts
+echo -e "${YELLOW}Removing old build artifacts...${NC}"
+if [ -d "$PROJECT_DIR/dist" ]; then
+  rm -rf "$PROJECT_DIR/dist"
+  echo -e "  Old dist/ removed."
+fi
+
 # Rebuild frontend bundles
 echo -e "${YELLOW}Rebuilding frontend bundle...${NC}"
 echo "[PROGRESS: 80]"
