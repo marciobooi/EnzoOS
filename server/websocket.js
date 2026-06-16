@@ -263,16 +263,30 @@ export function setupWebSocket(server, app, isLocalIP) {
         if (type === 'SET_SOURCE') {
           cachedSourceState = payload;
           setSetting('active_source', payload.source || (payload.spotify ? 'spotify' : 'local'));
-          
+
           if (payload.spotify || payload.source === 'spotify') {
+            // Switching to Spotify: stop MPD/radio
             try {
               const { exec } = await import('child_process');
               exec('mpc stop');
             } catch (err) {
               console.error('[SET_SOURCE] Failed to stop mpc:', err);
             }
+          } else {
+            // Switching away from Spotify: pause it so audio doesn't bleed through
+            try {
+              const token = await getValidAccessToken();
+              if (token) {
+                fetch('https://api.spotify.com/v1/me/player/pause', {
+                  method: 'PUT',
+                  headers: { 'Authorization': `Bearer ${token}` }
+                }).catch(() => {});
+              }
+            } catch (err) {
+              console.error('[SET_SOURCE] Failed to pause Spotify:', err);
+            }
           }
-          
+
           broadcast({ type: 'SET_SOURCE', payload }, ws);
         }
 

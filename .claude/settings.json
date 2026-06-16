@@ -1,8 +1,17 @@
 {
   "permissions": {
     "allow": [
-      "Bash(git commit -m ' *)",
-      "Bash(python -c ' *)"
+      "Bash(*)",
+      "PowerShell(*)",
+      "Write(*)",
+      "Edit(*)",
+      "Read(*)",
+      "Glob(*)",
+      "Grep(*)",
+      "Agent(*)",
+      "WebFetch(*)",
+      "WebSearch(*)",
+      "TodoWrite(*)"
     ]
   }
 }
