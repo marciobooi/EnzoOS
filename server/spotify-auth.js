@@ -5,10 +5,11 @@ import { getSetting, setSetting, deleteSetting } from './db.js';
 
 const router = express.Router();
 
-// Return the host as-is so callbacks reach the correct address.
-// Both 127.0.0.1 and 192.168.178.199 are registered in the Spotify dashboard.
-function getOAuthRedirectHost(host) {
-  return host || `127.0.0.1:5000`;
+// Use SPOTIFY_REDIRECT_HOST env var when set (needed when accessed via mDNS like
+// resonance.local, which Spotify rejects). Falls back to the request host.
+function getOAuthRedirectHost(reqHost) {
+  if (process.env.SPOTIFY_REDIRECT_HOST) return process.env.SPOTIFY_REDIRECT_HOST;
+  return reqHost || `127.0.0.1:5000`;
 }
 
 // In-memory token state
