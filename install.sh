@@ -434,18 +434,51 @@ cat > "$PROJECT_DIR/.env.example" <<EXEOF
 # ─────────────────────────────────────────────
 # Spotify Developer App Credentials
 # Create a free app at: https://developer.spotify.com/dashboard
-# Register the following Redirect URI in the Spotify Dashboard:
-#   http://127.0.0.1:5000/auth/spotify/callback
-# OAuth always runs through the kiosk (127.0.0.1). No other redirect URIs needed.
+#
+# Register BOTH redirect URIs in the Spotify Dashboard:
+#   http://127.0.0.1:5000/auth/spotify/callback     ← kiosk (HTTP ok for localhost)
+#   https://resonance.local:5001/auth/spotify/callback  ← remote (HTTPS required)
+#
+# Remote users must visit https://resonance.local:5001/remote (accept the cert warning once).
 # ─────────────────────────────────────────────
 SPOTIFY_CLIENT_ID=your_spotify_client_id_here
 SPOTIFY_CLIENT_SECRET=your_spotify_client_secret_here
 
-# Server port (default: 5000)
+# Server port (default: 5000). HTTPS runs on HTTPS_PORT (default: 5001).
 PORT=5000
+HTTPS_PORT=5001
 EXEOF
 chown $TARGET_USER:$TARGET_USER "$PROJECT_DIR/.env.example"
 echo -e "${GREEN}.env and .env.example written.${NC}"
+
+# Generate self-signed TLS certificate for HTTPS remote access (port 5001)
+# Spotify requires HTTPS for any redirect URI that isn't 127.0.0.1/localhost.
+CERTS_DIR="$PROJECT_DIR/certs"
+mkdir -p "$CERTS_DIR"
+if [ ! -f "$CERTS_DIR/cert.pem" ] || [ ! -f "$CERTS_DIR/key.pem" ]; then
+  echo -e "${YELLOW}Generating self-signed TLS certificate for HTTPS remote access...${NC}"
+  cat > /tmp/resonance_ssl.cnf <<SSLEOF
+[req]
+distinguished_name = req_distinguished_name
+x509_extensions = v3_req
+prompt = no
+[req_distinguished_name]
+CN = resonance.local
+[v3_req]
+subjectAltName = DNS:resonance.local,IP:${LOCAL_IP}
+SSLEOF
+  openssl req -x509 -newkey rsa:2048 \
+    -keyout "$CERTS_DIR/key.pem" \
+    -out   "$CERTS_DIR/cert.pem" \
+    -days 3650 -nodes \
+    -config /tmp/resonance_ssl.cnf 2>/dev/null
+  rm -f /tmp/resonance_ssl.cnf
+  chown $TARGET_USER:$TARGET_USER "$CERTS_DIR/cert.pem" "$CERTS_DIR/key.pem"
+  chmod 600 "$CERTS_DIR/key.pem"
+  echo -e "${GREEN}TLS certificate generated: $CERTS_DIR/${NC}"
+else
+  echo -e "${YELLOW}TLS certificate already exists — skipping generation.${NC}"
+fi
 
 # Build app under target user context (prevents folder permission bugs)
 cd "$PROJECT_DIR"

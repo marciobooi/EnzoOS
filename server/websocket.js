@@ -316,13 +316,6 @@ export function setupWebSocket(server, app, isLocalIP) {
           broadcast({ type: 'SET_REMOTE_ACCESS', payload }, ws);
         }
 
-        if (type === 'TRIGGER_SPOTIFY_AUTH') {
-          // Remote is asking the kiosk to open the Spotify OAuth flow.
-          // The kiosk browser navigates to 127.0.0.1 which Spotify accepts over HTTP.
-          console.log('[Resonance WS] Spotify auth requested by remote — telling kiosk to navigate.');
-          broadcast({ type: 'KIOSK_NAVIGATE', payload: { url: 'http://127.0.0.1:5000/auth/spotify/login' } });
-        }
-
         if (type === 'CLEAR_TOKEN') {
           console.log('[Resonance WS] Token clear received from client.');
           broadcast({ type: 'CLEAR_TOKEN' }, ws);

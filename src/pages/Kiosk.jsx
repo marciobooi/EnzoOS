@@ -327,9 +327,6 @@ export default function Kiosk() {
       window.dispatchEvent(new CustomEvent('resonance-audio-levels', { detail: payload }));
     },
     setVisualizerMode,
-    onKioskNavigate: (url) => {
-      window.location.href = url;
-    },
   });
 
   const checkUpdates = async () => {

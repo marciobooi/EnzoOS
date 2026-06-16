@@ -5,11 +5,15 @@ import { getSetting, setSetting, deleteSetting } from './db.js';
 
 const router = express.Router();
 
-// OAuth always runs on the kiosk (127.0.0.1), never from a remote browser.
-// Spotify accepts HTTP only for 127.0.0.1/localhost.
-function getOAuthRedirectHost(reqHost) {
-  const port = (reqHost || '').split(':')[1] || '5000';
-  return `127.0.0.1:${port}`;
+// Build the redirect URI for the current request.
+// HTTPS requests (remote browsers on LAN) can use any host — Spotify accepts them.
+// HTTP requests must use 127.0.0.1 (the only non-HTTPS host Spotify allows).
+function getRedirectUri(req) {
+  if (req.secure) {
+    return `https://${req.get('host')}/auth/spotify/callback`;
+  }
+  const port = (req.get('host') || '').split(':')[1] || '5000';
+  return `http://127.0.0.1:${port}/auth/spotify/callback`;
 }
 
 // In-memory token state
@@ -138,10 +142,7 @@ router.get('/login', (req, res) => {
     `);
   }
 
-  // Always use 127.0.0.1 for the redirect URI.
-  // Spotify rejects HTTP for non-localhost hosts ("Insecure" error).
-  const host = getOAuthRedirectHost(req.get('host'));
-  const redirectUri = `http://${host}/auth/spotify/callback`;
+  const redirectUri = getRedirectUri(req);
   const isFromRemote = req.query.from === 'remote';
 
   const scopes = [
@@ -187,8 +188,7 @@ router.get('/callback', async (req, res) => {
   const pendingWasRemote = !!pendingOAuth?.isFromRemote;
   const isFromRemote = stateValue.endsWith('_remote') || pendingWasRemote;
   const redirectBase = isFromRemote ? '/remote' : '/';
-  const host = getOAuthRedirectHost(req.get('host'));
-  const fallbackRedirectUri = `http://${host}/auth/spotify/callback`;
+  const fallbackRedirectUri = getRedirectUri(req);
   const redirectUri = pendingOAuth?.redirectUri || fallbackRedirectUri;
 
   if (error) {

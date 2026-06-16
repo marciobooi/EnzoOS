@@ -38,7 +38,6 @@ export function useResonanceWS({
     setRemoteAccessEnabled,
     onAudioLevels,
     setVisualizerMode,
-    onKioskNavigate,
   }) {
     const [isConnected, setIsConnected] = useState(false);
     const ws = useRef(null);
@@ -189,10 +188,6 @@ export function useResonanceWS({
               if (onAudioLevels) onAudioLevels(payload);
             }
 
-            if (type === 'KIOSK_NAVIGATE') {
-              if (onKioskNavigate) onKioskNavigate(payload.url);
-            }
-  
             if (type === 'CLEAR_TOKEN') {
               if (setToken) setToken('');
               if (setPlaybackState) setPlaybackState(null);
