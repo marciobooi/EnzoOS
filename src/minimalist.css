@@ -35,22 +35,18 @@ div[data-active-theme="minimalist"] .music-player-container {
 }
 
 div[data-active-theme="minimalist"] .music-player {
-  background-image: linear-gradient(to left, 
-      rgba(0, 0, 0, 0) 0%,
-    rgba(var(--extracted-rgb), 0.26) 35%, 
-    rgba(var(--extracted-rgb), 0.62) 60%, 
-    var(--deep) 100%),
-   var(--album-art-url); 
-  background-blend-mode: multiply;  
-  /* 1. Size the image to 67% width and 100% height */
-  background-position-y: 100%;
-  /* 2. Push the image to the right edge */
-  background-position: right center;  
-  /* 3. Stop the image from repeating on the left side */
-  background-repeat: no-repeat; 
-  background-size: 56% !important; 
-      border: none;
-    border-radius: 0;
+  background-image: linear-gradient(to left,
+      transparent 0%,
+    rgba(var(--extracted-rgb), 0.4) 32%,
+    rgba(var(--extracted-rgb), 0.88) 52%,
+    var(--deep) 68%),
+   var(--album-art-url);
+  background-blend-mode: normal;
+  background-position: right center;
+  background-repeat: no-repeat;
+  background-size: 56% !important;
+  border: none;
+  border-radius: 0;
 }
 
 /* 2-Column Grid Layout with Integrated Smooth Multi-Stop Gradient Background */

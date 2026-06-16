@@ -963,10 +963,10 @@ export default function Kiosk() {
             type="button"
             aria-label="Power on system"
           >
-            <div className="w-24 h-24 rounded-full border border-white/5 bg-white/[0.01] hover:bg-white/[0.03] hover:border-white/10 flex items-center justify-center transition-all duration-500 shadow-inner group-hover:scale-105">
-              <Power className="h-10 w-10 text-white/10 group-hover:text-white/30 transition-colors duration-500" />
+            <div className="w-24 h-24 rounded-full border border-white/20 bg-white/[0.04] hover:bg-white/[0.08] hover:border-white/35 flex items-center justify-center transition-all duration-500 shadow-inner group-hover:scale-105">
+              <Power className="h-10 w-10 text-white/40 group-hover:text-white/70 transition-colors duration-500" />
             </div>
-            <span className="text-[10px] uppercase tracking-[0.25em] text-white/5 group-hover:text-white/15 transition-colors duration-500 font-sans font-extrabold mt-1">
+            <span className="text-[10px] uppercase tracking-[0.25em] text-white/30 group-hover:text-white/55 transition-colors duration-500 font-sans font-extrabold mt-1">
               Tap to Wake
             </span>
           </button>
