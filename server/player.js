@@ -546,11 +546,12 @@ function generateCamillaConfig(answers, eqSettings, dacInfo) {
   // --- STAGE F: COMPILE THE PIPELINE MATRIX ---
   // CamillaDSP v2: Mixer uses 'name' (not 'mapping'), Filter uses individual
   // steps with 'name' (singular string) instead of a 'names' array.
+  // CamillaDSP v2: Mixer uses 'name' (not 'mapping'); Filter still uses 'names' array.
   config.pipeline.push({ type: "Mixer", name: "speaker_map" });
-  for (const f of leftPipeline)  config.pipeline.push({ type: "Filter", channel: 0, name: f });
-  for (const f of rightPipeline) config.pipeline.push({ type: "Filter", channel: 1, name: f });
+  config.pipeline.push({ type: "Filter", channel: 0, names: leftPipeline });
+  config.pipeline.push({ type: "Filter", channel: 1, names: rightPipeline });
   if (isSubwooferSetup) {
-    for (const f of subPipeline) config.pipeline.push({ type: "Filter", channel: 2, name: f });
+    config.pipeline.push({ type: "Filter", channel: 2, names: subPipeline });
   }
 
   return config;
