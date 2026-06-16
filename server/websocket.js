@@ -45,16 +45,16 @@ export const setHardwareBrightness = async (brightness) => {
     }
 
     const script = `/usr/local/bin/kiosk-brightness.sh ${Math.max(0, Math.min(100, Math.round(sanitized)))}`;
+    const x11Env = { ...process.env, DISPLAY: ':0', XAUTHORITY: '/home/pi/.Xauthority' };
 
-    // Run without sudo first. On many kiosk setups the script can execute as the app user.
-    exec(script, (err, stdout) => {
+    exec(script, { env: x11Env }, (err, stdout) => {
       if (!err) {
         console.log(`[Brightness] Successfully set hardware brightness to ${brightness}%:`, stdout.trim());
         return;
       }
 
       console.warn('[Brightness] Non-sudo call failed, retrying with sudo:', err.message);
-      exec(`sudo ${script}`, (sudoErr, sudoStdout) => {
+      exec(`sudo ${script}`, { env: x11Env }, (sudoErr, sudoStdout) => {
         if (sudoErr) {
           console.error('[Brightness] Failed to set hardware brightness:', sudoErr.message);
         } else {
