@@ -588,11 +588,18 @@ export default function RemoteControl() {
     }
   };
 
+  const wakeKiosk = () => {
+    if (ws.current && ws.current.readyState === WebSocket.OPEN) {
+      ws.current.send(JSON.stringify({ type: 'SET_STANDBY', payload: { enabled: false } }));
+    }
+  };
+
   const handlePlayPause = async () => {
     if (!spotify) {
       try {
         const isPaused = playbackState ? playbackState.paused : true;
         if (isPaused) {
+          wakeKiosk();
           await api.localPlay();
           setPlaybackState(prev => ({ ...prev, paused: false }));
         } else {
@@ -609,6 +616,7 @@ export default function RemoteControl() {
       if (isPlaying) {
         await api.pause(token);
       } else {
+        wakeKiosk();
         const targetId = activeDevice?.id || resonanceDevice?.id || null;
         await api.play(token, targetId);
       }
@@ -848,7 +856,7 @@ export default function RemoteControl() {
 
   if (!remoteAccessEnabled) {
     return (
-      <div className="w-screen h-screen bg-[#040612] text-zinc-100 flex flex-col items-center justify-center p-6 font-sans select-none">
+      <div className="w-screen h-dvh bg-[#040612] text-zinc-100 flex flex-col items-center justify-center p-6 font-sans select-none touch-manipulation">
         <div className="max-w-md w-full bg-white/[0.02] border border-white/10 rounded-3xl p-8 text-center flex flex-col items-center gap-6 shadow-2xl backdrop-blur-md">
           <div className="w-20 h-20 rounded-2xl bg-rose-500/10 border border-rose-500/20 flex items-center justify-center text-rose-500 animate-bounce">
             <Smartphone className="h-10 w-10" />
@@ -868,7 +876,7 @@ export default function RemoteControl() {
   if (!isAuthenticated) {
     return (
       <>
-        <div className="w-full min-h-screen text-zinc-800 font-sans flex flex-col items-center justify-center p-6 relative overflow-hidden select-none">
+        <div className="w-full h-dvh text-zinc-800 font-sans flex flex-col items-center justify-center p-6 relative overflow-hidden select-none touch-manipulation">
           
           {/* Background Ambience Glow */}
           <div className="absolute top-[-20%] left-1/2 -translate-x-1/2 w-[120%] aspect-square rounded-full bg-gradient-to-b from-zinc-100 to-transparent blur-3xl pointer-events-none" />
@@ -921,7 +929,7 @@ export default function RemoteControl() {
   // 2. Render normal remote dashboard if authenticated
     return (
       <>
-        <div data-theme={theme} className="w-full min-h-screen text-zinc-800 font-sans flex flex-col items-center justify-between pb-6 pt-6 px-6 relative overflow-hidden select-none">
+        <div data-theme={theme} className="w-full h-dvh text-zinc-800 font-sans flex flex-col items-center justify-between pb-6 pt-6 px-6 relative overflow-hidden select-none touch-manipulation" style={{ paddingTop: 'max(1.5rem, env(safe-area-inset-top))', paddingBottom: 'max(1.5rem, env(safe-area-inset-bottom))' }}>
           
           {/* Background Ambience Glow */}
           <div className="absolute top-[-20%] left-1/2 -translate-x-1/2 w-[120%] aspect-square rounded-full bg-gradient-to-b from-zinc-100 to-transparent blur-3xl pointer-events-none" />
@@ -1097,6 +1105,7 @@ export default function RemoteControl() {
                     onClick={handlePlayPause}
                     disabled={spotify ? !token : false}
                     className="h-14 w-14 rounded-full bg-zinc-900 text-white flex items-center justify-center shadow-lg active:scale-90 transition-all cursor-pointer hover:bg-zinc-800 disabled:opacity-50"
+                    style={{ boxShadow: '0 0 0 2px var(--theme-color), 0 8px 24px rgba(0,0,0,0.18)' }}
                   >
                     {isPlaying ? (
                       <Pause className="h-5 w-5 fill-current text-white" />
@@ -1189,6 +1198,7 @@ export default function RemoteControl() {
                         <button
                           onClick={async () => {
                             try {
+                              wakeKiosk();
                               await api.localPlayRadio(station.url, station.name, station.favicon);
                               setSource('radio');
                               sendUpdate('SET_SOURCE', { spotify: false, source: 'radio' });
@@ -1230,6 +1240,7 @@ export default function RemoteControl() {
                           <button
                             onClick={async () => {
                               try {
+                                wakeKiosk();
                                 await api.localPlayRadio(station.url, station.name, station.favicon);
                                 setSource('radio');
                                 sendUpdate('SET_SOURCE', { spotify: false, source: 'radio' });
@@ -1515,7 +1526,7 @@ export default function RemoteControl() {
                   </button>
                 </div>
 
-                <div className="flex-grow min-h-0 bg-[#0b0f19] border border-white/10 rounded-2xl overflow-hidden p-3 relative flex flex-col justify-between">
+                <div className="flex-grow min-h-0 overflow-hidden relative flex flex-col">
                   <EqualizerControl
                     currentPreset={eqPreset}
                     onPresetChange={handleEqPresetChange}
@@ -1575,56 +1586,30 @@ export default function RemoteControl() {
             </div>
 
             {/* Premium navigation bar */}
-            <div className="bg-white/95 backdrop-blur-md rounded-2xl px-2 py-1.5 flex justify-around items-center shadow-lg">
-              <button
-                onClick={() => setActiveTab('player')}
-                className={`flex flex-col items-center justify-center py-1 flex-1 cursor-pointer transition-all active:scale-95 ${
-                  activeTab === 'player' ? 'text-zinc-900 font-bold' : 'text-zinc-400 hover:text-zinc-700'
-                }`}
-              >
-                <Music className="h-4 w-4 mb-0.5" />
-                <span className="text-[8px] uppercase tracking-wider font-extrabold font-sans">Player</span>
-              </button>
-
-              <button
-                onClick={() => setActiveTab('search')}
-                className={`flex flex-col items-center justify-center py-1 flex-1 cursor-pointer transition-all active:scale-95 ${
-                  activeTab === 'search' ? 'text-zinc-900 font-bold' : 'text-zinc-400 hover:text-zinc-700'
-                }`}
-              >
-                <Search className="h-4 w-4 mb-0.5" />
-                <span className="text-[8px] uppercase tracking-wider font-extrabold font-sans">Search</span>
-              </button>
-
-              <button
-                onClick={() => setActiveTab('radio')}
-                className={`flex flex-col items-center justify-center py-1 flex-1 cursor-pointer transition-all active:scale-95 ${
-                  activeTab === 'radio' ? 'text-zinc-900 font-bold' : 'text-zinc-400 hover:text-zinc-700'
-                }`}
-              >
-                <Radio className="h-4 w-4 mb-0.5" />
-                <span className="text-[8px] uppercase tracking-wider font-extrabold font-sans">Radio</span>
-              </button>
-
-              <button
-                onClick={() => setActiveTab('eq')}
-                className={`flex flex-col items-center justify-center py-1 flex-1 cursor-pointer transition-all active:scale-95 ${
-                  activeTab === 'eq' ? 'text-zinc-900 font-bold' : 'text-zinc-400 hover:text-zinc-700'
-                }`}
-              >
-                <Sliders className="h-4 w-4 mb-0.5" />
-                <span className="text-[8px] uppercase tracking-wider font-extrabold font-sans">Equalizer</span>
-              </button>
-
-              <button
-                onClick={() => setActiveTab('settings')}
-                className={`flex flex-col items-center justify-center py-1 flex-1 cursor-pointer transition-all active:scale-95 ${
-                  activeTab === 'settings' ? 'text-zinc-900 font-bold' : 'text-zinc-400 hover:text-zinc-700'
-                }`}
-              >
-                <Settings className="h-4 w-4 mb-0.5" />
-                <span className="text-[8px] uppercase tracking-wider font-extrabold font-sans">Settings</span>
-              </button>
+            <div className="relative bg-white/95 backdrop-blur-md rounded-2xl px-2 py-1.5 flex justify-around items-center shadow-lg">
+              {[
+                { id: 'player', icon: <Music className="h-4 w-4 mb-0.5" />, label: 'Player' },
+                { id: 'search', icon: <Search className="h-4 w-4 mb-0.5" />, label: 'Search' },
+                { id: 'radio',  icon: <Radio  className="h-4 w-4 mb-0.5" />, label: 'Radio' },
+                { id: 'eq',     icon: <Sliders className="h-4 w-4 mb-0.5" />, label: 'Equalizer' },
+                { id: 'settings', icon: <Settings className="h-4 w-4 mb-0.5" />, label: 'Settings' },
+              ].map(({ id, icon, label }) => (
+                <button
+                  key={id}
+                  onClick={() => setActiveTab(id)}
+                  className="flex flex-col items-center justify-center py-1 flex-1 cursor-pointer transition-all active:scale-95 font-bold"
+                  style={activeTab === id
+                    ? { color: 'var(--theme-color)' }
+                    : { color: '#a1a1aa' }
+                  }
+                >
+                  {icon}
+                  <span className="text-[8px] uppercase tracking-wider font-extrabold font-sans">{label}</span>
+                  {activeTab === id && (
+                    <span className="absolute bottom-1 w-4 h-0.5 rounded-full" style={{ background: 'var(--theme-color)' }} />
+                  )}
+                </button>
+              ))}
             </div>
           </footer>
 
