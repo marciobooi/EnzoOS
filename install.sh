@@ -72,8 +72,9 @@ if [ ! -d "$PROJECT_DIR" ]; then
 else
   echo -e "\n${GREEN}[3/7] Updating existing EnzoOS repository in $PROJECT_DIR...${NC}"
   cd "$PROJECT_DIR"
-  # sudo -u $TARGET_USER git fetch origin main
-  # sudo -u $TARGET_USER git reset --hard origin/main
+  sudo -u $TARGET_USER git fetch origin main
+  sudo -u $TARGET_USER git stash || true
+  sudo -u $TARGET_USER git reset --hard origin/main
 fi
 
 # 6. Install Node.js (v20)
@@ -434,21 +435,14 @@ cat > "$PROJECT_DIR/.env.example" <<EXEOF
 # Spotify Developer App Credentials
 # Create a free app at: https://developer.spotify.com/dashboard
 # Register the following Redirect URI in the Spotify Dashboard:
-#   http://<YOUR_PI_IP>:5000/auth/spotify/callback
-#   http://127.0.0.1:5000/auth/spotify/callback  (for kiosk/local access)
+#   http://127.0.0.1:5000/auth/spotify/callback
+# OAuth always runs through the kiosk (127.0.0.1). No other redirect URIs needed.
 # ─────────────────────────────────────────────
 SPOTIFY_CLIENT_ID=your_spotify_client_id_here
 SPOTIFY_CLIENT_SECRET=your_spotify_client_secret_here
 
 # Server port (default: 5000)
 PORT=5000
-
-# Override the redirect host used for Spotify OAuth.
-# Required when accessed via mDNS (e.g. resonance.local) — Spotify only accepts
-# http:// for 127.0.0.1/localhost; all other hostnames require https://.
-# Set to your Pi's LAN IP so the registered redirect URI always matches.
-# Example: SPOTIFY_REDIRECT_HOST=192.168.1.100:5000
-SPOTIFY_REDIRECT_HOST=
 EXEOF
 chown $TARGET_USER:$TARGET_USER "$PROJECT_DIR/.env.example"
 echo -e "${GREEN}.env and .env.example written.${NC}"
