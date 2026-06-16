@@ -282,11 +282,11 @@ export default function Kiosk() {
     fetchDevices();
     syncCurrentState();
 
-    // Poll every 8 seconds to track devices and playback state
+    // Poll every 3 seconds to track devices and playback state
     const pollIntervalId = setInterval(() => {
       fetchDevices();
       syncCurrentState();
-    }, 8000);
+    }, 3000);
 
     return () => clearInterval(pollIntervalId);
   }, [token]);
@@ -859,7 +859,6 @@ export default function Kiosk() {
           ws.current.send(JSON.stringify({ type: 'BROADCAST_STATE', payload: newState }));
         }
       }
-      fetchDevices();
     } catch (err) {
       console.warn('Could not sync remote state:', err);
     }

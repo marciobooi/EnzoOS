@@ -469,7 +469,7 @@ export default function RemoteControl() {
     const intervalId = setInterval(() => {
       fetchDevices();
       localSync();
-    }, 10000);
+    }, 3000);
 
     return () => clearInterval(intervalId);
   }, [token, isAuthenticated, spotify]);
