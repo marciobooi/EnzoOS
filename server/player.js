@@ -544,11 +544,13 @@ function generateCamillaConfig(answers, eqSettings, dacInfo) {
   if (isSubwooferSetup) subPipeline.push("preamp_gain");
 
   // --- STAGE F: COMPILE THE PIPELINE MATRIX ---
-  config.pipeline.push({ type: "Mixer", mapping: "speaker_map" });
-  config.pipeline.push({ type: "Filter", channel: 0, names: leftPipeline });
-  config.pipeline.push({ type: "Filter", channel: 1, names: rightPipeline });
+  // CamillaDSP v2: Mixer uses 'name' (not 'mapping'), Filter uses individual
+  // steps with 'name' (singular string) instead of a 'names' array.
+  config.pipeline.push({ type: "Mixer", name: "speaker_map" });
+  for (const f of leftPipeline)  config.pipeline.push({ type: "Filter", channel: 0, name: f });
+  for (const f of rightPipeline) config.pipeline.push({ type: "Filter", channel: 1, name: f });
   if (isSubwooferSetup) {
-    config.pipeline.push({ type: "Filter", channel: 2, names: subPipeline });
+    for (const f of subPipeline) config.pipeline.push({ type: "Filter", channel: 2, name: f });
   }
 
   return config;
