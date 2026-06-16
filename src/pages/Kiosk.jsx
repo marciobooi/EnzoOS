@@ -123,6 +123,7 @@ export default function Kiosk() {
   const [stationsList, setStationsList] = useState([]);
   const [isSearching, setIsSearching] = useState(false);
   const [standby, setStandby] = useState(false);
+  const [transitionScreen, setTransitionScreen] = useState(null); // 'welcome' | 'goodbye' | null
   const [isDspWizardOpen, setIsDspWizardOpen] = useState(false);
   const [dspActive, setDspActive] = useState(false);
   const [scale, setScale] = useState(1);
@@ -351,10 +352,32 @@ export default function Kiosk() {
     }
   }, [isConnected]);
 
+  const getGreeting = () => {
+    const h = new Date().getHours();
+    if (h >= 5 && h < 12) return 'Good Morning';
+    if (h >= 12 && h < 17) return 'Good Afternoon';
+    if (h >= 17 && h < 21) return 'Good Evening';
+    return 'Good Night';
+  };
+
   const handleToggleStandby = (enabled) => {
-    setStandby(enabled);
-    if (ws.current && ws.current.readyState === WebSocket.OPEN) {
-      ws.current.send(JSON.stringify({ type: 'SET_STANDBY', payload: { enabled } }));
+    if (transitionScreen) return;
+    if (enabled) {
+      setTransitionScreen('goodbye');
+      setTimeout(() => {
+        setTransitionScreen(null);
+        setStandby(true);
+        if (ws.current && ws.current.readyState === WebSocket.OPEN) {
+          ws.current.send(JSON.stringify({ type: 'SET_STANDBY', payload: { enabled: true } }));
+        }
+      }, 2200);
+    } else {
+      setStandby(false);
+      if (ws.current && ws.current.readyState === WebSocket.OPEN) {
+        ws.current.send(JSON.stringify({ type: 'SET_STANDBY', payload: { enabled: false } }));
+      }
+      setTransitionScreen('welcome');
+      setTimeout(() => setTransitionScreen(null), 2800);
     }
   };
 
@@ -970,6 +993,27 @@ export default function Kiosk() {
               Tap to Wake
             </span>
           </button>
+        </div>
+      )}
+
+      {transitionScreen === 'welcome' && (
+        <div className="absolute inset-0 bg-black z-[9998] flex items-center justify-center pointer-events-none select-none animate-kiosk-welcome">
+          <div className="flex flex-col items-center gap-5 text-center">
+            <div className="text-[9px] font-mono uppercase tracking-[0.55em] text-white/20">Resonance HiFi</div>
+            <div className="text-[3.8rem] font-black text-white tracking-tight leading-none">{getGreeting()}</div>
+            <div className="w-10 h-px bg-white/12" />
+            <div className="text-[9px] font-mono uppercase tracking-[0.3em] text-white/18">Enjoy the music</div>
+          </div>
+        </div>
+      )}
+
+      {transitionScreen === 'goodbye' && (
+        <div className="absolute inset-0 bg-black z-[9998] flex items-center justify-center pointer-events-none select-none animate-kiosk-goodbye">
+          <div className="flex flex-col items-center gap-5 text-center">
+            <div className="text-[3.8rem] font-black text-white tracking-tight leading-none">See you soon</div>
+            <div className="w-10 h-px bg-white/12" />
+            <div className="text-[9px] font-mono uppercase tracking-[0.55em] text-white/20">Resonance HiFi</div>
+          </div>
         </div>
       )}
       
