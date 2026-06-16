@@ -255,7 +255,7 @@ Requires=sound.target
 Type=simple
 User=root
 WorkingDirectory=$PROJECT_DIR
-ExecStart=/usr/bin/camilladsp -c $PROJECT_DIR/camilladsp.yml -p 1234
+ExecStart=/usr/bin/camilladsp $PROJECT_DIR/camilladsp.yml -p 1234
 Restart=always
 RestartSec=3
 
