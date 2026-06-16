@@ -25,3 +25,6 @@ dist-ssr
 .env
 .spotify_tokens.json
 resonance.db
+
+# Claude Code — local overrides with secrets
+.claude/settings.local.json

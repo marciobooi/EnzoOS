@@ -1,5 +1,27 @@
 {
   "permissions": {
     "allow": ["*"]
+  },
+  "env": {
+    "PI_HOST": "192.168.178.199",
+    "PI_USER": "pi",
+    "GITHUB_REPO": "marciobooi/EnzoOS"
+  },
+  "mcpServers": {
+    "github": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-github"],
+      "type": "stdio"
+    },
+    "brave-search": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-brave-search"],
+      "type": "stdio"
+    },
+    "fetch": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-fetch"],
+      "type": "stdio"
+    }
   }
 }
