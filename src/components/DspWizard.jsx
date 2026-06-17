@@ -299,11 +299,11 @@ export default function DspWizard({ onClose, onCalibrationComplete }) {
         </div>
       </div>
 
-      {/* Question Layout (Split horizontally for 1400x320 screen aspect) */}
-      <div className="flex-grow flex flex-row gap-6 items-stretch min-h-0">
-        
+      {/* Question Layout — col on mobile remote, row on wide kiosk */}
+      <div className="flex-grow flex flex-col lg:flex-row gap-4 items-stretch min-h-0">
+
         {/* Left Side: Question Details */}
-        <div className="w-[45%] flex flex-col justify-between p-4 bg-black/20 border border-white/5 rounded-2xl min-h-0">
+        <div className="w-full lg:w-[45%] flex flex-col justify-between p-4 bg-black/20 border border-white/5 rounded-2xl min-h-0">
           <div className="space-y-1">
             <span className="text-[8px] font-extrabold text-[var(--theme-color)] uppercase tracking-widest">QUESTION DATA CARD</span>
             <h3 className="text-[11px] font-bold text-white uppercase tracking-wide leading-normal">
@@ -321,7 +321,7 @@ export default function DspWizard({ onClose, onCalibrationComplete }) {
         </div>
 
         {/* Right Side: Options Selector */}
-        <div className="w-[55%] flex flex-col gap-2 overflow-y-auto pr-1.5 custom-scrollbar min-h-0">
+        <div className="w-full lg:w-[55%] flex flex-col gap-2 overflow-y-auto pr-1.5 custom-scrollbar min-h-0">
           {activeQuestion.options.map((opt) => {
             const isSelected = selectedValue === opt.value;
             return (
