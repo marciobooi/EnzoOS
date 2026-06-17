@@ -162,6 +162,24 @@ Micro-interactions are added with short, deliberate CSS keyframe animations — 
 
 ---
 
+## 🎯 High-End UX Features (Remote Control)
+
+Matching the interaction quality of Roon, Naim, and Sonos — features added to the Remote Control UI:
+
+| Feature | Component | Description |
+|---|---|---|
+| **Queue Panel** | `src/components/remote/QueuePanel.jsx` | Slide-up "Up Next" drawer with glass backdrop. Fetches Spotify queue (`/v1/me/player/queue`) on open, shows now-playing re-entry + numbered queue list (up to 20 tracks). Tap album art or outside to close. |
+| **Mini-Player Strip** | `src/components/remote/MiniPlayer.jsx` | Sticky now-playing bar rendered at the bottom of every non-player tab. Shows thumbnail, track/artist, inline play/pause, and a 2px champagne progress bar. Tapping navigates to the Player tab. |
+| **Skeleton Loaders** | `src/components/ui/SkeletonList.jsx` | Shimmer placeholder rows (dark/light adaptive via context colors) replace the plain spinner in LibraryTab's artist list and deep drill-down views. `@keyframes shimmer` moves a `200%`-wide gradient. |
+| **Swipe to Skip** | `PlayerTab.jsx` | `onTouchStart`/`onTouchEnd` on the album art. 60px horizontal threshold, must be 1.5× more horizontal than vertical. Swipe left → next; swipe right → previous. |
+| **Audio Quality Badge** | `PlayerTab.jsx` | Champagne chip below artist name showing `OGG VORBIS` (Spotify), `AAC STREAM` (radio), `FLAC LOSSLESS` / `MP3` / `PCM WAV` / `LOCAL FILE` (local, inferred from file extension). |
+| **Genre Chip Empty State** | `SourceTab.jsx` | Empty favorites list shows 8 quick-genre chips (Jazz, Classical, Lo-Fi, Ambient, Electronic, Rock, News, Chill). Tapping a chip populates the search input and fires the station search immediately. |
+| **Destructive Confirmation** | `SettingsTab.jsx` | Reboot, Shut Down, Disconnect Spotify, and Sign Out require a second tap within 3 seconds. Label changes to "Tap again to…" on first press; `confirmPending` resets via `setTimeout`. |
+| **Playback Feedback** | `LibraryTab.jsx` | Spotify track rows show a spinner overlay on the album thumbnail while the play API call is in-flight (`pendingUri` state). |
+| **Up Next Button** | `PlayerTab.jsx` | Champagne-accented "Up Next" button beneath volume controls (Spotify only) opens the QueuePanel. |
+
+---
+
 ## ⚡ Render Optimisations
 
 | What | Where | Effect |
