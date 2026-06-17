@@ -63,9 +63,55 @@ Resonance is a premium, high-performance touchscreen music kiosk and real-time D
 
 ---
 
+## 🏗️ Server Architecture
+
+All server-side state and event routing flows through a central **EventService** (`server/event-service.js`). Neither REST routes nor the WebSocket handler mutate shared state directly — they call `emit(type, payload)` and the service handles everything from there.
+
+```
+REST routes          WebSocket handlers      Audio monitor
+     │                      │                     │
+     └──────────┬───────────┘                     │
+                │ emit(type, payload)              │ emit('AUDIO_LEVELS', …)
+                ▼                                 ▼
+        [ EventService ]  ←────────────────────────
+         ├── serial async queue (state-mutating events)
+         ├── update cached state
+         ├── persist to SQLite
+         ├── run side-effects (CamillaDSP, standby, brightness)
+         └── broadcast to all WS clients
+```
+
+**Event categories:**
+
+| Category | Examples | Behaviour |
+|---|---|---|
+| State-mutating | `SET_SOURCE`, `SET_STANDBY`, `SET_EQ_SETTINGS`, `SET_THEME_SETTINGS`, `BROADCAST_STATE` | Serialised through async queue — no concurrent state races |
+| Passthrough | `SET_TOKEN`, `CLEAR_TOKEN`, `REQUEST_SYNC`, `UPDATE_PROGRESS`, `AUDIO_LEVELS` | Bypass queue, broadcast directly — zero added latency |
+
+**Key guarantees provided by EventService:**
+* Concurrent `SET_SOURCE` or `BROADCAST_STATE` messages from multiple clients are processed in arrival order, not in parallel.
+* `SET_EQ_SETTINGS` awaits CamillaDSP config regeneration before broadcasting `EQ_SETTINGS` to the UI, so the client reflects the actually-applied state.
+* Spotify token refresh uses a promise-based mutex — concurrent callers (WS client handshake + 5-min auto-refresh interval) share one in-flight request.
+* Standby check-then-act on the audio monitor is serialised through the same queue, eliminating the TOCTOU race.
+
+**Server modules:**
+
+| File | Role |
+|---|---|
+| `server/event-service.js` | Central event bus — cached state, serial queue, DB persistence, broadcast dispatch |
+| `server/websocket.js` | WS transport only — connection handshake, message fan-out to `emit()`, audio level monitor |
+| `server/player.js` | REST routes for MPD, web radio, DSP calibration, CamillaDSP config generation |
+| `server/spotify-auth.js` | Spotify OAuth flow, token refresh (with mutex), auto-refresh interval |
+| `server/update.js` | OTA update trigger and log streaming |
+| `server/system.js` | Service management, reboot/shutdown, LAN URL, health metrics |
+| `server/db.js` | SQLite persistence (settings key-value store, favourite radios) |
+| `server/index.js` | Express app bootstrap, HTTP/HTTPS servers, WS upgrade routing |
+
+---
+
 ## 📁 Repository Structure
 
-* `/server` - Node.js Express server handling web services, Spotify authentication, local playback daemons, and WebSocket DB broadcasting.
+* `/server` - Node.js Express server. All real-time state flows through `event-service.js`; REST routes and WebSocket handlers are thin dispatchers.
 * `/src` - React frontend compiled with Vite.
   * `/src/components/PlayerDisplay.jsx` - Core rendering component for visualizers, playback state, and dials.
   * `/src/glassplayer.css` - Liquid glass styling definitions.
