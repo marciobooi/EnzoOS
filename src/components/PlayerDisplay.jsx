@@ -69,15 +69,20 @@ function CountryPicker({ value, onChange }) {
         <ChevronDown className={`h-3 w-3 text-zinc-300 shrink-0 transition-transform duration-150 ${open ? 'rotate-180' : ''}`} />
       </button>
       {open && (
-        <div className="absolute z-50 left-0 right-0 mt-1 rounded-xl overflow-hidden"
-          style={{ background: '#060911', border: '1px solid rgba(255,255,255,0.1)', boxShadow: '0 24px 48px rgba(0,0,0,0.95), inset 0 1px 0 rgba(255,255,255,0.04)' }}>
-          <div className="grid grid-cols-4 gap-px p-1.5 max-h-[152px] overflow-y-auto custom-scrollbar">
+        <div className="absolute z-50 left-0 right-0 mt-2 rounded-xl overflow-hidden backdrop-blur-md"
+          style={{ background: 'rgba(15,18,28,0.85)', border: '1px solid rgba(255,255,255,0.08)', boxShadow: '0 20px 40px -15px rgba(0,0,0,0.7)' }}>
+          <div className="grid grid-cols-4 gap-1.5 p-2 max-h-[160px] overflow-y-auto custom-scrollbar">
             {COUNTRIES.map(c => (
               <button key={c.code} onClick={() => { onChange(c.name); setOpen(false); }}
-                className="flex flex-col items-center gap-0.5 py-2 px-1 rounded-lg transition-all cursor-pointer"
-                style={{ background: value === c.name ? 'rgba(255,255,255,0.07)' : 'transparent', border: `1px solid ${value === c.name ? 'var(--theme-color)' : 'transparent'}` }}>
-                <span style={{ fontSize: 17, lineHeight: 1.1 }}>{c.flag}</span>
-                <span className="font-mono text-zinc-300 uppercase" style={{ fontSize: 6.5, letterSpacing: '0.04em' }}>{c.code}</span>
+                className="group flex flex-col items-center justify-center gap-1.5 py-2.5 px-1 rounded-lg transition-all duration-200 ease-out active:scale-95 cursor-pointer"
+                style={{
+                  background: value === c.name ? 'rgba(255,255,255,0.07)' : 'transparent',
+                  border: `1px solid ${value === c.name ? 'var(--theme-color)' : 'transparent'}`,
+                }}>
+                <span className="text-xl transition-transform duration-200 group-hover:scale-110"
+                  style={{ filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.3))' }}>{c.flag}</span>
+                <span className="font-mono font-medium uppercase tracking-wider text-zinc-400 group-hover:text-white transition-colors"
+                  style={{ fontSize: 8 }}>{c.code}</span>
               </button>
             ))}
           </div>
