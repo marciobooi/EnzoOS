@@ -724,7 +724,7 @@ const PlayerDisplay = React.memo(function PlayerDisplay({
             </div>
 
             {/* Country picker + SCAN */}
-            <div className="flex gap-2 items-center mt-2 shrink-0 bg-[var(--theme-color)]">
+            <div className="flex gap-2 items-center mt-2 shrink-0 radio-container">
               <CountryPicker value={radioCountry} onChange={setRadioCountry} />
               <button
                 onClick={() => radioCountry && handleRadioByCountry(radioCountry)}
@@ -753,7 +753,7 @@ const PlayerDisplay = React.memo(function PlayerDisplay({
               />
             ) : (
               /* Premium empty band */
-              <div className="mt-2 shrink-0">
+              <div className="mt-2 shrink-0 radio-container">
                 <div className="rounded-xl mb-1.5 flex items-center gap-3 p-3"
                   style={{ background: 'rgba(6,9,18,0.7)', border: '1px solid rgba(255,255,255,0.04)', minHeight: 64 }}>
                   <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
@@ -788,7 +788,7 @@ const PlayerDisplay = React.memo(function PlayerDisplay({
             {/* Saved stations */}
             {favoriteStations.length > 0 && (
               <>
-                <div className="flex justify-between items-center mt-2 px-0.5 shrink-0">
+                <div className="flex justify-between items-center mt-2 px-0.5 shrink-0 radio-container">
                   <span className="text-[8px] font-extrabold font-mono uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.75)' }}>Saved Stations</span>
                   <span className="text-[8px] font-mono" style={{ color: 'rgba(255,255,255,0.5)' }}>{favoriteStations.length}</span>
                 </div>
