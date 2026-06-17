@@ -27,30 +27,75 @@ const COUNTRIES = [
   { code: 'US', name: 'United States',  flag: '🇺🇸' },
 ];
 
-// Station avatar: favicon or 2-letter initials fallback
-function StationAvatar({ station, size = 28 }) {
+// Premium station avatar — squared, depth-layered
+function StationAvatar({ station, size = 38 }) {
   const [failed, setFailed] = useState(false);
   const initials = station.name.trim().split(/\s+/).slice(0, 2).map(w => w[0]).join('').toUpperCase() || '??';
   return (
-    <div className="rounded-full bg-black/30 border border-white/10 overflow-hidden flex items-center justify-center shrink-0"
-      style={{ width: size, height: size, minWidth: size }}>
+    <div className="rounded-xl overflow-hidden flex items-center justify-center shrink-0"
+      style={{ width: size, height: size, minWidth: size, background: 'linear-gradient(145deg, rgba(38,44,64,0.9) 0%, rgba(10,14,26,0.95) 100%)', border: '1px solid rgba(255,255,255,0.1)', boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.06), 0 2px 8px rgba(0,0,0,0.5)' }}>
       {station.favicon && !failed
         ? <img src={station.favicon} alt="" className="w-full h-full object-cover" onError={() => setFailed(true)} />
-        : <span className="font-extrabold text-[var(--theme-color)]" style={{ fontSize: Math.max(7, size * 0.3) }}>{initials}</span>
+        : <span className="font-extrabold tracking-tighter" style={{ fontSize: Math.max(9, size * 0.3), color: 'var(--theme-color)' }}>{initials}</span>
       }
     </div>
   );
 }
 
-// Vintage FM frequency band — drag needle to tune, release to play
+// Custom flag-grid country picker — replaces native <select>
+function CountryPicker({ value, onChange }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+  const selected = COUNTRIES.find(c => c.name === value);
+
+  useEffect(() => {
+    if (!open) return;
+    const fn = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    document.addEventListener('mousedown', fn);
+    return () => document.removeEventListener('mousedown', fn);
+  }, [open]);
+
+  return (
+    <div className="relative flex-grow" ref={ref}>
+      <button
+        onClick={() => setOpen(v => !v)}
+        className="w-full flex items-center gap-2 rounded-xl px-3 py-2 cursor-pointer transition-all focus:outline-none"
+        style={{ background: 'rgba(0,0,0,0.45)', border: open ? '1px solid var(--theme-color)' : '1px solid rgba(255,255,255,0.1)' }}
+      >
+        {selected
+          ? <><span style={{ fontSize: 15, lineHeight: 1 }}>{selected.flag}</span><span className="font-mono text-xs text-zinc-200 flex-1 text-left truncate">{selected.name}</span></>
+          : <span className="font-mono text-xs text-zinc-500 flex-1 text-left">Select country…</span>
+        }
+        <ChevronDown className={`h-3 w-3 text-zinc-500 shrink-0 transition-transform duration-150 ${open ? 'rotate-180' : ''}`} />
+      </button>
+      {open && (
+        <div className="absolute z-50 left-0 right-0 mt-1 rounded-xl overflow-hidden"
+          style={{ background: '#060911', border: '1px solid rgba(255,255,255,0.1)', boxShadow: '0 24px 48px rgba(0,0,0,0.95), inset 0 1px 0 rgba(255,255,255,0.04)' }}>
+          <div className="grid grid-cols-4 gap-px p-1.5 max-h-[152px] overflow-y-auto custom-scrollbar">
+            {COUNTRIES.map(c => (
+              <button key={c.code} onClick={() => { onChange(c.name); setOpen(false); }}
+                className="flex flex-col items-center gap-0.5 py-2 px-1 rounded-lg transition-all cursor-pointer"
+                style={{ background: value === c.name ? 'rgba(255,255,255,0.07)' : 'transparent', border: `1px solid ${value === c.name ? 'var(--theme-color)' : 'transparent'}` }}>
+                <span style={{ fontSize: 17, lineHeight: 1.1 }}>{c.flag}</span>
+                <span className="font-mono text-zinc-600 uppercase" style={{ fontSize: 6.5, letterSpacing: '0.04em' }}>{c.code}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Vintage FM frequency band — deep CRT aesthetic, drag needle to tune
 function FrequencyBand({ stations, onPlay, onToggleFavorite, favoriteStations = [] }) {
   const [needleIdx, setNeedleIdx] = useState(null);
   const [playedIdx, setPlayedIdx] = useState(null);
   const isDragging = useRef(false);
   const bandRef = useRef(null);
 
-  const displayIdx = needleIdx ?? playedIdx;
-  const displayStation = displayIdx !== null ? stations[displayIdx] ?? null : null;
+  const activeIdx = needleIdx ?? playedIdx;
+  const displayStation = activeIdx !== null ? stations[activeIdx] ?? null : null;
   const isFav = displayStation ? favoriteStations.some(f => f.url === displayStation.url) : false;
 
   const getIdxFromX = useCallback((clientX) => {
@@ -76,108 +121,125 @@ function FrequencyBand({ stations, onPlay, onToggleFavorite, favoriteStations = 
     if (needleIdx !== null && stations[needleIdx]) setPlayedIdx(needleIdx);
   };
 
-  const needlePct = (needleIdx !== null || playedIdx !== null) && stations.length > 1
-    ? ((needleIdx ?? playedIdx) / (stations.length - 1)) * 100
+  const needlePct = activeIdx !== null && stations.length > 1
+    ? (activeIdx / (stations.length - 1)) * 100
     : null;
 
-  // reset when station list changes
   useEffect(() => { setNeedleIdx(null); setPlayedIdx(null); }, [stations]);
+
+  const tags = displayStation?.tags?.split(',').map(t => t.trim()).filter(Boolean) || [];
 
   return (
     <div className="mt-2 shrink-0">
-      {/* Station info card */}
-      <div className="p-2 rounded-xl bg-white/5 border border-white/8 flex items-center gap-2 mb-2" style={{ minHeight: 46 }}>
+
+      {/* Station card */}
+      <div className="rounded-xl mb-1.5 overflow-hidden"
+        style={{ background: 'linear-gradient(135deg, rgba(16,22,40,0.95) 0%, rgba(6,9,18,0.98) 100%)', border: '1px solid rgba(255,255,255,0.07)', boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.04), 0 4px 20px rgba(0,0,0,0.6)', minHeight: 64 }}>
         {displayStation ? (
-          <>
-            <StationAvatar station={displayStation} size={30} />
+          <div className="flex items-center gap-3 p-3">
+            <StationAvatar station={displayStation} size={42} />
             <div className="flex-1 min-w-0">
-              <p className="text-[10px] font-bold text-white truncate leading-tight">{displayStation.name}</p>
-              <p className="text-[8px] font-mono text-zinc-400 uppercase tracking-wider truncate leading-tight mt-0.5">
-                {displayStation.country || 'Global'}
-                {displayStation.tags ? ` • ${displayStation.tags.split(',')[0].trim()}` : ''}
-              </p>
+              <p className="text-[11px] font-bold text-white truncate" style={{ letterSpacing: '-0.01em' }}>{displayStation.name}</p>
+              <div className="flex items-center gap-1 mt-1.5 flex-wrap">
+                {displayStation.country && (
+                  <span className="text-[7px] font-extrabold font-mono uppercase tracking-widest px-1.5 py-0.5 rounded-sm"
+                    style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.38)' }}>
+                    {displayStation.country}
+                  </span>
+                )}
+                {tags[0] && (
+                  <span className="text-[7px] font-extrabold font-mono uppercase tracking-widest px-1.5 py-0.5 rounded-sm"
+                    style={{ background: 'color-mix(in srgb, var(--theme-color) 12%, transparent)', border: '1px solid color-mix(in srgb, var(--theme-color) 25%, transparent)', color: 'var(--theme-color)' }}>
+                    {tags[0]}
+                  </span>
+                )}
+              </div>
             </div>
-            <div className="flex items-center gap-1 shrink-0">
+            <div className="flex flex-col items-end gap-2 shrink-0">
               <button
-                onClick={() => onToggleFavorite(displayStation)}
-                className="p-1 rounded hover:bg-white/10 transition-colors cursor-pointer"
-              >
-                <Heart className={`w-3 h-3 ${isFav ? 'text-rose-500 fill-rose-500' : 'text-zinc-500'}`} />
+                onClick={() => { setPlayedIdx(activeIdx); onPlay(displayStation); }}
+                className="flex items-center gap-1 px-3 py-1.5 rounded-lg font-extrabold text-[9px] uppercase tracking-widest active:scale-95 transition-all cursor-pointer"
+                style={{ background: 'var(--theme-color)', color: '#000', letterSpacing: '0.1em' }}>
+                ▶ PLAY
               </button>
-              <button
-                onClick={() => { setPlayedIdx(needleIdx ?? playedIdx); onPlay(displayStation); }}
-                className="px-2 py-0.5 bg-[var(--theme-color)] text-black font-extrabold text-[8px] uppercase tracking-wider rounded active:scale-95 transition-all cursor-pointer"
-              >
-                PLAY
+              <button onClick={() => onToggleFavorite(displayStation)}
+                className="transition-colors cursor-pointer"
+                style={{ color: isFav ? '#f43f5e' : 'rgba(255,255,255,0.15)' }}>
+                <Heart className="w-3.5 h-3.5" style={{ fill: isFav ? '#f43f5e' : 'none' }} />
               </button>
             </div>
-          </>
+          </div>
         ) : (
-          <p className="text-[9px] font-mono text-zinc-600 uppercase tracking-wider px-1">← drag needle to tune</p>
+          <div className="flex items-center gap-3 p-3" style={{ minHeight: 64 }}>
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+              style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)' }}>
+              <Radio className="w-4 h-4" style={{ color: 'rgba(255,255,255,0.1)' }} />
+            </div>
+            <div>
+              <p className="text-[9px] font-mono uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.15)' }}>Drag the needle to tune</p>
+              <p className="text-[8px] font-mono uppercase tracking-wider mt-0.5" style={{ color: 'rgba(255,255,255,0.07)' }}>{stations.length} stations on the dial</p>
+            </div>
+          </div>
         )}
       </div>
 
-      {/* Frequency labels */}
+      {/* Scale labels */}
       <div className="flex justify-between px-0.5 mb-0.5">
         {['88', '92', '96', '100', '104', '108'].map(l => (
-          <span key={l} className="font-mono text-zinc-700" style={{ fontSize: 7 }}>{l}</span>
+          <span key={l} className="font-mono" style={{ fontSize: 7, color: 'rgba(255,255,255,0.2)', letterSpacing: '0.02em' }}>{l}</span>
         ))}
       </div>
 
-      {/* Band — drag target */}
+      {/* Band — deep CRT inset */}
       <div
         ref={bandRef}
-        className="relative rounded-lg overflow-hidden cursor-pointer select-none touch-none"
-        style={{ height: 42, background: 'rgba(0,0,0,0.5)', border: '1px solid rgba(255,255,255,0.06)' }}
+        className="relative rounded-xl overflow-hidden cursor-pointer select-none touch-none"
+        style={{ height: 64, background: 'linear-gradient(180deg, #010204 0%, #03060e 35%, #07111e 55%, #03060e 75%, #010204 100%)', border: '1px solid rgba(255,255,255,0.06)', boxShadow: 'inset 0 3px 14px rgba(0,0,0,0.95), inset 0 -1px 4px rgba(0,0,0,0.7), inset 0 1px 0 rgba(255,255,255,0.025)' }}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
         onPointerCancel={handlePointerUp}
       >
-        {/* Center track line */}
-        <div className="absolute inset-x-2 pointer-events-none"
-          style={{ top: '50%', height: 1, background: 'rgba(255,255,255,0.08)', transform: 'translateY(-50%)' }} />
-
-        {/* Needle ambient glow */}
+        {/* CRT scanlines */}
+        <div className="absolute inset-0 pointer-events-none" style={{ backgroundImage: 'repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.2) 2px, rgba(0,0,0,0.2) 3px)', zIndex: 3 }} />
+        {/* Center groove */}
+        <div className="absolute inset-x-0 pointer-events-none" style={{ top: '50%', height: 1, background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.06) 10%, rgba(255,255,255,0.09) 50%, rgba(255,255,255,0.06) 90%, transparent)', transform: 'translateY(-50%)', zIndex: 1 }} />
+        {/* Needle bloom */}
         {needlePct !== null && (
-          <div className="absolute inset-y-0 pointer-events-none"
-            style={{ left: `${needlePct}%`, width: 28, transform: 'translateX(-50%)', background: 'var(--theme-color)', opacity: 0.12, filter: 'blur(6px)' }} />
+          <div className="absolute inset-y-0 pointer-events-none" style={{ left: `${needlePct}%`, width: 100, transform: 'translateX(-50%)', background: 'var(--theme-color)', opacity: 0.05, filter: 'blur(16px)' }} />
         )}
-
         {/* Station ticks */}
         {stations.map((_, i) => {
           const pct = stations.length > 1 ? (i / (stations.length - 1)) * 100 : 50;
-          const isActive = i === (needleIdx ?? playedIdx);
+          const isAct = i === activeIdx;
           const isMajor = i % Math.max(1, Math.floor(stations.length / 10)) === 0;
+          const dist = activeIdx !== null ? Math.abs(i - activeIdx) : Infinity;
           return (
             <div key={i} className="absolute pointer-events-none" style={{
-              left: `${pct}%`,
-              top: '50%',
-              transform: 'translate(-50%, -50%)',
-              width: isActive ? 2.5 : 1,
-              height: isActive ? 30 : isMajor ? 18 : 10,
-              background: isActive ? 'var(--theme-color)' : isMajor ? 'rgba(255,255,255,0.25)' : 'rgba(255,255,255,0.12)',
+              left: `${pct}%`, top: '50%', transform: 'translate(-50%, -50%)',
+              width: isAct ? 2.5 : 1,
+              height: isAct ? 46 : isMajor ? 26 : 13,
+              background: isAct ? 'var(--theme-color)' : dist === 1 ? 'rgba(255,255,255,0.38)' : dist === 2 ? 'rgba(255,255,255,0.22)' : isMajor ? 'rgba(255,255,255,0.18)' : 'rgba(255,255,255,0.08)',
               borderRadius: 2,
-              transition: 'all 0.08s',
+              boxShadow: isAct ? '0 0 6px var(--theme-color), 0 0 14px var(--theme-color)' : 'none',
+              zIndex: isAct ? 4 : 1,
+              transition: isAct ? 'none' : 'background 0.06s',
             }} />
           );
         })}
-
-        {/* Needle */}
+        {/* Needle — triangle cap + gradient stem */}
         {needlePct !== null && (
-          <div className="absolute inset-y-0 pointer-events-none"
-            style={{ left: `${needlePct}%`, transform: 'translateX(-50%)', width: 2 }}>
-            <div className="w-full h-full rounded-full" style={{ background: 'var(--theme-color)' }} />
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full"
-              style={{ width: 7, height: 7, background: 'var(--theme-color)', boxShadow: '0 0 6px var(--theme-color)' }} />
-          </div>
+          <>
+            <div className="absolute pointer-events-none" style={{ top: 0, left: `${needlePct}%`, transform: 'translateX(-50%)', width: 0, height: 0, borderLeft: '5px solid transparent', borderRight: '5px solid transparent', borderTop: '7px solid var(--theme-color)', filter: 'drop-shadow(0 0 4px var(--theme-color))', zIndex: 6 }} />
+            <div className="absolute pointer-events-none" style={{ left: `${needlePct}%`, top: 7, bottom: 2, transform: 'translateX(-50%)', width: 1.5, background: 'linear-gradient(180deg, var(--theme-color) 0%, var(--theme-color) 80%, transparent 100%)', zIndex: 5 }} />
+          </>
         )}
       </div>
 
-      {/* Decorative bottom ticks */}
+      {/* Bottom ruler */}
       <div className="flex justify-between mt-0.5 px-0.5">
         {Array.from({ length: 21 }).map((_, i) => (
-          <div key={i} style={{ width: i % 5 === 0 ? 1.5 : 1, height: i % 5 === 0 ? 4 : 2, background: 'rgba(255,255,255,0.08)', borderRadius: 1 }} />
+          <div key={i} style={{ width: i % 5 === 0 ? 1.5 : 1, height: i % 5 === 0 ? 5 : 3, background: i % 5 === 0 ? 'rgba(255,255,255,0.12)' : 'rgba(255,255,255,0.05)', borderRadius: 1 }} />
         ))}
       </div>
     </div>
@@ -661,29 +723,23 @@ export default function PlayerDisplay({
               </button>
             </div>
 
-            {/* Country selector + SCAN */}
+            {/* Country picker + SCAN */}
             <div className="flex gap-2 items-center mt-2 shrink-0">
-              <Radio className="h-4 w-4 text-[var(--theme-color)] animate-pulse shrink-0" />
-              <div className="relative flex-grow">
-                <select
-                  value={radioCountry}
-                  onChange={e => setRadioCountry(e.target.value)}
-                  className="w-full bg-black/40 border border-white/10 rounded-xl px-3 py-2 font-mono text-xs text-zinc-200 focus:outline-none focus:border-[var(--theme-color)] appearance-none cursor-pointer"
-                  style={{ color: radioCountry ? undefined : 'rgb(113 113 122)' }}
-                >
-                  <option value="">Select country…</option>
-                  {COUNTRIES.map(c => (
-                    <option key={c.code} value={c.name}>{c.flag} {c.name}</option>
-                  ))}
-                </select>
-                <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 h-3 w-3 text-zinc-600 pointer-events-none" />
-              </div>
+              <CountryPicker value={radioCountry} onChange={setRadioCountry} />
               <button
                 onClick={() => radioCountry && handleRadioByCountry(radioCountry)}
                 disabled={isSearching || !radioCountry}
-                className="px-4 py-2 bg-[var(--theme-color)] text-black font-extrabold text-[10px] uppercase tracking-wider rounded-xl hover:opacity-85 active:scale-95 transition-all cursor-pointer disabled:opacity-50 shrink-0"
+                className="flex items-center justify-center gap-1.5 px-4 py-2 font-extrabold text-[10px] uppercase tracking-widest rounded-xl hover:opacity-85 active:scale-95 transition-all cursor-pointer disabled:opacity-40 shrink-0"
+                style={{ background: 'var(--theme-color)', color: '#000', minWidth: 60, letterSpacing: '0.1em' }}
               >
-                {isSearching ? '···' : 'SCAN'}
+                {isSearching ? (
+                  <span className="flex items-end gap-0.5 h-3">
+                    {[0.6, 1, 0.7].map((h, i) => (
+                      <span key={i} className="w-0.5 bg-black/50 rounded-full animate-pulse"
+                        style={{ height: `${Math.round(h * 12)}px`, animationDelay: `${i * 120}ms` }} />
+                    ))}
+                  </span>
+                ) : 'SCAN'}
               </button>
             </div>
 
@@ -696,65 +752,61 @@ export default function PlayerDisplay({
                 favoriteStations={favoriteStations}
               />
             ) : (
-              /* Decorative empty band */
+              /* Premium empty band */
               <div className="mt-2 shrink-0">
-                <div className="p-2 rounded-xl bg-white/5 border border-white/8 flex items-center gap-2 mb-2" style={{ minHeight: 46 }}>
-                  <div className="rounded-full bg-black/30 border border-white/10 flex items-center justify-center shrink-0" style={{ width: 30, height: 30 }}>
-                    <Radio className="w-3.5 h-3.5 text-zinc-700" />
+                <div className="rounded-xl mb-1.5 flex items-center gap-3 p-3"
+                  style={{ background: 'rgba(6,9,18,0.7)', border: '1px solid rgba(255,255,255,0.04)', minHeight: 64 }}>
+                  <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+                    style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.04)' }}>
+                    <Radio className="w-4 h-4" style={{ color: 'rgba(255,255,255,0.08)' }} />
                   </div>
-                  <p className="text-[9px] font-mono text-zinc-600 uppercase tracking-wider">Select a country to scan the airwaves</p>
+                  <div>
+                    <p className="text-[9px] font-mono uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.15)' }}>Select a country to scan</p>
+                    <p className="text-[8px] font-mono uppercase tracking-wider mt-0.5" style={{ color: 'rgba(255,255,255,0.07)' }}>the airwaves</p>
+                  </div>
                 </div>
                 <div className="flex justify-between px-0.5 mb-0.5">
                   {['88', '92', '96', '100', '104', '108'].map(l => (
-                    <span key={l} className="font-mono text-zinc-800" style={{ fontSize: 7 }}>{l}</span>
+                    <span key={l} className="font-mono" style={{ fontSize: 7, color: 'rgba(255,255,255,0.1)' }}>{l}</span>
                   ))}
                 </div>
-                <div className="relative rounded-lg overflow-hidden" style={{ height: 42, background: 'rgba(0,0,0,0.4)', border: '1px solid rgba(255,255,255,0.04)', opacity: 0.4 }}>
-                  <div className="absolute inset-x-2" style={{ top: '50%', height: 1, background: 'rgba(255,255,255,0.08)', transform: 'translateY(-50%)' }} />
-                  {Array.from({ length: 18 }).map((_, i) => (
-                    <div key={i} className="absolute" style={{
-                      left: `${(i / 17) * 100}%`, top: '50%', transform: 'translate(-50%, -50%)',
-                      width: 1, height: i % 4 === 0 ? 16 : 8, background: 'rgba(255,255,255,0.1)', borderRadius: 1,
-                    }} />
+                <div className="relative rounded-xl overflow-hidden" style={{ height: 64, background: 'linear-gradient(180deg, #010204 0%, #03060e 40%, #010204 100%)', border: '1px solid rgba(255,255,255,0.03)', opacity: 0.35 }}>
+                  <div className="absolute inset-0" style={{ backgroundImage: 'repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.2) 2px, rgba(0,0,0,0.2) 3px)' }} />
+                  <div className="absolute inset-x-0" style={{ top: '50%', height: 1, background: 'rgba(255,255,255,0.05)', transform: 'translateY(-50%)' }} />
+                  {Array.from({ length: 20 }).map((_, i) => (
+                    <div key={i} className="absolute" style={{ left: `${(i / 19) * 100}%`, top: '50%', transform: 'translate(-50%, -50%)', width: 1, height: i % 4 === 0 ? 20 : 10, background: 'rgba(255,255,255,0.08)', borderRadius: 1 }} />
                   ))}
                 </div>
                 <div className="flex justify-between mt-0.5 px-0.5">
                   {Array.from({ length: 21 }).map((_, i) => (
-                    <div key={i} style={{ width: i % 5 === 0 ? 1.5 : 1, height: i % 5 === 0 ? 4 : 2, background: 'rgba(255,255,255,0.06)', borderRadius: 1 }} />
+                    <div key={i} style={{ width: i % 5 === 0 ? 1.5 : 1, height: i % 5 === 0 ? 5 : 3, background: 'rgba(255,255,255,0.05)', borderRadius: 1 }} />
                   ))}
                 </div>
               </div>
             )}
 
-            {/* Favorites quick-access */}
+            {/* Saved stations */}
             {favoriteStations.length > 0 && (
               <>
-                <div className="flex justify-between items-center mt-2 px-1 text-[9px] uppercase tracking-wider font-extrabold text-zinc-500 shrink-0">
-                  <span>Favorites</span>
-                  <span>({favoriteStations.length})</span>
+                <div className="flex justify-between items-center mt-2 px-0.5 shrink-0">
+                  <span className="text-[8px] font-extrabold font-mono uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.2)' }}>Saved Stations</span>
+                  <span className="text-[8px] font-mono" style={{ color: 'rgba(255,255,255,0.12)' }}>{favoriteStations.length}</span>
                 </div>
-                <div className="flex-grow overflow-y-auto pr-1.5 mt-1 custom-scrollbar grid grid-cols-2 gap-2 max-h-[90px]">
+                <div className="flex-grow overflow-y-auto pr-0.5 mt-1.5 custom-scrollbar grid grid-cols-2 gap-1.5 max-h-[88px]">
                   {favoriteStations.map((station, idx) => (
                     <div key={`${station.url}-${idx}`}
-                      className="radio-station-card p-2 rounded-xl bg-white/5 border border-white/10 hover:border-[var(--theme-color)] text-left flex items-center justify-between transition-all group">
-                      <button
-                        onClick={() => { onPlayRadio(station.url, station.name, station.favicon); setShowSearch(false); }}
-                        className="flex items-center gap-2 min-w-0 flex-grow text-left cursor-pointer bg-transparent border-0 p-0 outline-none"
-                      >
-                        <StationAvatar station={station} size={26} />
-                        <div className="min-w-0 flex flex-col">
-                          <span className="text-[10px] font-bold text-white truncate group-hover:text-[var(--theme-color)]">{station.name}</span>
-                          <span className="text-[8px] font-mono text-zinc-400 tracking-wider uppercase truncate">
-                            {station.country || 'Global'}
-                          </span>
-                        </div>
-                      </button>
-                      <div className="flex items-center gap-1 shrink-0 ml-1">
-                        <button onClick={() => onToggleFavoriteRadio(station)}
-                          className="p-1 rounded hover:bg-white/10 transition-colors cursor-pointer">
-                          <Heart className="w-3 h-3 text-rose-500 fill-rose-500" />
-                        </button>
+                      className="group flex items-center gap-2 p-2 rounded-xl transition-all cursor-pointer"
+                      style={{ background: 'linear-gradient(135deg, rgba(16,22,40,0.8) 0%, rgba(6,9,18,0.9) 100%)', border: '1px solid rgba(255,255,255,0.05)' }}
+                      onClick={() => { onPlayRadio(station.url, station.name, station.favicon); setShowSearch(false); }}>
+                      <StationAvatar station={station} size={28} />
+                      <div className="min-w-0 flex-1">
+                        <p className="text-[9px] font-bold text-white truncate group-hover:text-[var(--theme-color)] transition-colors">{station.name}</p>
+                        <p className="text-[7px] font-mono uppercase tracking-wider truncate mt-0.5" style={{ color: 'rgba(255,255,255,0.25)' }}>{station.country || 'Global'}</p>
                       </div>
+                      <button onClick={e => { e.stopPropagation(); onToggleFavoriteRadio(station); }}
+                        className="shrink-0 cursor-pointer">
+                        <Heart className="w-2.5 h-2.5 text-rose-500 fill-rose-500" />
+                      </button>
                     </div>
                   ))}
                 </div>
