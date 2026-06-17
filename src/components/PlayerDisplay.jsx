@@ -136,7 +136,7 @@ function FrequencyBand({ stations, onPlay, onToggleFavorite, favoriteStations = 
   useEffect(() => { setNeedleIdx(null); setPlayedIdx(null); }, [stations]);
 
   return (
-    <div className="mt-2 shrink-0">
+    <div className="mt-2 shrink-0 radio-container">
 
       {/* Scale labels + band wrapped for tooltip positioning */}
       <div className="relative">
