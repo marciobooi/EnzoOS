@@ -624,6 +624,24 @@ div[data-theme="ruby"] *::selection {
 }
 .menu-card-enter { animation: cardSlideIn 0.28s cubic-bezier(0.25, 0, 0.3, 1) both; }
 
+/* ── Skeleton shimmer ─────────────────────────────────────────────────────── */
+@keyframes shimmer {
+  from { background-position: -200% center; }
+  to   { background-position:  200% center; }
+}
+
+/* ── Queue panel slide-up ─────────────────────────────────────────────────── */
+@keyframes queuePanelIn {
+  from { opacity: 0; transform: translateY(100%); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes queuePanelOut {
+  from { opacity: 1; transform: translateY(0); }
+  to   { opacity: 0; transform: translateY(100%); }
+}
+.queue-panel-in  { animation: queuePanelIn  0.34s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
+.queue-panel-out { animation: queuePanelOut 0.24s ease-in both; }
+
 @keyframes toastEnter {
   from { opacity: 0; transform: translateY(14px) scale(0.93); }
   to   { opacity: 1; transform: translateY(0)    scale(1); }

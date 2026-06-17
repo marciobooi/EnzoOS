@@ -5,6 +5,7 @@ import {
 } from 'lucide-react';
 import { Tk, SpotifyIcon } from './shared';
 import { api } from '../../api';
+import SkeletonList from '../ui/SkeletonList';
 
 const GENRES = [
   { id: 'jazz',        label: 'Jazz',               bg: '#0e1a24', accent: '#d4a843' },
@@ -34,6 +35,7 @@ export default function LibraryTab() {
   const [results, setResults]       = useState(null);
   const [searching, setSearching]   = useState(false);
   const [recent, setRecent]         = useState(loadRecent);
+  const [pendingUri, setPendingUri] = useState(null);
   const debounceRef                 = useRef(null);
   const isDeep                      = libraryView !== 'artists';
 
@@ -66,14 +68,16 @@ export default function LibraryTab() {
 
   const clearRecent = () => { setRecent([]); localStorage.removeItem(RECENT_KEY); };
 
-  const playTrack = (uri, name, image) => {
+  const playTrack = async (uri, name, image) => {
     addRecent({ id: uri, name, type: 'track', image });
-    handlePlayTrack(uri);
+    setPendingUri(uri);
+    try { await handlePlayTrack(uri); } finally { setPendingUri(null); }
   };
 
-  const playContext = (uri, name, image) => {
+  const playContext = async (uri, name, image) => {
     addRecent({ id: uri, name, type: 'context', image });
-    handlePlayContext(uri);
+    setPendingUri(uri);
+    try { await handlePlayContext(uri); } finally { setPendingUri(null); }
   };
 
   const separator = i => i > 0 && (
@@ -102,10 +106,7 @@ export default function LibraryTab() {
       </div>
       <div className="px-4">
         {libraryLoading
-          ? <div className="flex justify-center py-12">
-              <div className="w-7 h-7 rounded-full border-2 animate-spin"
-                style={{ borderColor: C.container, borderTopColor: C.champagne }} />
-            </div>
+          ? <SkeletonList count={6} />
           : (
             <div className="rounded-xl overflow-hidden" style={cardWhite}>
               {libraryItems.map((item, idx) => {
@@ -201,12 +202,20 @@ export default function LibraryTab() {
                           {idx > 0 && <div className="ml-16" style={{ height: '0.5px', background: `linear-gradient(90deg, transparent 0%, ${C.outline} 15%, ${C.outline} 85%, transparent 100%)` }} />}
                           <button
                             className="w-full flex items-center gap-3 px-4 py-3 active:opacity-60 transition-opacity cursor-pointer text-left"
+                            disabled={pendingUri === t.uri}
                             onClick={() => playTrack(t.uri, t.name, t.album?.images?.[0]?.url)}>
-                            <div className="w-10 h-10 rounded-lg overflow-hidden shrink-0 flex items-center justify-center"
+                            <div className="relative w-10 h-10 rounded-lg overflow-hidden shrink-0 flex items-center justify-center"
                               style={{ background: C.containerLow, border: `0.5px solid ${C.outline}` }}>
                               {t.album?.images?.[0]?.url
                                 ? <img src={t.album.images[0].url} alt="" className="w-full h-full object-cover" />
                                 : <Music className="h-4 w-4" style={{ color: C.text3 }} />}
+                              {pendingUri === t.uri && (
+                                <div className="absolute inset-0 flex items-center justify-center"
+                                  style={{ background: 'rgba(0,0,0,0.55)' }}>
+                                  <div className="w-4 h-4 rounded-full border-2 animate-spin"
+                                    style={{ borderColor: 'transparent', borderTopColor: C.champagne }} />
+                                </div>
+                              )}
                             </div>
                             <div className="flex-1 min-w-0">
                               <p className="text-[14px] font-medium truncate" style={{ color: C.text1 }}>{t.name}</p>
@@ -347,10 +356,7 @@ export default function LibraryTab() {
             <p className="text-[11px] font-semibold uppercase tracking-widest mb-3 px-1"
               style={{ color: C.text3, fontFamily: C.fontLabel }}>Local Library</p>
             {libraryLoading
-              ? <div className="flex justify-center py-8">
-                  <div className="w-7 h-7 rounded-full border-2 animate-spin"
-                    style={{ borderColor: C.container, borderTopColor: C.champagne }} />
-                </div>
+              ? <SkeletonList count={6} />
               : libraryItems.length === 0
                 ? (
                   <div className="flex flex-col items-center gap-4 py-8 text-center">

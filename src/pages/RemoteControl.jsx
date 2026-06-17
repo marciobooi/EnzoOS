@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { Waves, Smartphone } from 'lucide-react';
 import { toast } from '../lib/toast';
 import { api } from '../api';
@@ -14,6 +14,8 @@ import PlayerTab   from '../components/remote/PlayerTab';
 import LibraryTab  from '../components/remote/LibraryTab';
 import SourceTab   from '../components/remote/SourceTab';
 import SettingsTab from '../components/remote/SettingsTab';
+import MiniPlayer  from '../components/remote/MiniPlayer';
+import QueuePanel  from '../components/remote/QueuePanel';
 
 // ─── cookie helpers ───────────────────────────────────────────────────────────
 const setCookie   = (n, v, d = 365) => { const e = new Date(); e.setTime(e.getTime() + d * 86400000); document.cookie = `${n}=${v}; expires=${e.toUTCString()}; path=/`; };
@@ -157,6 +159,11 @@ export default function RemoteControl() {
   const [sleepRemaining, setSleepRemaining] = useState(0);
   const [showSleepRow, setShowSleepRow]   = useState(false);
 
+  // ── queue ─────────────────────────────────────────────────────────────────
+  const [queueOpen, setQueueOpen]     = useState(false);
+  const [queue, setQueue]             = useState([]);
+  const [queueLoading, setQueueLoading] = useState(false);
+
   // refs
   const themeSyncTimeout     = useRef(null);
   const eqSyncTimeout        = useRef(null);
@@ -242,6 +249,7 @@ export default function RemoteControl() {
   useEffect(() => {
     if (activeTab === 'library' && libraryItems.length === 0 && libraryView === 'artists') fetchLibraryArtists();
   }, [activeTab]);
+  useEffect(() => { if (queueOpen && spotify && token) fetchQueue(); }, [queueOpen]);
   useEffect(() => {
     if (activeTab === 'settings') { fetchSystemHealth(); fetchServices(); }
   }, [activeTab]);
@@ -278,6 +286,16 @@ export default function RemoteControl() {
   const fetchDevices      = async () => { if (!token) return; setIsFetchingDevices(true); try { setDevices((await api.getDevices(token)).devices || []); } catch {} finally { setIsFetchingDevices(false); } };
   const fetchSystemHealth = async () => { try { setSystemHealth(await api.getSystemHealth()); } catch {} };
   const fetchServices     = async () => { try { setServices((await api.getServices()).services || {}); } catch {} };
+
+  const fetchQueue = async () => {
+    if (!token) return;
+    setQueueLoading(true);
+    try {
+      const data = await api.getSpotifyQueue(token);
+      setQueue(data?.queue || []);
+    } catch {}
+    finally { setQueueLoading(false); }
+  };
 
   const localSync = async () => {
     if (!spotify || !token) return;
@@ -399,6 +417,7 @@ export default function RemoteControl() {
     triggerOtaUpdate, checkUpdates, fetchDevices,
     handleTransferPlayback,
     setIsAuthenticated, eraseCookie,
+    queueOpen, setQueueOpen, queue, queueLoading,
   }), [
     darkMode, activeTab, isConnected, ws, sendUpdate,
     standby, source, spotify, token, isPlaying,
@@ -415,6 +434,7 @@ export default function RemoteControl() {
     sleepMinutes, sleepRemaining, showSleepRow,
     systemHealth, services, serviceLoading,
     updateStatus, otaProgress, otaPercent,
+    queueOpen, queue, queueLoading,
   ]);
 
   // ══════════════════════════════════════════════════════════════════════════
@@ -485,6 +505,7 @@ export default function RemoteControl() {
               {activeTab === 'source'   && <SourceTab />}
               {activeTab === 'settings' && <SettingsTab />}
             </div>
+            {activeTab !== 'player' && <MiniPlayer />}
           </div>
 
           <BottomNav navH={NAV_H} />
@@ -498,6 +519,14 @@ export default function RemoteControl() {
               onCalibrationComplete={active => setDspActive(active)}
             />
           </div>
+        )}
+
+        {queueOpen && (
+          <QueuePanel
+            queue={queue}
+            queueLoading={queueLoading}
+            onClose={() => setQueueOpen(false)}
+          />
         )}
 
         {isThemeSettingsOpen && (
