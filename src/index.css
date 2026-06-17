@@ -520,14 +520,6 @@ div[data-theme="ruby"] *::selection {
   padding-left: 1.25rem;
 }
 
-/* Force toaster to be absolute inside the scaled kiosk container */
-.music-player-container [data-sonner-toaster] {
-  position: absolute !important;
-  inset: auto 24px 24px auto !important; /* Bottom-right relative to container */
-  width: 326px !important;
-  z-index: 99999 !important;
-}
-
 /* Skinned premium glassmorphism menu cards */
 .menu-card {
   background: rgba(255, 255, 255, 0.07) !important;

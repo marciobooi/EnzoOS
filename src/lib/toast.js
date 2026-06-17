@@ -1,4 +1,3 @@
-// Minimal singleton toast bus — no React dependency, drop-in sonner API replacement.
 const listeners = new Set();
 let toasts = [];
 let nextId = 0;
