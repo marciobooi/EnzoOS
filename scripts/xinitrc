@@ -14,17 +14,18 @@
 unclutter -idle 0.5 -root &
 
 # ── Resolution setup (skip gracefully on VMs / unsupported displays) ─────────
+# Waveshare 11.9" HDMI LCD: native portrait 320×1480, used in landscape 1480×320
 
 OUTPUT=$(xrandr 2>/dev/null | grep " connected " | awk '{print $1}' | head -n 1)
 
 if [ -n "$OUTPUT" ]; then
   if command -v cvt &>/dev/null; then
-    MODELINE_GEN=$(cvt 1420 320 60 2>/dev/null | grep "Modeline" | cut -d' ' -f2-)
+    MODELINE_GEN=$(cvt 1480 320 60 2>/dev/null | grep "Modeline" | cut -d' ' -f2-)
     MODE_NAME=$(echo "$MODELINE_GEN" | cut -d' ' -f1 | tr -d '"')
     MODELINE_VALS=$(echo "$MODELINE_GEN" | cut -d' ' -f2-)
   else
-    MODE_NAME="1420x320_60.00"
-    MODELINE_VALS="35.50  1420 1464 1592 1776  320 323 328 335 -hsync +vsync"
+    MODE_NAME="1480x320_60.00"
+    MODELINE_VALS="37.00  1480 1528 1672 1864  320 323 328 336 -hsync +vsync"
   fi
 
   # These commands all fail silently — VM or driver rejection is non-fatal
@@ -32,6 +33,24 @@ if [ -n "$OUTPUT" ]; then
   xrandr --addmode "$OUTPUT" "$MODE_NAME" 2>/dev/null || true
   xrandr --output "$OUTPUT" --mode "$MODE_NAME" 2>/dev/null || true
 fi
+
+# ── Waveshare touch rotation ─────────────────────────────────────────────────
+# The USB HID touch panel reports portrait coordinates (Y=long axis).
+# Apply 90° CW transform so touches align with landscape HDMI output.
+# Matrix: new_X = old_Y, new_Y = 1 - old_X  →  [ 0  1  0 | -1  0  1 | 0  0  1 ]
+apply_touch_rotation() {
+  local id="$1"
+  xinput set-prop "$id" "Coordinate Transformation Matrix" \
+    0 1 0 -1 0 1 0 0 1 2>/dev/null && \
+    echo "[Resonance] Touch rotation applied to input id $id" || true
+}
+
+for NAME in "WaveShare" "Waveshare" "waveshare" "eGalaxTouch" "ILITEK" "Goodix"; do
+  while IFS= read -r line; do
+    ID=$(echo "$line" | grep -oP 'id=\K[0-9]+')
+    [ -n "$ID" ] && apply_touch_rotation "$ID"
+  done < <(xinput list 2>/dev/null | grep -i "$NAME")
+done
 
 # ── Window manager ──────────────────────────────────────────────────────────
 

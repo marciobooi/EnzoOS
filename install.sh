@@ -432,6 +432,48 @@ systemctl enable avahi-daemon || true
 systemctl restart avahi-daemon || true
 
 # 8. Configure Kiosk startup scripts
+echo -e "\n${GREEN}[5b/7] Configuring Waveshare 11.9\" HDMI LCD display and touchscreen...${NC}"
+
+# ── /boot/firmware/config.txt — HDMI custom resolution ─────────────────────
+# The Waveshare 11.9" LCD is a 320×1480 portrait panel used in landscape
+# orientation (1480×320). We add a custom CVT modeline via hdmi_cvt.
+# hdmi_group=2 (DMT), hdmi_mode=87 (custom), hdmi_cvt specifies W H Hz.
+CONFIG_TXT="/boot/firmware/config.txt"
+if [ -f "$CONFIG_TXT" ]; then
+  # Remove any previous Resonance display block before rewriting
+  sed -i '/# Resonance HiFi display start/,/# Resonance HiFi display end/d' "$CONFIG_TXT"
+  cat >> "$CONFIG_TXT" <<'DISPLAYEOF'
+# Resonance HiFi display start — Waveshare 11.9" HDMI LCD (1480×320 landscape)
+hdmi_group=2
+hdmi_mode=87
+hdmi_cvt 1480 320 60 6 0 0 0
+hdmi_drive=2
+# Resonance HiFi display end
+DISPLAYEOF
+  echo -e "${GREEN}  HDMI config written to $CONFIG_TXT${NC}"
+else
+  echo -e "${YELLOW}  /boot/firmware/config.txt not found — skipping HDMI config (QEMU/non-Pi).${NC}"
+fi
+
+# ── udev rule — persistent touch rotation for Waveshare USB capacitive panel ─
+# The USB HID panel identifies itself with these names/VIDs on known firmware.
+# LIBINPUT_CALIBRATION_MATRIX applies 90° CW rotation so X/Y match landscape.
+# If touches are mirrored after install, try swapping to: 0 -1 1  1 0 0  0 0 1
+UDEV_TOUCH="/etc/udev/rules.d/99-waveshare-touch.rules"
+cat > "$UDEV_TOUCH" <<'UDEVEOF'
+# Waveshare 11.9" HDMI LCD — USB capacitive touch rotation (90° CW landscape)
+# Matches by device name (varies by panel firmware revision)
+ATTRS{name}=="WaveShare*",  ENV{LIBINPUT_CALIBRATION_MATRIX}="0 1 0 -1 0 1 0 0 1"
+ATTRS{name}=="Waveshare*",  ENV{LIBINPUT_CALIBRATION_MATRIX}="0 1 0 -1 0 1 0 0 1"
+ATTRS{name}=="ILITEK*",     ENV{LIBINPUT_CALIBRATION_MATRIX}="0 1 0 -1 0 1 0 0 1"
+ATTRS{name}=="Goodix*",     ENV{LIBINPUT_CALIBRATION_MATRIX}="0 1 0 -1 0 1 0 0 1"
+# Fallback: match by USB Vendor ID 0x0EEF (eGalax, used on many Waveshare panels)
+ATTRS{idVendor}=="0eef",    ENV{LIBINPUT_CALIBRATION_MATRIX}="0 1 0 -1 0 1 0 0 1"
+UDEVEOF
+chmod 644 "$UDEV_TOUCH"
+udevadm control --reload-rules 2>/dev/null && udevadm trigger 2>/dev/null || true
+echo -e "${GREEN}  Touch udev rule written to $UDEV_TOUCH${NC}"
+
 echo -e "\n${GREEN}[6/7] Configuring kiosk startup files...${NC}"
 
 # Deploy kiosk power management and wake monitor scripts
