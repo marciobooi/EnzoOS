@@ -786,38 +786,55 @@ router.post('/standby', async (req, res) => {
 // Proxy so browser clients (especially iOS Safari on HTTP) never have to make
 // cross-origin requests to an external HTTPS host. Tries multiple mirrors in
 // sequence so a single downed mirror doesn't break search.
+//
+// Mirror order: 'all.' is the official round-robin DNS entry recommended by the
+// radio-browser.info project; individual geo mirrors are fallbacks only.
 
 const RADIO_MIRRORS = [
+  'https://all.api.radio-browser.info',
   'https://de1.api.radio-browser.info',
   'https://nl1.api.radio-browser.info',
   'https://at1.api.radio-browser.info',
 ];
 
-async function radioFetch(path) {
+// Cache the import so it doesn't re-evaluate on every request
+let _nodeFetch = null;
+async function getNodeFetch() {
+  if (!_nodeFetch) _nodeFetch = (await import('node-fetch')).default;
+  return _nodeFetch;
+}
+
+async function radioFetch(path, timeoutMs = 10000) {
+  const fetch = await getNodeFetch();
   let lastErr;
   for (const base of RADIO_MIRRORS) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
     try {
-      const { default: fetch } = await import('node-fetch');
       const r = await fetch(`${base}${path}`, {
         headers: { 'User-Agent': 'ResonanceHiFi/1.0' },
-        signal: AbortSignal.timeout(6000),
+        signal: controller.signal,
       });
+      clearTimeout(timer);
       if (!r.ok) throw new Error(`HTTP ${r.status}`);
       return await r.json();
     } catch (e) {
+      clearTimeout(timer);
       lastErr = e;
     }
   }
   throw lastErr;
 }
 
-// GET /api/player/radio-search?q=<name>&limit=25
+// GET /api/player/radio-search?q=<name>&limit=<n>
+// Used by: remote control search bar
 router.get('/radio-search', async (req, res) => {
   const q = (req.query.q || '').trim();
+  const limit = Math.min(parseInt(req.query.limit, 10) || 25, 100);
   if (!q) return res.json([]);
   try {
     const data = await radioFetch(
-      `/json/stations/byname/${encodeURIComponent(q)}?limit=25&hidebroken=true&order=votes`
+      `/json/stations/byname/${encodeURIComponent(q)}?limit=${limit}&hidebroken=true&order=votes`
     );
     res.json(data);
   } catch (err) {
@@ -825,13 +842,16 @@ router.get('/radio-search', async (req, res) => {
   }
 });
 
-// GET /api/player/radio-bycountry?country=<name>&limit=60
+// GET /api/player/radio-bycountry?country=<name>&limit=<n>
+// Used by: kiosk country picker
 router.get('/radio-bycountry', async (req, res) => {
   const country = (req.query.country || '').trim();
+  const limit = Math.min(parseInt(req.query.limit, 10) || 60, 200);
   if (!country) return res.json([]);
   try {
     const data = await radioFetch(
-      `/json/stations/bycountry/${encodeURIComponent(country)}?limit=60&hidebroken=true&order=votes`
+      `/json/stations/bycountry/${encodeURIComponent(country)}?limit=${limit}&hidebroken=true&order=votes`,
+      12000
     );
     res.json(data);
   } catch (err) {
