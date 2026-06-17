@@ -120,6 +120,29 @@ When a radio station is selected via the source tab the REST route broadcasts `S
 
 ---
 
+## 🔔 Custom Toast Notifications
+
+Sonner has been replaced with a bespoke in-house toast system that matches the application's dark glassmorphism design language.
+
+| File | Role |
+|---|---|
+| `src/lib/toast.js` | Vanilla JS singleton event emitter. No React dependency — imperative `toast.success(msg)` / `toast.error(msg)` calls work from any file including hooks. |
+| `src/components/ui/ToastContainer.jsx` | React consumer that subscribes to the bus and renders the animated toast stack. Mounted once in `App.jsx`. |
+
+**Visual design:**
+- Dark glass background: `rgba(10,14,28,0.93)` + `blur(24px) saturate(180%)` backdrop filter
+- Colored left border stripe: champagne `#c9a84c` for success, rose-400 for errors
+- Icons: `CheckCircle2` (success) / `AlertCircle` (error) from lucide-react
+- Inset top highlight + deep drop shadow — consistent with kiosk menu cards
+
+**Animations:**
+- Enter: spring slide-up from 14px below + scale from 0.93 (`cubic-bezier(0.34,1.56,0.64,1)` 320ms)
+- Exit: fade + shrink back down (`ease-in` 250ms), triggered 3.5s after mount
+
+**Positioning:** `App.jsx` passes `bottomOffset={80}` on the remote page (clears the 64px bottom nav) and `bottomOffset={24}` on the kiosk page.
+
+---
+
 ## ✨ Premium Animations
 
 Micro-interactions are added with short, deliberate CSS keyframe animations — no looping or distracting motion.

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { toast } from 'sonner';
+import { toast } from './lib/toast';
 
 /**
  * A custom hook that manages the WebSocket connection lifecycle for Resonance clients.

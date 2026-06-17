@@ -632,6 +632,17 @@ div[data-theme="ruby"] *::selection {
 }
 .menu-card-enter { animation: cardSlideIn 0.28s cubic-bezier(0.25, 0, 0.3, 1) both; }
 
+@keyframes toastEnter {
+  from { opacity: 0; transform: translateY(14px) scale(0.93); }
+  to   { opacity: 1; transform: translateY(0)    scale(1); }
+}
+@keyframes toastExit {
+  from { opacity: 1; transform: translateY(0)   scale(1); }
+  to   { opacity: 0; transform: translateY(8px) scale(0.97); }
+}
+.toast-enter { animation: toastEnter 0.32s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
+.toast-exit  { animation: toastExit  0.25s ease-in both; }
+
 /* Import theme-specific stylesheet files at the end to overlay standard layout styles */
 @import "./dot-matrix.css";
 @import "./dreamplayer.css";

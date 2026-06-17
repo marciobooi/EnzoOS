@@ -3,7 +3,7 @@ import {
   Sliders, Cpu, Timer, Palette, Power, LogOut, Laptop,
   Music, RefreshCw,
 } from 'lucide-react';
-import { toast } from 'sonner';
+import { toast } from '../../lib/toast';
 import { Tk, Row, Section, SpotifyIcon } from './shared';
 import EqualizerControl from '../EqualizerControl';
 

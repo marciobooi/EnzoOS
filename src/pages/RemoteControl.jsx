@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Waves, Smartphone } from 'lucide-react';
-import { toast, Toaster } from 'sonner';
+import { toast } from '../lib/toast';
 import { api } from '../api';
 import { useResonanceWS } from '../websocket';
 import { EQ_PRESETS } from '../components/EqualizerControl';
@@ -464,7 +464,6 @@ export default function RemoteControl() {
           </form>
         </div>
       </div>
-      <Toaster theme={darkMode ? 'dark' : 'light'} closeButton richColors position="bottom-center" visibleToasts={1} />
     </>
   );
 
@@ -527,7 +526,6 @@ export default function RemoteControl() {
           </div>
         )}
 
-        <Toaster theme={darkMode ? 'dark' : 'light'} closeButton richColors position="bottom-center" visibleToasts={1} />
       </>
     </Tk.Provider>
   );

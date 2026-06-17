@@ -2,7 +2,7 @@ import React, { useContext } from 'react';
 import { Search, Radio, Music, Heart } from 'lucide-react';
 import { Tk, SpotifyIcon } from './shared';
 import { api } from '../../api';
-import { toast } from 'sonner';
+import { toast } from '../../lib/toast';
 
 export default function SourceTab() {
   const {

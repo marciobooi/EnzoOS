@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { toast, Toaster } from 'sonner';
+import { toast } from '../lib/toast';
 import { api } from '../api';
 import { useResonanceWS } from '../websocket';
 import { EQ_PRESETS } from '../components/EqualizerControl';
@@ -1098,8 +1098,6 @@ export default function Kiosk() {
         <ThemeSettingsOverlay />
         <RemoteAccessOverlay />
         {isDspWizardOpen && <DspWizardOverlay />}
-
-        <Toaster theme="dark" closeButton richColors position="bottom-right" visibleToasts={1} />
       </div>
 
       {/* Backlight Brightness hardware simulation overlay */}
