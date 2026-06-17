@@ -82,6 +82,15 @@ export default function RemoteControl() {
 
   // ── nav ───────────────────────────────────────────────────────────────────
   const [activeTab, setActiveTab] = useState('player');
+  const [tabDirection, setTabDirection] = useState('right');
+  const activeTabRef = useRef('player');
+  useEffect(() => { activeTabRef.current = activeTab; }, [activeTab]);
+  const changeTab = useCallback((newTab) => {
+    const TAB_ORDER = ['player', 'library', 'source', 'settings'];
+    const dir = TAB_ORDER.indexOf(newTab) >= TAB_ORDER.indexOf(activeTabRef.current) ? 'right' : 'left';
+    setTabDirection(dir);
+    setActiveTab(newTab);
+  }, []);
 
   // ── radio ─────────────────────────────────────────────────────────────────
   const [radioSearch, setRadioSearch]           = useState('');
@@ -352,7 +361,7 @@ export default function RemoteControl() {
   // ── context value ─────────────────────────────────────────────────────────
   const ctxValue = useMemo(() => ({
     C, card, cardWhite, btn, btnInset, darkMode,
-    activeTab, setActiveTab,
+    activeTab, setActiveTab: changeTab,
     isConnected, ws, sendUpdate,
     standby, handleToggleStandby,
     source, spotify, setSource, handleToggleSource,
@@ -471,10 +480,12 @@ export default function RemoteControl() {
           <TopBar darkMode={darkMode} setDarkMode={setDarkMode} />
 
           <div className="flex-1 overflow-y-auto overscroll-none" style={{ paddingBottom: NAV_H + 8 }}>
-            {activeTab === 'player'   && <PlayerTab />}
-            {activeTab === 'library'  && <LibraryTab />}
-            {activeTab === 'source'   && <SourceTab />}
-            {activeTab === 'settings' && <SettingsTab />}
+            <div key={activeTab} className={`animate-tab-${tabDirection}`}>
+              {activeTab === 'player'   && <PlayerTab />}
+              {activeTab === 'library'  && <LibraryTab />}
+              {activeTab === 'source'   && <SourceTab />}
+              {activeTab === 'settings' && <SettingsTab />}
+            </div>
           </div>
 
           <BottomNav navH={NAV_H} />

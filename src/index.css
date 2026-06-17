@@ -598,6 +598,40 @@ div[data-theme="ruby"] *::selection {
 .animate-kiosk-welcome { animation: kiosk-welcome 2.8s cubic-bezier(0.4,0,0.2,1) both; }
 .animate-kiosk-goodbye { animation: kiosk-goodbye 2.2s cubic-bezier(0.4,0,0.2,1) both; }
 
+/* ── Remote tab slide animations ─────────────────────────────────────────── */
+@keyframes tabSlideInRight {
+  from { opacity: 0; transform: translateX(22px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+@keyframes tabSlideInLeft {
+  from { opacity: 0; transform: translateX(-22px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+.animate-tab-right { animation: tabSlideInRight 0.24s cubic-bezier(0.25, 0, 0.3, 1) both; }
+.animate-tab-left  { animation: tabSlideInLeft  0.24s cubic-bezier(0.25, 0, 0.3, 1) both; }
+
+/* ── Radio / library list item rise ─────────────────────────────────────── */
+@keyframes listItemRise {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.list-item-rise { animation: listItemRise 0.32s ease-out both; }
+
+/* ── Volume popup spring entrance ────────────────────────────────────────── */
+@keyframes volumeSpringIn {
+  0%   { opacity: 0; transform: translateX(18px) scale(0.96); }
+  65%  { opacity: 1; transform: translateX(-3px) scale(1.01); }
+  100% { opacity: 1; transform: translateX(0)   scale(1); }
+}
+.animate-volume-in { animation: volumeSpringIn 0.34s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
+
+/* ── Kiosk menu card staggered entrance ──────────────────────────────────── */
+@keyframes cardSlideIn {
+  from { opacity: 0; transform: translateX(-14px) scale(0.97); }
+  to   { opacity: 1; transform: translateX(0)     scale(1); }
+}
+.menu-card-enter { animation: cardSlideIn 0.28s cubic-bezier(0.25, 0, 0.3, 1) both; }
+
 /* Import theme-specific stylesheet files at the end to overlay standard layout styles */
 @import "./dot-matrix.css";
 @import "./dreamplayer.css";

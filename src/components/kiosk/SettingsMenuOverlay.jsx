@@ -1,8 +1,10 @@
-import { useContext } from 'react';
+import { useContext, useState, useEffect, useRef } from 'react';
 import { Kk } from './KioskContext';
 import DefinitionsMenu from '../DefinitionsMenu';
 
 export default function SettingsMenuOverlay() {
+  const [animKey, setAnimKey] = useState(0);
+  const prevOpen = useRef(false);
   const {
     isMenuOpen,
     setIsMenuOpen,
@@ -33,6 +35,11 @@ export default function SettingsMenuOverlay() {
     setRemoteUrl,
   } = useContext(Kk);
 
+  useEffect(() => {
+    if (isMenuOpen && !prevOpen.current) setAnimKey(k => k + 1);
+    prevOpen.current = isMenuOpen;
+  }, [isMenuOpen]);
+
   return (
     <div
       className={`absolute inset-0 bg-[#060c1a] border border-white/10 rounded-3xl shadow-2xl z-50 transform transition-all duration-300 ease-in-out flex flex-col p-5 font-sans ${
@@ -52,7 +59,7 @@ export default function SettingsMenuOverlay() {
 
       {/* Horizontally Scrollable Content */}
       <div className="flex-grow overflow-x-auto overflow-y-hidden custom-scrollbar">
-        <DefinitionsMenu
+        <DefinitionsMenu key={animKey}
           token={token}
           handleLogout={handleLogout}
           devices={devices}

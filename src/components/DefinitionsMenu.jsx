@@ -119,9 +119,10 @@ export default function DefinitionsMenu({
         onClick={() => {
           onSetSource('spotify');
         }}
-        className={`w-[180px] shrink-0 p-5 rounded-2xl text-left flex flex-col justify-between transition-all duration-300 relative group overflow-hidden cursor-pointer ${
+        className={`w-[180px] shrink-0 p-5 rounded-2xl text-left flex flex-col justify-between transition-all duration-300 relative group overflow-hidden cursor-pointer menu-card-enter ${
           source === 'spotify' ? 'active-card scale-[1.02]' : 'menu-card hover:scale-[1.01]'
         }`}
+        style={{ animationDelay: '0ms' }}
       >
         <span className="text-[9px] font-extrabold tracking-widest text-zinc-300 uppercase">STREAM SERVICE</span>
 
@@ -147,9 +148,10 @@ export default function DefinitionsMenu({
         onClick={() => {
           onSetSource('local');
         }}
-        className={`w-[180px] shrink-0 p-5 rounded-2xl text-left flex flex-col justify-between transition-all duration-300 relative group overflow-hidden cursor-pointer ${
+        className={`w-[180px] shrink-0 p-5 rounded-2xl text-left flex flex-col justify-between transition-all duration-300 relative group overflow-hidden cursor-pointer menu-card-enter ${
           source === 'local' ? 'active-card scale-[1.02]' : 'menu-card hover:scale-[1.01]'
         }`}
+        style={{ animationDelay: '30ms' }}
       >
         <span className="text-[9px] font-extrabold tracking-widest text-zinc-300 uppercase">LOCAL SYSTEM</span>
 
@@ -172,9 +174,10 @@ export default function DefinitionsMenu({
         onClick={() => {
           onSetSource('radio');
         }}
-        className={`w-[180px] shrink-0 p-5 rounded-2xl text-left flex flex-col justify-between transition-all duration-300 relative group overflow-hidden cursor-pointer ${
+        className={`w-[180px] shrink-0 p-5 rounded-2xl text-left flex flex-col justify-between transition-all duration-300 relative group overflow-hidden cursor-pointer menu-card-enter ${
           source === 'radio' ? 'active-card scale-[1.02]' : 'menu-card hover:scale-[1.01]'
         }`}
+        style={{ animationDelay: '60ms' }}
       >
         <span className="text-[9px] font-extrabold tracking-widest text-zinc-300 uppercase">STREAM RADIO</span>
 
@@ -195,7 +198,8 @@ export default function DefinitionsMenu({
       {/* 4. CYCLE THEME CARD */}
       <button
         onClick={handleCycleTheme}
-        className="w-[180px] shrink-0 p-5 rounded-2xl text-left flex flex-col justify-between transition-all duration-300 relative group overflow-hidden cursor-pointer menu-card hover:scale-[1.01]"
+        className="w-[180px] shrink-0 p-5 rounded-2xl text-left flex flex-col justify-between transition-all duration-300 relative group overflow-hidden cursor-pointer menu-card menu-card-enter hover:scale-[1.01]"
+        style={{ animationDelay: '90ms' }}
       >
         <span className="text-[9px] font-extrabold tracking-widest text-zinc-300 uppercase">APPEARANCE</span>
 
@@ -214,7 +218,8 @@ export default function DefinitionsMenu({
       {/* 4b. ACOUSTIC PROFILE CARD */}
       <button
         onClick={onOpenDspWizard}
-        className="w-[180px] shrink-0 p-5 rounded-2xl text-left flex flex-col justify-between transition-all duration-300 relative group overflow-hidden cursor-pointer menu-card hover:scale-[1.01]"
+        className="w-[180px] shrink-0 p-5 rounded-2xl text-left flex flex-col justify-between transition-all duration-300 relative group overflow-hidden cursor-pointer menu-card menu-card-enter hover:scale-[1.01]"
+        style={{ animationDelay: '120ms' }}
       >
         <span className="text-[9px] font-extrabold tracking-widest text-zinc-300 uppercase">Acoustic Profiler</span>
 
@@ -236,9 +241,10 @@ export default function DefinitionsMenu({
           if (onOpenRemoteAccess) onOpenRemoteAccess();
           else if (onToggleRemoteAccess) onToggleRemoteAccess(!remoteAccessEnabled);
         }}
-        className={`w-[180px] shrink-0 p-5 rounded-2xl text-left flex flex-col justify-between transition-all duration-300 relative group overflow-hidden cursor-pointer ${
+        className={`w-[180px] shrink-0 p-5 rounded-2xl text-left flex flex-col justify-between transition-all duration-300 relative group overflow-hidden cursor-pointer menu-card-enter ${
           remoteAccessEnabled ? 'active-card scale-[1.02]' : 'menu-card hover:scale-[1.01]'
         }`}
+        style={{ animationDelay: '150ms' }}
       >
         <span className="text-[9px] font-extrabold tracking-widest text-zinc-300 uppercase">ACCESS PANEL</span>
 
@@ -266,7 +272,8 @@ export default function DefinitionsMenu({
       <button
         onClick={handleUpdateClick}
         disabled={updateStatus === 'updating' || updateStatus === 'checking'}
-        className="w-[180px] shrink-0 p-5 rounded-2xl text-left flex flex-col justify-between transition-all duration-300 relative group overflow-hidden cursor-pointer menu-card hover:scale-[1.01]"
+        className="w-[180px] shrink-0 p-5 rounded-2xl text-left flex flex-col justify-between transition-all duration-300 relative group overflow-hidden cursor-pointer menu-card menu-card-enter hover:scale-[1.01]"
+        style={{ animationDelay: '180ms' }}
       >
         <span className="text-[9px] font-extrabold tracking-widest text-zinc-300 uppercase">SYSTEM FIRMWARE</span>
 
@@ -300,7 +307,8 @@ export default function DefinitionsMenu({
       </button>
 
       {/* 5b. SYSTEM HEALTH METRICS CARD */}
-      <div className="w-[180px] shrink-0 p-5 rounded-2xl text-left flex flex-col justify-between transition-all duration-300 relative group overflow-hidden menu-card">
+      <div className="w-[180px] shrink-0 p-5 rounded-2xl text-left flex flex-col justify-between transition-all duration-300 relative group overflow-hidden menu-card menu-card-enter"
+        style={{ animationDelay: '210ms' }}>
         <span className="text-[9px] font-extrabold tracking-widest text-zinc-300 uppercase">SYSTEM METRICS</span>
 
         <div className="flex flex-col gap-2.5 my-auto w-full">
@@ -360,7 +368,8 @@ export default function DefinitionsMenu({
       {token && (
         <button
           onClick={handleLogout}
-          className="w-[180px] shrink-0 p-5 rounded-2xl text-left flex flex-col justify-between transition-all duration-300 relative group overflow-hidden cursor-pointer menu-card hover:scale-[1.01] hover:border-rose-500/50"
+          className="w-[180px] shrink-0 p-5 rounded-2xl text-left flex flex-col justify-between transition-all duration-300 relative group overflow-hidden cursor-pointer menu-card menu-card-enter hover:scale-[1.01] hover:border-rose-500/50"
+          style={{ animationDelay: '240ms' }}
         >
           <span className="text-[9px] font-extrabold tracking-widest text-zinc-300 uppercase">CONNECTIONS</span>
 

@@ -120,6 +120,25 @@ When a radio station is selected via the source tab the REST route broadcasts `S
 
 ---
 
+## ✨ Premium Animations
+
+Micro-interactions are added with short, deliberate CSS keyframe animations — no looping or distracting motion.
+
+| Animation | Class | Used On | Easing / Duration |
+|---|---|---|---|
+| Tab slide-in right | `animate-tab-right` | Remote tab content (forward navigation) | `cubic-bezier(0.25,0,0.3,1)` 240ms |
+| Tab slide-in left | `animate-tab-left` | Remote tab content (backward navigation) | `cubic-bezier(0.25,0,0.3,1)` 240ms |
+| Volume popup spring | `animate-volume-in` | Kiosk volume slider popup | Spring `cubic-bezier(0.34,1.56,0.64,1)` 340ms |
+| Station list rise | `list-item-rise` | Radio station rows with per-item stagger (0–350ms) | `ease-out` 320ms |
+| Menu card enter | `menu-card-enter` | DefinitionsMenu cards with 30ms stagger per card | `cubic-bezier(0.25,0,0.3,1)` 280ms |
+| Bottom-nav indicator | inline spring transition | Sliding champagne bar under active tab | Spring `cubic-bezier(0.34,1.56,0.64,1)` 380ms |
+
+**Tab direction tracking** (`RemoteControl.jsx`): a `changeTab` callback computes whether the new tab is to the left or right of the current one (using `TAB_ORDER` index comparison via `useRef`) and sets `tabDirection` state before switching. The content pane re-mounts with `key={activeTab}` picking up the correct `animate-tab-{direction}` class.
+
+**Menu stagger** (`SettingsMenuOverlay.jsx`): an `animKey` state counter increments every time `isMenuOpen` transitions from `false → true`. Passing `key={animKey}` to `<DefinitionsMenu>` forces a remount, retriggering the CSS `menu-card-enter` animations each time the panel opens.
+
+---
+
 ## ⚡ Render Optimisations
 
 | What | Where | Effect |

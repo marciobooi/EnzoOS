@@ -96,7 +96,8 @@ export default function SourceTab() {
               {idx > 0 && (
                 <div className="ml-16" style={{ height: '0.5px', background: `linear-gradient(90deg, transparent 0%, ${C.outline} 15%, ${C.outline} 85%, transparent 100%)` }} />
               )}
-              <div className="flex items-center gap-3 px-4 py-3">
+              <div className="flex items-center gap-3 px-4 py-3 list-item-rise"
+                style={{ animationDelay: `${Math.min(idx * 0.035, 0.35)}s` }}>
                 <div className="w-10 h-10 rounded-xl overflow-hidden flex items-center justify-center shrink-0"
                   style={{ background: C.containerLow, border: `0.5px solid ${C.outline}` }}>
                   {station.favicon
