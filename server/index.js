@@ -11,11 +11,17 @@ import systemRouter from './system.js';
 import spotifyAuthRouter from './spotify-auth.js';
 import playerRouter from './player.js';
 import spotifyDaemonRouter from './spotify-daemon.js';
-import { setupWebSocket } from './websocket.js';
+import { setupWebSocket, stopAudioLevelMonitor } from './websocket.js';
 import { loadStateFromDB } from './event-service.js';
+import { closeDB } from './db.js';
+import { stopTokenRefresh } from './spotify-auth.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+if (!process.env.SPOTIFY_CLIENT_ID || !process.env.SPOTIFY_CLIENT_SECRET) {
+  console.warn('[Resonance Backend] SPOTIFY_CLIENT_ID / SPOTIFY_CLIENT_SECRET not set — Spotify auth will be unavailable.');
+}
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -61,6 +67,17 @@ loadStateFromDB();
 server.listen(PORT, () => {
   console.log(`[Resonance Backend] Server listening on http://localhost:${PORT}`);
 });
+
+const shutdown = async () => {
+  console.log('[Resonance Backend] Shutting down gracefully...');
+  stopAudioLevelMonitor();
+  stopTokenRefresh();
+  await closeDB();
+  process.exit(0);
+};
+
+process.on('SIGTERM', shutdown);
+process.on('SIGINT', shutdown);
 
 // HTTPS server for remote devices (phones on LAN).
 // Both HTTP and HTTPS share the same wss instance so broadcast reaches all clients.

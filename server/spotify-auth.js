@@ -115,11 +115,15 @@ export const getValidAccessToken = async () => {
 };
 
 // Start auto-refresh interval: check every 5 minutes
-setInterval(async () => {
+const tokenRefreshInterval = setInterval(async () => {
   if (tokenState.refresh_token && Date.now() > tokenState.expires_at) {
     await refreshAccessToken();
   }
 }, 5 * 60 * 1000);
+
+export function stopTokenRefresh() {
+  clearInterval(tokenRefreshInterval);
+}
 
 // State param to prevent CSRF + callback URI tracking
 let pendingOAuth = null;
@@ -244,7 +248,11 @@ router.get('/callback', async (req, res) => {
 
     // Broadcast new token and request sync via EventService
     emit('SET_TOKEN', { token: tokenState.access_token });
-    setTimeout(() => emit('REQUEST_SYNC', null), 1500);
+    setTimeout(() => {
+      emit('REQUEST_SYNC', null).catch(err =>
+        console.error('[Resonance Auth] REQUEST_SYNC after login failed:', err)
+      );
+    }, 1500);
 
     console.log(`[Resonance Auth] Authenticated as: ${tokenState.display_name}`);
 

@@ -4,6 +4,15 @@ import { getValidAccessToken } from './spotify-auth.js';
 import { getSetting } from './db.js';
 import { setBroadcast, emit, getState } from './event-service.js';
 
+function safeParse(jsonStr, label) {
+  try {
+    return JSON.parse(jsonStr);
+  } catch (e) {
+    console.warn(`[Resonance WS] Corrupted DB value for "${label}", skipping:`, e.message);
+    return null;
+  }
+}
+
 export function setupWebSocket(server) {
   const wss = new WebSocketServer({ noServer: true });
 
@@ -31,19 +40,16 @@ export function setupWebSocket(server) {
     ws.send(JSON.stringify({ type: 'SET_STANDBY', payload: { enabled: standbyState } }));
 
     const eqSettings = await getSetting('eq_settings');
-    if (eqSettings) {
-      ws.send(JSON.stringify({ type: 'EQ_SETTINGS', payload: JSON.parse(eqSettings) }));
-    }
+    const eqParsed = eqSettings ? safeParse(eqSettings, 'eq_settings') : null;
+    if (eqParsed) ws.send(JSON.stringify({ type: 'EQ_SETTINGS', payload: eqParsed }));
 
     const dspCalibration = await getSetting('dsp_calibration');
-    if (dspCalibration) {
-      ws.send(JSON.stringify({ type: 'DSP_CALIBRATION', payload: JSON.parse(dspCalibration) }));
-    }
+    const dspParsed = dspCalibration ? safeParse(dspCalibration, 'dsp_calibration') : null;
+    if (dspParsed) ws.send(JSON.stringify({ type: 'DSP_CALIBRATION', payload: dspParsed }));
 
     const themeSettings = await getSetting('theme_settings');
-    if (themeSettings) {
-      ws.send(JSON.stringify({ type: 'THEME_SETTINGS', payload: JSON.parse(themeSettings) }));
-    }
+    const themeParsed = themeSettings ? safeParse(themeSettings, 'theme_settings') : null;
+    if (themeParsed) ws.send(JSON.stringify({ type: 'THEME_SETTINGS', payload: themeParsed }));
 
     const remoteAccess = await getSetting('remote_access_enabled');
     ws.send(JSON.stringify({ type: 'SET_REMOTE_ACCESS', payload: { enabled: remoteAccess === 'true' } }));
@@ -55,11 +61,17 @@ export function setupWebSocket(server) {
 
     // All messages routed through EventService — no ad-hoc state mutations here
     ws.on('message', async (messageStr) => {
+      let type;
       try {
-        const { type, payload } = JSON.parse(messageStr);
-        await emit(type, payload, ws);
+        const parsed = JSON.parse(messageStr);
+        type = parsed.type;
+        await emit(type, parsed.payload, ws);
       } catch (err) {
-        console.error('[Resonance WS] Failed parsing client message:', err);
+        if (type) {
+          console.error(`[Resonance WS] Failed handling message type "${type}":`, err);
+        } else {
+          console.error('[Resonance WS] Failed parsing client message:', err);
+        }
       }
     });
 

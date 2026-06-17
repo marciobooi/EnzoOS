@@ -209,6 +209,7 @@ export function useResonanceWS({
 
       socket.onerror = (err) => {
         console.error('[Resonance WS] WebSocket error:', err);
+        clearTimeout(reconnectTimeout);
         socket.close();
       };
     };
@@ -218,6 +219,11 @@ export function useResonanceWS({
     return () => {
       clearTimeout(reconnectTimeout);
       if (socket) {
+        // Null out handlers so onclose can't queue a reconnect after cleanup
+        socket.onopen = null;
+        socket.onmessage = null;
+        socket.onclose = null;
+        socket.onerror = null;
         socket.close();
       }
       ws.current = null;

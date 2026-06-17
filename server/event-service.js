@@ -70,7 +70,7 @@ async function setHardwareBrightness(brightness) {
     const { exec } = await import('child_process');
     const pct = Math.max(0, Math.min(100, Math.round(sanitized)));
     const script = `/usr/local/bin/kiosk-brightness.sh ${pct}`;
-    const x11Env = { ...process.env, DISPLAY: ':0', XAUTHORITY: '/home/pi/.Xauthority' };
+    const x11Env = { ...process.env, DISPLAY: ':0', XAUTHORITY: process.env.XAUTHORITY || '/home/pi/.Xauthority' };
     exec(script, { env: x11Env }, (err, stdout) => {
       if (!err) { console.log(`[Brightness] Set to ${pct}%:`, stdout.trim()); return; }
       exec(`sudo ${script}`, { env: x11Env }, (sudoErr, sudoStdout) => {
@@ -146,7 +146,7 @@ async function handleEvent(type, payload, excludeWs) {
             fetch('https://api.spotify.com/v1/me/player/pause', {
               method: 'PUT',
               headers: { 'Authorization': `Bearer ${token}` },
-            }).catch(() => {});
+            }).catch(err => console.warn('[SET_SOURCE] Spotify pause failed (non-fatal):', err.message));
           }
         } catch (err) {
           console.error('[SET_SOURCE] Failed to pause Spotify:', err);

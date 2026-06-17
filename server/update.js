@@ -63,11 +63,17 @@ router.post('/', (req, res) => {
       const percent = match ? parseInt(match[1], 10) : null;
       emit('UPDATE_PROGRESS', { text, percent });
     });
+    child.stdout.on('error', (err) => {
+      console.error('[OTA Update] stdout stream error:', err.message);
+    });
 
     child.stderr.on('data', (data) => {
       const text = data.toString();
       fs.appendFileSync(logPath, text);
       emit('UPDATE_PROGRESS', { text, isError: true });
+    });
+    child.stderr.on('error', (err) => {
+      console.error('[OTA Update] stderr stream error:', err.message);
     });
     
     child.unref();
