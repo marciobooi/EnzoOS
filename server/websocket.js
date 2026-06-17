@@ -31,11 +31,9 @@ export function setupWebSocket(server) {
   wss.on('connection', async (ws) => {
     console.log('[Resonance WS] Client connected. Active clients:', wss.clients.size);
 
-    // Send current cached state to the new client
+    // Always send PLAYBACK_STATE (even null) so reconnecting clients always clear stale state
     const { playbackState, sourceState, standbyState } = getState();
-    if (playbackState) {
-      ws.send(JSON.stringify({ type: 'PLAYBACK_STATE', payload: playbackState }));
-    }
+    ws.send(JSON.stringify({ type: 'PLAYBACK_STATE', payload: playbackState }));
     ws.send(JSON.stringify({ type: 'SET_SOURCE', payload: sourceState }));
     ws.send(JSON.stringify({ type: 'SET_STANDBY', payload: { enabled: standbyState } }));
 

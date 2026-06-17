@@ -60,9 +60,12 @@ app.use((req, res, next) => {
 // Create HTTP server wrapping Express
 const server = http.createServer(app);
 
-// Setup WebSocket server and load state
+// Load persisted state before accepting connections — prevents race where
+// clients reconnect after OTA restart and get stale default source/playback state
+await loadStateFromDB();
+
+// Setup WebSocket server
 const { wss } = setupWebSocket(server);
-loadStateFromDB();
 
 server.listen(PORT, () => {
   console.log(`[Resonance Backend] Server listening on http://localhost:${PORT}`);
