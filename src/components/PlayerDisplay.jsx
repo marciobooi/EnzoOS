@@ -724,13 +724,13 @@ const PlayerDisplay = React.memo(function PlayerDisplay({
             </div>
 
             {/* Country picker + SCAN */}
-            <div className="flex gap-2 items-center mt-2 shrink-0">
+            <div className="flex gap-2 items-center mt-2 shrink-0 bg-[var(--theme-color)]">
               <CountryPicker value={radioCountry} onChange={setRadioCountry} />
               <button
                 onClick={() => radioCountry && handleRadioByCountry(radioCountry)}
                 disabled={isSearching || !radioCountry}
                 className="flex items-center justify-center gap-1.5 px-4 py-2 font-extrabold text-[10px] uppercase tracking-widest rounded-xl hover:opacity-85 active:scale-95 transition-all cursor-pointer disabled:opacity-40 shrink-0"
-                style={{ background: 'var(--theme-color)', color: '#000', minWidth: 60, letterSpacing: '0.1em' }}
+                style={{  color: '#000', minWidth: 60, letterSpacing: '0.1em' }}
               >
                 {isSearching ? (
                   <span className="flex items-end gap-0.5 h-3">
