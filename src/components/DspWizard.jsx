@@ -174,11 +174,10 @@ export default function DspWizard({ onClose, onCalibrationComplete }) {
             <Cpu className="h-4 w-4 animate-pulse" />
             Equalizer Mode Activated
           </h4>
-          <button 
-            onClick={onClose}
-            className="text-zinc-400 hover:text-white transition-colors cursor-pointer text-[10px] font-extrabold px-3 py-1 rounded-lg bg-white/5 border border-white/10 active:scale-95"
-          >
-            CLOSE [X]
+          <button onClick={onClose}
+            className="w-9 h-9 rounded-full flex items-center justify-center active:scale-90 transition-all cursor-pointer"
+            style={{ background: 'rgba(255,255,255,0.06)', border: '0.5px solid rgba(255,255,255,0.12)' }}>
+            <X className="h-4 w-4 text-zinc-400" />
           </button>
         </div>
 
@@ -219,11 +218,10 @@ export default function DspWizard({ onClose, onCalibrationComplete }) {
             <Cpu className="h-4 w-4 animate-pulse" />
             Calibration Completed Successfully
           </h4>
-          <button 
-            onClick={onClose}
-            className="text-zinc-400 hover:text-white transition-colors cursor-pointer text-[10px] font-extrabold px-3 py-1 rounded-lg bg-white/5 border border-white/10 active:scale-95"
-          >
-            CLOSE [X]
+          <button onClick={onClose}
+            className="w-9 h-9 rounded-full flex items-center justify-center active:scale-90 transition-all cursor-pointer"
+            style={{ background: 'rgba(255,255,255,0.06)', border: '0.5px solid rgba(255,255,255,0.12)' }}>
+            <X className="h-4 w-4 text-zinc-400" />
           </button>
         </div>
 
@@ -274,11 +272,10 @@ export default function DspWizard({ onClose, onCalibrationComplete }) {
           <Waves className="h-4 w-4 text-[var(--theme-color)]" />
           Acoustic Calibration Wizard
         </h4>
-        <button 
-          onClick={onClose}
-          className="text-zinc-400 hover:text-white transition-colors cursor-pointer text-[10px] font-extrabold px-3 py-1 rounded-lg bg-white/5 border border-white/10 active:scale-95 font-sans"
-        >
-          CLOSE [X]
+        <button onClick={onClose}
+          className="w-9 h-9 rounded-full flex items-center justify-center active:scale-90 transition-all cursor-pointer"
+          style={{ background: 'rgba(255,255,255,0.06)', border: '0.5px solid rgba(255,255,255,0.12)' }}>
+          <X className="h-4 w-4 text-zinc-400" />
         </button>
       </div>
 
@@ -350,12 +347,10 @@ export default function DspWizard({ onClose, onCalibrationComplete }) {
 
       {/* Navigation Footer */}
       <div className="flex justify-between items-center mt-3 pt-2 border-t border-white/5 shrink-0">
-        <button
-          onClick={onClose}
-          className="flex items-center gap-1.5 text-[10px] font-extrabold text-rose-500 hover:text-rose-400 transition-colors cursor-pointer font-sans"
-        >
-          <X className="h-4 w-4" />
-          QUIT WIZARD
+        <button onClick={onClose}
+          className="w-9 h-9 rounded-full flex items-center justify-center active:scale-90 transition-all cursor-pointer"
+          style={{ background: 'rgba(239,68,68,0.08)', border: '0.5px solid rgba(239,68,68,0.25)' }}>
+          <X className="h-4 w-4 text-rose-500" />
         </button>
 
         <button

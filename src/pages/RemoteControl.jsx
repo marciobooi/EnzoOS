@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import { Waves, Smartphone } from 'lucide-react';
+import { Waves, Smartphone, X } from 'lucide-react';
 import { toast } from '../lib/toast';
 import { api } from '../api';
 import { useResonanceWS } from '../websocket';
@@ -547,9 +547,9 @@ export default function RemoteControl() {
                 <p className="text-[22px] font-medium" style={{ color: C.text1, letterSpacing: '-0.01em' }}>Theme</p>
               </div>
               <button onClick={() => setIsThemeSettingsOpen(false)}
-                className="px-4 py-2 rounded-full text-[14px] font-semibold active:scale-95 transition-all cursor-pointer"
-                style={{ background: C.containerLow, color: C.champagne, fontFamily: C.fontLabel }}>
-                Done
+                className="w-9 h-9 rounded-full flex items-center justify-center active:scale-90 transition-all cursor-pointer"
+                style={{ background: C.containerLow, border: `0.5px solid ${C.outline}` }}>
+                <X className="h-4 w-4" style={{ color: C.text3 }} />
               </button>
             </div>
             <div className="flex-grow min-h-0">
