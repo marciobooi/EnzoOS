@@ -744,8 +744,9 @@ const PlayerDisplay = React.memo(function PlayerDisplay({
               <button
                 onClick={() => radioCountry && handleRadioByCountry(radioCountry)}
                 disabled={isSearching || !radioCountry}
+                data-tooltip={!radioCountry ? 'Select a country to scan the airwaves' : undefined}
                 className="flex items-center justify-center gap-1.5 px-4 py-2 font-extrabold text-[10px] uppercase tracking-widest rounded-xl hover:opacity-85 active:scale-95 transition-all cursor-pointer disabled:opacity-40 shrink-0"
-                style={{  background: 'var(--theme-color)', color: '#000', minWidth: 60, letterSpacing: '0.1em' }}
+                style={{ background: 'var(--theme-color)', color: '#000', minWidth: 60, letterSpacing: '0.1em' }}
               >
                 {isSearching ? (
                   <span className="flex items-end gap-0.5 h-3">
@@ -754,6 +755,8 @@ const PlayerDisplay = React.memo(function PlayerDisplay({
                         style={{ height: `${Math.round(h * 12)}px`, animationDelay: `${i * 120}ms` }} />
                     ))}
                   </span>
+                ) : !radioCountry ? (
+                  <Radio className="w-3.5 h-3.5" />
                 ) : 'SCAN'}
               </button>
             </div>
@@ -767,19 +770,8 @@ const PlayerDisplay = React.memo(function PlayerDisplay({
                 favoriteStations={favoriteStations}
               />
             ) : (
-              /* Premium empty band */
+              /* Empty band — show frequency dial only */
               <div className="mt-2 shrink-0 radio-container">
-                <div className="rounded-xl mb-1.5 flex items-center gap-3 p-3"
-                  style={{ border: '1px solid rgba(255,255,255,0.04)', minHeight: 64 }}>
-                  <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
-                    style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.04)' }}>
-                    <Radio className="w-4 h-4" style={{ color: 'rgba(255,255,255,0.5)' }} />
-                  </div>
-                  <div>
-                    <p className="text-[9px] font-mono uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.85)' }}>Select a country to scan</p>
-                    <p className="text-[8px] font-mono uppercase tracking-wider mt-0.5" style={{ color: 'rgba(255,255,255,0.55)' }}>the airwaves</p>
-                  </div>
-                </div>
                 <div className="flex justify-between px-0.5 mb-0.5">
                   {['88', '92', '96', '100', '104', '108'].map(l => (
                     <span key={l} className="font-mono" style={{ fontSize: 7, color: 'rgba(255,255,255,0.5)' }}>{l}</span>
