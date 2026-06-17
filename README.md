@@ -94,6 +94,17 @@ REST routes          WebSocket handlers      Audio monitor
 * Spotify token refresh uses a promise-based mutex — concurrent callers (WS client handshake + 5-min auto-refresh interval) share one in-flight request.
 * Standby check-then-act on the audio monitor is serialised through the same queue, eliminating the TOCTOU race.
 
+**Source switching behaviour:**
+
+| Transition | Server side | Client side |
+|---|---|---|
+| Any → Spotify | `mpc stop`, `cachedPlaybackState = null`, Spotify API issues `PLAYBACK_STATE` when it starts | `SET_SOURCE` handler clears `playbackState`, `trackPosition`, `trackDuration` immediately |
+| Spotify → Radio | Fetches `last_radio_url` from DB, starts `mpc`, rebuilds `cachedPlaybackState` from stored station info | Cleared on `SET_SOURCE`; new `PLAYBACK_STATE` arrives with station info |
+| Radio → Radio (same) | `previousSource === 'radio'` guard skips auto-resume to avoid restarting an already-playing stream | No flicker — state retained |
+| Any → Local | `mpc play` resumes queue, `cachedPlaybackState = null` until MPD sends `BROADCAST_STATE` | Cleared on `SET_SOURCE` |
+
+When a radio station is selected via the source tab the REST route broadcasts `SET_SOURCE` + `PLAYBACK_STATE` through EventService. The client sends no redundant `SET_SOURCE` over WebSocket, preventing a double-resume loop.
+
 **Server modules:**
 
 | File | Role |
@@ -106,6 +117,25 @@ REST routes          WebSocket handlers      Audio monitor
 | `server/system.js` | Service management, reboot/shutdown, LAN URL, health metrics |
 | `server/db.js` | SQLite persistence (settings key-value store, favourite radios) |
 | `server/index.js` | Express app bootstrap, HTTP/HTTPS servers, WS upgrade routing |
+
+---
+
+## 🔒 Security & Reliability Hardening
+
+### Shell injection prevention
+All `mpc` calls that accept user-supplied input (URLs, file paths, artist/album names) use `execFile()` with an args array instead of `exec()` with string interpolation. No shell is spawned, so special characters in station URLs or track names cannot escape into shell commands.
+
+### Input validation
+Volume and seek-position values are parsed with `parseInt` and checked with `Number.isFinite` before being passed to `mpc`. Invalid values return HTTP 400 before any command is executed.
+
+### Graceful shutdown
+`SIGTERM` and `SIGINT` handlers in `server/index.js` stop the audio-level monitor, clear the Spotify token-refresh interval, and close the SQLite connection before exiting. No orphaned processes or locked database files on restart.
+
+### Safe JSON parsing
+`safeParse()` in `server/websocket.js` wraps all `JSON.parse` calls on values read from the database during the WebSocket handshake. Corrupted or missing DB values emit a warning and are skipped rather than crashing the handshake for the connecting client.
+
+### OTA stream error guards
+`server/update.js` attaches `error` event handlers to both `stdout` and `stderr` streams of the update child process so a premature stream close does not produce an unhandled rejection.
 
 ---
 
