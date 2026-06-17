@@ -71,7 +71,7 @@ function CountryPicker({ value, onChange }) {
       {open && (
         <div className="absolute z-50 left-0 right-0 mt-2 rounded-xl overflow-hidden backdrop-blur-md"
           style={{ background: 'rgba(15,18,28,0.85)', border: '1px solid rgba(255,255,255,0.08)', boxShadow: '0 20px 40px -15px rgba(0,0,0,0.7)' }}>
-          <div className="grid grid-cols-4 gap-1.5 p-2 max-h-[160px] overflow-y-auto custom-scrollbar">
+          <div className="grid grid-cols-6 gap-1.5 p-2 max-h-[160px] overflow-y-auto custom-scrollbar">
             {COUNTRIES.map(c => (
               <button key={c.code} onClick={() => { onChange(c.name); setOpen(false); }}
                 className="group flex flex-col items-center justify-center gap-1.5 py-2.5 px-1 rounded-lg transition-all duration-200 ease-out active:scale-95 cursor-pointer"
