@@ -759,3 +759,11 @@ a {
     border-color: #fff3 !important;
     box-shadow: 0 12px 32px #000000b3, 0 16px 48px #050d1c99, inset 0 1px #ffffff26 !important;
 }
+
+.input-btn {
+background: rgb(249, 249, 249) !important; box-shadow: rgba(0, 0, 0, 0.05) 6px 6px 14px, rgb(255, 255, 255) -6px -6px 14px !important; border: 1px solid rgba(255, 255, 255, 0.2) !important;
+}
+
+.input-btn:hover {
+background: rgb(249, 249, 249) !important; box-shadow: rgba(0, 0, 0, 0.1) 6px 6px 14px, rgb(255, 255, 255) -6px -6px 14px !important; border: 1px solid rgba(255, 255, 255, 0.3) !important;
+}

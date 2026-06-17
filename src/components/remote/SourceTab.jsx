@@ -31,7 +31,7 @@ export default function SourceTab() {
           { id: 'radio',   label: 'Radio',   Icon: () => <Radio  className="h-6 w-6" style={{ color: source === 'radio'   ? C.champagne : C.text4 }} /> },
         ].map(({ id, label, Icon }) => (
           <button key={id} onClick={() => handleSelect(id)}
-            className="flex flex-col items-center justify-center gap-3 py-5 rounded-xl active:scale-95 transition-all cursor-pointer"
+            className="flex flex-col items-center justify-center gap-3 py-5 rounded-xl active:scale-95 transition-all cursor-pointer input-btn"
             style={source === id ? { ...btnInset, border: `0.5px solid ${C.champagne}40` } : { ...card }}>
             <Icon />
             <span className="text-[11px] font-semibold uppercase tracking-wider"
