@@ -769,7 +769,7 @@ const PlayerDisplay = React.memo(function PlayerDisplay({
                 <div className="flex justify-between items-center mt-2 px-0.5 shrink-0 radio-container">
                   <span className="text-[8px] font-extrabold font-mono uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.75)' }}>Saved Stations</span>
                   <span className="text-[8px] font-mono" style={{ color: 'rgba(255,255,255,0.5)' }}>{favoriteStations.length}</span>
-                </div>
+                
                 <div className="flex-grow overflow-y-auto pr-0.5 mt-1.5 custom-scrollbar grid grid-cols-2 gap-1.5 max-h-[88px]">
                   {favoriteStations.map((station, idx) => (
                     <div key={`${station.url}-${idx}`}
@@ -787,6 +787,7 @@ const PlayerDisplay = React.memo(function PlayerDisplay({
                       </button>
                     </div>
                   ))}
+                </div>
                 </div>
               </>
             )}
