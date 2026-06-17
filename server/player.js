@@ -1,24 +1,25 @@
 import express from 'express';
-import { exec } from 'child_process';
+import { exec, execFile } from 'child_process';
 import { promisify } from 'util';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import YAML from 'yaml';
 import { getFavoriteRadios, addFavoriteRadio, deleteFavoriteRadioByUrl, setSetting, getSetting } from './db.js';
-import { setStandbyState, cachedStandbyState } from './websocket.js';
+import { emit, getStandbyState } from './event-service.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const execPromise = promisify(exec);
+const execFilePromise = promisify(execFile);
 const router = express.Router();
 
 // POST /api/player/play -> Play local media
 router.post('/play', async (req, res) => {
   try {
-    if (cachedStandbyState) {
-      await setStandbyState(false);
+    if (getStandbyState()) {
+      await emit('SET_STANDBY', { enabled: false });
     }
     await execPromise('mpc play');
     res.json({ success: true });
@@ -63,9 +64,12 @@ router.post('/previous', async (req, res) => {
 
 // POST /api/player/volume -> Set local player volume
 router.post('/volume', async (req, res) => {
-  const { volume } = req.body;
+  const vol = parseInt(req.body.volume, 10);
+  if (!Number.isFinite(vol) || vol < 0 || vol > 100) {
+    return res.status(400).json({ error: 'Invalid volume: must be 0–100' });
+  }
   try {
-    await execPromise(`mpc volume ${volume}`);
+    await execPromise(`mpc volume ${vol}`);
     res.json({ success: true });
   } catch (err) {
     console.error('[Local Player] Volume failed:', err);
@@ -75,9 +79,12 @@ router.post('/volume', async (req, res) => {
 
 // POST /api/player/seek -> Seek local track
 router.post('/seek', async (req, res) => {
-  const { position } = req.body;
+  const pos = parseInt(req.body.position, 10);
+  if (!Number.isFinite(pos) || pos < 0) {
+    return res.status(400).json({ error: 'Invalid position: must be a non-negative integer' });
+  }
   try {
-    await execPromise(`mpc seek ${position}`);
+    await execPromise(`mpc seek ${pos}`);
     res.json({ success: true });
   } catch (err) {
     console.error('[Local Player] Seek failed:', err);
@@ -89,41 +96,36 @@ router.post('/seek', async (req, res) => {
 router.post('/play-radio', async (req, res) => {
   const { url, name, favicon } = req.body;
   try {
-    if (cachedStandbyState) {
-      await setStandbyState(false);
+    if (getStandbyState()) {
+      await emit('SET_STANDBY', { enabled: false });
     }
-    // Save last played radio info to database settings
-    await setSetting('active_source', 'radio');
+    // Save radio-specific metadata (url/name/favicon not covered by events)
     await setSetting('last_radio_url', url);
     if (name) await setSetting('last_radio_name', name);
     await setSetting('last_radio_favicon', favicon || '');
 
     // Clear playlist, add URL, play
     await execPromise('mpc clear');
-    await execPromise(`mpc add "${url}"`);
+    await execFilePromise('mpc', ['add', url]);
     await execPromise('mpc play');
 
-    const broadcast = req.app.get('wssBroadcast');
-    if (broadcast) {
-      const stateUpdate = {
-        paused: false,
-        position: 0,
-        duration: 0,
-        track_window: {
-          current_track: {
-            name: name || 'WEB RADIO',
-            artists: [{ name: 'Live Stream' }],
-            album: { name: 'Web Radio Broadcast', images: favicon ? [{ url: favicon }] : [] },
-            url: url
-          }
-        }
-      };
-      
-      // Broadcast current playback state to all clients
-      broadcast({ type: 'PLAYBACK_STATE', payload: stateUpdate });
-      // Force source to be radio
-      broadcast({ type: 'SET_SOURCE', payload: { spotify: false, source: 'radio' } });
-    }
+    const stateUpdate = {
+      paused: false,
+      position: 0,
+      duration: 0,
+      track_window: {
+        current_track: {
+          name: name || 'WEB RADIO',
+          artists: [{ name: 'Live Stream' }],
+          album: { name: 'Web Radio Broadcast', images: favicon ? [{ url: favicon }] : [] },
+          url,
+        },
+      },
+    };
+
+    // Route through EventService: persists active_source + broadcasts to all clients
+    await emit('SET_SOURCE', { spotify: false, source: 'radio' });
+    await emit('PLAYBACK_STATE', stateUpdate);
 
     res.json({ success: true });
   } catch (err) {
@@ -601,10 +603,13 @@ pcm.loop_dsnoop {
     if (currentContent.trim() !== expectedContent.trim()) {
       console.log('[ALSA] Writing correct loopback routing configuration to /etc/asound.conf...');
       const tempPath = path.join(__dirname, '../asound.conf.tmp');
-      fs.writeFileSync(tempPath, expectedContent, 'utf8');
-      await execPromise(`sudo /usr/bin/tee ${asoundConfPath} < ${tempPath} > /dev/null`);
-      fs.unlinkSync(tempPath);
-      console.log('[ALSA] /etc/asound.conf updated successfully.');
+      try {
+        fs.writeFileSync(tempPath, expectedContent, 'utf8');
+        await execPromise(`sudo /usr/bin/tee ${asoundConfPath} < ${tempPath} > /dev/null`);
+        console.log('[ALSA] /etc/asound.conf updated successfully.');
+      } finally {
+        if (fs.existsSync(tempPath)) fs.unlinkSync(tempPath);
+      }
     }
   } catch (err) {
     console.warn('[ALSA] Failed to write /etc/asound.conf (non-root context or missing sudoers permission):', err.message);
@@ -623,11 +628,8 @@ router.post('/dsp-calibration', async (req, res) => {
 
     const dacInfo = await updateCamillaConfigFromSettings();
 
-    // Broadcast update to all WebSocket clients
-    const broadcast = req.app.get('wssBroadcast');
-    if (broadcast) {
-      broadcast({ type: 'DSP_CALIBRATION', payload: answers });
-    }
+    // Broadcast DSP_CALIBRATION to all WS clients via EventService
+    await emit('DSP_CALIBRATION', answers);
 
     res.json({ success: true, dacInfo });
   } catch (err) {
@@ -702,9 +704,11 @@ router.get('/library/artists', async (req, res) => {
 // GET /api/player/library/albums?artist=X
 router.get('/library/albums', async (req, res) => {
   const { artist } = req.query;
+  if (artist && artist.length > 500) return res.status(400).json({ error: 'Artist name too long' });
   try {
-    const arg = artist ? ` artist "${artist.replace(/"/g, '\\"')}"` : '';
-    const { stdout } = await execPromise(`mpc list album${arg}`);
+    const args = ['list', 'album'];
+    if (artist) args.push('artist', artist);
+    const { stdout } = await execFilePromise('mpc', args);
     const albums = stdout.split('\n').map(s => s.trim()).filter(Boolean).sort((a, b) => a.localeCompare(b));
     res.json({ albums });
   } catch {
@@ -715,11 +719,13 @@ router.get('/library/albums', async (req, res) => {
 // GET /api/player/library/tracks?album=X&artist=Y
 router.get('/library/tracks', async (req, res) => {
   const { album, artist } = req.query;
+  if (artist && artist.length > 500) return res.status(400).json({ error: 'Artist name too long' });
+  if (album && album.length > 500) return res.status(400).json({ error: 'Album name too long' });
   try {
-    let cmd = 'mpc find';
-    if (artist) cmd += ` artist "${artist.replace(/"/g, '\\"')}"`;
-    if (album) cmd += ` album "${album.replace(/"/g, '\\"')}"`;
-    const { stdout } = await execPromise(cmd);
+    const args = ['find'];
+    if (artist) args.push('artist', artist);
+    if (album) args.push('album', album);
+    const { stdout } = await execFilePromise('mpc', args);
     const tracks = stdout.split('\n').map(s => s.trim()).filter(Boolean);
     res.json({ tracks });
   } catch {
@@ -753,7 +759,7 @@ router.post('/queue/add', async (req, res) => {
   const { path: filePath, play = false } = req.body;
   if (!filePath) return res.status(400).json({ error: 'path required' });
   try {
-    await execPromise(`mpc add "${filePath.replace(/"/g, '\\"')}"`);
+    await execFilePromise('mpc', ['add', filePath]);
     if (play) await execPromise('mpc play');
     res.json({ success: true });
   } catch (err) {
@@ -768,8 +774,7 @@ router.post('/standby', async (req, res) => {
     return res.status(400).json({ error: 'enabled parameter is required' });
   }
   try {
-    const { setStandbyState } = await import('./websocket.js');
-    await setStandbyState(enabled);
+    await emit('SET_STANDBY', { enabled });
     res.json({ success: true });
   } catch (err) {
     console.error('[Player API] Standby toggle failed:', err);

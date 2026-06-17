@@ -520,32 +520,32 @@ div[data-theme="ruby"] *::selection {
   padding-left: 1.25rem;
 }
 
-/* Force toaster to be absolute inside the scaled kiosk container */
-.music-player-container [data-sonner-toaster] {
-  position: absolute !important;
-  inset: auto 24px 24px auto !important; /* Bottom-right relative to container */
-  width: 326px !important;
-  z-index: 99999 !important;
-}
-
 /* Skinned premium glassmorphism menu cards */
 .menu-card {
-  background: rgba(255, 255, 255, 0.03) !important;
-  border: 1px solid rgba(255, 255, 255, 0.08) !important;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5), 0 8px 32px 0 rgba(5, 13, 28, 0.4) !important;
+  background: rgba(255, 255, 255, 0.07) !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  box-shadow:
+    0 8px 24px rgba(0, 0, 0, 0.65),
+    0 16px 48px rgba(5, 13, 28, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.10) !important;
 }
 
 .menu-card:hover {
-  background: rgba(255, 255, 255, 0.06) !important;
-  border-color: rgba(255, 255, 255, 0.15) !important;
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.6), 0 8px 32px 0 rgba(5, 13, 28, 0.5) !important;
+  background: rgba(255, 255, 255, 0.11) !important;
+  border-color: rgba(255, 255, 255, 0.20) !important;
+  box-shadow:
+    0 12px 32px rgba(0, 0, 0, 0.70),
+    0 16px 48px rgba(5, 13, 28, 0.6),
+    inset 0 1px 0 rgba(255, 255, 255, 0.15) !important;
 }
 
 .menu-card.active-card {
-  border-color: var(--theme-color) !important;
-  border-width: 1px !important;
-  background: rgba(255, 255, 255, 0.05) !important;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5), 0 8px 32px 0 rgba(5, 13, 28, 0.4), 0 0 12px var(--theme-color-glow) !important;
+  background: rgba(255, 255, 255, 0.09) !important;
+  border: 1px solid var(--theme-color) !important;
+  box-shadow:
+    0 8px 24px rgba(0, 0, 0, 0.65),
+    0 0 24px var(--theme-color-glow),
+    inset 0 1px 0 rgba(255, 255, 255, 0.14) !important;
 }
 
 /* OLED Burn-in prevention / pixel shifter */
@@ -589,6 +589,69 @@ div[data-theme="ruby"] *::selection {
 }
 .animate-kiosk-welcome { animation: kiosk-welcome 2.8s cubic-bezier(0.4,0,0.2,1) both; }
 .animate-kiosk-goodbye { animation: kiosk-goodbye 2.2s cubic-bezier(0.4,0,0.2,1) both; }
+
+/* ── Remote tab slide animations ─────────────────────────────────────────── */
+@keyframes tabSlideInRight {
+  from { opacity: 0; transform: translateX(22px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+@keyframes tabSlideInLeft {
+  from { opacity: 0; transform: translateX(-22px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+.animate-tab-right { animation: tabSlideInRight 0.24s cubic-bezier(0.25, 0, 0.3, 1) both; }
+.animate-tab-left  { animation: tabSlideInLeft  0.24s cubic-bezier(0.25, 0, 0.3, 1) both; }
+
+/* ── Radio / library list item rise ─────────────────────────────────────── */
+@keyframes listItemRise {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.list-item-rise { animation: listItemRise 0.32s ease-out both; }
+
+/* ── Volume popup spring entrance ────────────────────────────────────────── */
+@keyframes volumeSpringIn {
+  0%   { opacity: 0; transform: translateX(18px) scale(0.96); }
+  65%  { opacity: 1; transform: translateX(-3px) scale(1.01); }
+  100% { opacity: 1; transform: translateX(0)   scale(1); }
+}
+.animate-volume-in { animation: volumeSpringIn 0.34s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
+
+/* ── Kiosk menu card staggered entrance ──────────────────────────────────── */
+@keyframes cardSlideIn {
+  from { opacity: 0; transform: translateX(-14px) scale(0.97); }
+  to   { opacity: 1; transform: translateX(0)     scale(1); }
+}
+.menu-card-enter { animation: cardSlideIn 0.28s cubic-bezier(0.25, 0, 0.3, 1) both; }
+
+/* ── Skeleton shimmer ─────────────────────────────────────────────────────── */
+@keyframes shimmer {
+  from { background-position: -200% center; }
+  to   { background-position:  200% center; }
+}
+
+/* ── Queue panel slide-up ─────────────────────────────────────────────────── */
+@keyframes queuePanelIn {
+  from { opacity: 0; transform: translateY(100%); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes queuePanelOut {
+  from { opacity: 1; transform: translateY(0); }
+  to   { opacity: 0; transform: translateY(100%); }
+}
+.queue-panel-in  { animation: queuePanelIn  0.34s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
+.queue-panel-out { animation: queuePanelOut 0.24s ease-in both; }
+
+@keyframes toastEnter {
+  from { opacity: 0; transform: translateY(14px) scale(0.93); }
+  to   { opacity: 1; transform: translateY(0)    scale(1); }
+}
+@keyframes toastExit {
+  from { opacity: 1; transform: translateY(0)   scale(1); }
+  to   { opacity: 0; transform: translateY(8px) scale(0.97); }
+}
+.toast-enter { animation: toastEnter 0.32s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
+.toast-exit  { animation: toastExit  0.25s ease-in both; }
 
 /* Import theme-specific stylesheet files at the end to overlay standard layout styles */
 @import "./dot-matrix.css";

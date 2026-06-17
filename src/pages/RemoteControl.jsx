@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { Waves, Smartphone } from 'lucide-react';
-import { toast, Toaster } from 'sonner';
+import { toast } from '../lib/toast';
 import { api } from '../api';
 import { useResonanceWS } from '../websocket';
 import { EQ_PRESETS } from '../components/EqualizerControl';
@@ -14,6 +14,8 @@ import PlayerTab   from '../components/remote/PlayerTab';
 import LibraryTab  from '../components/remote/LibraryTab';
 import SourceTab   from '../components/remote/SourceTab';
 import SettingsTab from '../components/remote/SettingsTab';
+import MiniPlayer  from '../components/remote/MiniPlayer';
+import QueuePanel  from '../components/remote/QueuePanel';
 
 // ─── cookie helpers ───────────────────────────────────────────────────────────
 const setCookie   = (n, v, d = 365) => { const e = new Date(); e.setTime(e.getTime() + d * 86400000); document.cookie = `${n}=${v}; expires=${e.toUTCString()}; path=/`; };
@@ -82,6 +84,15 @@ export default function RemoteControl() {
 
   // ── nav ───────────────────────────────────────────────────────────────────
   const [activeTab, setActiveTab] = useState('player');
+  const [tabDirection, setTabDirection] = useState('right');
+  const activeTabRef = useRef('player');
+  useEffect(() => { activeTabRef.current = activeTab; }, [activeTab]);
+  const changeTab = useCallback((newTab) => {
+    const TAB_ORDER = ['player', 'library', 'source', 'settings'];
+    const dir = TAB_ORDER.indexOf(newTab) >= TAB_ORDER.indexOf(activeTabRef.current) ? 'right' : 'left';
+    setTabDirection(dir);
+    setActiveTab(newTab);
+  }, []);
 
   // ── radio ─────────────────────────────────────────────────────────────────
   const [radioSearch, setRadioSearch]           = useState('');
@@ -147,6 +158,11 @@ export default function RemoteControl() {
   const [sleepMinutes, setSleepMinutes]   = useState(0);
   const [sleepRemaining, setSleepRemaining] = useState(0);
   const [showSleepRow, setShowSleepRow]   = useState(false);
+
+  // ── queue ─────────────────────────────────────────────────────────────────
+  const [queueOpen, setQueueOpen]     = useState(false);
+  const [queue, setQueue]             = useState([]);
+  const [queueLoading, setQueueLoading] = useState(false);
 
   // refs
   const themeSyncTimeout     = useRef(null);
@@ -233,6 +249,7 @@ export default function RemoteControl() {
   useEffect(() => {
     if (activeTab === 'library' && libraryItems.length === 0 && libraryView === 'artists') fetchLibraryArtists();
   }, [activeTab]);
+  useEffect(() => { if (queueOpen && spotify && token) fetchQueue(); }, [queueOpen]);
   useEffect(() => {
     if (activeTab === 'settings') { fetchSystemHealth(); fetchServices(); }
   }, [activeTab]);
@@ -270,6 +287,16 @@ export default function RemoteControl() {
   const fetchSystemHealth = async () => { try { setSystemHealth(await api.getSystemHealth()); } catch {} };
   const fetchServices     = async () => { try { setServices((await api.getServices()).services || {}); } catch {} };
 
+  const fetchQueue = async () => {
+    if (!token) return;
+    setQueueLoading(true);
+    try {
+      const data = await api.getSpotifyQueue(token);
+      setQueue(data?.queue || []);
+    } catch {}
+    finally { setQueueLoading(false); }
+  };
+
   const localSync = async () => {
     if (!spotify || !token) return;
     try {
@@ -305,7 +332,7 @@ export default function RemoteControl() {
   const handleSetSleepTimer = minutes => { setSleepMinutes(minutes); setSleepRemaining(minutes * 60); if (!minutes) { setSleepRemaining(0); toast.success('Sleep timer off'); } else toast.success(`Sleep in ${minutes < 60 ? `${minutes}m` : `${minutes / 60}h`}`); };
 
   // ── transport ─────────────────────────────────────────────────────────────
-  const handleToggleSource  = src => { setSource(src); sendUpdate('SET_SOURCE', { spotify: src === 'spotify', source: src }); };
+  const handleToggleSource  = src => { setSource(src); setPlaybackState(null); sendUpdate('SET_SOURCE', { spotify: src === 'spotify', source: src }); };
   const handleToggleStandby = en  => { setStandby(en); if (ws.current?.readyState === WebSocket.OPEN) ws.current.send(JSON.stringify({ type: 'SET_STANDBY', payload: { enabled: en } })); };
 
   const handlePlayPause = async () => {
@@ -350,9 +377,9 @@ export default function RemoteControl() {
   const handleDeactivateDsp = async () => { try { const c = await api.getDspCalibration() || {}; c[0] = 'eq'; await api.saveDspCalibration(c); setDspActive(false); } catch {} };
 
   // ── context value ─────────────────────────────────────────────────────────
-  const ctxValue = {
+  const ctxValue = useMemo(() => ({
     C, card, cardWhite, btn, btnInset, darkMode,
-    activeTab, setActiveTab,
+    activeTab, setActiveTab: changeTab,
     isConnected, ws, sendUpdate,
     standby, handleToggleStandby,
     source, spotify, setSource, handleToggleSource,
@@ -390,7 +417,25 @@ export default function RemoteControl() {
     triggerOtaUpdate, checkUpdates, fetchDevices,
     handleTransferPlayback,
     setIsAuthenticated, eraseCookie,
-  };
+    queueOpen, setQueueOpen, queue, queueLoading,
+  }), [
+    darkMode, activeTab, isConnected, ws, sendUpdate,
+    standby, source, spotify, token, isPlaying,
+    trackPosition, trackDuration, progressPct,
+    volume, isMuted, shuffleState, repeatState,
+    playbackState, currentTrack, activeDevice, resonanceDevice, devices,
+    albumImage, trackName, trackArtist,
+    favoriteStations, isCurrentFav,
+    libraryView, selectedArtist, selectedAlbum, libraryItems, libraryLoading,
+    radioSearch, stationsList, isSearching,
+    eqPreset, eqBands, eqSaturation, eqNoiseFloor, eqPreAmp,
+    dspActive, showEq, isDspWizardOpen,
+    theme, activeTheme, brightness, visualizerMode, isThemeSettingsOpen,
+    sleepMinutes, sleepRemaining, showSleepRow,
+    systemHealth, services, serviceLoading,
+    updateStatus, otaProgress, otaPercent,
+    queueOpen, queue, queueLoading,
+  ]);
 
   // ══════════════════════════════════════════════════════════════════════════
   // DISABLED
@@ -439,7 +484,6 @@ export default function RemoteControl() {
           </form>
         </div>
       </div>
-      <Toaster theme={darkMode ? 'dark' : 'light'} closeButton richColors position="bottom-center" visibleToasts={1} />
     </>
   );
 
@@ -455,10 +499,13 @@ export default function RemoteControl() {
           <TopBar darkMode={darkMode} setDarkMode={setDarkMode} />
 
           <div className="flex-1 overflow-y-auto overscroll-none" style={{ paddingBottom: NAV_H + 8 }}>
-            {activeTab === 'player'   && <PlayerTab />}
-            {activeTab === 'library'  && <LibraryTab />}
-            {activeTab === 'source'   && <SourceTab />}
-            {activeTab === 'settings' && <SettingsTab />}
+            <div key={activeTab} className={`animate-tab-${tabDirection}`}>
+              {activeTab === 'player'   && <PlayerTab />}
+              {activeTab === 'library'  && <LibraryTab />}
+              {activeTab === 'source'   && <SourceTab />}
+              {activeTab === 'settings' && <SettingsTab />}
+            </div>
+            {activeTab !== 'player' && <MiniPlayer />}
           </div>
 
           <BottomNav navH={NAV_H} />
@@ -472,6 +519,14 @@ export default function RemoteControl() {
               onCalibrationComplete={active => setDspActive(active)}
             />
           </div>
+        )}
+
+        {queueOpen && (
+          <QueuePanel
+            queue={queue}
+            queueLoading={queueLoading}
+            onClose={() => setQueueOpen(false)}
+          />
         )}
 
         {isThemeSettingsOpen && (
@@ -500,7 +555,6 @@ export default function RemoteControl() {
           </div>
         )}
 
-        <Toaster theme={darkMode ? 'dark' : 'light'} closeButton richColors position="bottom-center" visibleToasts={1} />
       </>
     </Tk.Provider>
   );

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import Kiosk from './pages/Kiosk';
 import RemoteControl from './pages/RemoteControl';
+import ToastContainer from './components/ui/ToastContainer';
 
 export default function App() {
   const [currentPath, setCurrentPath] = useState(window.location.pathname);
@@ -16,9 +17,12 @@ export default function App() {
     };
   }, []);
 
-  if (currentPath === '/remote') {
-    return <RemoteControl />;
-  }
+  const isRemote = currentPath === '/remote';
 
-  return <Kiosk />;
+  return (
+    <>
+      <ToastContainer bottomOffset={isRemote ? 80 : 24} />
+      {isRemote ? <RemoteControl /> : <Kiosk />}
+    </>
+  );
 }

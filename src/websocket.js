@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { toast } from 'sonner';
+import { toast } from './lib/toast';
 
 /**
  * A custom hook that manages the WebSocket connection lifecycle for Resonance clients.
@@ -97,19 +97,13 @@ export function useResonanceWS({
   
             if (type === 'PLAYBACK_STATE') {
               if (setPlaybackState) setPlaybackState(payload);
-              if (setTrackPosition) setTrackPosition(payload.position);
-              if (setTrackDuration) setTrackDuration(payload.duration);
-              if (payload.shuffle_state !== undefined && setShuffleState) {
-                setShuffleState(payload.shuffle_state);
-              }
-              if (payload.repeat_state !== undefined && setRepeatState) {
-                setRepeatState(payload.repeat_state);
-              }
-              if (payload.volume !== undefined && setVolume) {
-                setVolume(payload.volume);
-              }
-              if (payload.is_muted !== undefined && setIsMuted) {
-                setIsMuted(payload.is_muted);
+              if (payload) {
+                if (setTrackPosition) setTrackPosition(payload.position);
+                if (setTrackDuration) setTrackDuration(payload.duration);
+                if (payload.shuffle_state !== undefined && setShuffleState) setShuffleState(payload.shuffle_state);
+                if (payload.repeat_state !== undefined && setRepeatState) setRepeatState(payload.repeat_state);
+                if (payload.volume !== undefined && setVolume) setVolume(payload.volume);
+                if (payload.is_muted !== undefined && setIsMuted) setIsMuted(payload.is_muted);
               }
             }
   
@@ -134,6 +128,10 @@ export function useResonanceWS({
             if (type === 'SET_SOURCE') {
               if (setSpotify) setSpotify(payload.spotify);
               if (setSource) setSource(payload.source);
+              // Clear stale track info — the new source broadcasts its own PLAYBACK_STATE
+              if (setPlaybackState) setPlaybackState(null);
+              if (setTrackPosition) setTrackPosition(0);
+              if (setTrackDuration) setTrackDuration(0);
             }
   
             if (type === 'SET_STANDBY') {
@@ -209,6 +207,7 @@ export function useResonanceWS({
 
       socket.onerror = (err) => {
         console.error('[Resonance WS] WebSocket error:', err);
+        clearTimeout(reconnectTimeout);
         socket.close();
       };
     };
@@ -218,6 +217,11 @@ export function useResonanceWS({
     return () => {
       clearTimeout(reconnectTimeout);
       if (socket) {
+        // Null out handlers so onclose can't queue a reconnect after cleanup
+        socket.onopen = null;
+        socket.onmessage = null;
+        socket.onclose = null;
+        socket.onerror = null;
         socket.close();
       }
       ws.current = null;

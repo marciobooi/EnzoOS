@@ -2,6 +2,7 @@ import express from 'express';
 import fetch from 'node-fetch';
 import crypto from 'crypto';
 import { getSetting, setSetting, deleteSetting } from './db.js';
+import { emit } from './event-service.js';
 
 const router = express.Router();
 
@@ -60,43 +61,48 @@ const saveTokens = async () => {
 
 loadTokens();
 
+// Mutex: prevents concurrent token refresh calls (interval + WS connection race)
+let refreshing = null;
+
 // Helper: refresh access token using stored refresh token
 export const refreshAccessToken = async () => {
+  if (refreshing) return refreshing; // return the in-flight promise to concurrent callers
+
   const clientId = process.env.SPOTIFY_CLIENT_ID;
   const clientSecret = process.env.SPOTIFY_CLIENT_SECRET;
-
   if (!clientId || !clientSecret || !tokenState.refresh_token) return null;
 
-  try {
-    const response = await fetch('https://accounts.spotify.com/api/token', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-        'Authorization': `Basic ${Buffer.from(`${clientId}:${clientSecret}`).toString('base64')}`,
-      },
-      body: new URLSearchParams({
-        grant_type: 'refresh_token',
-        refresh_token: tokenState.refresh_token,
-      }),
-    });
+  refreshing = (async () => {
+    try {
+      const response = await fetch('https://accounts.spotify.com/api/token', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'Authorization': `Basic ${Buffer.from(`${clientId}:${clientSecret}`).toString('base64')}`,
+        },
+        body: new URLSearchParams({
+          grant_type: 'refresh_token',
+          refresh_token: tokenState.refresh_token,
+        }),
+      });
 
-    const data = await response.json();
+      const data = await response.json();
 
-    if (data.access_token) {
-      tokenState.access_token = data.access_token;
-      tokenState.expires_at = Date.now() + (data.expires_in * 1000) - 60000; // 1 min buffer
-      if (data.refresh_token) {
-        tokenState.refresh_token = data.refresh_token;
+      if (data.access_token) {
+        tokenState.access_token = data.access_token;
+        tokenState.expires_at = Date.now() + (data.expires_in * 1000) - 60000;
+        if (data.refresh_token) tokenState.refresh_token = data.refresh_token;
+        saveTokens();
+        console.log('[Resonance Auth] Access token refreshed successfully.');
+        return tokenState.access_token;
       }
-      saveTokens();
-      console.log('[Resonance Auth] Access token refreshed successfully.');
-      return tokenState.access_token;
+    } catch (err) {
+      console.error('[Resonance Auth] Token refresh failed:', err.message);
     }
-  } catch (err) {
-    console.error('[Resonance Auth] Token refresh failed:', err.message);
-  }
+    return null;
+  })().finally(() => { refreshing = null; });
 
-  return null;
+  return refreshing;
 };
 
 // Helper: get a valid access token (refreshes if expired)
@@ -109,11 +115,15 @@ export const getValidAccessToken = async () => {
 };
 
 // Start auto-refresh interval: check every 5 minutes
-setInterval(async () => {
+const tokenRefreshInterval = setInterval(async () => {
   if (tokenState.refresh_token && Date.now() > tokenState.expires_at) {
     await refreshAccessToken();
   }
 }, 5 * 60 * 1000);
+
+export function stopTokenRefresh() {
+  clearInterval(tokenRefreshInterval);
+}
 
 // State param to prevent CSRF + callback URI tracking
 let pendingOAuth = null;
@@ -236,12 +246,13 @@ router.get('/callback', async (req, res) => {
 
     saveTokens();
 
-    // Broadcast the new token to all WS clients, then ask the kiosk to sync immediately
-    const broadcast = req.app.get('wssBroadcast');
-    if (broadcast) {
-      broadcast({ type: 'SET_TOKEN', payload: { token: tokenState.access_token } });
-      setTimeout(() => broadcast({ type: 'REQUEST_SYNC' }), 1500);
-    }
+    // Broadcast new token and request sync via EventService
+    emit('SET_TOKEN', { token: tokenState.access_token });
+    setTimeout(() => {
+      emit('REQUEST_SYNC', null).catch(err =>
+        console.error('[Resonance Auth] REQUEST_SYNC after login failed:', err)
+      );
+    }, 1500);
 
     console.log(`[Resonance Auth] Authenticated as: ${tokenState.display_name}`);
 
@@ -282,8 +293,7 @@ router.post('/logout', async (req, res) => {
     await deleteSetting('spotify_display_name');
   } catch (_) {}
 
-  const broadcast = req.app.get('wssBroadcast');
-  if (broadcast) broadcast({ type: 'CLEAR_TOKEN' });
+  emit('CLEAR_TOKEN', null);
 
   console.log('[Resonance Auth] Logged out from Spotify.');
   res.json({ success: true });

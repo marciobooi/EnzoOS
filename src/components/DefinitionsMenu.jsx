@@ -119,17 +119,18 @@ export default function DefinitionsMenu({
         onClick={() => {
           onSetSource('spotify');
         }}
-        className={`w-[180px] shrink-0 p-5 rounded-2xl text-left flex flex-col justify-between transition-all duration-300 relative group overflow-hidden cursor-pointer ${
+        className={`w-[180px] shrink-0 p-5 rounded-2xl text-left flex flex-col justify-between transition-all duration-300 relative group overflow-hidden cursor-pointer menu-card-enter ${
           source === 'spotify' ? 'active-card scale-[1.02]' : 'menu-card hover:scale-[1.01]'
         }`}
+        style={{ animationDelay: '0ms' }}
       >
-        <span className="text-[9px] font-extrabold tracking-widest text-zinc-400 uppercase">STREAM SERVICE</span>
-        
+        <span className="text-[9px] font-extrabold tracking-widest text-zinc-300 uppercase">STREAM SERVICE</span>
+
         <div className="my-auto flex justify-center py-2">
-          <svg 
-            viewBox="0 0 24 24" 
+          <svg
+            viewBox="0 0 24 24"
             className={`h-16 w-16 transition-all duration-300 ${
-              source === 'spotify' ? 'fill-[var(--theme-color)] drop-shadow-[0_0_10px_var(--theme-color-glow)]' : 'fill-zinc-500 group-hover:fill-zinc-350'
+              source === 'spotify' ? 'fill-[var(--theme-color)] drop-shadow-[0_0_10px_var(--theme-color-glow)]' : 'fill-zinc-400 group-hover:fill-zinc-200'
             }`}
           >
             <path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm4.586 14.424a.622.622 0 01-.857.207c-2.348-1.435-5.304-1.76-8.785-.964a.622.622 0 01-.277-1.215c3.809-.87 7.077-.496 9.712 1.115a.622.622 0 01.207.857zm1.223-2.722a.779.779 0 01-1.07.257c-2.687-1.652-6.785-2.131-9.965-1.166a.78.78 0 01-.973-.519.781.781 0 01.519-.972c3.632-1.102 8.147-.568 11.233 1.33a.779.779 0 01.256 1.07zm.105-2.835C14.692 8.95 9.375 8.775 6.297 9.71a.935.935 0 11-.543-1.79c3.533-1.072 9.404-.866 13.115 1.338a.936.936 0 01-.955 1.609z"/>
@@ -137,7 +138,7 @@ export default function DefinitionsMenu({
         </div>
 
         <div className="flex items-center justify-between text-[9px] font-bold uppercase tracking-wider w-full">
-          <span className={source === 'spotify' ? 'text-white font-extrabold' : 'text-zinc-400'}>SPOTIFY</span>
+          <span className={source === 'spotify' ? 'text-white font-extrabold' : 'text-zinc-300'}>SPOTIFY</span>
           {source === 'spotify' && <span className="text-[var(--theme-color)] font-black">ACTIVE</span>}
         </div>
       </button>
@@ -147,22 +148,23 @@ export default function DefinitionsMenu({
         onClick={() => {
           onSetSource('local');
         }}
-        className={`w-[180px] shrink-0 p-5 rounded-2xl text-left flex flex-col justify-between transition-all duration-300 relative group overflow-hidden cursor-pointer ${
+        className={`w-[180px] shrink-0 p-5 rounded-2xl text-left flex flex-col justify-between transition-all duration-300 relative group overflow-hidden cursor-pointer menu-card-enter ${
           source === 'local' ? 'active-card scale-[1.02]' : 'menu-card hover:scale-[1.01]'
         }`}
+        style={{ animationDelay: '30ms' }}
       >
-        <span className="text-[9px] font-extrabold tracking-widest text-zinc-400 uppercase">LOCAL SYSTEM</span>
-        
+        <span className="text-[9px] font-extrabold tracking-widest text-zinc-300 uppercase">LOCAL SYSTEM</span>
+
         <div className="my-auto flex justify-center py-2">
-          <Music 
+          <Music
             className={`h-16 w-16 transition-all duration-300 ${
-              source === 'local' ? 'text-[var(--theme-color)] drop-shadow-[0_0_10px_var(--theme-color-glow)]' : 'text-zinc-500 group-hover:text-zinc-350'
+              source === 'local' ? 'text-[var(--theme-color)] drop-shadow-[0_0_10px_var(--theme-color-glow)]' : 'text-zinc-400 group-hover:text-zinc-200'
             }`}
           />
         </div>
 
         <div className="flex items-center justify-between text-[9px] font-bold uppercase tracking-wider w-full">
-          <span className={source === 'local' ? 'text-white font-extrabold' : 'text-zinc-400'}>LOCAL PLAYER</span>
+          <span className={source === 'local' ? 'text-white font-extrabold' : 'text-zinc-300'}>LOCAL PLAYER</span>
           {source === 'local' && <span className="text-[var(--theme-color)] font-black">ACTIVE</span>}
         </div>
       </button>
@@ -172,22 +174,23 @@ export default function DefinitionsMenu({
         onClick={() => {
           onSetSource('radio');
         }}
-        className={`w-[180px] shrink-0 p-5 rounded-2xl text-left flex flex-col justify-between transition-all duration-300 relative group overflow-hidden cursor-pointer ${
+        className={`w-[180px] shrink-0 p-5 rounded-2xl text-left flex flex-col justify-between transition-all duration-300 relative group overflow-hidden cursor-pointer menu-card-enter ${
           source === 'radio' ? 'active-card scale-[1.02]' : 'menu-card hover:scale-[1.01]'
         }`}
+        style={{ animationDelay: '60ms' }}
       >
-        <span className="text-[9px] font-extrabold tracking-widest text-zinc-400 uppercase">STREAM RADIO</span>
-        
+        <span className="text-[9px] font-extrabold tracking-widest text-zinc-300 uppercase">STREAM RADIO</span>
+
         <div className="my-auto flex justify-center py-2">
-          <Radio 
+          <Radio
             className={`h-16 w-16 transition-all duration-300 ${
-              source === 'radio' ? 'text-[var(--theme-color)] drop-shadow-[0_0_10px_var(--theme-color-glow)]' : 'text-zinc-500 group-hover:text-zinc-350'
+              source === 'radio' ? 'text-[var(--theme-color)] drop-shadow-[0_0_10px_var(--theme-color-glow)]' : 'text-zinc-400 group-hover:text-zinc-200'
             }`}
           />
         </div>
 
         <div className="flex items-center justify-between text-[9px] font-bold uppercase tracking-wider w-full">
-          <span className={source === 'radio' ? 'text-white font-extrabold' : 'text-zinc-400'}>WEB RADIO</span>
+          <span className={source === 'radio' ? 'text-white font-extrabold' : 'text-zinc-300'}>WEB RADIO</span>
           {source === 'radio' && <span className="text-[var(--theme-color)] font-black">ACTIVE</span>}
         </div>
       </button>
@@ -195,18 +198,19 @@ export default function DefinitionsMenu({
       {/* 4. CYCLE THEME CARD */}
       <button
         onClick={handleCycleTheme}
-        className="w-[180px] shrink-0 p-5 rounded-2xl text-left flex flex-col justify-between transition-all duration-300 relative group overflow-hidden cursor-pointer menu-card hover:scale-[1.01]"
+        className="w-[180px] shrink-0 p-5 rounded-2xl text-left flex flex-col justify-between transition-all duration-300 relative group overflow-hidden cursor-pointer menu-card menu-card-enter hover:scale-[1.01]"
+        style={{ animationDelay: '90ms' }}
       >
-        <span className="text-[9px] font-extrabold tracking-widest text-zinc-400 uppercase">APPEARANCE</span>
-        
+        <span className="text-[9px] font-extrabold tracking-widest text-zinc-300 uppercase">APPEARANCE</span>
+
         <div className="my-auto flex justify-center py-2">
-          <Sliders 
-            className="h-16 w-16 text-zinc-500 group-hover:text-zinc-350 transition-colors"
+          <Sliders
+            className="h-16 w-16 text-zinc-400 group-hover:text-zinc-200 transition-colors"
           />
         </div>
 
         <div className="flex items-center justify-between text-[9px] font-bold uppercase tracking-wider w-full">
-          <span className="text-zinc-400">THEME SETTINGS</span>
+          <span className="text-zinc-300">THEME SETTINGS</span>
           <span className="text-white font-extrabold">EDIT</span>
         </div>
       </button>
@@ -214,18 +218,19 @@ export default function DefinitionsMenu({
       {/* 4b. ACOUSTIC PROFILE CARD */}
       <button
         onClick={onOpenDspWizard}
-        className="w-[180px] shrink-0 p-5 rounded-2xl text-left flex flex-col justify-between transition-all duration-300 relative group overflow-hidden cursor-pointer menu-card hover:scale-[1.01]"
+        className="w-[180px] shrink-0 p-5 rounded-2xl text-left flex flex-col justify-between transition-all duration-300 relative group overflow-hidden cursor-pointer menu-card menu-card-enter hover:scale-[1.01]"
+        style={{ animationDelay: '120ms' }}
       >
-        <span className="text-[9px] font-extrabold tracking-widest text-zinc-400 uppercase">Acoustic Profiler</span>
-        
+        <span className="text-[9px] font-extrabold tracking-widest text-zinc-300 uppercase">Acoustic Profiler</span>
+
         <div className="my-auto flex justify-center py-2">
-          <Waves 
-            className="h-16 w-16 text-zinc-500 group-hover:text-[var(--theme-color)] group-hover:drop-shadow-[0_0_10px_var(--theme-color-glow)] transition-all duration-300"
+          <Waves
+            className="h-16 w-16 text-zinc-400 group-hover:text-[var(--theme-color)] group-hover:drop-shadow-[0_0_10px_var(--theme-color-glow)] transition-all duration-300"
           />
         </div>
 
         <div className="flex items-center justify-between text-[9px] font-bold uppercase tracking-wider w-full">
-          <span className="text-zinc-400">DSP TUNING</span>
+          <span className="text-zinc-300">DSP TUNING</span>
           <span className="text-white font-extrabold">WIZARD</span>
         </div>
       </button>
@@ -236,26 +241,27 @@ export default function DefinitionsMenu({
           if (onOpenRemoteAccess) onOpenRemoteAccess();
           else if (onToggleRemoteAccess) onToggleRemoteAccess(!remoteAccessEnabled);
         }}
-        className={`w-[180px] shrink-0 p-5 rounded-2xl text-left flex flex-col justify-between transition-all duration-300 relative group overflow-hidden cursor-pointer ${
+        className={`w-[180px] shrink-0 p-5 rounded-2xl text-left flex flex-col justify-between transition-all duration-300 relative group overflow-hidden cursor-pointer menu-card-enter ${
           remoteAccessEnabled ? 'active-card scale-[1.02]' : 'menu-card hover:scale-[1.01]'
         }`}
+        style={{ animationDelay: '150ms' }}
       >
-        <span className="text-[9px] font-extrabold tracking-widest text-zinc-400 uppercase">ACCESS PANEL</span>
-        
+        <span className="text-[9px] font-extrabold tracking-widest text-zinc-300 uppercase">ACCESS PANEL</span>
+
         <div className="my-auto flex justify-center py-2">
           {remoteAccessEnabled ? (
-            <Smartphone 
+            <Smartphone
               className="h-16 w-16 text-[var(--theme-color)] drop-shadow-[0_0_10px_var(--theme-color-glow)] transition-all duration-300"
             />
           ) : (
-            <Smartphone 
-              className="h-16 w-16 text-zinc-500 opacity-40 group-hover:text-zinc-350 transition-colors"
+            <Smartphone
+              className="h-16 w-16 text-zinc-400 opacity-50 group-hover:text-zinc-200 transition-colors"
             />
           )}
         </div>
 
         <div className="flex items-center justify-between text-[9px] font-bold uppercase tracking-wider w-full">
-          <span className={remoteAccessEnabled ? 'text-white font-extrabold' : 'text-zinc-400'}>REMOTE VIEW</span>
+          <span className={remoteAccessEnabled ? 'text-white font-extrabold' : 'text-zinc-300'}>REMOTE VIEW</span>
           <span className={remoteAccessEnabled ? 'text-[var(--theme-color)] font-black' : 'text-zinc-400'}>
             {remoteAccessEnabled ? 'ENABLED' : 'DISABLED'}
           </span>
@@ -266,30 +272,31 @@ export default function DefinitionsMenu({
       <button
         onClick={handleUpdateClick}
         disabled={updateStatus === 'updating' || updateStatus === 'checking'}
-        className="w-[180px] shrink-0 p-5 rounded-2xl text-left flex flex-col justify-between transition-all duration-300 relative group overflow-hidden cursor-pointer menu-card hover:scale-[1.01]"
+        className="w-[180px] shrink-0 p-5 rounded-2xl text-left flex flex-col justify-between transition-all duration-300 relative group overflow-hidden cursor-pointer menu-card menu-card-enter hover:scale-[1.01]"
+        style={{ animationDelay: '180ms' }}
       >
-        <span className="text-[9px] font-extrabold tracking-widest text-zinc-400 uppercase">SYSTEM FIRMWARE</span>
-        
+        <span className="text-[9px] font-extrabold tracking-widest text-zinc-300 uppercase">SYSTEM FIRMWARE</span>
+
         <div className="my-auto flex justify-center py-2 w-full">
           {updateStatus === 'updating' ? (
             <div className="flex flex-col items-center gap-1.5 w-full">
               <span className="text-[12px] font-extrabold text-white">{otaPercent}%</span>
-              <div className="w-16 h-1 bg-zinc-800 rounded-full overflow-hidden">
+              <div className="w-16 h-1 bg-zinc-700 rounded-full overflow-hidden">
                 <div className="h-full bg-[var(--theme-color)] transition-all" style={{ width: `${otaPercent}%` }} />
               </div>
             </div>
           ) : (
-            <Download 
+            <Download
               className={`h-16 w-16 transition-all duration-300 ${
-                updateStatus === 'available' 
-                  ? 'text-[var(--theme-color)] animate-bounce' 
-                  : 'text-zinc-500 group-hover:text-zinc-350'
+                updateStatus === 'available'
+                  ? 'text-[var(--theme-color)] animate-bounce'
+                  : 'text-zinc-400 group-hover:text-zinc-200'
               }`}
             />
           )}
         </div>
 
-        <div className="text-[9px] font-extrabold uppercase tracking-wider text-zinc-400 text-center w-full">
+        <div className="text-[9px] font-extrabold uppercase tracking-wider text-zinc-300 text-center w-full">
           {updateStatus === 'checking' && 'CHECKING...'}
           {updateStatus === 'updating' && (otaPercent === 100 ? 'REBOOTING...' : 'UPDATING')}
           {updateStatus === 'available' && 'DEPLOY UPDATE'}
@@ -300,19 +307,20 @@ export default function DefinitionsMenu({
       </button>
 
       {/* 5b. SYSTEM HEALTH METRICS CARD */}
-      <div className="w-[180px] shrink-0 p-5 rounded-2xl text-left flex flex-col justify-between transition-all duration-300 relative group overflow-hidden menu-card">
-        <span className="text-[9px] font-extrabold tracking-widest text-zinc-400 uppercase">SYSTEM METRICS</span>
-        
+      <div className="w-[180px] shrink-0 p-5 rounded-2xl text-left flex flex-col justify-between transition-all duration-300 relative group overflow-hidden menu-card menu-card-enter"
+        style={{ animationDelay: '210ms' }}>
+        <span className="text-[9px] font-extrabold tracking-widest text-zinc-300 uppercase">SYSTEM METRICS</span>
+
         <div className="flex flex-col gap-2.5 my-auto w-full">
           {/* CPU Temp */}
           <div className="flex flex-col gap-1 w-full">
-            <div className="flex justify-between text-[9px] font-bold text-zinc-350">
+            <div className="flex justify-between text-[9px] font-bold text-zinc-300">
               <span>CPU TEMP</span>
-              <span className={healthData.cpuTemp > 65 ? 'text-red-400 font-extrabold' : 'text-zinc-200'}>
+              <span className={healthData.cpuTemp > 65 ? 'text-red-400 font-extrabold' : 'text-zinc-100'}>
                 {healthData.cpuTemp}°C
               </span>
             </div>
-            <div className="w-full h-1 bg-zinc-800 rounded-full overflow-hidden">
+            <div className="w-full h-1 bg-zinc-700 rounded-full overflow-hidden">
               <div 
                 className={`h-full transition-all duration-500 ${
                   healthData.cpuTemp > 65 ? 'bg-red-500' : 'bg-[var(--theme-color)]'
@@ -324,11 +332,11 @@ export default function DefinitionsMenu({
 
           {/* RAM Usage */}
           <div className="flex flex-col gap-1 w-full">
-            <div className="flex justify-between text-[9px] font-bold text-zinc-350">
+            <div className="flex justify-between text-[9px] font-bold text-zinc-300">
               <span>RAM USAGE</span>
-              <span className="text-zinc-200">{healthData.ramLoad}%</span>
+              <span className="text-zinc-100">{healthData.ramLoad}%</span>
             </div>
-            <div className="w-full h-1 bg-zinc-800 rounded-full overflow-hidden">
+            <div className="w-full h-1 bg-zinc-700 rounded-full overflow-hidden">
               <div 
                 className="h-full bg-[var(--theme-color)] transition-all duration-500" 
                 style={{ width: `${healthData.ramLoad}%` }} 
@@ -338,11 +346,11 @@ export default function DefinitionsMenu({
 
           {/* Wi-Fi Signal */}
           <div className="flex flex-col gap-1 w-full">
-            <div className="flex justify-between text-[9px] font-bold text-zinc-350">
+            <div className="flex justify-between text-[9px] font-bold text-zinc-300">
               <span>WI-FI STRENGTH</span>
-              <span className="text-zinc-200">{healthData.wifiSignal} dBm</span>
+              <span className="text-zinc-100">{healthData.wifiSignal} dBm</span>
             </div>
-            <div className="flex items-center gap-1.5 text-[8px] font-bold tracking-wider text-zinc-400">
+            <div className="flex items-center gap-1.5 text-[8px] font-bold tracking-wider text-zinc-300">
               <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
               <span>
                 {healthData.wifiSignal > -50 ? 'EXCELLENT' : healthData.wifiSignal > -70 ? 'GOOD' : 'FAIR'}
@@ -351,7 +359,7 @@ export default function DefinitionsMenu({
           </div>
         </div>
 
-        <div className="text-[9px] font-extrabold uppercase tracking-wider text-zinc-500 text-center w-full">
+        <div className="text-[9px] font-extrabold uppercase tracking-wider text-zinc-400 text-center w-full">
           HARDWARE HEALTH
         </div>
       </div>
@@ -360,17 +368,18 @@ export default function DefinitionsMenu({
       {token && (
         <button
           onClick={handleLogout}
-          className="w-[180px] shrink-0 p-5 rounded-2xl text-left flex flex-col justify-between transition-all duration-300 relative group overflow-hidden cursor-pointer menu-card hover:scale-[1.01] hover:border-rose-500/50"
+          className="w-[180px] shrink-0 p-5 rounded-2xl text-left flex flex-col justify-between transition-all duration-300 relative group overflow-hidden cursor-pointer menu-card menu-card-enter hover:scale-[1.01] hover:border-rose-500/50"
+          style={{ animationDelay: '240ms' }}
         >
-          <span className="text-[9px] font-extrabold tracking-widest text-zinc-400 uppercase">CONNECTIONS</span>
-          
+          <span className="text-[9px] font-extrabold tracking-widest text-zinc-300 uppercase">CONNECTIONS</span>
+
           <div className="my-auto flex justify-center py-2">
-            <LogOut 
-              className="h-16 w-16 text-zinc-500 group-hover:text-rose-500 transition-colors"
+            <LogOut
+              className="h-16 w-16 text-zinc-400 group-hover:text-rose-400 transition-colors"
             />
           </div>
 
-          <div className="text-[9px] font-bold uppercase tracking-wider text-zinc-400 text-center w-full">
+          <div className="text-[9px] font-bold uppercase tracking-wider text-zinc-300 text-center w-full">
             DISCONNECT SPOTIFY
           </div>
         </button>

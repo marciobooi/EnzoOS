@@ -1,7 +1,7 @@
-import React, { useContext } from 'react';
+import React, { useContext, useRef } from 'react';
 import {
   Play, Pause, SkipForward, SkipBack, Volume2, VolumeX,
-  Shuffle, Repeat, Music, Heart, Radio,
+  Shuffle, Repeat, Music, Heart, Radio, ListMusic,
 } from 'lucide-react';
 import { Tk, SpotifyIcon, fmt } from './shared';
 
@@ -11,18 +11,50 @@ export default function PlayerTab() {
     albumImage, trackName, trackArtist, source, spotify, token,
     isPlaying, trackPosition, trackDuration, progressPct,
     volume, isMuted, shuffleState, repeatState,
-    activeDevice, isCurrentFav, currentTrack,
+    activeDevice, isCurrentFav, currentTrack, playbackState,
     handlePlayPause, handleNext, handlePrevious,
     handleShuffle, handleRepeat, handleSeek,
     handleVolumeChange, handleMuteToggle,
     handleToggleFavRadio, setActiveTab,
+    queueOpen, setQueueOpen,
   } = useContext(Tk);
+
+  const touchStartRef = useRef(null);
+
+  const handleTouchStart = e => {
+    const t = e.touches[0];
+    touchStartRef.current = { x: t.clientX, y: t.clientY };
+  };
+
+  const handleTouchEnd = e => {
+    if (!touchStartRef.current) return;
+    const t = e.changedTouches[0];
+    const dx = t.clientX - touchStartRef.current.x;
+    const dy = t.clientY - touchStartRef.current.y;
+    touchStartRef.current = null;
+    if (Math.abs(dx) < 60 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
+    if (dx < 0) handleNext();
+    else handlePrevious();
+  };
+
+  const qualityLabel = (() => {
+    if (source === 'radio') return 'AAC STREAM';
+    if (source === 'local') {
+      const path = currentTrack?.uri || '';
+      if (path.endsWith('.flac') || path.includes('flac')) return 'FLAC LOSSLESS';
+      if (path.endsWith('.mp3'))  return 'MP3';
+      if (path.endsWith('.wav'))  return 'PCM WAV';
+      return 'LOCAL FILE';
+    }
+    return 'OGG VORBIS';
+  })();
 
   return (
     <div className="flex flex-col px-5 pt-5">
 
       {/* album art */}
-      <div className="relative mb-5 mx-auto" style={{ width: '100%', maxWidth: 280, aspectRatio: '1 / 1' }}>
+      <div className="relative mb-5 mx-auto" style={{ width: '100%', maxWidth: 280, aspectRatio: '1 / 1' }}
+        onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
         {albumImage && (
           <div className="absolute inset-0 rounded-[28px] -z-10 scale-[0.88] blur-2xl"
             style={{ backgroundImage: `url(${albumImage})`, backgroundSize: 'cover', opacity: darkMode ? 0.22 : 0.14 }} />
@@ -62,6 +94,14 @@ export default function PlayerTab() {
           {trackArtist}
           {activeDevice && <span style={{ color: C.champagne }}> · {activeDevice.name}</span>}
         </p>
+        {trackName && trackName !== 'Nothing playing' && (
+          <div className="mt-2 flex items-center justify-center gap-2">
+            <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wider"
+              style={{ background: `${C.champagne}18`, color: C.champagne, border: `0.5px solid ${C.champagne}35`, fontFamily: C.fontLabel }}>
+              {qualityLabel}
+            </span>
+          </div>
+        )}
         {source === 'radio' && currentTrack?.url && (
           <button
             onClick={() => handleToggleFavRadio({ name: trackName, url: currentTrack.url, favicon: albumImage || '', country: '', tags: '' })}
@@ -185,6 +225,19 @@ export default function PlayerTab() {
           <Volume2 className="h-4 w-4" />
         </button>
       </div>
+
+      {/* queue button */}
+      {spotify && token && (
+        <div className="flex justify-center mt-5">
+          <button onClick={() => setQueueOpen(true)}
+            className="flex items-center gap-2 px-4 py-2 rounded-full active:scale-95 transition-all cursor-pointer"
+            style={{ background: C.containerLow, border: `0.5px solid ${C.outline}` }}>
+            <ListMusic className="h-4 w-4" style={{ color: C.champagne }} />
+            <span className="text-[12px] font-semibold uppercase tracking-wider"
+              style={{ color: C.text3, fontFamily: C.fontLabel }}>Up Next</span>
+          </button>
+        </div>
+      )}
     </div>
   );
 }

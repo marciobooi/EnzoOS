@@ -148,7 +148,7 @@ export const setSetting = (key, value) => {
 
 /**
  * Delete a setting by key.
- * @param {string} key 
+ * @param {string} key
  * @returns {Promise<void>}
  */
 export const deleteSetting = (key) => {
@@ -160,6 +160,16 @@ export const deleteSetting = (key) => {
       } else {
         resolve();
       }
+    });
+  });
+};
+
+export const closeDB = () => {
+  return new Promise((resolve) => {
+    db.close((err) => {
+      if (err) console.error('[Resonance DB] Error closing database:', err.message);
+      else console.log('[Resonance DB] Database connection closed.');
+      resolve();
     });
   });
 };

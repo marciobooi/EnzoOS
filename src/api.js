@@ -527,6 +527,14 @@ export const api = {
     return r.json();
   },
 
+  async getSpotifyQueue(token) {
+    const r = await fetch(`${SPOTIFY_API_URL}/me/player/queue`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!r.ok) return null;
+    return r.json();
+  },
+
   async clearQueue() {
     const r = await fetch('/api/player/queue/clear', { method: 'POST' });
     return r.json();

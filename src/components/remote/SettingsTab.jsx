@@ -1,13 +1,28 @@
-import React, { useContext } from 'react';
+import React, { useContext, useState, useRef } from 'react';
 import {
   Sliders, Cpu, Timer, Palette, Power, LogOut, Laptop,
   Music, RefreshCw,
 } from 'lucide-react';
-import { toast } from 'sonner';
+import { toast } from '../../lib/toast';
 import { Tk, Row, Section, SpotifyIcon } from './shared';
 import EqualizerControl from '../EqualizerControl';
 
 export default function SettingsTab() {
+  const [confirmPending, setConfirmPending] = useState(null);
+  const confirmRef = useRef(null);
+
+  const withConfirm = (key, action) => () => {
+    if (confirmPending === key) {
+      clearTimeout(confirmRef.current);
+      setConfirmPending(null);
+      action();
+    } else {
+      setConfirmPending(key);
+      clearTimeout(confirmRef.current);
+      confirmRef.current = setTimeout(() => setConfirmPending(null), 3000);
+    }
+  };
+
   const {
     C, card, cardWhite, btn, darkMode,
     eqPreset, eqBands, eqSaturation, eqNoiseFloor, eqPreAmp,
@@ -125,12 +140,12 @@ export default function SettingsTab() {
             <Row label="Connected" value="✓" chevron={false}
               icon={<SpotifyIcon className="h-4 w-4" style={{ fill: '#1ed760' }} />}
               onPress={() => {}} />
-            <Row label="Disconnect" destructive
+            <Row label={confirmPending === 'spotify-disconnect' ? 'Tap again to confirm' : 'Disconnect'} destructive
               icon={<LogOut className="h-4 w-4" style={{ color: C.error }} />}
-              onPress={async () => {
+              onPress={withConfirm('spotify-disconnect', async () => {
                 try { await fetch('/auth/spotify/logout', { method: 'POST' }); toast.success('Disconnected'); }
                 catch { toast.error('Failed'); }
-              }} />
+              })} />
           </>
         )}
       </Section>
@@ -212,19 +227,19 @@ export default function SettingsTab() {
             </div>
           </div>
         )}
-        <Row label="Reboot Kiosk"
-          icon={<RefreshCw className="h-4 w-4" style={{ color: '#f59e0b' }} />}
-          onPress={handleReboot} />
-        <Row label="Shut Down" destructive
+        <Row label={confirmPending === 'reboot' ? 'Tap again to reboot' : 'Reboot Kiosk'}
+          icon={<RefreshCw className="h-4 w-4" style={{ color: confirmPending === 'reboot' ? '#f59e0b' : C.text4 }} />}
+          onPress={withConfirm('reboot', handleReboot)} />
+        <Row label={confirmPending === 'shutdown' ? 'Tap again to shut down' : 'Shut Down'} destructive
           icon={<Power className="h-4 w-4" style={{ color: C.error }} />}
-          onPress={handleShutdown} />
+          onPress={withConfirm('shutdown', handleShutdown)} />
       </Section>
 
       {/* account */}
       <Section>
-        <Row label="Sign Out" destructive chevron={false}
+        <Row label={confirmPending === 'signout' ? 'Tap again to sign out' : 'Sign Out'} destructive chevron={false}
           icon={<LogOut className="h-4 w-4" style={{ color: C.error }} />}
-          onPress={() => { eraseCookie('remote_auth'); setIsAuthenticated(false); setActiveTab('player'); }} />
+          onPress={withConfirm('signout', () => { eraseCookie('remote_auth'); setIsAuthenticated(false); setActiveTab('player'); })} />
       </Section>
     </div>
   );

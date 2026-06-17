@@ -2,22 +2,25 @@ import React, { useContext } from 'react';
 import { Search, Radio, Music, Heart } from 'lucide-react';
 import { Tk, SpotifyIcon } from './shared';
 import { api } from '../../api';
-import { toast } from 'sonner';
+import { toast } from '../../lib/toast';
+
+const QUICK_GENRES = ['Jazz', 'Classical', 'Lo-Fi', 'Ambient', 'Electronic', 'Rock', 'News', 'Chill'];
 
 export default function SourceTab() {
   const {
     C, card, cardWhite, btn, btnInset,
     source, radioSearch, setRadioSearch, stationsList, isSearching,
     handleToggleSource, handleRadioSearch, handleToggleFavRadio,
-    favoriteStations, wakeKiosk, sendUpdate, setSource, setActiveTab,
+    favoriteStations, wakeKiosk, setSource, setActiveTab,
   } = useContext(Tk);
 
   const handlePlayStation = async station => {
     try {
       wakeKiosk();
       await api.localPlayRadio(station.url, station.name, station.favicon);
+      // Server broadcasts SET_SOURCE + PLAYBACK_STATE to all clients via EventService.
+      // Optimistic local update for instant tab/source badge feedback on the sender.
       setSource('radio');
-      sendUpdate('SET_SOURCE', { spotify: false, source: 'radio' });
       setActiveTab('player');
     } catch (e) { toast.error(e.message); }
   };
@@ -82,10 +85,20 @@ export default function SourceTab() {
       {/* station list */}
       <div className="mx-4 rounded-xl overflow-hidden" style={cardWhite}>
         {stationsList.length === 0 && (
-          <div className="px-4 py-8 text-center">
+          <div className="px-4 py-6 text-center">
             <Radio className="h-8 w-8 mx-auto mb-3" style={{ color: C.outline }} />
-            <p className="text-[15px] font-medium" style={{ color: C.text1 }}>No favorites yet</p>
-            <p className="text-[13px] mt-1" style={{ color: C.text4 }}>Search for stations above</p>
+            <p className="text-[15px] font-medium mb-1" style={{ color: C.text1 }}>No favorites yet</p>
+            <p className="text-[13px] mb-4" style={{ color: C.text4 }}>Try a genre to get started</p>
+            <div className="flex flex-wrap gap-2 justify-center">
+              {QUICK_GENRES.map(g => (
+                <button key={g}
+                  onClick={() => { setRadioSearch(g); handleRadioSearch(); }}
+                  className="px-3 py-1.5 rounded-full text-[12px] font-semibold active:scale-95 transition-all cursor-pointer"
+                  style={{ background: C.containerLow, color: C.champagne, border: `0.5px solid ${C.champagne}40`, fontFamily: C.fontLabel }}>
+                  {g}
+                </button>
+              ))}
+            </div>
           </div>
         )}
         {stationsList.map((station, idx) => {
@@ -95,7 +108,8 @@ export default function SourceTab() {
               {idx > 0 && (
                 <div className="ml-16" style={{ height: '0.5px', background: `linear-gradient(90deg, transparent 0%, ${C.outline} 15%, ${C.outline} 85%, transparent 100%)` }} />
               )}
-              <div className="flex items-center gap-3 px-4 py-3">
+              <div className="flex items-center gap-3 px-4 py-3 list-item-rise"
+                style={{ animationDelay: `${Math.min(idx * 0.035, 0.35)}s` }}>
                 <div className="w-10 h-10 rounded-xl overflow-hidden flex items-center justify-center shrink-0"
                   style={{ background: C.containerLow, border: `0.5px solid ${C.outline}` }}>
                   {station.favicon

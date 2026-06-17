@@ -246,7 +246,7 @@ function FrequencyBand({ stations, onPlay, onToggleFavorite, favoriteStations = 
   );
 }
 
-export default function PlayerDisplay({
+const PlayerDisplay = React.memo(function PlayerDisplay({
   theme = 'amber',
   activeTheme = 'dot-matrix',
   visualizerMode = 'vu',
@@ -1132,7 +1132,7 @@ export default function PlayerDisplay({
           </button>
 
           {showVolumePopup && (
-            <div className="volume-popup absolute right-14 bottom-0 bg-[#0d1527] border border-white/10 rounded-2xl p-4 flex items-center gap-3 shadow-2xl z-[150] w-64 animate-fade-in">
+            <div className="volume-popup absolute right-14 bottom-0 bg-[#0d1527] border border-white/10 rounded-2xl p-4 flex items-center gap-3 shadow-2xl z-[150] w-64 animate-volume-in">
               <button
                 onClick={handleToggleMute}
                 className="text-zinc-400 hover:text-white transition-colors flex-shrink-0 cursor-pointer"
@@ -1181,4 +1181,6 @@ export default function PlayerDisplay({
 
     </article>
   );
-}
+});
+
+export default PlayerDisplay;
