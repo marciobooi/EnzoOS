@@ -507,7 +507,7 @@ export default function RemoteControl() {
               {activeTab === 'radio'    && <RadioTab />}
               {activeTab === 'settings' && <SettingsTab />}
             </div>
-            {activeTab !== 'player' && <MiniPlayer />}
+            {activeTab !== 'player' && activeTab !== 'source' && <MiniPlayer />}
           </div>
 
           <BottomNav navH={NAV_H} />
