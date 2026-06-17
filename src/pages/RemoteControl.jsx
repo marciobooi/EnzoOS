@@ -305,7 +305,7 @@ export default function RemoteControl() {
   const handleSetSleepTimer = minutes => { setSleepMinutes(minutes); setSleepRemaining(minutes * 60); if (!minutes) { setSleepRemaining(0); toast.success('Sleep timer off'); } else toast.success(`Sleep in ${minutes < 60 ? `${minutes}m` : `${minutes / 60}h`}`); };
 
   // ── transport ─────────────────────────────────────────────────────────────
-  const handleToggleSource  = src => { setSource(src); sendUpdate('SET_SOURCE', { spotify: src === 'spotify', source: src }); };
+  const handleToggleSource  = src => { setSource(src); setPlaybackState(null); sendUpdate('SET_SOURCE', { spotify: src === 'spotify', source: src }); };
   const handleToggleStandby = en  => { setStandby(en); if (ws.current?.readyState === WebSocket.OPEN) ws.current.send(JSON.stringify({ type: 'SET_STANDBY', payload: { enabled: en } })); };
 
   const handlePlayPause = async () => {

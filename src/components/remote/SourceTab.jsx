@@ -9,15 +9,16 @@ export default function SourceTab() {
     C, card, cardWhite, btn, btnInset,
     source, radioSearch, setRadioSearch, stationsList, isSearching,
     handleToggleSource, handleRadioSearch, handleToggleFavRadio,
-    favoriteStations, wakeKiosk, sendUpdate, setSource, setActiveTab,
+    favoriteStations, wakeKiosk, setSource, setActiveTab,
   } = useContext(Tk);
 
   const handlePlayStation = async station => {
     try {
       wakeKiosk();
       await api.localPlayRadio(station.url, station.name, station.favicon);
+      // Server broadcasts SET_SOURCE + PLAYBACK_STATE to all clients via EventService.
+      // Optimistic local update for instant tab/source badge feedback on the sender.
       setSource('radio');
-      sendUpdate('SET_SOURCE', { spotify: false, source: 'radio' });
       setActiveTab('player');
     } catch (e) { toast.error(e.message); }
   };

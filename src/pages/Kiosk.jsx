@@ -400,10 +400,9 @@ export default function Kiosk() {
       nextSource = source === 'spotify' ? 'local' : (source === 'local' ? 'radio' : 'spotify');
     }
     setSource(nextSource);
+    setPlaybackState(null);
     const isSpotify = nextSource === 'spotify';
     sendUpdate('SET_SOURCE', { spotify: isSpotify, source: nextSource });
-    
-    const sourceNames = { spotify: 'Spotify', local: 'Local Media', radio: 'Web Radio' };
   };
 
   const handleToggleFavoriteRadio = async (station) => {

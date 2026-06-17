@@ -129,30 +129,96 @@ async function handleEvent(type, payload, excludeWs) {
     }
 
     case 'SET_SOURCE': {
+      const previousSource = cachedSourceState.source;
+      const newSource = payload.source || (payload.spotify ? 'spotify' : 'local');
       cachedSourceState = payload;
-      await setSetting('active_source', payload.source || (payload.spotify ? 'spotify' : 'local'));
-      if (payload.spotify || payload.source === 'spotify') {
+      await setSetting('active_source', newSource);
+
+      if (newSource === 'spotify') {
+        // Kill local/radio playback when entering Spotify
         try {
           const { exec } = await import('child_process');
           exec('mpc stop');
         } catch (err) {
           console.error('[SET_SOURCE] Failed to stop mpc:', err);
         }
+        // Clear cached state — the Spotify Web Player sends its own BROADCAST_STATE
+        cachedPlaybackState = null;
+
       } else {
-        try {
-          const { getValidAccessToken } = await import('./spotify-auth.js');
-          const token = await getValidAccessToken();
-          if (token) {
-            fetch('https://api.spotify.com/v1/me/player/pause', {
-              method: 'PUT',
-              headers: { 'Authorization': `Bearer ${token}` },
-            }).catch(err => console.warn('[SET_SOURCE] Spotify pause failed (non-fatal):', err.message));
+        // Leaving Spotify — pause it
+        if (previousSource === 'spotify') {
+          try {
+            const { getValidAccessToken } = await import('./spotify-auth.js');
+            const token = await getValidAccessToken();
+            if (token) {
+              fetch('https://api.spotify.com/v1/me/player/pause', {
+                method: 'PUT',
+                headers: { 'Authorization': `Bearer ${token}` },
+              }).catch(err => console.warn('[SET_SOURCE] Spotify pause failed (non-fatal):', err.message));
+            }
+          } catch (err) {
+            console.error('[SET_SOURCE] Failed to pause Spotify:', err);
           }
-        } catch (err) {
-          console.error('[SET_SOURCE] Failed to pause Spotify:', err);
+        }
+
+        if (newSource === 'radio') {
+          // Auto-resume last radio station when switching TO radio (not when already on radio).
+          // Skip if same source — avoids restarting the stream when a client plays a station
+          // via the REST route (which already handles playback) and also sends SET_SOURCE over WS.
+          if (previousSource !== 'radio') {
+            const url = await getSetting('last_radio_url');
+            if (url) {
+              const name = await getSetting('last_radio_name');
+              const favicon = await getSetting('last_radio_favicon');
+              try {
+                const { exec, execFile } = await import('child_process');
+                const { promisify } = await import('util');
+                const execP = promisify(exec);
+                const execFileP = promisify(execFile);
+                await execP('mpc clear');
+                await execFileP('mpc', ['add', url]);
+                await execP('mpc play');
+                cachedPlaybackState = {
+                  paused: false,
+                  position: 0,
+                  duration: 0,
+                  track_window: {
+                    current_track: {
+                      name: name || 'WEB RADIO',
+                      artists: [{ name: 'Live Stream' }],
+                      album: { name: 'Web Radio Broadcast', images: favicon ? [{ url: favicon }] : [] },
+                      url,
+                    },
+                  },
+                };
+                console.log(`[SET_SOURCE] Auto-resumed radio: ${name} (${url})`);
+              } catch (err) {
+                console.error('[SET_SOURCE] Failed to auto-resume radio:', err);
+                cachedPlaybackState = null;
+              }
+            } else {
+              cachedPlaybackState = null;
+            }
+          }
+
+        } else if (newSource === 'local') {
+          // MPD keeps its queue and position — just resume playback
+          try {
+            const { exec } = await import('child_process');
+            exec('mpc play');
+          } catch (err) {
+            console.error('[SET_SOURCE] Failed to resume MPD:', err);
+          }
+          // Clear cached state — MPD client sends BROADCAST_STATE once playing
+          cachedPlaybackState = null;
         }
       }
+
       broadcast({ type: 'SET_SOURCE', payload }, excludeWs);
+      // Push current playback state so all clients reflect the new source immediately.
+      // null payload is safe: client guards against it in the PLAYBACK_STATE handler.
+      broadcast({ type: 'PLAYBACK_STATE', payload: cachedPlaybackState });
       break;
     }
 
