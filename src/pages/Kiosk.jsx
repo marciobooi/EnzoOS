@@ -57,6 +57,7 @@ export default function Kiosk() {
   const [isThemeSettingsOpen, setIsThemeSettingsOpen] = useState(false);
   const [remoteAccessEnabled, setRemoteAccessEnabled] = useState(true);
   const [isRemoteAccessOpen, setIsRemoteAccessOpen] = useState(false);
+  const [remoteUrl, setRemoteUrl] = useState('');
 
   const themeSyncTimeout = useRef(null);
   const queueThemeSync = (themeColor, activeThemeVal, brightnessVal, visualizerModeVal) => {
@@ -956,8 +957,6 @@ export default function Kiosk() {
     sendUpdate('CLEAR_TOKEN');
   };
 
-  const remoteUrl = `http://${window.location.hostname}:5000/remote`;
-
   return (
     <div 
       data-theme={theme} 
@@ -1148,9 +1147,16 @@ export default function Kiosk() {
                 setRemoteAccessEnabled(enabled);
                 sendUpdate('SET_REMOTE_ACCESS', { enabled });
               }}
-              onOpenRemoteAccess={() => {
-                setIsRemoteAccessOpen(true);
+              onOpenRemoteAccess={async () => {
                 setIsMenuOpen(false);
+                try {
+                  const r = await fetch('/api/system/lan-url');
+                  const d = await r.json();
+                  setRemoteUrl(d.url);
+                } catch {
+                  setRemoteUrl(`http://${window.location.hostname}:5000/remote`);
+                }
+                setIsRemoteAccessOpen(true);
               }}
             />
           </div>

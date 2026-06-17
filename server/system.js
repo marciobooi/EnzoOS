@@ -1,11 +1,22 @@
 import express from 'express';
 import { exec } from 'child_process';
 import { promisify } from 'util';
+import os from 'os';
 
 const execPromise = promisify(exec);
 const router = express.Router();
 
 const ALLOWED_SERVICES = ['mpd', 'camilladsp', 'raspotify'];
+
+// GET /api/system/lan-url — returns the LAN-accessible remote URL for QR code generation
+router.get('/lan-url', (req, res) => {
+  const port = process.env.PORT || 5000;
+  const ifaces = os.networkInterfaces();
+  const lanIp = Object.values(ifaces)
+    .flat()
+    .find(i => i.family === 'IPv4' && !i.internal)?.address || 'localhost';
+  res.json({ url: `http://${lanIp}:${port}/remote`, ip: lanIp, port });
+});
 
 // GET /api/system/services — status of all audio services
 router.get('/services', async (req, res) => {
