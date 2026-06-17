@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { toast, Toaster } from 'sonner';
 import { api } from '../api';
 import { useResonanceWS } from '../websocket';
@@ -960,7 +960,11 @@ export default function Kiosk() {
     sendUpdate('CLEAR_TOKEN');
   };
 
-  const kioskCtx = {
+  const onToggleMenu      = useCallback(() => setIsMenuOpen(v => !v), []);
+  const onToggleEqualizer = useCallback(() => setIsEqualizerOpen(v => !v), []);
+  const onToggleSearch    = useCallback(() => setIsSearchOpen(v => !v), []);
+
+  const kioskCtx = useMemo(() => ({
     // standby / transitions
     standby, transitionScreen, handleToggleStandby, getGreeting,
     // equalizer
@@ -994,7 +998,22 @@ export default function Kiosk() {
     isRemoteAccessOpen, remoteUrl,
     // dsp wizard
     isDspWizardOpen, setDspActive,
-  };
+  }), [
+    standby, transitionScreen, handleToggleStandby,
+    isEqualizerOpen, eqPreset, eqBands, eqSaturation, eqNoiseFloor, eqPreAmp,
+    handleEqPresetChange, handleBandChange, handleSaturationChange,
+    handleNoiseFloorChange, handlePreAmpChange, dspActive, handleDeactivateDsp,
+    isMenuOpen, token, handleLogout, devices, isFetchingDevices,
+    transferPlayback, fetchDevices, theme, handleThemeColorChange,
+    otaProgress, otaPercent, source, handleToggleSource,
+    updateStatus, errorMessage, setIsDspWizardOpen, setIsThemeSettingsOpen,
+    remoteAccessEnabled, setRemoteAccessEnabled, sendUpdate,
+    setIsRemoteAccessOpen, setRemoteUrl,
+    isSearchOpen, handlePlayTrack, handlePlayContext,
+    isThemeSettingsOpen, activeTheme, handleActiveThemeChange,
+    brightness, handleBrightnessChange, visualizerMode, handleVisualizerModeChange,
+    isRemoteAccessOpen, remoteUrl, isDspWizardOpen,
+  ]);
 
   return (
     <Kk.Provider value={kioskCtx}>
@@ -1054,13 +1073,13 @@ export default function Kiosk() {
           handleToggleShuffle={handleToggleShuffle}
           handleToggleRepeat={handleToggleRepeat}
           playbackState={playbackState}
-          onToggleMenu={() => setIsMenuOpen(!isMenuOpen)}
+          onToggleMenu={onToggleMenu}
           onTransferPlayback={handleTransferToLocal}
           hasToken={!!token}
           spotify={spotify}
           onToggleSource={handleToggleSource}
-          onToggleEqualizer={() => setIsEqualizerOpen(!isEqualizerOpen)}
-          onToggleSearch={() => setIsSearchOpen(!isSearchOpen)}
+          onToggleEqualizer={onToggleEqualizer}
+          onToggleSearch={onToggleSearch}
           source={source}
           radioCountry={radioCountry}
           setRadioCountry={setRadioCountry}
@@ -1075,10 +1094,10 @@ export default function Kiosk() {
 
         <EqualizerOverlay />
         <SettingsMenuOverlay />
-        <SearchOverlay />
+        {isSearchOpen && <SearchOverlay />}
         <ThemeSettingsOverlay />
         <RemoteAccessOverlay />
-        <DspWizardOverlay />
+        {isDspWizardOpen && <DspWizardOverlay />}
 
         <Toaster theme="dark" closeButton richColors position="bottom-right" visibleToasts={1} />
       </div>

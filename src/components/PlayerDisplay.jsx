@@ -246,7 +246,7 @@ function FrequencyBand({ stations, onPlay, onToggleFavorite, favoriteStations = 
   );
 }
 
-export default function PlayerDisplay({
+const PlayerDisplay = React.memo(function PlayerDisplay({
   theme = 'amber',
   activeTheme = 'dot-matrix',
   visualizerMode = 'vu',
@@ -1181,4 +1181,6 @@ export default function PlayerDisplay({
 
     </article>
   );
-}
+});
+
+export default PlayerDisplay;

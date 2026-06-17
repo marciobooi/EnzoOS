@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Waves, Smartphone } from 'lucide-react';
 import { toast, Toaster } from 'sonner';
 import { api } from '../api';
@@ -350,7 +350,7 @@ export default function RemoteControl() {
   const handleDeactivateDsp = async () => { try { const c = await api.getDspCalibration() || {}; c[0] = 'eq'; await api.saveDspCalibration(c); setDspActive(false); } catch {} };
 
   // ── context value ─────────────────────────────────────────────────────────
-  const ctxValue = {
+  const ctxValue = useMemo(() => ({
     C, card, cardWhite, btn, btnInset, darkMode,
     activeTab, setActiveTab,
     isConnected, ws, sendUpdate,
@@ -390,7 +390,23 @@ export default function RemoteControl() {
     triggerOtaUpdate, checkUpdates, fetchDevices,
     handleTransferPlayback,
     setIsAuthenticated, eraseCookie,
-  };
+  }), [
+    darkMode, activeTab, isConnected, ws, sendUpdate,
+    standby, source, spotify, token, isPlaying,
+    trackPosition, trackDuration, progressPct,
+    volume, isMuted, shuffleState, repeatState,
+    playbackState, currentTrack, activeDevice, resonanceDevice, devices,
+    albumImage, trackName, trackArtist,
+    favoriteStations, isCurrentFav,
+    libraryView, selectedArtist, selectedAlbum, libraryItems, libraryLoading,
+    radioSearch, stationsList, isSearching,
+    eqPreset, eqBands, eqSaturation, eqNoiseFloor, eqPreAmp,
+    dspActive, showEq, isDspWizardOpen,
+    theme, activeTheme, brightness, visualizerMode, isThemeSettingsOpen,
+    sleepMinutes, sleepRemaining, showSleepRow,
+    systemHealth, services, serviceLoading,
+    updateStatus, otaProgress, otaPercent,
+  ]);
 
   // ══════════════════════════════════════════════════════════════════════════
   // DISABLED

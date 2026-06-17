@@ -120,6 +120,18 @@ When a radio station is selected via the source tab the REST route broadcasts `S
 
 ---
 
+## ⚡ Render Optimisations
+
+| What | Where | Effect |
+|---|---|---|
+| `React.memo` on `PlayerDisplay` | `src/components/PlayerDisplay.jsx` | Skips the 1 184-line component re-render when only unrelated Kiosk state changes (e.g. overlay open/close) |
+| `useMemo` on `kioskCtx` | `src/pages/Kiosk.jsx` | Context object keeps a stable reference between renders where nothing in it changed; prevents cascading re-renders in all seven overlay components |
+| `useMemo` on `ctxValue` | `src/pages/RemoteControl.jsx` | Same benefit for all remote tab components |
+| `useCallback` for `onToggleMenu / onToggleEqualizer / onToggleSearch` | `src/pages/Kiosk.jsx` | Stable handler references so `React.memo` on `PlayerDisplay` can bail out on overlay open/close |
+| Conditional mount for `SearchOverlay` / `DspWizardOverlay` | `src/pages/Kiosk.jsx` | `TrackSearch` and `DspWizard` are only mounted (and run their effects/fetches) while the overlay is open |
+
+---
+
 ## 🔒 Security & Reliability Hardening
 
 ### Shell injection prevention
