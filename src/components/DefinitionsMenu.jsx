@@ -19,7 +19,8 @@ export default function DefinitionsMenu({
   onOpenDspWizard,
   onOpenThemeSettings,
   remoteAccessEnabled = true,
-  onToggleRemoteAccess
+  onToggleRemoteAccess,
+  onOpenRemoteAccess
 }) {
   // Local health metrics state
   const [healthData, setHealthData] = useState({ cpuTemp: 40, ramLoad: 30, wifiSignal: -60 });
@@ -232,7 +233,8 @@ export default function DefinitionsMenu({
       {/* 4c. REMOTE ACCESS CONTROL CARD */}
       <button
         onClick={() => {
-          if (onToggleRemoteAccess) onToggleRemoteAccess(!remoteAccessEnabled);
+          if (onOpenRemoteAccess) onOpenRemoteAccess();
+          else if (onToggleRemoteAccess) onToggleRemoteAccess(!remoteAccessEnabled);
         }}
         className={`w-[180px] shrink-0 p-5 rounded-2xl text-left flex flex-col justify-between transition-all duration-300 relative group overflow-hidden cursor-pointer ${
           remoteAccessEnabled ? 'active-card scale-[1.02]' : 'menu-card hover:scale-[1.01]'
