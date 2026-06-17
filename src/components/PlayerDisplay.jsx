@@ -779,7 +779,7 @@ const PlayerDisplay = React.memo(function PlayerDisplay({
                   {favoriteStations.map((station, idx) => (
                     <div key={`${station.url}-${idx}`}
                       className="group flex items-center gap-1 p-1 rounded-lg transition-all cursor-pointer"
-                      style={{ border: '1px solid rgba(255,255,255,0.05)', maxWidth: '12rem' }}
+                      style={{ border: '1px solid rgba(255,255,255,0.05)', maxWidth: '12rem', background: 'linear-gradient(rgb(1, 2, 4) 0%, rgb(3, 6, 14) 40%, rgb(1, 2, 4) 100%)' }}
                       onClick={() => { onPlayRadio(station.url, station.name, station.favicon); setShowSearch(false); }}>
                       <StationAvatar station={station} size={20} />
                       <p className="text-[8px] font-bold text-white truncate flex-1 group-hover:text-[var(--theme-color)] transition-colors leading-tight">{station.name}</p>
