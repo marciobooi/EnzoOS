@@ -130,7 +130,7 @@ export default function Kiosk() {
   const [stationsList, setStationsList] = useState([]);
   const [isSearching, setIsSearching] = useState(false);
   const [standby, setStandby] = useState(false);
-  const [transitionScreen, setTransitionScreen] = useState(null); // 'welcome' | 'goodbye' | null
+  const [transitionScreen, setTransitionScreen] = useState('welcome'); // 'welcome' | 'goodbye' | null
   const [isDspWizardOpen, setIsDspWizardOpen] = useState(false);
   const [dspActive, setDspActive] = useState(false);
   const [scale, setScale] = useState(1);
@@ -226,6 +226,12 @@ export default function Kiosk() {
       console.warn('Failed to load favorite stations:', err);
     }
   }
+
+  // Show welcome screen on boot, auto-dismiss after animation completes
+  useEffect(() => {
+    const t = setTimeout(() => setTransitionScreen(null), 2800);
+    return () => clearTimeout(t);
+  }, []);
 
   useEffect(() => {
     if (!radioCountry) setStationsList([]);
