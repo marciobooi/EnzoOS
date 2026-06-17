@@ -170,7 +170,7 @@ export default function DspWizard({ onClose, onCalibrationComplete }) {
     return (
       <div className="flex flex-col h-full text-zinc-150 p-6 select-none font-mono">
         <div className="flex justify-between items-center mb-3 shrink-0">
-          <h4 className="text-[11px] font-extrabold uppercase tracking-[0.2em] text-emerald-400 flex items-center gap-1.5">
+          <h4 className="text-sm lg:text-[11px] font-extrabold uppercase tracking-[0.2em] text-emerald-400 flex items-center gap-1.5">
             <Cpu className="h-4 w-4 animate-pulse" />
             Equalizer Mode Activated
           </h4>
@@ -186,7 +186,7 @@ export default function DspWizard({ onClose, onCalibrationComplete }) {
             <Check className="h-8 w-8 stroke-[2.5]" />
           </div>
           <h2 className="text-sm font-bold text-white uppercase tracking-widest">Manual Equalizer Active</h2>
-          <p className="text-[10px] text-zinc-400 max-w-md leading-relaxed font-sans font-medium">
+          <p className="text-[13px] lg:text-[10px] text-zinc-400 max-w-md leading-relaxed font-sans font-medium">
             Acoustic room correction filters are now bypassed. Manual Parametric Equalizer mode is fully active. You can adjust presets and frequency bands by tapping the visualizer VU dial on the main display.
           </p>
         </div>
@@ -194,13 +194,13 @@ export default function DspWizard({ onClose, onCalibrationComplete }) {
         <div className="flex gap-2.5 mt-3 shrink-0">
           <button 
             onClick={() => setCurrentStep(0)}
-            className="flex-1 py-2.5 rounded-xl bg-zinc-800 text-zinc-300 font-extrabold text-[10px] uppercase tracking-wider active:scale-95 border border-white/5 transition-all cursor-pointer hover:bg-zinc-750"
+            className="flex-1 py-2.5 rounded-xl bg-zinc-800 text-zinc-300 font-extrabold text-[13px] lg:text-[10px] uppercase tracking-wider active:scale-95 border border-white/5 transition-all cursor-pointer hover:bg-zinc-750"
           >
             Configure Acoustic DSP instead
           </button>
           <button 
             onClick={onClose}
-            className="flex-1 py-2.5 rounded-xl bg-emerald-500 text-black font-extrabold text-[10px] uppercase tracking-wider active:scale-95 transition-all cursor-pointer hover:bg-emerald-400"
+            className="flex-1 py-2.5 rounded-xl bg-emerald-500 text-black font-extrabold text-[13px] lg:text-[10px] uppercase tracking-wider active:scale-95 transition-all cursor-pointer hover:bg-emerald-400"
           >
             Return to Player display
           </button>
@@ -214,7 +214,7 @@ export default function DspWizard({ onClose, onCalibrationComplete }) {
     return (
       <div className="flex flex-col h-full text-zinc-150 p-6 select-none font-mono">
         <div className="flex justify-between items-center mb-3 shrink-0">
-          <h4 className="text-[11px] font-extrabold uppercase tracking-[0.2em] text-emerald-400 flex items-center gap-1.5">
+          <h4 className="text-sm lg:text-[11px] font-extrabold uppercase tracking-[0.2em] text-emerald-400 flex items-center gap-1.5">
             <Cpu className="h-4 w-4 animate-pulse" />
             Calibration Completed Successfully
           </h4>
@@ -230,11 +230,11 @@ export default function DspWizard({ onClose, onCalibrationComplete }) {
             <Check className="h-8 w-8 stroke-[2.5]" />
           </div>
           <h2 className="text-sm font-bold text-white uppercase tracking-widest">Acoustic Profile Generated</h2>
-          <p className="text-[10px] text-zinc-400 max-w-md leading-relaxed font-sans">
+          <p className="text-[13px] lg:text-[13px] lg:text-[10px] text-zinc-400 max-w-md leading-relaxed font-sans">
             Acoustic DSP active filters and biquad curves have been recalculated and hot-reloaded successfully on the Resonance backend server.
           </p>
 
-          <div className="bg-black/35 border border-white/5 rounded-xl p-3 text-left w-full max-w-lg mt-1 font-mono text-[9px] text-zinc-500 space-y-1 max-h-[100px] overflow-y-auto custom-scrollbar">
+          <div className="bg-black/35 border border-white/5 rounded-xl p-3 text-left w-full max-w-lg mt-1 font-mono text-[11px] lg:text-[9px] text-zinc-500 space-y-1 max-h-[100px] overflow-y-auto custom-scrollbar">
             <p className="text-zinc-400 font-bold uppercase tracking-wider mb-1">Applied DSP Map:</p>
             <p>• Channel Layout: {answers[1] === 'subwoofer' ? '2.1 Crossover Active (80Hz Linkwitz-Riley)' : '2.0 Pass-Through'}</p>
             <p>• Room Reflection EQ: {answers[2] === 'echoey' ? 'Tamed HF Shelf (-3dB @ 8kHz)' : 'Flat HF Response'}</p>
@@ -249,13 +249,13 @@ export default function DspWizard({ onClose, onCalibrationComplete }) {
         <div className="flex gap-2.5 mt-3 shrink-0">
           <button 
             onClick={() => setCurrentStep(0)}
-            className="flex-1 py-2.5 rounded-xl bg-zinc-800 text-zinc-300 font-extrabold text-[10px] uppercase tracking-wider active:scale-95 border border-white/5 transition-all cursor-pointer hover:bg-zinc-750"
+            className="flex-1 py-2.5 rounded-xl bg-zinc-800 text-zinc-300 font-extrabold text-[13px] lg:text-[10px] uppercase tracking-wider active:scale-95 border border-white/5 transition-all cursor-pointer hover:bg-zinc-750"
           >
             Switch to Manual Equalizer
           </button>
           <button 
             onClick={onClose}
-            className="flex-1 py-2.5 rounded-xl bg-emerald-500 text-black font-extrabold text-[10px] uppercase tracking-wider active:scale-95 transition-all cursor-pointer hover:bg-emerald-400"
+            className="flex-1 py-2.5 rounded-xl bg-emerald-500 text-black font-extrabold text-[13px] lg:text-[10px] uppercase tracking-wider active:scale-95 transition-all cursor-pointer hover:bg-emerald-400"
           >
             Return to Player display
           </button>
@@ -268,7 +268,7 @@ export default function DspWizard({ onClose, onCalibrationComplete }) {
     <div className="flex flex-col h-full text-zinc-150 p-6 select-none font-mono">
       {/* Header */}
       <div className="flex justify-between items-center mb-3 shrink-0">
-        <h4 className="text-[11px] font-extrabold uppercase tracking-[0.2em] theme-text flex items-center gap-1.5">
+        <h4 className="text-sm lg:text-[11px] font-extrabold uppercase tracking-[0.2em] theme-text flex items-center gap-1.5">
           <Waves className="h-4 w-4 text-[var(--theme-color)]" />
           Acoustic Calibration Wizard
         </h4>
@@ -281,7 +281,7 @@ export default function DspWizard({ onClose, onCalibrationComplete }) {
 
       {/* Step Progress Bar */}
       <div className="w-full flex items-center gap-2 mb-3 shrink-0">
-        <span className="text-[9px] text-zinc-550 shrink-0 font-bold">
+        <span className="text-[11px] lg:text-[9px] text-zinc-550 shrink-0 font-bold">
           STEP {String(currentStep + 1).padStart(2, '0')} / {String(QUESTIONS.length).padStart(2, '0')}
         </span>
         <div className="flex-grow h-1 bg-white/5 rounded-full overflow-hidden flex gap-0.5">
@@ -301,17 +301,17 @@ export default function DspWizard({ onClose, onCalibrationComplete }) {
 
         {/* Left Side: Question Details */}
         <div className="w-full lg:w-[45%] flex flex-col justify-between p-4 bg-black/20 border border-white/5 rounded-2xl min-h-0">
-          <div className="space-y-1">
-            <span className="text-[8px] font-extrabold text-[var(--theme-color)] uppercase tracking-widest">QUESTION DATA CARD</span>
-            <h3 className="text-[11px] font-bold text-white uppercase tracking-wide leading-normal">
+          <div className="space-y-1.5">
+            <span className="text-[10px] lg:text-[8px] font-extrabold text-[var(--theme-color)] uppercase tracking-widest">QUESTION DATA CARD</span>
+            <h3 className="text-[15px] lg:text-[11px] font-bold text-white uppercase tracking-wide leading-normal">
               {activeQuestion.question}
             </h3>
-            <p className="text-[9px] text-zinc-400 leading-relaxed font-sans font-medium">
+            <p className="text-[12px] lg:text-[9px] text-zinc-400 leading-relaxed font-sans font-medium">
               {activeQuestion.description}
             </p>
           </div>
 
-          <div className="mt-3 pt-2.5 border-t border-white/5 text-[8px] text-zinc-500 leading-normal flex items-start gap-1.5">
+          <div className="mt-3 pt-2.5 border-t border-white/5 text-[11px] lg:text-[8px] text-zinc-500 leading-normal flex items-start gap-1.5">
             <Cpu className="h-3.5 w-3.5 text-zinc-650 shrink-0 mt-0.5" />
             <p className="font-mono">{activeQuestion.action}</p>
           </div>
@@ -332,7 +332,7 @@ export default function DspWizard({ onClose, onCalibrationComplete }) {
                 }`}
                 type="button"
               >
-                <span className="text-[10px] font-bold uppercase tracking-wider">{opt.label}</span>
+                <span className="text-[13px] lg:text-[10px] font-bold uppercase tracking-wider">{opt.label}</span>
                 {isSelected ? (
                   <Check className="h-4 w-4 text-[var(--theme-color)] shrink-0" />
                 ) : (
@@ -356,7 +356,7 @@ export default function DspWizard({ onClose, onCalibrationComplete }) {
         <button
           onClick={handleBack}
           disabled={currentStep === 0}
-          className="flex items-center gap-1.5 text-[10px] font-extrabold text-zinc-500 hover:text-white disabled:opacity-20 disabled:hover:text-zinc-500 transition-colors cursor-pointer font-sans"
+          className="flex items-center gap-1.5 text-[12px] lg:text-[10px] font-extrabold text-zinc-500 hover:text-white disabled:opacity-20 disabled:hover:text-zinc-500 transition-colors cursor-pointer font-sans"
         >
           <ChevronLeft className="h-4 w-4" />
           PREVIOUS QUESTION
