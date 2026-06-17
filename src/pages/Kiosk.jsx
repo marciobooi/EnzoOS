@@ -433,7 +433,7 @@ export default function Kiosk() {
     if (!country) { setStationsList([]); return; }
     try {
       setIsSearching(true);
-      const res = await fetch(`https://de1.api.radio-browser.info/json/stations/bycountry/${encodeURIComponent(country)}?limit=60&hidebroken=true&order=votes`);
+      const res = await fetch(`/api/player/radio-bycountry?country=${encodeURIComponent(country)}&limit=60`);
       const data = await res.json();
       const formatted = data.map(s => ({
         name: s.name.length > 22 ? s.name.substring(0, 20) + '...' : s.name,

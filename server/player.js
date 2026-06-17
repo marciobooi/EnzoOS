@@ -782,5 +782,62 @@ router.post('/standby', async (req, res) => {
   }
 });
 
+// ── Radio-Browser.info proxy ─────────────────────────────────────────────────
+// Proxy so browser clients (especially iOS Safari on HTTP) never have to make
+// cross-origin requests to an external HTTPS host. Tries multiple mirrors in
+// sequence so a single downed mirror doesn't break search.
+
+const RADIO_MIRRORS = [
+  'https://de1.api.radio-browser.info',
+  'https://nl1.api.radio-browser.info',
+  'https://at1.api.radio-browser.info',
+];
+
+async function radioFetch(path) {
+  let lastErr;
+  for (const base of RADIO_MIRRORS) {
+    try {
+      const { default: fetch } = await import('node-fetch');
+      const r = await fetch(`${base}${path}`, {
+        headers: { 'User-Agent': 'ResonanceHiFi/1.0' },
+        signal: AbortSignal.timeout(6000),
+      });
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      return await r.json();
+    } catch (e) {
+      lastErr = e;
+    }
+  }
+  throw lastErr;
+}
+
+// GET /api/player/radio-search?q=<name>&limit=25
+router.get('/radio-search', async (req, res) => {
+  const q = (req.query.q || '').trim();
+  if (!q) return res.json([]);
+  try {
+    const data = await radioFetch(
+      `/json/stations/byname/${encodeURIComponent(q)}?limit=25&hidebroken=true&order=votes`
+    );
+    res.json(data);
+  } catch (err) {
+    res.status(502).json({ error: err.message });
+  }
+});
+
+// GET /api/player/radio-bycountry?country=<name>&limit=60
+router.get('/radio-bycountry', async (req, res) => {
+  const country = (req.query.country || '').trim();
+  if (!country) return res.json([]);
+  try {
+    const data = await radioFetch(
+      `/json/stations/bycountry/${encodeURIComponent(country)}?limit=60&hidebroken=true&order=votes`
+    );
+    res.json(data);
+  } catch (err) {
+    res.status(502).json({ error: err.message });
+  }
+});
+
 export default router;
 
