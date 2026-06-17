@@ -60,7 +60,7 @@ function CountryPicker({ value, onChange }) {
       <button
         onClick={() => setOpen(v => !v)}
         className="w-full flex items-center gap-2 rounded-xl px-3 py-2 cursor-pointer transition-all focus:outline-none"
-        style={{ background: 'rgba(0,0,0,0.45)', border: open ? '1px solid var(--theme-color)' : '1px solid rgba(255,255,255,0.1)' }}
+        style={{ border: open ? '1px solid var(--theme-color)' : '1px solid rgba(255,255,255,0.1)' }}
       >
         {selected
           ? <><span style={{ fontSize: 15, lineHeight: 1 }}>{selected.flag}</span><span className="font-mono text-xs text-zinc-200 flex-1 text-left truncate">{selected.name}</span></>
@@ -194,7 +194,7 @@ function FrequencyBand({ stations, onPlay, onToggleFavorite, favoriteStations = 
       <div
         ref={bandRef}
         className="relative rounded-xl overflow-hidden cursor-pointer select-none touch-none"
-        style={{ height: 64, background: 'linear-gradient(180deg, #010204 0%, #03060e 35%, #07111e 55%, #03060e 75%, #010204 100%)', border: '1px solid rgba(255,255,255,0.06)', boxShadow: 'inset 0 3px 14px rgba(0,0,0,0.95), inset 0 -1px 4px rgba(0,0,0,0.7), inset 0 1px 0 rgba(255,255,255,0.025)' }}
+        style={{ height: 64, border: '1px solid rgba(255,255,255,0.06)', boxShadow: 'inset 0 3px 14px rgba(0,0,0,0.95), inset 0 -1px 4px rgba(0,0,0,0.7), inset 0 1px 0 rgba(255,255,255,0.025)' }}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
@@ -730,7 +730,7 @@ const PlayerDisplay = React.memo(function PlayerDisplay({
                 onClick={() => radioCountry && handleRadioByCountry(radioCountry)}
                 disabled={isSearching || !radioCountry}
                 className="flex items-center justify-center gap-1.5 px-4 py-2 font-extrabold text-[10px] uppercase tracking-widest rounded-xl hover:opacity-85 active:scale-95 transition-all cursor-pointer disabled:opacity-40 shrink-0"
-                style={{  color: '#000', minWidth: 60, letterSpacing: '0.1em' }}
+                style={{  background: 'var(--theme-color)', color: '#000', minWidth: 60, letterSpacing: '0.1em' }}
               >
                 {isSearching ? (
                   <span className="flex items-end gap-0.5 h-3">
@@ -755,7 +755,7 @@ const PlayerDisplay = React.memo(function PlayerDisplay({
               /* Premium empty band */
               <div className="mt-2 shrink-0 radio-container">
                 <div className="rounded-xl mb-1.5 flex items-center gap-3 p-3"
-                  style={{ background: 'rgba(6,9,18,0.7)', border: '1px solid rgba(255,255,255,0.04)', minHeight: 64 }}>
+                  style={{ border: '1px solid rgba(255,255,255,0.04)', minHeight: 64 }}>
                   <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
                     style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.04)' }}>
                     <Radio className="w-4 h-4" style={{ color: 'rgba(255,255,255,0.5)' }} />
@@ -796,7 +796,7 @@ const PlayerDisplay = React.memo(function PlayerDisplay({
                   {favoriteStations.map((station, idx) => (
                     <div key={`${station.url}-${idx}`}
                       className="group flex items-center gap-2 p-2 rounded-xl transition-all cursor-pointer"
-                      style={{ background: 'linear-gradient(135deg, rgba(16,22,40,0.8) 0%, rgba(6,9,18,0.9) 100%)', border: '1px solid rgba(255,255,255,0.05)' }}
+                      style={{ border: '1px solid rgba(255,255,255,0.05)' }}
                       onClick={() => { onPlayRadio(station.url, station.name, station.favicon); setShowSearch(false); }}>
                       <StationAvatar station={station} size={28} />
                       <div className="min-w-0 flex-1">
