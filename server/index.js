@@ -41,16 +41,6 @@ app.use('/api/player', playerRouter);
 // Spotify Connect daemon configuration routes
 app.use('/api/spotify', spotifyDaemonRouter);
 
-// Redirect non-localhost /remote requests from HTTP → HTTPS so OAuth works from phones.
-// Spotify only allows HTTP redirects for 127.0.0.1/localhost; everything else needs HTTPS.
-app.get('/remote', (req, res, next) => {
-  const isLocal = req.hostname === 'localhost' || req.hostname === '127.0.0.1';
-  if (!req.secure && !isLocal) {
-    return res.redirect(301, `https://${req.hostname}:${HTTPS_PORT}/remote`);
-  }
-  next();
-});
-
 // Fallback all non-API requests to index.html for Single Page App client routing
 app.use((req, res, next) => {
   if (req.method === 'GET') {
