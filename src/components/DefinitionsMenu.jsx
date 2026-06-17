@@ -112,7 +112,7 @@ export default function DefinitionsMenu({
   };
 
   return (
-    <div className="flex flex-row gap-6 font-sans text-zinc-100 h-full pb-3 pr-4 items-stretch select-none">
+    <div className="flex flex-row gap-6 font-sans text-zinc-100 h-full py-3 pr-4 pl-1 items-stretch select-none">
       
       {/* 1. SPOTIFY CARD */}
       <button
