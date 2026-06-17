@@ -770,11 +770,11 @@ const PlayerDisplay = React.memo(function PlayerDisplay({
                   <span className="text-[8px] font-extrabold font-mono uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.75)' }}>Saved Stations</span>
                   <span className="text-[8px] font-mono" style={{ color: 'rgba(255,255,255,0.5)' }}>{favoriteStations.length}</span>
                 
-                <div className="flex-grow overflow-y-auto pr-0.5 mt-1.5 custom-scrollbar grid grid-cols-3 gap-1 max-h-[80px]">
+                <div className="flex-grow overflow-y-auto pr-0.5 mt-1.5 custom-scrollbar grid gap-1 max-h-[80px]">
                   {favoriteStations.map((station, idx) => (
                     <div key={`${station.url}-${idx}`}
                       className="group flex items-center gap-1 p-1 rounded-lg transition-all cursor-pointer"
-                      style={{ border: '1px solid rgba(255,255,255,0.05)' }}
+                      style={{ border: '1px solid rgba(255,255,255,0.05)', maxWidth: '12rem' }}
                       onClick={() => { onPlayRadio(station.url, station.name, station.favicon); setShowSearch(false); }}>
                       <StationAvatar station={station} size={20} />
                       <p className="text-[8px] font-bold text-white truncate flex-1 group-hover:text-[var(--theme-color)] transition-colors leading-tight">{station.name}</p>
