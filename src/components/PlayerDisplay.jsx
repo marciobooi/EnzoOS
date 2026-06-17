@@ -697,9 +697,24 @@ const PlayerDisplay = React.memo(function PlayerDisplay({
       
       {/* 1. Album Column */}
       <section className="album-column cursor-pointer" aria-label="Album artwork" onClick={onToggleMenu} title="Click to Open Configuration Menu">
-        <div className="album-art" aria-label="Dot matrix album art">
-          <img src={albumImage} alt="Album art" />
-        </div>
+        {source === 'radio' ? (
+          <div className="album-art album-art--radio" aria-label="Radio station art">
+            {albumImage && !albumImage.includes('unsplash.com') ? (
+              <div className="radio-logo-wrap">
+                <img src={albumImage} alt="Station logo" onError={e => { e.target.style.display = 'none'; }} />
+              </div>
+            ) : (
+              <div className="radio-logo-placeholder">
+                <Radio size={48} />
+                <span style={{ fontSize: 8, fontFamily: 'Space Mono, monospace', letterSpacing: '0.15em', textTransform: 'uppercase' }}>WEB RADIO</span>
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="album-art" aria-label="Dot matrix album art">
+            <img src={albumImage} alt="Album art" />
+          </div>
+        )}
       </section>
 
       {/* 2. Details and Controls Column */}

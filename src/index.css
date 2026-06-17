@@ -230,6 +230,44 @@ div[data-theme="ruby"] *::selection {
   filter: grayscale(1) saturate(0.7) contrast(1.05) brightness(0.94);
 }
 
+/* Radio mode: square logo instead of circular vinyl */
+.album-art--radio {
+  border-radius: 20px;
+  background: rgba(0, 0, 0, 0.55);
+  border-color: var(--theme-color-glow);
+  box-shadow: 0 0 0 1px var(--theme-color-glow), 0 18px 34px rgba(0, 0, 0, 0.4);
+}
+.album-art--radio::after {
+  display: none;
+}
+.album-art--radio .radio-logo-wrap {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 28px;
+  box-sizing: border-box;
+}
+.album-art--radio .radio-logo-wrap img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  filter: none;
+  border-radius: 6px;
+}
+.album-art--radio .radio-logo-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  color: var(--theme-color);
+  opacity: 0.6;
+}
+
 .details-column {
   display: flex;
   flex-direction: column;
@@ -680,5 +718,15 @@ a {
 }
 
 .radio-container {
-  background: rgba(0, 0, 0, 0.45);
+    padding: 8px;
+    border-radius: 12px;
+    background: #ffffff12 !important;
+    border: 1px solid #ffffff1f !important;
+    box-shadow: 0 8px 24px #000000a6, 0 16px 48px #050d1c80, inset 0 1px #ffffff1a !important;
+}
+
+.radio-container:hover {
+    background: #ffffff1c !important;
+    border-color: #fff3 !important;
+    box-shadow: 0 12px 32px #000000b3, 0 16px 48px #050d1c99, inset 0 1px #ffffff26 !important;
 }
