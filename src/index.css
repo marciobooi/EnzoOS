@@ -530,22 +530,30 @@ div[data-theme="ruby"] *::selection {
 
 /* Skinned premium glassmorphism menu cards */
 .menu-card {
-  background: rgba(255, 255, 255, 0.03) !important;
-  border: 1px solid rgba(255, 255, 255, 0.08) !important;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5), 0 8px 32px 0 rgba(5, 13, 28, 0.4) !important;
+  background: rgba(255, 255, 255, 0.07) !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  box-shadow:
+    0 8px 24px rgba(0, 0, 0, 0.65),
+    0 16px 48px rgba(5, 13, 28, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.10) !important;
 }
 
 .menu-card:hover {
-  background: rgba(255, 255, 255, 0.06) !important;
-  border-color: rgba(255, 255, 255, 0.15) !important;
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.6), 0 8px 32px 0 rgba(5, 13, 28, 0.5) !important;
+  background: rgba(255, 255, 255, 0.11) !important;
+  border-color: rgba(255, 255, 255, 0.20) !important;
+  box-shadow:
+    0 12px 32px rgba(0, 0, 0, 0.70),
+    0 16px 48px rgba(5, 13, 28, 0.6),
+    inset 0 1px 0 rgba(255, 255, 255, 0.15) !important;
 }
 
 .menu-card.active-card {
-  border-color: var(--theme-color) !important;
-  border-width: 1px !important;
-  background: rgba(255, 255, 255, 0.05) !important;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5), 0 8px 32px 0 rgba(5, 13, 28, 0.4), 0 0 12px var(--theme-color-glow) !important;
+  background: rgba(255, 255, 255, 0.09) !important;
+  border: 1px solid var(--theme-color) !important;
+  box-shadow:
+    0 8px 24px rgba(0, 0, 0, 0.65),
+    0 0 24px var(--theme-color-glow),
+    inset 0 1px 0 rgba(255, 255, 255, 0.14) !important;
 }
 
 /* OLED Burn-in prevention / pixel shifter */

@@ -35,16 +35,16 @@ export default function SettingsMenuOverlay() {
 
   return (
     <div
-      className={`absolute inset-0 bg-[#050d1c] border border-zinc-300 rounded-3xl shadow-2xl z-50 transform transition-all duration-300 ease-in-out flex flex-col p-5 font-sans ${
+      className={`absolute inset-0 bg-[#060c1a] border border-white/10 rounded-3xl shadow-2xl z-50 transform transition-all duration-300 ease-in-out flex flex-col p-5 font-sans ${
         isMenuOpen ? 'opacity-100 scale-100 pointer-events-auto' : 'opacity-0 scale-95 pointer-events-none'
       }`}
     >
       {/* Header & Close Button */}
       <div className="flex justify-between items-center mb-3 select-none shrink-0">
-        <h4 className="text-[11px] font-extrabold uppercase tracking-[0.2em] text-zinc-700">System Configuration Control Panel</h4>
+        <h4 className="text-[11px] font-extrabold uppercase tracking-[0.2em] text-zinc-400">System Configuration Control Panel</h4>
         <button
           onClick={() => setIsMenuOpen(false)}
-          className="text-zinc-600 hover:text-zinc-900 transition-colors cursor-pointer text-[10px] font-extrabold font-sans px-3.5 py-1 rounded-lg bg-white border border-zinc-250 shadow-sm active:scale-95"
+          className="text-zinc-300 hover:text-white transition-colors cursor-pointer text-[10px] font-extrabold font-sans px-3.5 py-1 rounded-lg bg-white/10 hover:bg-white/15 border border-white/15 shadow-sm active:scale-95"
         >
           CLOSE [X]
         </button>
