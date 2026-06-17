@@ -119,7 +119,7 @@ export default function Kiosk() {
   const [source, setSource] = useState('spotify'); // 'spotify' | 'local' | 'radio'
   const spotify = source === 'spotify';
 
-  const [radioSearch, setRadioSearch] = useState('');
+  const [radioCountry, setRadioCountry] = useState('');
   const [stationsList, setStationsList] = useState([]);
   const [isSearching, setIsSearching] = useState(false);
   const [standby, setStandby] = useState(false);
@@ -221,10 +221,8 @@ export default function Kiosk() {
   }
 
   useEffect(() => {
-    if (!radioSearch.trim()) {
-      setStationsList(favoriteStations);
-    }
-  }, [radioSearch, favoriteStations]);
+    if (!radioCountry) setStationsList([]);
+  }, [radioCountry]);
 
 
 
@@ -425,33 +423,23 @@ export default function Kiosk() {
     }
   };
 
-  const handleRadioSearch = async () => {
-    const query = radioSearch.trim();
-    if (!query) {
-      setStationsList(favoriteStations.length > 0 ? favoriteStations : DEFAULT_STATIONS);
-      return;
-    }
+  const handleRadioByCountry = async (country) => {
+    if (!country) { setStationsList([]); return; }
     try {
       setIsSearching(true);
-      const res = await fetch(`https://de1.api.radio-browser.info/json/stations/byname/${encodeURIComponent(query)}?limit=25&hidebroken=true`);
+      const res = await fetch(`https://de1.api.radio-browser.info/json/stations/bycountry/${encodeURIComponent(country)}?limit=60&hidebroken=true&order=votes`);
       const data = await res.json();
       const formatted = data.map(s => ({
         name: s.name.length > 22 ? s.name.substring(0, 20) + '...' : s.name,
         url: s.url_resolved || s.url,
         favicon: s.favicon,
         country: s.country,
-        tags: s.tags
+        tags: s.tags,
       }));
-      if (formatted.length === 0) {
-        toast.error('No stations found.');
-      } else {
-        setStationsList(formatted);
-      }
-    } catch (err) {
-      toast.error('Failed to search stations.');
-    } finally {
-      setIsSearching(false);
-    }
+      if (formatted.length === 0) toast.error('No stations found.');
+      else setStationsList(formatted);
+    } catch { toast.error('Failed to scan stations.'); }
+    finally { setIsSearching(false); }
   };
 
   const handlePlayRadio = async (url, name, favicon) => {
@@ -1068,11 +1056,11 @@ export default function Kiosk() {
           onToggleEqualizer={() => setIsEqualizerOpen(!isEqualizerOpen)}
           onToggleSearch={() => setIsSearchOpen(!isSearchOpen)}
           source={source}
-          radioSearch={radioSearch}
-          setRadioSearch={setRadioSearch}
+          radioCountry={radioCountry}
+          setRadioCountry={setRadioCountry}
           stationsList={stationsList}
           isSearching={isSearching}
-          handleRadioSearch={handleRadioSearch}
+          handleRadioByCountry={handleRadioByCountry}
           onPlayRadio={handlePlayRadio}
           favoriteStations={favoriteStations}
           onToggleFavoriteRadio={handleToggleFavoriteRadio}

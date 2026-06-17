@@ -1,5 +1,188 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { Play, Pause, SkipForward, SkipBack, Shuffle, Repeat, Volume2, VolumeX, Home, Volume1, Sliders, Radio, Heart, Power, Search } from 'lucide-react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { Play, Pause, SkipForward, SkipBack, Shuffle, Repeat, Volume2, VolumeX, Home, Volume1, Sliders, Radio, Heart, Power, ChevronDown } from 'lucide-react';
+
+// ── Radio: country list ────────────────────────────────────────────────────────
+const COUNTRIES = [
+  { code: 'AT', name: 'Austria',        flag: '🇦🇹' },
+  { code: 'AU', name: 'Australia',      flag: '🇦🇺' },
+  { code: 'BE', name: 'Belgium',        flag: '🇧🇪' },
+  { code: 'BR', name: 'Brazil',         flag: '🇧🇷' },
+  { code: 'CA', name: 'Canada',         flag: '🇨🇦' },
+  { code: 'CH', name: 'Switzerland',    flag: '🇨🇭' },
+  { code: 'DE', name: 'Germany',        flag: '🇩🇪' },
+  { code: 'DK', name: 'Denmark',        flag: '🇩🇰' },
+  { code: 'ES', name: 'Spain',          flag: '🇪🇸' },
+  { code: 'FI', name: 'Finland',        flag: '🇫🇮' },
+  { code: 'FR', name: 'France',         flag: '🇫🇷' },
+  { code: 'GB', name: 'United Kingdom', flag: '🇬🇧' },
+  { code: 'IE', name: 'Ireland',        flag: '🇮🇪' },
+  { code: 'IT', name: 'Italy',          flag: '🇮🇹' },
+  { code: 'JP', name: 'Japan',          flag: '🇯🇵' },
+  { code: 'NL', name: 'Netherlands',    flag: '🇳🇱' },
+  { code: 'NO', name: 'Norway',         flag: '🇳🇴' },
+  { code: 'NZ', name: 'New Zealand',    flag: '🇳🇿' },
+  { code: 'PL', name: 'Poland',         flag: '🇵🇱' },
+  { code: 'PT', name: 'Portugal',       flag: '🇵🇹' },
+  { code: 'SE', name: 'Sweden',         flag: '🇸🇪' },
+  { code: 'US', name: 'United States',  flag: '🇺🇸' },
+];
+
+// Station avatar: favicon or 2-letter initials fallback
+function StationAvatar({ station, size = 28 }) {
+  const [failed, setFailed] = useState(false);
+  const initials = station.name.trim().split(/\s+/).slice(0, 2).map(w => w[0]).join('').toUpperCase() || '??';
+  return (
+    <div className="rounded-full bg-black/30 border border-white/10 overflow-hidden flex items-center justify-center shrink-0"
+      style={{ width: size, height: size, minWidth: size }}>
+      {station.favicon && !failed
+        ? <img src={station.favicon} alt="" className="w-full h-full object-cover" onError={() => setFailed(true)} />
+        : <span className="font-extrabold text-[var(--theme-color)]" style={{ fontSize: Math.max(7, size * 0.3) }}>{initials}</span>
+      }
+    </div>
+  );
+}
+
+// Vintage FM frequency band — drag needle to tune, release to play
+function FrequencyBand({ stations, onPlay, onToggleFavorite, favoriteStations = [] }) {
+  const [needleIdx, setNeedleIdx] = useState(null);
+  const [playedIdx, setPlayedIdx] = useState(null);
+  const isDragging = useRef(false);
+  const bandRef = useRef(null);
+
+  const displayIdx = needleIdx ?? playedIdx;
+  const displayStation = displayIdx !== null ? stations[displayIdx] ?? null : null;
+  const isFav = displayStation ? favoriteStations.some(f => f.url === displayStation.url) : false;
+
+  const getIdxFromX = useCallback((clientX) => {
+    if (!bandRef.current || stations.length === 0) return null;
+    const rect = bandRef.current.getBoundingClientRect();
+    const x = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+    return Math.round(x * (stations.length - 1));
+  }, [stations.length]);
+
+  const handlePointerDown = (e) => {
+    isDragging.current = true;
+    bandRef.current?.setPointerCapture(e.pointerId);
+    const idx = getIdxFromX(e.clientX);
+    if (idx !== null) setNeedleIdx(idx);
+  };
+  const handlePointerMove = (e) => {
+    if (!isDragging.current) return;
+    const idx = getIdxFromX(e.clientX);
+    if (idx !== null) setNeedleIdx(idx);
+  };
+  const handlePointerUp = () => {
+    isDragging.current = false;
+    if (needleIdx !== null && stations[needleIdx]) setPlayedIdx(needleIdx);
+  };
+
+  const needlePct = (needleIdx !== null || playedIdx !== null) && stations.length > 1
+    ? ((needleIdx ?? playedIdx) / (stations.length - 1)) * 100
+    : null;
+
+  // reset when station list changes
+  useEffect(() => { setNeedleIdx(null); setPlayedIdx(null); }, [stations]);
+
+  return (
+    <div className="mt-2 shrink-0">
+      {/* Station info card */}
+      <div className="p-2 rounded-xl bg-white/5 border border-white/8 flex items-center gap-2 mb-2" style={{ minHeight: 46 }}>
+        {displayStation ? (
+          <>
+            <StationAvatar station={displayStation} size={30} />
+            <div className="flex-1 min-w-0">
+              <p className="text-[10px] font-bold text-white truncate leading-tight">{displayStation.name}</p>
+              <p className="text-[8px] font-mono text-zinc-400 uppercase tracking-wider truncate leading-tight mt-0.5">
+                {displayStation.country || 'Global'}
+                {displayStation.tags ? ` • ${displayStation.tags.split(',')[0].trim()}` : ''}
+              </p>
+            </div>
+            <div className="flex items-center gap-1 shrink-0">
+              <button
+                onClick={() => onToggleFavorite(displayStation)}
+                className="p-1 rounded hover:bg-white/10 transition-colors cursor-pointer"
+              >
+                <Heart className={`w-3 h-3 ${isFav ? 'text-rose-500 fill-rose-500' : 'text-zinc-500'}`} />
+              </button>
+              <button
+                onClick={() => { setPlayedIdx(needleIdx ?? playedIdx); onPlay(displayStation); }}
+                className="px-2 py-0.5 bg-[var(--theme-color)] text-black font-extrabold text-[8px] uppercase tracking-wider rounded active:scale-95 transition-all cursor-pointer"
+              >
+                PLAY
+              </button>
+            </div>
+          </>
+        ) : (
+          <p className="text-[9px] font-mono text-zinc-600 uppercase tracking-wider px-1">← drag needle to tune</p>
+        )}
+      </div>
+
+      {/* Frequency labels */}
+      <div className="flex justify-between px-0.5 mb-0.5">
+        {['88', '92', '96', '100', '104', '108'].map(l => (
+          <span key={l} className="font-mono text-zinc-700" style={{ fontSize: 7 }}>{l}</span>
+        ))}
+      </div>
+
+      {/* Band — drag target */}
+      <div
+        ref={bandRef}
+        className="relative rounded-lg overflow-hidden cursor-pointer select-none touch-none"
+        style={{ height: 42, background: 'rgba(0,0,0,0.5)', border: '1px solid rgba(255,255,255,0.06)' }}
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerUp}
+        onPointerCancel={handlePointerUp}
+      >
+        {/* Center track line */}
+        <div className="absolute inset-x-2 pointer-events-none"
+          style={{ top: '50%', height: 1, background: 'rgba(255,255,255,0.08)', transform: 'translateY(-50%)' }} />
+
+        {/* Needle ambient glow */}
+        {needlePct !== null && (
+          <div className="absolute inset-y-0 pointer-events-none"
+            style={{ left: `${needlePct}%`, width: 28, transform: 'translateX(-50%)', background: 'var(--theme-color)', opacity: 0.12, filter: 'blur(6px)' }} />
+        )}
+
+        {/* Station ticks */}
+        {stations.map((_, i) => {
+          const pct = stations.length > 1 ? (i / (stations.length - 1)) * 100 : 50;
+          const isActive = i === (needleIdx ?? playedIdx);
+          const isMajor = i % Math.max(1, Math.floor(stations.length / 10)) === 0;
+          return (
+            <div key={i} className="absolute pointer-events-none" style={{
+              left: `${pct}%`,
+              top: '50%',
+              transform: 'translate(-50%, -50%)',
+              width: isActive ? 2.5 : 1,
+              height: isActive ? 30 : isMajor ? 18 : 10,
+              background: isActive ? 'var(--theme-color)' : isMajor ? 'rgba(255,255,255,0.25)' : 'rgba(255,255,255,0.12)',
+              borderRadius: 2,
+              transition: 'all 0.08s',
+            }} />
+          );
+        })}
+
+        {/* Needle */}
+        {needlePct !== null && (
+          <div className="absolute inset-y-0 pointer-events-none"
+            style={{ left: `${needlePct}%`, transform: 'translateX(-50%)', width: 2 }}>
+            <div className="w-full h-full rounded-full" style={{ background: 'var(--theme-color)' }} />
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full"
+              style={{ width: 7, height: 7, background: 'var(--theme-color)', boxShadow: '0 0 6px var(--theme-color)' }} />
+          </div>
+        )}
+      </div>
+
+      {/* Decorative bottom ticks */}
+      <div className="flex justify-between mt-0.5 px-0.5">
+        {Array.from({ length: 21 }).map((_, i) => (
+          <div key={i} style={{ width: i % 5 === 0 ? 1.5 : 1, height: i % 5 === 0 ? 4 : 2, background: 'rgba(255,255,255,0.08)', borderRadius: 1 }} />
+        ))}
+      </div>
+    </div>
+  );
+}
 
 export default function PlayerDisplay({
   theme = 'amber',
@@ -32,11 +215,11 @@ export default function PlayerDisplay({
   onToggleSource,
   onToggleEqualizer,
   source,
-  radioSearch,
-  setRadioSearch,
+  radioCountry,
+  setRadioCountry,
   stationsList,
   isSearching,
-  handleRadioSearch,
+  handleRadioByCountry,
   onPlayRadio,
   favoriteStations = [],
   onToggleFavoriteRadio,
@@ -478,90 +661,105 @@ export default function PlayerDisplay({
               </button>
             </div>
 
-            {/* Search Input Area */}
-            <div className="flex gap-2 items-center mt-1 shrink-0">
-              <Radio className="h-4 w-4 text-[var(--theme-color)] animate-pulse" />
-              <input
-                type="text"
-                placeholder="Search Global Stations (Lofi, BBC, Jazz)..."
-                value={radioSearch}
-                onChange={(e) => setRadioSearch(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') handleRadioSearch();
-                }}
-                className="radio-search-input flex-grow bg-black/40 border border-white/10 rounded-xl px-4 py-2 font-mono text-xs text-zinc-200 placeholder:text-zinc-650 focus:outline-none focus:border-[var(--theme-color)]"
-              />
+            {/* Country selector + SCAN */}
+            <div className="flex gap-2 items-center mt-2 shrink-0">
+              <Radio className="h-4 w-4 text-[var(--theme-color)] animate-pulse shrink-0" />
+              <div className="relative flex-grow">
+                <select
+                  value={radioCountry}
+                  onChange={e => setRadioCountry(e.target.value)}
+                  className="w-full bg-black/40 border border-white/10 rounded-xl px-3 py-2 font-mono text-xs text-zinc-200 focus:outline-none focus:border-[var(--theme-color)] appearance-none cursor-pointer"
+                  style={{ color: radioCountry ? undefined : 'rgb(113 113 122)' }}
+                >
+                  <option value="">Select country…</option>
+                  {COUNTRIES.map(c => (
+                    <option key={c.code} value={c.name}>{c.flag} {c.name}</option>
+                  ))}
+                </select>
+                <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 h-3 w-3 text-zinc-600 pointer-events-none" />
+              </div>
               <button
-                onClick={handleRadioSearch}
-                disabled={isSearching}
-                className="radio-search-btn px-4 py-2 bg-[var(--theme-color)] text-black font-extrabold text-[10px] uppercase tracking-wider rounded-xl hover:opacity-85 active:scale-95 transition-all cursor-pointer disabled:opacity-50"
+                onClick={() => radioCountry && handleRadioByCountry(radioCountry)}
+                disabled={isSearching || !radioCountry}
+                className="px-4 py-2 bg-[var(--theme-color)] text-black font-extrabold text-[10px] uppercase tracking-wider rounded-xl hover:opacity-85 active:scale-95 transition-all cursor-pointer disabled:opacity-50 shrink-0"
               >
-                {isSearching ? '...' : 'SEARCH'}
+                {isSearching ? '···' : 'SCAN'}
               </button>
             </div>
 
-            {/* List label: "FAVORITES" or "SEARCH RESULTS" */}
-            <div className="flex justify-between items-center mt-2 px-1 text-[9px] uppercase tracking-wider font-extrabold text-zinc-500">
-              <span>{radioSearch.trim() ? 'Search Results' : 'Favorite Stations'}</span>
-              <span>({stationsList.length})</span>
-            </div>
-
-            {/* Scrollable list of stations */}
-            <div className="flex-grow overflow-y-auto pr-1.5 mt-1 custom-scrollbar grid grid-cols-2 gap-2 max-h-[145px]">
-              {stationsList.map((station, idx) => {
-                const isFavorite = favoriteStations.some(s => s.url === station.url);
-                return (
-                  <div
-                    key={`${station.url}-${idx}`}
-                    className="radio-station-card p-2.5 rounded-xl bg-white/5 border border-white/10 hover:border-[var(--theme-color)] text-left flex items-center justify-between transition-all group"
-                  >
-                    <button
-                      onClick={() => {
-                        onPlayRadio(station.url, station.name, station.favicon);
-                        setShowSearch(false);
-                      }}
-                      className="flex items-center gap-2 min-w-0 flex-grow text-left cursor-pointer bg-transparent border-0 p-0 outline-none"
-                    >
-                      <div className="w-7 h-7 rounded-full bg-black/20 flex items-center justify-center border border-white/10 shrink-0 overflow-hidden relative">
-                        {station.favicon ? (
-                          <img 
-                            src={station.favicon} 
-                            alt="" 
-                            className="w-full h-full object-cover"
-                            onError={(e) => { e.target.style.display = 'none'; }}
-                          />
-                        ) : null}
-                        <Radio className="w-3.5 h-3.5 text-zinc-400 absolute" style={{ zIndex: -1 }} />
-                      </div>
-                      <div className="min-w-0 flex flex-col">
-                        <span className="text-[10px] font-bold text-white truncate group-hover:text-[var(--theme-color)]">{station.name}</span>
-                        <span className="text-[8px] font-mono text-zinc-400 tracking-wider uppercase truncate">
-                          {station.country ? station.country : 'Global'}{station.tags ? ` • ${station.tags.split(',')[0]}` : ''}
-                        </span>
-                      </div>
-                    </button>
-                    <div className="flex items-center gap-1.5 shrink-0 ml-2">
-                      <button
-                        onClick={() => onToggleFavoriteRadio(station)}
-                        className="p-1 rounded hover:bg-white/10 text-zinc-400 hover:text-rose-500 transition-colors cursor-pointer"
-                        title={isFavorite ? "Remove from favorites" : "Add to favorites"}
-                      >
-                        <Heart className={`w-3.5 h-3.5 ${isFavorite ? 'text-rose-500 fill-rose-500' : ''}`} />
-                      </button>
-                      <button
-                        onClick={() => {
-                          onPlayRadio(station.url, station.name, station.favicon);
-                          setShowSearch(false);
-                        }}
-                        className="radio-play-btn text-[8px] bg-white/5 border border-white/10 group-hover:border-[var(--theme-color)] group-hover:text-black group-hover:bg-[var(--theme-color)] px-2 py-0.5 rounded font-extrabold text-zinc-350 uppercase tracking-wider shrink-0 transition-colors cursor-pointer"
-                      >
-                        PLAY
-                      </button>
-                    </div>
+            {/* Frequency band (shows after scan) */}
+            {stationsList.length > 0 ? (
+              <FrequencyBand
+                stations={stationsList}
+                onPlay={(station) => { onPlayRadio(station.url, station.name, station.favicon); setShowSearch(false); }}
+                onToggleFavorite={onToggleFavoriteRadio}
+                favoriteStations={favoriteStations}
+              />
+            ) : (
+              /* Decorative empty band */
+              <div className="mt-2 shrink-0">
+                <div className="p-2 rounded-xl bg-white/5 border border-white/8 flex items-center gap-2 mb-2" style={{ minHeight: 46 }}>
+                  <div className="rounded-full bg-black/30 border border-white/10 flex items-center justify-center shrink-0" style={{ width: 30, height: 30 }}>
+                    <Radio className="w-3.5 h-3.5 text-zinc-700" />
                   </div>
-                );
-              })}
-            </div>
+                  <p className="text-[9px] font-mono text-zinc-600 uppercase tracking-wider">Select a country to scan the airwaves</p>
+                </div>
+                <div className="flex justify-between px-0.5 mb-0.5">
+                  {['88', '92', '96', '100', '104', '108'].map(l => (
+                    <span key={l} className="font-mono text-zinc-800" style={{ fontSize: 7 }}>{l}</span>
+                  ))}
+                </div>
+                <div className="relative rounded-lg overflow-hidden" style={{ height: 42, background: 'rgba(0,0,0,0.4)', border: '1px solid rgba(255,255,255,0.04)', opacity: 0.4 }}>
+                  <div className="absolute inset-x-2" style={{ top: '50%', height: 1, background: 'rgba(255,255,255,0.08)', transform: 'translateY(-50%)' }} />
+                  {Array.from({ length: 18 }).map((_, i) => (
+                    <div key={i} className="absolute" style={{
+                      left: `${(i / 17) * 100}%`, top: '50%', transform: 'translate(-50%, -50%)',
+                      width: 1, height: i % 4 === 0 ? 16 : 8, background: 'rgba(255,255,255,0.1)', borderRadius: 1,
+                    }} />
+                  ))}
+                </div>
+                <div className="flex justify-between mt-0.5 px-0.5">
+                  {Array.from({ length: 21 }).map((_, i) => (
+                    <div key={i} style={{ width: i % 5 === 0 ? 1.5 : 1, height: i % 5 === 0 ? 4 : 2, background: 'rgba(255,255,255,0.06)', borderRadius: 1 }} />
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Favorites quick-access */}
+            {favoriteStations.length > 0 && (
+              <>
+                <div className="flex justify-between items-center mt-2 px-1 text-[9px] uppercase tracking-wider font-extrabold text-zinc-500 shrink-0">
+                  <span>Favorites</span>
+                  <span>({favoriteStations.length})</span>
+                </div>
+                <div className="flex-grow overflow-y-auto pr-1.5 mt-1 custom-scrollbar grid grid-cols-2 gap-2 max-h-[90px]">
+                  {favoriteStations.map((station, idx) => (
+                    <div key={`${station.url}-${idx}`}
+                      className="radio-station-card p-2 rounded-xl bg-white/5 border border-white/10 hover:border-[var(--theme-color)] text-left flex items-center justify-between transition-all group">
+                      <button
+                        onClick={() => { onPlayRadio(station.url, station.name, station.favicon); setShowSearch(false); }}
+                        className="flex items-center gap-2 min-w-0 flex-grow text-left cursor-pointer bg-transparent border-0 p-0 outline-none"
+                      >
+                        <StationAvatar station={station} size={26} />
+                        <div className="min-w-0 flex flex-col">
+                          <span className="text-[10px] font-bold text-white truncate group-hover:text-[var(--theme-color)]">{station.name}</span>
+                          <span className="text-[8px] font-mono text-zinc-400 tracking-wider uppercase truncate">
+                            {station.country || 'Global'}
+                          </span>
+                        </div>
+                      </button>
+                      <div className="flex items-center gap-1 shrink-0 ml-1">
+                        <button onClick={() => onToggleFavoriteRadio(station)}
+                          className="p-1 rounded hover:bg-white/10 transition-colors cursor-pointer">
+                          <Heart className="w-3 h-3 text-rose-500 fill-rose-500" />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
           </div>
         </section>
       ) : (
