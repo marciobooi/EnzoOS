@@ -27,10 +27,11 @@ cd "$PROJECT_DIR"
 echo -e "Project directory: $PROJECT_DIR"
 
 # Clean any local changes to prevent conflicts
+# Exclude node_modules and resonance.db so npm install stays fast
 echo -e "${YELLOW}Clearing local modifications...${NC}"
 echo "[PROGRESS: 15]"
 git reset --hard HEAD
-git clean -fd -e resonance.db
+git clean -fd -e resonance.db -e node_modules -e certs
 
 # Fetch changes from GitHub
 echo -e "${YELLOW}Fetching latest modifications from GitHub...${NC}"

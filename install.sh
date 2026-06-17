@@ -497,6 +497,9 @@ mkdir -p "$USER_HOME/snap/chromium/common/kiosk-profile"
 mkdir -p "$USER_HOME/snap/chromium/common/kiosk-cache"
 chown -R $TARGET_USER:$TARGET_USER "$USER_HOME/snap/chromium/common/kiosk-profile" "$USER_HOME/snap/chromium/common/kiosk-cache"
 
+# Make OTA update script executable
+chmod +x "$PROJECT_DIR/scripts/update.sh"
+
 # Deploy .xinitrc from the repository to the target user home directory
 echo -e "${YELLOW}Deploying kiosk startup xinitrc config...${NC}"
 cp "$PROJECT_DIR/scripts/xinitrc" "$USER_HOME/.xinitrc"
