@@ -118,81 +118,57 @@ function FrequencyBand({ stations, onPlay, onToggleFavorite, favoriteStations = 
   };
   const handlePointerUp = () => {
     isDragging.current = false;
-    if (needleIdx !== null && stations[needleIdx]) setPlayedIdx(needleIdx);
+    if (needleIdx !== null && stations[needleIdx]) {
+      setPlayedIdx(needleIdx);
+      onPlay(stations[needleIdx]);
+    }
+    setNeedleIdx(null);
   };
 
   const needlePct = activeIdx !== null && stations.length > 1
     ? (activeIdx / (stations.length - 1)) * 100
     : null;
 
-  useEffect(() => { setNeedleIdx(null); setPlayedIdx(null); }, [stations]);
+  const tooltipPct = needleIdx !== null && stations.length > 1
+    ? (needleIdx / (stations.length - 1)) * 100
+    : null;
 
-  const tags = displayStation?.tags?.split(',').map(t => t.trim()).filter(Boolean) || [];
+  useEffect(() => { setNeedleIdx(null); setPlayedIdx(null); }, [stations]);
 
   return (
     <div className="mt-2 shrink-0">
 
-      {/* Station card */}
-      <div className="rounded-xl mb-1.5 overflow-hidden"
-        style={{ background: 'linear-gradient(135deg, rgba(16,22,40,0.95) 0%, rgba(6,9,18,0.98) 100%)', border: '1px solid rgba(255,255,255,0.07)', boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.04), 0 4px 20px rgba(0,0,0,0.6)', minHeight: 64 }}>
-        {displayStation ? (
-          <div className="flex items-center gap-3 p-3">
-            <StationAvatar station={displayStation} size={42} />
-            <div className="flex-1 min-w-0">
-              <p className="text-[11px] font-bold text-white truncate" style={{ letterSpacing: '-0.01em' }}>{displayStation.name}</p>
-              <div className="flex items-center gap-1 mt-1.5 flex-wrap">
-                {displayStation.country && (
-                  <span className="text-[7px] font-extrabold font-mono uppercase tracking-widest px-1.5 py-0.5 rounded-sm"
-                    style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.18)', color: 'rgba(255,255,255,0.85)' }}>
-                    {displayStation.country}
-                  </span>
-                )}
-                {tags[0] && (
-                  <span className="text-[7px] font-extrabold font-mono uppercase tracking-widest px-1.5 py-0.5 rounded-sm"
-                    style={{ background: 'color-mix(in srgb, var(--theme-color) 12%, transparent)', border: '1px solid color-mix(in srgb, var(--theme-color) 25%, transparent)', color: 'var(--theme-color)' }}>
-                    {tags[0]}
-                  </span>
-                )}
-              </div>
+      {/* Scale labels + band wrapped for tooltip positioning */}
+      <div className="relative">
+
+        {/* Needle tooltip — follows drag, auto-hides on release */}
+        {tooltipPct !== null && displayStation && (
+          <div className="absolute pointer-events-none" style={{ left: `${tooltipPct}%`, bottom: 'calc(100% + 7px)', transform: 'translateX(-50%)', zIndex: 20 }}>
+            <div style={{ background: 'rgba(8,12,24,0.97)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 8, padding: '5px 10px', whiteSpace: 'nowrap', boxShadow: '0 4px 16px rgba(0,0,0,0.7)' }}>
+              <p style={{ fontSize: 9, color: 'white', fontFamily: 'Space Mono, monospace', letterSpacing: '0.05em', textTransform: 'uppercase', lineHeight: 1.3 }}>
+                {displayStation.name}
+              </p>
+              {displayStation.country && (
+                <p style={{ fontSize: 7, color: 'rgba(255,255,255,0.5)', fontFamily: 'Space Mono, monospace', letterSpacing: '0.1em', textTransform: 'uppercase', marginTop: 2 }}>
+                  {displayStation.country}
+                </p>
+              )}
             </div>
-            <div className="flex flex-col items-end gap-2 shrink-0">
-              <button
-                onClick={() => { setPlayedIdx(activeIdx); onPlay(displayStation); }}
-                className="flex items-center gap-1 px-3 py-1.5 rounded-lg font-extrabold text-[9px] uppercase tracking-widest active:scale-95 transition-all cursor-pointer"
-                style={{ background: 'var(--theme-color)', color: '#000', letterSpacing: '0.1em' }}>
-                ▶ PLAY
-              </button>
-              <button onClick={() => onToggleFavorite(displayStation)}
-                className="transition-colors cursor-pointer"
-                style={{ color: isFav ? '#f43f5e' : 'rgba(255,255,255,0.5)' }}>
-                <Heart className="w-3.5 h-3.5" style={{ fill: isFav ? '#f43f5e' : 'none' }} />
-              </button>
-            </div>
-          </div>
-        ) : (
-          <div className="flex items-center gap-3 p-3" style={{ minHeight: 64 }}>
-            <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
-              style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)' }}>
-              <Radio className="w-4 h-4" style={{ color: 'rgba(255,255,255,0.5)' }} />
-            </div>
-            <div>
-              <p className="text-[9px] font-mono uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.8)' }}>Drag the needle to tune</p>
-              <p className="text-[8px] font-mono uppercase tracking-wider mt-0.5" style={{ color: 'rgba(255,255,255,0.5)' }}>{stations.length} stations on the dial</p>
-            </div>
+            <div style={{ position: 'absolute', left: '50%', top: '100%', transform: 'translateX(-50%)', width: 0, height: 0, borderLeft: '5px solid transparent', borderRight: '5px solid transparent', borderTop: '5px solid rgba(8,12,24,0.97)' }} />
           </div>
         )}
-      </div>
 
-      {/* Scale labels */}
-      <div className="flex justify-between px-0.5 mb-0.5">
-        {['88', '92', '96', '100', '104', '108'].map(l => (
-          <span key={l} className="font-mono" style={{ fontSize: 7, color: 'rgba(255,255,255,0.65)', letterSpacing: '0.02em' }}>{l}</span>
-        ))}
-      </div>
+        {/* Scale labels */}
+        <div className="flex justify-between px-0.5 mb-0.5">
+          {['88', '92', '96', '100', '104', '108'].map(l => (
+            <span key={l} className="font-mono" style={{ fontSize: 7, color: 'rgba(255,255,255,0.65)', letterSpacing: '0.02em' }}>{l}</span>
+          ))}
+        </div>
 
       {/* Band — deep CRT inset */}
       <div
         ref={bandRef}
+        data-tooltip="Drag the needle to tune"
         className="relative rounded-xl overflow-hidden cursor-pointer select-none touch-none"
         style={{ height: 64, border: '1px solid rgba(255,255,255,0.06)', boxShadow: 'inset 0 3px 14px rgba(0,0,0,0.95), inset 0 -1px 4px rgba(0,0,0,0.7), inset 0 1px 0 rgba(255,255,255,0.025)' }}
         onPointerDown={handlePointerDown}
@@ -242,6 +218,7 @@ function FrequencyBand({ stations, onPlay, onToggleFavorite, favoriteStations = 
           <div key={i} style={{ width: i % 5 === 0 ? 1.5 : 1, height: i % 5 === 0 ? 5 : 3, background: i % 5 === 0 ? 'rgba(255,255,255,0.45)' : 'rgba(255,255,255,0.2)', borderRadius: 1 }} />
         ))}
       </div>
+      </div>{/* end relative wrapper */}
     </div>
   );
 }
@@ -318,6 +295,10 @@ const PlayerDisplay = React.memo(function PlayerDisplay({
       setShowSearch(true);
     }
   }, [source]);
+
+  useEffect(() => {
+    if (radioCountry) handleRadioByCountry(radioCountry);
+  }, [radioCountry]);
 
   // Handle VU meter levels directly in DOM to avoid React re-render lag, with live ALSA audio updates and simulated watchdog fallback
   useEffect(() => {
@@ -738,27 +719,17 @@ const PlayerDisplay = React.memo(function PlayerDisplay({
               </button>
             </div>
 
-            {/* Country picker + SCAN */}
+            {/* Country picker — auto-scans on change */}
             <div className="flex gap-2 items-center mt-2 shrink-0 radio-container">
               <CountryPicker value={radioCountry} onChange={setRadioCountry} />
-              <button
-                onClick={() => radioCountry && handleRadioByCountry(radioCountry)}
-                disabled={isSearching || !radioCountry}
-                data-tooltip={!radioCountry ? 'Select a country to scan the airwaves' : undefined}
-                className="flex items-center justify-center gap-1.5 px-4 py-2 font-extrabold text-[10px] uppercase tracking-widest rounded-xl hover:opacity-85 active:scale-95 transition-all cursor-pointer disabled:opacity-40 shrink-0"
-                style={{ background: 'var(--theme-color)', color: '#000', minWidth: 60, letterSpacing: '0.1em' }}
-              >
-                {isSearching ? (
-                  <span className="flex items-end gap-0.5 h-3">
-                    {[0.6, 1, 0.7].map((h, i) => (
-                      <span key={i} className="w-0.5 bg-black/50 rounded-full animate-pulse"
-                        style={{ height: `${Math.round(h * 12)}px`, animationDelay: `${i * 120}ms` }} />
-                    ))}
-                  </span>
-                ) : !radioCountry ? (
-                  <Radio className="w-3.5 h-3.5" />
-                ) : 'SCAN'}
-              </button>
+              {isSearching && (
+                <span className="flex items-end gap-0.5 h-3 shrink-0">
+                  {[0.6, 1, 0.7].map((h, i) => (
+                    <span key={i} className="w-0.5 rounded-full animate-pulse"
+                      style={{ height: `${Math.round(h * 12)}px`, background: 'var(--theme-color)', animationDelay: `${i * 120}ms` }} />
+                  ))}
+                </span>
+              )}
             </div>
 
             {/* Frequency band (shows after scan) */}
