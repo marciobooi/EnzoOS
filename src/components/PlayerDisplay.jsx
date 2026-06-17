@@ -770,21 +770,14 @@ const PlayerDisplay = React.memo(function PlayerDisplay({
                   <span className="text-[8px] font-extrabold font-mono uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.75)' }}>Saved Stations</span>
                   <span className="text-[8px] font-mono" style={{ color: 'rgba(255,255,255,0.5)' }}>{favoriteStations.length}</span>
                 
-                <div className="flex-grow overflow-y-auto pr-0.5 mt-1.5 custom-scrollbar grid grid-cols-2 gap-1.5 max-h-[88px]">
+                <div className="flex-grow overflow-y-auto pr-0.5 mt-1.5 custom-scrollbar grid grid-cols-3 gap-1 max-h-[80px]">
                   {favoriteStations.map((station, idx) => (
                     <div key={`${station.url}-${idx}`}
-                      className="group flex items-center gap-2 p-2 rounded-xl transition-all cursor-pointer"
+                      className="group flex items-center gap-1 p-1 rounded-lg transition-all cursor-pointer"
                       style={{ border: '1px solid rgba(255,255,255,0.05)' }}
                       onClick={() => { onPlayRadio(station.url, station.name, station.favicon); setShowSearch(false); }}>
-                      <StationAvatar station={station} size={28} />
-                      <div className="min-w-0 flex-1">
-                        <p className="text-[9px] font-bold text-white truncate group-hover:text-[var(--theme-color)] transition-colors">{station.name}</p>
-                        <p className="text-[7px] font-mono uppercase tracking-wider truncate mt-0.5" style={{ color: 'rgba(255,255,255,0.6)' }}>{station.country || 'Global'}</p>
-                      </div>
-                      <button onClick={e => { e.stopPropagation(); onToggleFavoriteRadio(station); }}
-                        className="shrink-0 cursor-pointer">
-                        <Heart className="w-2.5 h-2.5 text-rose-500 fill-rose-500" />
-                      </button>
+                      <StationAvatar station={station} size={20} />
+                      <p className="text-[8px] font-bold text-white truncate flex-1 group-hover:text-[var(--theme-color)] transition-colors leading-tight">{station.name}</p>
                     </div>
                   ))}
                 </div>
