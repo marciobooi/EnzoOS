@@ -64,9 +64,9 @@ function CountryPicker({ value, onChange }) {
       >
         {selected
           ? <><span style={{ fontSize: 15, lineHeight: 1 }}>{selected.flag}</span><span className="font-mono text-xs text-zinc-200 flex-1 text-left truncate">{selected.name}</span></>
-          : <span className="font-mono text-xs text-zinc-500 flex-1 text-left">Select country…</span>
+          : <span className="font-mono text-xs text-zinc-300 flex-1 text-left">Select country…</span>
         }
-        <ChevronDown className={`h-3 w-3 text-zinc-500 shrink-0 transition-transform duration-150 ${open ? 'rotate-180' : ''}`} />
+        <ChevronDown className={`h-3 w-3 text-zinc-300 shrink-0 transition-transform duration-150 ${open ? 'rotate-180' : ''}`} />
       </button>
       {open && (
         <div className="absolute z-50 left-0 right-0 mt-1 rounded-xl overflow-hidden"
@@ -77,7 +77,7 @@ function CountryPicker({ value, onChange }) {
                 className="flex flex-col items-center gap-0.5 py-2 px-1 rounded-lg transition-all cursor-pointer"
                 style={{ background: value === c.name ? 'rgba(255,255,255,0.07)' : 'transparent', border: `1px solid ${value === c.name ? 'var(--theme-color)' : 'transparent'}` }}>
                 <span style={{ fontSize: 17, lineHeight: 1.1 }}>{c.flag}</span>
-                <span className="font-mono text-zinc-600 uppercase" style={{ fontSize: 6.5, letterSpacing: '0.04em' }}>{c.code}</span>
+                <span className="font-mono text-zinc-300 uppercase" style={{ fontSize: 6.5, letterSpacing: '0.04em' }}>{c.code}</span>
               </button>
             ))}
           </div>
@@ -143,7 +143,7 @@ function FrequencyBand({ stations, onPlay, onToggleFavorite, favoriteStations = 
               <div className="flex items-center gap-1 mt-1.5 flex-wrap">
                 {displayStation.country && (
                   <span className="text-[7px] font-extrabold font-mono uppercase tracking-widest px-1.5 py-0.5 rounded-sm"
-                    style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.38)' }}>
+                    style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.18)', color: 'rgba(255,255,255,0.85)' }}>
                     {displayStation.country}
                   </span>
                 )}
@@ -164,7 +164,7 @@ function FrequencyBand({ stations, onPlay, onToggleFavorite, favoriteStations = 
               </button>
               <button onClick={() => onToggleFavorite(displayStation)}
                 className="transition-colors cursor-pointer"
-                style={{ color: isFav ? '#f43f5e' : 'rgba(255,255,255,0.15)' }}>
+                style={{ color: isFav ? '#f43f5e' : 'rgba(255,255,255,0.5)' }}>
                 <Heart className="w-3.5 h-3.5" style={{ fill: isFav ? '#f43f5e' : 'none' }} />
               </button>
             </div>
@@ -173,11 +173,11 @@ function FrequencyBand({ stations, onPlay, onToggleFavorite, favoriteStations = 
           <div className="flex items-center gap-3 p-3" style={{ minHeight: 64 }}>
             <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
               style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)' }}>
-              <Radio className="w-4 h-4" style={{ color: 'rgba(255,255,255,0.1)' }} />
+              <Radio className="w-4 h-4" style={{ color: 'rgba(255,255,255,0.5)' }} />
             </div>
             <div>
-              <p className="text-[9px] font-mono uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.15)' }}>Drag the needle to tune</p>
-              <p className="text-[8px] font-mono uppercase tracking-wider mt-0.5" style={{ color: 'rgba(255,255,255,0.07)' }}>{stations.length} stations on the dial</p>
+              <p className="text-[9px] font-mono uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.8)' }}>Drag the needle to tune</p>
+              <p className="text-[8px] font-mono uppercase tracking-wider mt-0.5" style={{ color: 'rgba(255,255,255,0.5)' }}>{stations.length} stations on the dial</p>
             </div>
           </div>
         )}
@@ -186,7 +186,7 @@ function FrequencyBand({ stations, onPlay, onToggleFavorite, favoriteStations = 
       {/* Scale labels */}
       <div className="flex justify-between px-0.5 mb-0.5">
         {['88', '92', '96', '100', '104', '108'].map(l => (
-          <span key={l} className="font-mono" style={{ fontSize: 7, color: 'rgba(255,255,255,0.2)', letterSpacing: '0.02em' }}>{l}</span>
+          <span key={l} className="font-mono" style={{ fontSize: 7, color: 'rgba(255,255,255,0.65)', letterSpacing: '0.02em' }}>{l}</span>
         ))}
       </div>
 
@@ -203,7 +203,7 @@ function FrequencyBand({ stations, onPlay, onToggleFavorite, favoriteStations = 
         {/* CRT scanlines */}
         <div className="absolute inset-0 pointer-events-none" style={{ backgroundImage: 'repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.2) 2px, rgba(0,0,0,0.2) 3px)', zIndex: 3 }} />
         {/* Center groove */}
-        <div className="absolute inset-x-0 pointer-events-none" style={{ top: '50%', height: 1, background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.06) 10%, rgba(255,255,255,0.09) 50%, rgba(255,255,255,0.06) 90%, transparent)', transform: 'translateY(-50%)', zIndex: 1 }} />
+        <div className="absolute inset-x-0 pointer-events-none" style={{ top: '50%', height: 1, background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.2) 10%, rgba(255,255,255,0.32) 50%, rgba(255,255,255,0.2) 90%, transparent)', transform: 'translateY(-50%)', zIndex: 1 }} />
         {/* Needle bloom */}
         {needlePct !== null && (
           <div className="absolute inset-y-0 pointer-events-none" style={{ left: `${needlePct}%`, width: 100, transform: 'translateX(-50%)', background: 'var(--theme-color)', opacity: 0.05, filter: 'blur(16px)' }} />
@@ -219,7 +219,7 @@ function FrequencyBand({ stations, onPlay, onToggleFavorite, favoriteStations = 
               left: `${pct}%`, top: '50%', transform: 'translate(-50%, -50%)',
               width: isAct ? 2.5 : 1,
               height: isAct ? 46 : isMajor ? 26 : 13,
-              background: isAct ? 'var(--theme-color)' : dist === 1 ? 'rgba(255,255,255,0.38)' : dist === 2 ? 'rgba(255,255,255,0.22)' : isMajor ? 'rgba(255,255,255,0.18)' : 'rgba(255,255,255,0.08)',
+              background: isAct ? 'var(--theme-color)' : dist === 1 ? 'rgba(255,255,255,0.75)' : dist === 2 ? 'rgba(255,255,255,0.55)' : isMajor ? 'rgba(255,255,255,0.5)' : 'rgba(255,255,255,0.3)',
               borderRadius: 2,
               boxShadow: isAct ? '0 0 6px var(--theme-color), 0 0 14px var(--theme-color)' : 'none',
               zIndex: isAct ? 4 : 1,
@@ -239,7 +239,7 @@ function FrequencyBand({ stations, onPlay, onToggleFavorite, favoriteStations = 
       {/* Bottom ruler */}
       <div className="flex justify-between mt-0.5 px-0.5">
         {Array.from({ length: 21 }).map((_, i) => (
-          <div key={i} style={{ width: i % 5 === 0 ? 1.5 : 1, height: i % 5 === 0 ? 5 : 3, background: i % 5 === 0 ? 'rgba(255,255,255,0.12)' : 'rgba(255,255,255,0.05)', borderRadius: 1 }} />
+          <div key={i} style={{ width: i % 5 === 0 ? 1.5 : 1, height: i % 5 === 0 ? 5 : 3, background: i % 5 === 0 ? 'rgba(255,255,255,0.45)' : 'rgba(255,255,255,0.2)', borderRadius: 1 }} />
         ))}
       </div>
     </div>
@@ -758,28 +758,28 @@ export default function PlayerDisplay({
                   style={{ background: 'rgba(6,9,18,0.7)', border: '1px solid rgba(255,255,255,0.04)', minHeight: 64 }}>
                   <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
                     style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.04)' }}>
-                    <Radio className="w-4 h-4" style={{ color: 'rgba(255,255,255,0.08)' }} />
+                    <Radio className="w-4 h-4" style={{ color: 'rgba(255,255,255,0.5)' }} />
                   </div>
                   <div>
-                    <p className="text-[9px] font-mono uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.15)' }}>Select a country to scan</p>
-                    <p className="text-[8px] font-mono uppercase tracking-wider mt-0.5" style={{ color: 'rgba(255,255,255,0.07)' }}>the airwaves</p>
+                    <p className="text-[9px] font-mono uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.85)' }}>Select a country to scan</p>
+                    <p className="text-[8px] font-mono uppercase tracking-wider mt-0.5" style={{ color: 'rgba(255,255,255,0.55)' }}>the airwaves</p>
                   </div>
                 </div>
                 <div className="flex justify-between px-0.5 mb-0.5">
                   {['88', '92', '96', '100', '104', '108'].map(l => (
-                    <span key={l} className="font-mono" style={{ fontSize: 7, color: 'rgba(255,255,255,0.1)' }}>{l}</span>
+                    <span key={l} className="font-mono" style={{ fontSize: 7, color: 'rgba(255,255,255,0.5)' }}>{l}</span>
                   ))}
                 </div>
-                <div className="relative rounded-xl overflow-hidden" style={{ height: 64, background: 'linear-gradient(180deg, #010204 0%, #03060e 40%, #010204 100%)', border: '1px solid rgba(255,255,255,0.03)', opacity: 0.35 }}>
+                <div className="relative rounded-xl overflow-hidden" style={{ height: 64, background: 'linear-gradient(180deg, #010204 0%, #03060e 40%, #010204 100%)', border: '1px solid rgba(255,255,255,0.08)', opacity: 0.6 }}>
                   <div className="absolute inset-0" style={{ backgroundImage: 'repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.2) 2px, rgba(0,0,0,0.2) 3px)' }} />
-                  <div className="absolute inset-x-0" style={{ top: '50%', height: 1, background: 'rgba(255,255,255,0.05)', transform: 'translateY(-50%)' }} />
+                  <div className="absolute inset-x-0" style={{ top: '50%', height: 1, background: 'rgba(255,255,255,0.25)', transform: 'translateY(-50%)' }} />
                   {Array.from({ length: 20 }).map((_, i) => (
-                    <div key={i} className="absolute" style={{ left: `${(i / 19) * 100}%`, top: '50%', transform: 'translate(-50%, -50%)', width: 1, height: i % 4 === 0 ? 20 : 10, background: 'rgba(255,255,255,0.08)', borderRadius: 1 }} />
+                    <div key={i} className="absolute" style={{ left: `${(i / 19) * 100}%`, top: '50%', transform: 'translate(-50%, -50%)', width: 1, height: i % 4 === 0 ? 20 : 10, background: 'rgba(255,255,255,0.4)', borderRadius: 1 }} />
                   ))}
                 </div>
                 <div className="flex justify-between mt-0.5 px-0.5">
                   {Array.from({ length: 21 }).map((_, i) => (
-                    <div key={i} style={{ width: i % 5 === 0 ? 1.5 : 1, height: i % 5 === 0 ? 5 : 3, background: 'rgba(255,255,255,0.05)', borderRadius: 1 }} />
+                    <div key={i} style={{ width: i % 5 === 0 ? 1.5 : 1, height: i % 5 === 0 ? 5 : 3, background: 'rgba(255,255,255,0.25)', borderRadius: 1 }} />
                   ))}
                 </div>
               </div>
@@ -789,8 +789,8 @@ export default function PlayerDisplay({
             {favoriteStations.length > 0 && (
               <>
                 <div className="flex justify-between items-center mt-2 px-0.5 shrink-0">
-                  <span className="text-[8px] font-extrabold font-mono uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.2)' }}>Saved Stations</span>
-                  <span className="text-[8px] font-mono" style={{ color: 'rgba(255,255,255,0.12)' }}>{favoriteStations.length}</span>
+                  <span className="text-[8px] font-extrabold font-mono uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.75)' }}>Saved Stations</span>
+                  <span className="text-[8px] font-mono" style={{ color: 'rgba(255,255,255,0.5)' }}>{favoriteStations.length}</span>
                 </div>
                 <div className="flex-grow overflow-y-auto pr-0.5 mt-1.5 custom-scrollbar grid grid-cols-2 gap-1.5 max-h-[88px]">
                   {favoriteStations.map((station, idx) => (
@@ -801,7 +801,7 @@ export default function PlayerDisplay({
                       <StationAvatar station={station} size={28} />
                       <div className="min-w-0 flex-1">
                         <p className="text-[9px] font-bold text-white truncate group-hover:text-[var(--theme-color)] transition-colors">{station.name}</p>
-                        <p className="text-[7px] font-mono uppercase tracking-wider truncate mt-0.5" style={{ color: 'rgba(255,255,255,0.25)' }}>{station.country || 'Global'}</p>
+                        <p className="text-[7px] font-mono uppercase tracking-wider truncate mt-0.5" style={{ color: 'rgba(255,255,255,0.6)' }}>{station.country || 'Global'}</p>
                       </div>
                       <button onClick={e => { e.stopPropagation(); onToggleFavoriteRadio(station); }}
                         className="shrink-0 cursor-pointer">
