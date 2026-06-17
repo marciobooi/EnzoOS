@@ -500,7 +500,7 @@ export default function RemoteControl() {
           <TopBar darkMode={darkMode} setDarkMode={setDarkMode} />
 
           <div className="flex-1 overflow-y-auto overscroll-none"
-            style={{ paddingBottom: NAV_H + (activeTab !== 'player' && activeTab !== 'source' && activeTab !== 'radio' ? 72 : 8) }}>
+            style={{ paddingBottom: NAV_H + (activeTab !== 'player' ? 72 : 8) }}>
             <div key={activeTab} className={`animate-tab-${tabDirection}`}>
               {activeTab === 'player'   && <PlayerTab />}
               {activeTab === 'library'  && <LibraryTab />}
@@ -510,7 +510,7 @@ export default function RemoteControl() {
             </div>
           </div>
 
-          {activeTab !== 'player' && activeTab !== 'source' && activeTab !== 'radio' && (
+          {activeTab !== 'player' && (
             <div className="absolute left-0 right-0" style={{ bottom: NAV_H }}>
               <MiniPlayer />
             </div>
