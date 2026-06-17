@@ -320,6 +320,12 @@ export default function Kiosk() {
     setSource,
     setDevices,
     onRequestSync: () => {
+      if (ws.current?.readyState === WebSocket.OPEN) {
+        ws.current.send(JSON.stringify({
+          type: 'BROADCAST_STATE',
+          payload: { ...(playbackState || {}), volume, is_muted: isMuted },
+        }));
+      }
       syncCurrentState();
     },
     isAuthenticated: true,
