@@ -956,6 +956,8 @@ export default function Kiosk() {
     sendUpdate('CLEAR_TOKEN');
   };
 
+  const remoteUrl = `http://${window.location.hostname}:5000/remote`;
+
   return (
     <div 
       data-theme={theme} 
@@ -1260,7 +1262,7 @@ export default function Kiosk() {
             <div className="flex-grow flex flex-row items-center gap-10">
               <div className={`p-3 rounded-2xl shrink-0 transition-opacity duration-300 ${remoteAccessEnabled ? 'bg-white opacity-100' : 'bg-zinc-800 opacity-30'}`}>
                 <QRCodeSVG
-                  value={`${window.location.origin}/remote`}
+                  value={remoteUrl}
                   size={148}
                   bgColor={remoteAccessEnabled ? '#ffffff' : '#1f2937'}
                   fgColor="#000000"
@@ -1271,9 +1273,7 @@ export default function Kiosk() {
               <div className="flex flex-col gap-4">
                 <div>
                   <p className="text-[8px] font-extrabold uppercase tracking-widest text-zinc-500 mb-1.5">Remote URL</p>
-                  <p className="text-[11px] font-mono text-[var(--theme-color)] break-all">
-                    {window.location.origin}/remote
-                  </p>
+                  <p className="text-[11px] font-mono text-[var(--theme-color)] break-all">{remoteUrl}</p>
                 </div>
                 <div className="flex flex-col gap-1.5">
                   <p className="text-[8px] font-extrabold uppercase tracking-widest text-zinc-500 mb-0.5">How to connect</p>
