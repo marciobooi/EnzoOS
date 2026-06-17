@@ -2,16 +2,20 @@ import React, { useState, useEffect, useRef } from 'react';
 import { toast, Toaster } from 'sonner';
 import { api } from '../api';
 import { useResonanceWS } from '../websocket';
-import { Power, Search } from 'lucide-react';
-import { QRCodeSVG } from 'qrcode.react';
+import { EQ_PRESETS } from '../components/EqualizerControl';
 
 // Subcomponents
 import PlayerDisplay from '../components/PlayerDisplay';
-import DefinitionsMenu from '../components/DefinitionsMenu';
-import EqualizerControl, { EQ_PRESETS } from '../components/EqualizerControl';
-import DspWizard from '../components/DspWizard';
-import ThemeSettingsControl from '../components/ThemeSettingsControl';
-import TrackSearch from '../components/TrackSearch';
+
+// Kiosk context + overlay components
+import { Kk } from '../components/kiosk/KioskContext';
+import StandbyOverlay from '../components/kiosk/StandbyOverlay';
+import EqualizerOverlay from '../components/kiosk/EqualizerOverlay';
+import SettingsMenuOverlay from '../components/kiosk/SettingsMenuOverlay';
+import SearchOverlay from '../components/kiosk/SearchOverlay';
+import ThemeSettingsOverlay from '../components/kiosk/ThemeSettingsOverlay';
+import RemoteAccessOverlay from '../components/kiosk/RemoteAccessOverlay';
+import DspWizardOverlay from '../components/kiosk/DspWizardOverlay';
 
 export default function Kiosk() {
   // Authentication state (server-managed, synchronized via WebSocket)
@@ -956,56 +960,56 @@ export default function Kiosk() {
     sendUpdate('CLEAR_TOKEN');
   };
 
+  const kioskCtx = {
+    // standby / transitions
+    standby, transitionScreen, handleToggleStandby, getGreeting,
+    // equalizer
+    isEqualizerOpen, setIsEqualizerOpen,
+    eqPreset, eqBands, eqSaturation, eqNoiseFloor, eqPreAmp,
+    handleEqPresetChange, handleBandChange, handleSaturationChange,
+    handleNoiseFloorChange, handlePreAmpChange,
+    dspActive, handleDeactivateDsp,
+    // settings menu
+    isMenuOpen, setIsMenuOpen,
+    token, handleLogout,
+    devices, isFetchingDevices, transferPlayback, fetchDevices,
+    theme, handleThemeColorChange,
+    otaProgress, setOtaProgress, otaPercent, setOtaPercent,
+    source, handleToggleSource,
+    updateStatus, setUpdateStatus,
+    errorMessage, setErrorMessage,
+    setIsDspWizardOpen, setIsThemeSettingsOpen,
+    remoteAccessEnabled, setRemoteAccessEnabled,
+    sendUpdate,
+    setIsRemoteAccessOpen, setRemoteUrl,
+    // search
+    isSearchOpen, setIsSearchOpen,
+    handlePlayTrack, handlePlayContext,
+    // theme settings
+    isThemeSettingsOpen,
+    activeTheme, handleActiveThemeChange,
+    brightness, handleBrightnessChange,
+    visualizerMode, handleVisualizerModeChange,
+    // remote access
+    isRemoteAccessOpen, remoteUrl,
+    // dsp wizard
+    isDspWizardOpen, setDspActive,
+  };
+
   return (
-    <div 
-      data-theme={theme} 
-      data-active-theme={activeTheme} 
+    <Kk.Provider value={kioskCtx}>
+    <div
+      data-theme={theme}
+      data-active-theme={activeTheme}
       className="w-screen h-screen flex items-center justify-center relative overflow-hidden p-6 select-none font-sans"
       style={{ '--album-art-url': `url(${albumImage})` }}
     >
       
       {/* Dynamic Album Art Blur Canvas for Premium Glass Themes */}
       <div className="album-bg-blur" />
-      
-      {standby && (
-        <div className="absolute inset-0 bg-black z-[9999] flex items-center justify-center flex-col animate-fade-in">
-          <button
-            onClick={() => handleToggleStandby(false)}
-            className="group flex flex-col items-center justify-center gap-4 cursor-pointer focus:outline-none transition-all active:scale-95 screensaver-float"
-            type="button"
-            aria-label="Power on system"
-          >
-            <div className="w-24 h-24 rounded-full border border-white/20 bg-white/[0.04] hover:bg-white/[0.08] hover:border-white/35 flex items-center justify-center transition-all duration-500 shadow-inner group-hover:scale-105">
-              <Power className="h-10 w-10 text-white/40 group-hover:text-white/70 transition-colors duration-500" />
-            </div>
-            <span className="text-[10px] uppercase tracking-[0.25em] text-white/30 group-hover:text-white/55 transition-colors duration-500 font-sans font-extrabold mt-1">
-              Tap to Wake
-            </span>
-          </button>
-        </div>
-      )}
 
-      {transitionScreen === 'welcome' && (
-        <div className="absolute inset-0 bg-black z-[9998] flex items-center justify-center pointer-events-none select-none animate-kiosk-welcome">
-          <div className="flex flex-col items-center gap-5 text-center">
-            <div className="text-[9px] font-mono uppercase tracking-[0.55em] text-white/20">Resonance HiFi</div>
-            <div className="text-[3.8rem] font-black text-white tracking-tight leading-none">{getGreeting()}</div>
-            <div className="w-10 h-px bg-white/12" />
-            <div className="text-[9px] font-mono uppercase tracking-[0.3em] text-white/18">Enjoy the music</div>
-          </div>
-        </div>
-      )}
+      <StandbyOverlay />
 
-      {transitionScreen === 'goodbye' && (
-        <div className="absolute inset-0 bg-black z-[9998] flex items-center justify-center pointer-events-none select-none animate-kiosk-goodbye">
-          <div className="flex flex-col items-center gap-5 text-center">
-            <div className="text-[3.8rem] font-black text-white tracking-tight leading-none">See you soon</div>
-            <div className="w-10 h-px bg-white/12" />
-            <div className="text-[9px] font-mono uppercase tracking-[0.55em] text-white/20">Resonance HiFi</div>
-          </div>
-        </div>
-      )}
-      
       {/* Subtle retro glowing background spots */}
       <div className="absolute top-[-30%] left-[-20%] w-[70%] h-[70%] rounded-full theme-bg-glow blur-[150px] pointer-events-none" />
       <div className="absolute bottom-[-30%] right-[-20%] w-[70%] h-[70%] rounded-full bg-emerald-950/5 blur-[150px] pointer-events-none" />
@@ -1069,248 +1073,22 @@ export default function Kiosk() {
           onToggleStandby={handleToggleStandby}
         />
 
-        {/* Full-Screen Horizontal Equalizer Control Overlay */}
-        <div 
-          className={`absolute inset-0 bg-[#0b0f19] border border-white/10 rounded-3xl shadow-2xl z-50 transform transition-all duration-300 ease-in-out flex flex-col p-1.5 font-sans ${
-            isEqualizerOpen ? 'opacity-100 scale-100 pointer-events-auto' : 'opacity-0 scale-95 pointer-events-none'
-          }`}
-        >
-          <EqualizerControl
-            currentPreset={eqPreset}
-            onPresetChange={handleEqPresetChange}
-            bands={eqBands}
-            onBandChange={handleBandChange}
-            saturation={eqSaturation}
-            onSaturationChange={handleSaturationChange}
-            noiseFloor={eqNoiseFloor}
-            onNoiseFloorChange={handleNoiseFloorChange}
-            preAmp={eqPreAmp}
-            onPreAmpChange={handlePreAmpChange}
-            onClose={() => setIsEqualizerOpen(false)}
-            dspActive={dspActive}
-            onDeactivateDsp={handleDeactivateDsp}
-          />
-        </div>
-
-        {/* Full-Screen Horizontal Definitions Menu Overlay */}
-        <div 
-          className={`absolute inset-0 bg-[#050d1c] border border-zinc-300 rounded-3xl shadow-2xl z-50 transform transition-all duration-300 ease-in-out flex flex-col p-5 font-sans ${
-            isMenuOpen ? 'opacity-100 scale-100 pointer-events-auto' : 'opacity-0 scale-95 pointer-events-none'
-          }`}
-        >
-          {/* Header & Close Button */}
-          <div className="flex justify-between items-center mb-3 select-none shrink-0">
-            <h4 className="text-[11px] font-extrabold uppercase tracking-[0.2em] text-zinc-700">System Configuration Control Panel</h4>
-            <button 
-              onClick={() => setIsMenuOpen(false)}
-              className="text-zinc-600 hover:text-zinc-900 transition-colors cursor-pointer text-[10px] font-extrabold font-sans px-3.5 py-1 rounded-lg bg-white border border-zinc-250 shadow-sm active:scale-95"
-            >
-              CLOSE [X]
-            </button>
-          </div>
-
-          {/* Horizontally Scrollable Content */}
-          <div className="flex-grow overflow-x-auto overflow-y-hidden custom-scrollbar">
-            <DefinitionsMenu
-              token={token}
-              handleLogout={handleLogout}
-              devices={devices}
-              isFetchingDevices={isFetchingDevices}
-              onTransferPlayback={transferPlayback}
-              onRefreshDevices={fetchDevices}
-              theme={theme}
-              onThemeChange={handleThemeColorChange}
-              otaProgress={otaProgress}
-              setOtaProgress={setOtaProgress}
-              otaPercent={otaPercent}
-              setOtaPercent={setOtaPercent}
-              source={source}
-              onSetSource={(src) => {
-                handleToggleSource(src);
-                setIsMenuOpen(false);
-              }}
-              updateStatus={updateStatus}
-              setUpdateStatus={setUpdateStatus}
-              errorMessage={errorMessage}
-              setErrorMessage={setErrorMessage}
-              onOpenDspWizard={() => {
-                setIsDspWizardOpen(true);
-                setIsMenuOpen(false);
-              }}
-              onOpenThemeSettings={() => {
-                setIsThemeSettingsOpen(true);
-                setIsMenuOpen(false);
-              }}
-              remoteAccessEnabled={remoteAccessEnabled}
-              onToggleRemoteAccess={(enabled) => {
-                setRemoteAccessEnabled(enabled);
-                sendUpdate('SET_REMOTE_ACCESS', { enabled });
-              }}
-              onOpenRemoteAccess={async () => {
-                setIsMenuOpen(false);
-                try {
-                  const r = await fetch('/api/system/lan-url');
-                  const d = await r.json();
-                  setRemoteUrl(d.url);
-                } catch {
-                  setRemoteUrl(`http://${window.location.hostname}:5000/remote`);
-                }
-                setIsRemoteAccessOpen(true);
-              }}
-            />
-          </div>
-        </div>
-
-        {/* Full-Screen Spotify Search & Browse Overlay */}
-        <div 
-          className={`absolute inset-0 bg-[#0b0f19] border border-white/10 rounded-3xl shadow-2xl z-50 transform transition-all duration-300 ease-in-out flex flex-col p-5 font-sans ${
-            isSearchOpen ? 'opacity-100 scale-100 pointer-events-auto' : 'opacity-0 scale-95 pointer-events-none'
-          }`}
-        >
-          <div className="flex justify-between items-center mb-3 select-none shrink-0">
-            <h4 className="text-[11px] font-extrabold uppercase tracking-[0.2em] text-zinc-700 flex items-center gap-2">
-              <Search className="h-3.5 w-3.5" />
-              Spotify Search & Browse
-            </h4>
-            <button 
-              onClick={() => setIsSearchOpen(false)}
-              className="text-zinc-600 hover:text-zinc-900 transition-colors cursor-pointer text-[10px] font-extrabold font-sans px-3.5 py-1 rounded-lg bg-white border border-zinc-250 shadow-sm active:scale-95"
-            >
-              CLOSE [X]
-            </button>
-          </div>
-          <div className="flex-grow min-h-0 overflow-hidden">
-            <TrackSearch
-              token={token}
-              onPlayTrack={handlePlayTrack}
-              onPlayContext={handlePlayContext}
-              isDrawer={false}
-            />
-          </div>
-        </div>
-
-        {/* Full-Screen Theme Settings Overlay */}
-        <div 
-          className={`absolute inset-0 bg-[#0b0f19] border border-white/10 rounded-3xl shadow-2xl z-50 transform transition-all duration-300 ease-in-out flex flex-col p-1.5 font-sans ${
-            isThemeSettingsOpen ? 'opacity-100 scale-100 pointer-events-auto' : 'opacity-0 scale-95 pointer-events-none'
-          }`}
-        >
-          <ThemeSettingsControl
-            activeTheme={activeTheme}
-            onThemeChange={handleActiveThemeChange}
-            themeColor={theme}
-            onColorChange={handleThemeColorChange}
-            brightness={brightness}
-            onBrightnessChange={handleBrightnessChange}
-            visualizerMode={visualizerMode}
-            onVisualizerModeChange={handleVisualizerModeChange}
-            onClose={() => setIsThemeSettingsOpen(false)}
-          />
-        </div>
-
-        {/* Full-Screen Remote Access Panel Overlay */}
-        <div
-          className={`absolute inset-0 bg-[#0b0f19] border border-white/10 rounded-3xl shadow-2xl z-[60] transform transition-all duration-300 ease-in-out flex flex-col p-5 font-sans ${
-            isRemoteAccessOpen ? 'opacity-100 scale-100 pointer-events-auto' : 'opacity-0 scale-95 pointer-events-none'
-          }`}
-        >
-          <div className="flex justify-between items-center mb-4 select-none shrink-0">
-            <h4 className="text-[11px] font-extrabold uppercase tracking-[0.2em] text-zinc-400">Remote Access Panel</h4>
-            <button
-              onClick={() => setIsRemoteAccessOpen(false)}
-              className="text-zinc-600 hover:text-zinc-900 transition-colors cursor-pointer text-[10px] font-extrabold font-sans px-3.5 py-1 rounded-lg bg-white border border-zinc-250 shadow-sm active:scale-95"
-            >
-              CLOSE [X]
-            </button>
-          </div>
-
-          <div className="flex-grow flex flex-row gap-8 items-center min-h-0">
-            {/* Left: status + enable/disable */}
-            <div className="flex flex-col gap-4 shrink-0 w-52">
-              <div className="flex items-center gap-2.5">
-                <div className={`w-2 h-2 rounded-full shrink-0 ${remoteAccessEnabled ? 'bg-emerald-400 animate-pulse' : 'bg-zinc-600'}`} />
-                <span className="text-[10px] font-extrabold uppercase tracking-widest text-zinc-200">
-                  {remoteAccessEnabled ? 'Access Enabled' : 'Access Disabled'}
-                </span>
-              </div>
-              <p className="text-[9px] text-zinc-500 leading-relaxed">
-                Allow mobile devices on the same network to connect and control this player.
-              </p>
-              <div className="flex flex-col gap-2">
-                <button
-                  onClick={() => { setRemoteAccessEnabled(true); sendUpdate('SET_REMOTE_ACCESS', { enabled: true }); }}
-                  className={`py-2.5 px-4 rounded-xl text-[10px] font-extrabold uppercase tracking-widest transition-all active:scale-95 cursor-pointer ${
-                    remoteAccessEnabled
-                      ? 'bg-[var(--theme-color)] text-black shadow-[0_0_12px_var(--theme-color-glow)]'
-                      : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700 hover:text-white'
-                  }`}
-                >
-                  Enable Remote
-                </button>
-                <button
-                  onClick={() => { setRemoteAccessEnabled(false); sendUpdate('SET_REMOTE_ACCESS', { enabled: false }); }}
-                  className={`py-2.5 px-4 rounded-xl text-[10px] font-extrabold uppercase tracking-widest transition-all active:scale-95 cursor-pointer ${
-                    !remoteAccessEnabled
-                      ? 'bg-red-500/80 text-white'
-                      : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700 hover:text-white'
-                  }`}
-                >
-                  Disable Remote
-                </button>
-              </div>
-            </div>
-
-            {/* Divider */}
-            <div className="w-px self-stretch bg-white/5 shrink-0" />
-
-            {/* Right: QR code + URL + instructions */}
-            <div className="flex-grow flex flex-row items-center gap-10">
-              <div className={`p-3 rounded-2xl shrink-0 transition-opacity duration-300 ${remoteAccessEnabled ? 'bg-white opacity-100' : 'bg-zinc-800 opacity-30'}`}>
-                <QRCodeSVG
-                  value={remoteUrl}
-                  size={148}
-                  bgColor={remoteAccessEnabled ? '#ffffff' : '#1f2937'}
-                  fgColor="#000000"
-                  level="M"
-                />
-              </div>
-
-              <div className="flex flex-col gap-4">
-                <div>
-                  <p className="text-[8px] font-extrabold uppercase tracking-widest text-zinc-500 mb-1.5">Remote URL</p>
-                  <p className="text-[11px] font-mono text-[var(--theme-color)] break-all">{remoteUrl}</p>
-                </div>
-                <div className="flex flex-col gap-1.5">
-                  <p className="text-[8px] font-extrabold uppercase tracking-widest text-zinc-500 mb-0.5">How to connect</p>
-                  <p className="text-[9px] text-zinc-400">1 · Point your phone camera at the QR code</p>
-                  <p className="text-[9px] text-zinc-400">2 · Open the link in your mobile browser</p>
-                  <p className="text-[9px] text-zinc-400">3 · Both devices must be on the same Wi-Fi</p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Full-Screen CamillaDSP Calibration Wizard Overlay */}
-        <div
-          className={`absolute inset-0 bg-[#070b13] border border-white/10 rounded-3xl shadow-2xl z-50 transform transition-all duration-300 ease-in-out flex flex-col p-1.5 font-sans ${
-            isDspWizardOpen ? 'opacity-100 scale-100 pointer-events-auto' : 'opacity-0 scale-95 pointer-events-none'
-          }`}
-        >
-          <DspWizard
-            onClose={() => setIsDspWizardOpen(false)}
-            onCalibrationComplete={(active) => setDspActive(active)}
-          />
-        </div>
+        <EqualizerOverlay />
+        <SettingsMenuOverlay />
+        <SearchOverlay />
+        <ThemeSettingsOverlay />
+        <RemoteAccessOverlay />
+        <DspWizardOverlay />
 
         <Toaster theme="dark" closeButton richColors position="bottom-right" visibleToasts={1} />
       </div>
 
       {/* Backlight Brightness hardware simulation overlay */}
-      <div 
-        className="fixed inset-0 bg-black pointer-events-none z-[99999] transition-opacity duration-300" 
-        style={{ opacity: (100 - brightness) / 100 }} 
+      <div
+        className="fixed inset-0 bg-black pointer-events-none z-[99999] transition-opacity duration-300"
+        style={{ opacity: (100 - brightness) / 100 }}
       />
     </div>
+    </Kk.Provider>
   );
 }

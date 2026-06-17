@@ -144,6 +144,8 @@ Volume and seek-position values are parsed with `parseInt` and checked with `Num
 * `/server` - Node.js Express server. All real-time state flows through `event-service.js`; REST routes and WebSocket handlers are thin dispatchers.
 * `/src` - React frontend compiled with Vite.
   * `/src/components/PlayerDisplay.jsx` - Core rendering component for visualizers, playback state, and dials.
+  * `/src/components/kiosk/` - Kiosk overlay components (`KioskContext`, `StandbyOverlay`, `EqualizerOverlay`, `SettingsMenuOverlay`, `SearchOverlay`, `ThemeSettingsOverlay`, `RemoteAccessOverlay`, `DspWizardOverlay`). All read shared state via `useContext(Kk)`; state and handlers stay in `Kiosk.jsx`.
+  * `/src/components/remote/` - Remote Control tab components sharing state via `useContext(Tk)`.
   * `/src/glassplayer.css` - Liquid glass styling definitions.
   * `/src/dot-matrix.css` - LED grid matrix styling definitions.
   * `/src/dreamplayer.css` - Neo glass styling definitions.
