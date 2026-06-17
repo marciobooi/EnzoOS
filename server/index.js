@@ -11,7 +11,8 @@ import systemRouter from './system.js';
 import spotifyAuthRouter from './spotify-auth.js';
 import playerRouter from './player.js';
 import spotifyDaemonRouter from './spotify-daemon.js';
-import { setupWebSocket, loadCachedStateFromDB } from './websocket.js';
+import { setupWebSocket } from './websocket.js';
+import { loadStateFromDB } from './event-service.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -54,8 +55,8 @@ app.use((req, res, next) => {
 const server = http.createServer(app);
 
 // Setup WebSocket server and load state
-const { wss } = setupWebSocket(server, app);
-loadCachedStateFromDB();
+const { wss } = setupWebSocket(server);
+loadStateFromDB();
 
 server.listen(PORT, () => {
   console.log(`[Resonance Backend] Server listening on http://localhost:${PORT}`);

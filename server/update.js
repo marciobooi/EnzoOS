@@ -4,6 +4,7 @@ import { promisify } from 'util';
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
+import { emit } from './event-service.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -55,29 +56,18 @@ router.post('/', (req, res) => {
       stdio: ['ignore', 'pipe', 'pipe']
     });
     
-    const broadcast = req.app.get('wssBroadcast');
-    
     child.stdout.on('data', (data) => {
       const text = data.toString();
       fs.appendFileSync(logPath, text);
-      
-      let percent = null;
       const match = text.match(/\[PROGRESS:\s*(\d+)\]/);
-      if (match) {
-        percent = parseInt(match[1], 10);
-      }
-      
-      if (broadcast) {
-        broadcast({ type: 'UPDATE_PROGRESS', payload: { text, percent } });
-      }
+      const percent = match ? parseInt(match[1], 10) : null;
+      emit('UPDATE_PROGRESS', { text, percent });
     });
-    
+
     child.stderr.on('data', (data) => {
       const text = data.toString();
       fs.appendFileSync(logPath, text);
-      if (broadcast) {
-        broadcast({ type: 'UPDATE_PROGRESS', payload: { text, isError: true } });
-      }
+      emit('UPDATE_PROGRESS', { text, isError: true });
     });
     
     child.unref();

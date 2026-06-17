@@ -6,7 +6,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import YAML from 'yaml';
 import { getFavoriteRadios, addFavoriteRadio, deleteFavoriteRadioByUrl, setSetting, getSetting } from './db.js';
-import { setStandbyState, cachedStandbyState } from './websocket.js';
+import { emit, getStandbyState } from './event-service.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -17,8 +17,8 @@ const router = express.Router();
 // POST /api/player/play -> Play local media
 router.post('/play', async (req, res) => {
   try {
-    if (cachedStandbyState) {
-      await setStandbyState(false);
+    if (getStandbyState()) {
+      await emit('SET_STANDBY', { enabled: false });
     }
     await execPromise('mpc play');
     res.json({ success: true });
@@ -89,11 +89,10 @@ router.post('/seek', async (req, res) => {
 router.post('/play-radio', async (req, res) => {
   const { url, name, favicon } = req.body;
   try {
-    if (cachedStandbyState) {
-      await setStandbyState(false);
+    if (getStandbyState()) {
+      await emit('SET_STANDBY', { enabled: false });
     }
-    // Save last played radio info to database settings
-    await setSetting('active_source', 'radio');
+    // Save radio-specific metadata (url/name/favicon not covered by events)
     await setSetting('last_radio_url', url);
     if (name) await setSetting('last_radio_name', name);
     await setSetting('last_radio_favicon', favicon || '');
@@ -103,27 +102,23 @@ router.post('/play-radio', async (req, res) => {
     await execPromise(`mpc add "${url}"`);
     await execPromise('mpc play');
 
-    const broadcast = req.app.get('wssBroadcast');
-    if (broadcast) {
-      const stateUpdate = {
-        paused: false,
-        position: 0,
-        duration: 0,
-        track_window: {
-          current_track: {
-            name: name || 'WEB RADIO',
-            artists: [{ name: 'Live Stream' }],
-            album: { name: 'Web Radio Broadcast', images: favicon ? [{ url: favicon }] : [] },
-            url: url
-          }
-        }
-      };
-      
-      // Broadcast current playback state to all clients
-      broadcast({ type: 'PLAYBACK_STATE', payload: stateUpdate });
-      // Force source to be radio
-      broadcast({ type: 'SET_SOURCE', payload: { spotify: false, source: 'radio' } });
-    }
+    const stateUpdate = {
+      paused: false,
+      position: 0,
+      duration: 0,
+      track_window: {
+        current_track: {
+          name: name || 'WEB RADIO',
+          artists: [{ name: 'Live Stream' }],
+          album: { name: 'Web Radio Broadcast', images: favicon ? [{ url: favicon }] : [] },
+          url,
+        },
+      },
+    };
+
+    // Route through EventService: persists active_source + broadcasts to all clients
+    await emit('SET_SOURCE', { spotify: false, source: 'radio' });
+    await emit('PLAYBACK_STATE', stateUpdate);
 
     res.json({ success: true });
   } catch (err) {
@@ -623,11 +618,8 @@ router.post('/dsp-calibration', async (req, res) => {
 
     const dacInfo = await updateCamillaConfigFromSettings();
 
-    // Broadcast update to all WebSocket clients
-    const broadcast = req.app.get('wssBroadcast');
-    if (broadcast) {
-      broadcast({ type: 'DSP_CALIBRATION', payload: answers });
-    }
+    // Broadcast DSP_CALIBRATION to all WS clients via EventService
+    await emit('DSP_CALIBRATION', answers);
 
     res.json({ success: true, dacInfo });
   } catch (err) {
@@ -768,8 +760,7 @@ router.post('/standby', async (req, res) => {
     return res.status(400).json({ error: 'enabled parameter is required' });
   }
   try {
-    const { setStandbyState } = await import('./websocket.js');
-    await setStandbyState(enabled);
+    await emit('SET_STANDBY', { enabled });
     res.json({ success: true });
   } catch (err) {
     console.error('[Player API] Standby toggle failed:', err);

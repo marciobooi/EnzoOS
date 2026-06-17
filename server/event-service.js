@@ -1,0 +1,321 @@
+import { getSetting, setSetting, dbReady } from './db.js';
+
+// ─── Cached state (single source of truth) ───────────────────────────────────
+let cachedPlaybackState = null;
+let cachedSourceState = { spotify: true, source: 'spotify' };
+let cachedStandbyState = false;
+let broadcastFn = null;
+
+// ─── Serial queue: all state-mutating events run one at a time ───────────────
+let stateQueue = Promise.resolve();
+
+function enqueue(fn) {
+  stateQueue = stateQueue
+    .then(fn)
+    .catch(err => console.error('[EventService] Queue error:', err));
+  return stateQueue;
+}
+
+// ─── Public API ──────────────────────────────────────────────────────────────
+
+/** Called by websocket.js after the WS server is ready. */
+export function setBroadcast(fn) {
+  broadcastFn = fn;
+}
+
+export function getStandbyState() {
+  return cachedStandbyState;
+}
+
+/** Returns a snapshot of all cached state for new WS client handshake. */
+export function getState() {
+  return {
+    playbackState: cachedPlaybackState,
+    sourceState: cachedSourceState,
+    standbyState: cachedStandbyState,
+  };
+}
+
+// Passthrough events — no state mutation, skip the queue entirely
+const PASSTHROUGH = new Set(['SET_TOKEN', 'CLEAR_TOKEN', 'REQUEST_SYNC', 'UPDATE_PROGRESS', 'AUDIO_LEVELS']);
+
+/**
+ * Central dispatch. All REST routes and WS handlers call this.
+ * @param {string} type
+ * @param {*} payload
+ * @param {WebSocket|null} excludeWs  - sender socket to exclude from broadcast
+ */
+export function emit(type, payload, excludeWs = null) {
+  if (PASSTHROUGH.has(type)) {
+    broadcast({ type, payload }, excludeWs);
+    return Promise.resolve();
+  }
+  return enqueue(() => handleEvent(type, payload, excludeWs));
+}
+
+// ─── Internal broadcast helper ───────────────────────────────────────────────
+function broadcast(data, excludeWs = null) {
+  if (broadcastFn) broadcastFn(data, excludeWs);
+}
+
+// ─── Hardware helpers ─────────────────────────────────────────────────────────
+async function setHardwareBrightness(brightness) {
+  if (brightness === undefined || brightness === null) return;
+  const sanitized = Number(brightness);
+  if (!Number.isFinite(sanitized)) {
+    console.warn('[Brightness] Ignoring invalid value:', brightness);
+    return;
+  }
+  try {
+    const { exec } = await import('child_process');
+    const pct = Math.max(0, Math.min(100, Math.round(sanitized)));
+    const script = `/usr/local/bin/kiosk-brightness.sh ${pct}`;
+    const x11Env = { ...process.env, DISPLAY: ':0', XAUTHORITY: '/home/pi/.Xauthority' };
+    exec(script, { env: x11Env }, (err, stdout) => {
+      if (!err) { console.log(`[Brightness] Set to ${pct}%:`, stdout.trim()); return; }
+      exec(`sudo ${script}`, { env: x11Env }, (sudoErr, sudoStdout) => {
+        if (sudoErr) console.error('[Brightness] Failed:', sudoErr.message);
+        else console.log(`[Brightness] Set to ${pct}% via sudo:`, sudoStdout.trim());
+      });
+    });
+  } catch (err) {
+    console.error('[Brightness] Error executing brightness script:', err);
+  }
+}
+
+// ─── Standby side-effects (runs inside queue) ────────────────────────────────
+async function applyStandby(enabled) {
+  cachedStandbyState = enabled;
+  await setSetting('standby', enabled ? 'true' : 'false');
+  broadcast({ type: 'SET_STANDBY', payload: { enabled } });
+
+  // Control audio level monitor (imported lazily to avoid circular load-time dependency)
+  const { startAudioLevelMonitor, stopAudioLevelMonitor } = await import('./websocket.js');
+  if (enabled) {
+    stopAudioLevelMonitor();
+  } else {
+    startAudioLevelMonitor();
+  }
+
+  try {
+    const { exec } = await import('child_process');
+    if (enabled) {
+      exec('mpc stop');
+      exec('sudo /usr/local/bin/kiosk-power.sh standby');
+    } else {
+      exec('sudo /usr/local/bin/kiosk-power.sh wake');
+    }
+  } catch (err) {
+    console.error('[Standby] Power/mpc action failed:', err);
+  }
+}
+
+// ─── Event handler (runs inside serial queue) ─────────────────────────────────
+async function handleEvent(type, payload, excludeWs) {
+  switch (type) {
+    case 'BROADCAST_STATE': {
+      cachedPlaybackState = payload;
+      if (cachedStandbyState && payload && !payload.paused) {
+        await applyStandby(false);
+      }
+      broadcast({ type: 'PLAYBACK_STATE', payload }, excludeWs);
+      break;
+    }
+
+    case 'PLAYBACK_STATE': {
+      cachedPlaybackState = payload;
+      broadcast({ type: 'PLAYBACK_STATE', payload }, excludeWs);
+      break;
+    }
+
+    case 'SET_SOURCE': {
+      cachedSourceState = payload;
+      await setSetting('active_source', payload.source || (payload.spotify ? 'spotify' : 'local'));
+      if (payload.spotify || payload.source === 'spotify') {
+        try {
+          const { exec } = await import('child_process');
+          exec('mpc stop');
+        } catch (err) {
+          console.error('[SET_SOURCE] Failed to stop mpc:', err);
+        }
+      } else {
+        try {
+          const { getValidAccessToken } = await import('./spotify-auth.js');
+          const token = await getValidAccessToken();
+          if (token) {
+            fetch('https://api.spotify.com/v1/me/player/pause', {
+              method: 'PUT',
+              headers: { 'Authorization': `Bearer ${token}` },
+            }).catch(() => {});
+          }
+        } catch (err) {
+          console.error('[SET_SOURCE] Failed to pause Spotify:', err);
+        }
+      }
+      broadcast({ type: 'SET_SOURCE', payload }, excludeWs);
+      break;
+    }
+
+    case 'SET_STANDBY': {
+      await applyStandby(payload.enabled);
+      break;
+    }
+
+    case 'SET_EQ_SETTINGS': {
+      console.log('[EventService] EQ settings update:', payload);
+      await setSetting('eq_settings', JSON.stringify(payload));
+      try {
+        const { updateCamillaConfigFromSettings } = await import('./player.js');
+        await updateCamillaConfigFromSettings();
+      } catch (err) {
+        console.error('[EventService] CamillaDSP update failed on EQ change:', err);
+      }
+      broadcast({ type: 'EQ_SETTINGS', payload }, excludeWs);
+      break;
+    }
+
+    case 'SET_THEME_SETTINGS': {
+      console.log('[EventService] Theme settings update:', payload);
+      await setSetting('theme_settings', JSON.stringify(payload));
+      if (payload && payload.brightness !== undefined) {
+        await setHardwareBrightness(payload.brightness);
+      }
+      broadcast({ type: 'THEME_SETTINGS', payload }, excludeWs);
+      break;
+    }
+
+    case 'SET_REMOTE_ACCESS': {
+      console.log('[EventService] Remote access update:', payload);
+      await setSetting('remote_access_enabled', payload.enabled ? 'true' : 'false');
+      broadcast({ type: 'SET_REMOTE_ACCESS', payload }, excludeWs);
+      break;
+    }
+
+    case 'DSP_CALIBRATION': {
+      broadcast({ type: 'DSP_CALIBRATION', payload }, excludeWs);
+      break;
+    }
+
+    default:
+      console.warn('[EventService] Unknown event type:', type);
+  }
+}
+
+// ─── Startup state loader (replaces loadCachedStateFromDB in websocket.js) ───
+export const loadStateFromDB = async () => {
+  await dbReady;
+  try {
+    // Standby
+    let standbyVal = await getSetting('standby');
+    if (!standbyVal) {
+      standbyVal = 'false';
+      await setSetting('standby', 'false');
+      console.log('[EventService] Initialized default standby in DB.');
+    }
+    cachedStandbyState = standbyVal === 'true';
+    console.log(`[EventService] Loaded standby: ${cachedStandbyState}`);
+
+    // Theme / brightness
+    let themeSettingsVal = await getSetting('theme_settings');
+    if (!themeSettingsVal) {
+      const defaultTheme = { themeColor: 'amber', activeTheme: 'dot-matrix', brightness: 100 };
+      await setSetting('theme_settings', JSON.stringify(defaultTheme));
+      themeSettingsVal = JSON.stringify(defaultTheme);
+      console.log('[EventService] Initialized default theme_settings in DB.');
+    }
+    try {
+      const themeSettings = JSON.parse(themeSettingsVal);
+      if (themeSettings && themeSettings.brightness !== undefined) {
+        console.log(`[EventService] Restoring brightness: ${themeSettings.brightness}`);
+        await setHardwareBrightness(themeSettings.brightness);
+      }
+    } catch (e) {
+      console.warn('[EventService] Failed parsing theme_settings from DB:', e);
+    }
+
+    // EQ settings — validate schema and migrate if needed
+    let eqSettingsVal = await getSetting('eq_settings');
+    let needsMigrate = false;
+    if (eqSettingsVal) {
+      try {
+        const parsed = JSON.parse(eqSettingsVal);
+        if (!parsed || !Array.isArray(parsed.bands) || typeof parsed.bands[0] === 'object') {
+          needsMigrate = true;
+        }
+      } catch (e) {
+        needsMigrate = true;
+      }
+    } else {
+      needsMigrate = true;
+    }
+    if (needsMigrate) {
+      const defaultEq = { preset: 'Clinical Reference', bands: [0, 0, 0, 0, 0], saturation: 0, noiseFloor: 0, preAmp: 0.0 };
+      await setSetting('eq_settings', JSON.stringify(defaultEq));
+      console.log('[EventService] Initialized/migrated default eq_settings in DB.');
+    }
+
+    // Active source
+    let activeSource = await getSetting('active_source');
+    if (!activeSource) {
+      activeSource = 'spotify';
+      await setSetting('active_source', 'spotify');
+      console.log('[EventService] Initialized default active_source in DB.');
+    }
+    cachedSourceState = { spotify: activeSource === 'spotify', source: activeSource };
+    console.log(`[EventService] Loaded active source: ${activeSource}`);
+
+    // Remote access default
+    const remoteAccessVal = await getSetting('remote_access_enabled');
+    if (!remoteAccessVal) {
+      await setSetting('remote_access_enabled', 'true');
+      console.log('[EventService] Initialized default remote_access_enabled in DB.');
+    }
+
+    // Restore radio playback state if that was the last active source
+    if (activeSource === 'radio') {
+      const url = await getSetting('last_radio_url');
+      const name = await getSetting('last_radio_name');
+      const favicon = await getSetting('last_radio_favicon');
+      if (url) {
+        let isPlaying = false;
+        try {
+          const { exec } = await import('child_process');
+          const mpcStatus = await new Promise((resolve) => {
+            exec('mpc status', (err, stdout) => resolve(stdout || ''));
+          });
+          isPlaying = mpcStatus.includes('[playing]');
+        } catch (e) {}
+        cachedPlaybackState = {
+          paused: !isPlaying,
+          position: 0,
+          duration: 0,
+          track_window: {
+            current_track: {
+              name: name || 'WEB RADIO',
+              artists: [{ name: 'Live Stream' }],
+              album: { name: 'Web Radio Broadcast', images: favicon ? [{ url: favicon }] : [] },
+              url,
+            },
+          },
+        };
+        console.log(`[EventService] Restored last radio: ${name} (${url}), playing=${isPlaying}`);
+      }
+    }
+
+    // Restore CamillaDSP config
+    try {
+      const { updateCamillaConfigFromSettings } = await import('./player.js');
+      await updateCamillaConfigFromSettings();
+      console.log('[EventService] CamillaDSP config restored on startup.');
+    } catch (err) {
+      console.error('[EventService] Failed to restore CamillaDSP config:', err.message);
+    }
+
+    // Start audio level monitor
+    const { startAudioLevelMonitor } = await import('./websocket.js');
+    startAudioLevelMonitor();
+
+  } catch (err) {
+    console.warn('[EventService] Failed to load state from DB:', err.message);
+  }
+};
