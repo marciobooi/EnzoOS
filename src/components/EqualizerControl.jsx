@@ -196,6 +196,9 @@ export default function EqualizerControl({
           <div className="flex items-center justify-between mb-2 shrink-0">
             <span className="text-sm font-light tracking-[0.25em] uppercase" style={{ color: S.label }}>
               5-band parametric valve equalisation
+              <span className="normal-case tracking-normal ml-1.5 text-sm font-light" style={{ color: S.label }}>
+                (peaking biquad · 44.1kHz)
+              </span>
             </span>
             <div className="flex gap-1.5">
               <span className="w-1.5 h-1.5 rounded-full" style={{ background: S.accent }} />
@@ -250,9 +253,6 @@ export default function EqualizerControl({
             })}
           </div>
 
-          <p className="text-sm font-light text-center mt-2" style={{ color: S.label }}>
-            Peaking bi-quadratic filter units · 44.1kHz standard routing depth
-          </p>
         </div>
       </div>
     </div>
