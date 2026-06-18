@@ -12,9 +12,9 @@ export const THEME_COLORS = [
 
 export const SCREEN_THEMES = [
   { id: 'dot-matrix',  name: 'Retro Dot-Matrix', desc: 'Phosphor LED grid matrix simulation'    },
-  { id: 'dreamplayer', name: 'Dreamplayer',       desc: 'Neo Glass Retrofuture — square buttons' },
+  { id: 'dreamplayer', name: 'Dreamplayer',       desc: 'Neo Glass Retrofuture' },
   { id: 'glassplayer', name: 'Glassplayer',       desc: 'Liquid Glass Retrofuture'               },
-  { id: 'minimalist',  name: 'Minimalist',        desc: 'Dynamic 2-column album color console'   }
+  { id: 'minimalist',  name: 'Minimalist',        desc: 'Dynamic 2-column album color'   }
 ];
 
 export default function ThemeSettingsControl({
@@ -72,8 +72,7 @@ export default function ThemeSettingsControl({
                   style={{
                     height: '140px',
                     background: activeTheme === t.id ? S.surface : S.surfaceLo,
-                    border: `1px solid ${activeTheme === t.id ? S.accent : S.border}`,
-                    boxShadow: cardShadow,
+                    border: `1.5px solid ${activeTheme === t.id ? S.accent : S.border}`,
                   }}>
                   <div className="flex items-start justify-between">
                     <Monitor className="w-5 h-5 shrink-0" strokeWidth={1}
@@ -109,7 +108,7 @@ export default function ThemeSettingsControl({
                   style={{
                     background: themeColor === c.name ? S.surface : S.surfaceLo,
                     border: `1px solid ${themeColor === c.name ? S.borderHi : S.border}`,
-                    boxShadow: cardShadow,
+                
                   }}>
                   <div className="w-3.5 h-3.5 rounded-full shrink-0"
                     style={{ background: c.value, boxShadow: swatchRing }} />
