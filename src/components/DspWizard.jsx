@@ -252,19 +252,7 @@ export default function DspWizard({ onClose, onCalibrationComplete }) {
 
       <WizardHeader title="acoustic calibration wizard" onClose={onClose} />
 
-      {/* Step progress */}
-      <div className="flex items-center gap-3 mb-4 shrink-0">
-        <span className="text-sm font-light shrink-0 tabular-nums" style={{ color: S.label }}>
-          {String(currentStep + 1).padStart(2, '0')} / {String(QUESTIONS.length).padStart(2, '0')}
-        </span>
-        <div className="flex-grow h-1 rounded-full overflow-hidden flex gap-0.5"
-          style={{ background: S.track }}>
-          {QUESTIONS.map((_, idx) => (
-            <div key={idx} className="h-full flex-grow transition-all duration-300"
-              style={{ background: idx <= currentStep ? S.accent : S.track }} />
-          ))}
-        </div>
-      </div>
+
 
       {/* Question layout */}
       <div className="flex-grow flex flex-col lg:flex-row gap-4 items-stretch min-h-0">
@@ -327,16 +315,40 @@ export default function DspWizard({ onClose, onCalibrationComplete }) {
         </div>
       </div>
 
-      {/* Footer nav */}
-      <div className="flex justify-between items-center mt-4 pt-3 shrink-0"
+      {/* Footer — quit / progress / previous */}
+      <div className="flex items-center gap-4 mt-4 pt-3 shrink-0"
         style={{ borderTop: `1px solid ${S.border}` }}>
+
+        {/* Quit */}
+        <button onClick={onClose}
+          className="w-9 h-9 rounded-full flex items-center justify-center active:scale-90 transition-all cursor-pointer shrink-0"
+          style={{ background: `${S.errorHot}15`, border: `1px solid ${S.errorHot}40` }}>
+          <X className="h-4 w-4" style={{ color: S.errorHot }} />
+        </button>
+
+        {/* Step counter + bar */}
+        <div className="flex items-center gap-3 flex-grow min-w-0">
+          <span className="text-sm font-light shrink-0 tabular-nums" style={{ color: S.label }}>
+            {String(currentStep + 1).padStart(2, '0')} / {String(QUESTIONS.length).padStart(2, '0')}
+          </span>
+          <div className="flex-grow h-1 rounded-full overflow-hidden flex gap-0.5"
+            style={{ background: S.track }}>
+            {QUESTIONS.map((_, idx) => (
+              <div key={idx} className="h-full flex-grow transition-all duration-300"
+                style={{ background: idx <= currentStep ? S.accent : S.track }} />
+            ))}
+          </div>
+        </div>
+
+        {/* Previous */}
         <button onClick={() => currentStep > 0 && setCurrentStep(p => p - 1)}
           disabled={currentStep === 0}
-          className="flex items-center gap-1.5 text-sm font-semibold transition-colors cursor-pointer disabled:opacity-25"
+          className="flex items-center gap-1.5 text-sm font-semibold transition-colors cursor-pointer disabled:opacity-25 shrink-0"
           style={{ color: S.muted }}>
           <ChevronLeft className="h-4 w-4" strokeWidth={1.5} />
           Previous
         </button>
+
       </div>
     </div>
   );
