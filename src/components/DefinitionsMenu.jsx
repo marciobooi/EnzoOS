@@ -433,7 +433,7 @@ export default function DefinitionsMenu({
             </div>
           </div>
         </div>
-        <span className="text-sm font-light tracking-[0.25em] uppercase" style={{ color: S.label }}>hardware health</span>
+        <span className="text-xs font-light tracking-[0.25em]" style={{ color: S.label }}>hardware health</span>
       </div>
 
       {/* 6. SPOTIFY DISCONNECT CARD */}
