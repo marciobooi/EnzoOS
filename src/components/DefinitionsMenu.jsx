@@ -124,7 +124,7 @@ export default function DefinitionsMenu({
         }`}
         style={{ animationDelay: '0ms' }}
       >
-        <span className="text-[7px] font-light tracking-[0.4em] uppercase" style={{ color: S.label }}>stream service</span>
+        <span className="text-sm font-light tracking-[0.25em] uppercase" style={{ color: S.label }}>stream service</span>
         <div className="my-auto flex justify-center py-2">
           <svg viewBox="0 0 24 24" className="h-16 w-16 transition-all duration-300"
             style={{ fill: source === 'spotify' ? S.accent : S.track }}>
@@ -132,10 +132,10 @@ export default function DefinitionsMenu({
           </svg>
         </div>
         <div className="flex items-end justify-between w-full">
-          <span className="text-[15px] font-black tracking-tight leading-none"
+          <span className="text-lg font-black tracking-tight leading-none"
             style={{ color: source === 'spotify' ? S.strong : S.muted }}>Spotify</span>
           {source === 'spotify' && (
-            <span className="text-[8px] font-normal tracking-wide pb-0.5" style={{ color: S.accent }}>active</span>
+            <span className="text-sm font-normal tracking-wide pb-0.5" style={{ color: S.accent }}>active</span>
           )}
         </div>
       </button>
@@ -148,16 +148,16 @@ export default function DefinitionsMenu({
         }`}
         style={{ animationDelay: '30ms' }}
       >
-        <span className="text-[7px] font-light tracking-[0.4em] uppercase" style={{ color: S.label }}>local system</span>
+        <span className="text-sm font-light tracking-[0.25em] uppercase" style={{ color: S.label }}>local system</span>
         <div className="my-auto flex justify-center py-2">
           <Music strokeWidth={1} className="h-16 w-16 transition-all duration-300"
             style={{ color: source === 'local' ? S.accent : S.track }} />
         </div>
         <div className="flex items-end justify-between w-full">
-          <span className="text-[15px] font-black tracking-tight leading-none"
+          <span className="text-lg font-black tracking-tight leading-none"
             style={{ color: source === 'local' ? S.strong : S.muted }}>Local</span>
           {source === 'local' && (
-            <span className="text-[8px] font-normal tracking-wide pb-0.5" style={{ color: S.accent }}>active</span>
+            <span className="text-sm font-normal tracking-wide pb-0.5" style={{ color: S.accent }}>active</span>
           )}
         </div>
       </button>
@@ -170,16 +170,16 @@ export default function DefinitionsMenu({
         }`}
         style={{ animationDelay: '60ms' }}
       >
-        <span className="text-[7px] font-light tracking-[0.4em] uppercase" style={{ color: S.label }}>stream radio</span>
+        <span className="text-sm font-light tracking-[0.25em] uppercase" style={{ color: S.label }}>stream radio</span>
         <div className="my-auto flex justify-center py-2">
           <Radio strokeWidth={1} className="h-16 w-16 transition-all duration-300"
             style={{ color: source === 'radio' ? S.accent : S.track }} />
         </div>
         <div className="flex items-end justify-between w-full">
-          <span className="text-[15px] font-black tracking-tight leading-none"
+          <span className="text-lg font-black tracking-tight leading-none"
             style={{ color: source === 'radio' ? S.strong : S.muted }}>Radio</span>
           {source === 'radio' && (
-            <span className="text-[8px] font-normal tracking-wide pb-0.5" style={{ color: S.accent }}>active</span>
+            <span className="text-sm font-normal tracking-wide pb-0.5" style={{ color: S.accent }}>active</span>
           )}
         </div>
       </button>
@@ -190,14 +190,14 @@ export default function DefinitionsMenu({
         className="w-[180px] shrink-0 p-5 rounded-2xl text-left flex flex-col justify-between transition-all duration-300 relative group overflow-hidden cursor-pointer menu-card menu-card-enter hover:scale-[1.01]"
         style={{ animationDelay: '90ms' }}
       >
-        <span className="text-[7px] font-light tracking-[0.4em] uppercase" style={{ color: S.label }}>appearance</span>
+        <span className="text-sm font-light tracking-[0.25em] uppercase" style={{ color: S.label }}>appearance</span>
         <div className="my-auto flex justify-center py-2">
           <Sliders strokeWidth={1} className="h-16 w-16 transition-colors duration-300"
             style={{ color: S.track }} />
         </div>
         <div className="flex items-end justify-between w-full">
-          <span className="text-[15px] font-black tracking-tight leading-none" style={{ color: S.muted }}>Theme</span>
-          <span className="text-[8px] font-normal tracking-wide pb-0.5" style={{ color: S.label }}>settings</span>
+          <span className="text-lg font-black tracking-tight leading-none" style={{ color: S.muted }}>Theme</span>
+          <span className="text-sm font-normal tracking-wide pb-0.5" style={{ color: S.label }}>settings</span>
         </div>
       </button>
 
@@ -207,14 +207,14 @@ export default function DefinitionsMenu({
         className="w-[180px] shrink-0 p-5 rounded-2xl text-left flex flex-col justify-between transition-all duration-300 relative group overflow-hidden cursor-pointer menu-card menu-card-enter hover:scale-[1.01]"
         style={{ animationDelay: '120ms' }}
       >
-        <span className="text-[7px] font-light tracking-[0.4em] uppercase" style={{ color: S.label }}>acoustic profiler</span>
+        <span className="text-sm font-light tracking-[0.25em] uppercase" style={{ color: S.label }}>acoustic profiler</span>
         <div className="my-auto flex justify-center py-2">
           <Waves strokeWidth={1} className="h-16 w-16 transition-all duration-300"
             style={{ color: S.track }} />
         </div>
         <div className="flex items-end justify-between w-full">
-          <span className="text-[15px] font-black tracking-tight leading-none" style={{ color: S.muted }}>Acoustic</span>
-          <span className="text-[8px] font-normal tracking-wide pb-0.5" style={{ color: S.label }}>calibrate</span>
+          <span className="text-lg font-black tracking-tight leading-none" style={{ color: S.muted }}>Acoustic</span>
+          <span className="text-sm font-normal tracking-wide pb-0.5" style={{ color: S.label }}>calibrate</span>
         </div>
       </button>
 
@@ -229,16 +229,16 @@ export default function DefinitionsMenu({
         }`}
         style={{ animationDelay: '150ms' }}
       >
-        <span className="text-[7px] font-light tracking-[0.4em] uppercase" style={{ color: S.label }}>access panel</span>
+        <span className="text-sm font-light tracking-[0.25em] uppercase" style={{ color: S.label }}>access panel</span>
         <div className="my-auto flex justify-center py-2">
           <Smartphone strokeWidth={1} className="h-16 w-16 transition-all duration-300"
             style={{ color: remoteAccessEnabled ? S.accent : S.track,
                      opacity: remoteAccessEnabled ? 1 : 0.45 }} />
         </div>
         <div className="flex items-end justify-between w-full">
-          <span className="text-[15px] font-black tracking-tight leading-none"
+          <span className="text-lg font-black tracking-tight leading-none"
             style={{ color: remoteAccessEnabled ? S.strong : S.muted }}>Remote</span>
-          <span className="text-[8px] font-normal tracking-wide pb-0.5"
+          <span className="text-sm font-normal tracking-wide pb-0.5"
             style={{ color: remoteAccessEnabled ? S.accent : S.label }}>
             {remoteAccessEnabled ? 'enabled' : 'off'}
           </span>
@@ -252,7 +252,7 @@ export default function DefinitionsMenu({
         className="w-[180px] shrink-0 p-5 rounded-2xl text-left flex flex-col justify-between transition-all duration-300 relative group overflow-hidden cursor-pointer menu-card menu-card-enter hover:scale-[1.01]"
         style={{ animationDelay: '180ms' }}
       >
-        <span className="text-[7px] font-light tracking-[0.4em] uppercase" style={{ color: S.label }}>system firmware</span>
+        <span className="text-sm font-light tracking-[0.25em] uppercase" style={{ color: S.label }}>system firmware</span>
         <div className="my-auto flex justify-center py-2 w-full">
           {updateStatus === 'updating' ? (
             <div className="flex flex-col items-center gap-1.5 w-full">
@@ -269,9 +269,9 @@ export default function DefinitionsMenu({
           )}
         </div>
         <div className="flex items-end justify-between w-full">
-          <span className="text-[15px] font-black tracking-tight leading-none"
+          <span className="text-lg font-black tracking-tight leading-none"
             style={{ color: updateStatus === 'available' ? S.strong : S.muted }}>Update</span>
-          <span className="text-[8px] font-normal tracking-wide pb-0.5"
+          <span className="text-sm font-normal tracking-wide pb-0.5"
             style={{ color: updateStatus === 'available' ? S.accent : S.label }}>
             {updateStatus === 'checking'  && 'checking'}
             {updateStatus === 'updating'  && (otaPercent === 100 ? 'rebooting' : 'installing')}
@@ -286,12 +286,12 @@ export default function DefinitionsMenu({
       {/* 5b. SYSTEM HEALTH CARD */}
       <div className="w-[180px] shrink-0 p-5 rounded-2xl text-left flex flex-col justify-between transition-all duration-300 relative group overflow-hidden menu-card menu-card-enter"
         style={{ animationDelay: '210ms' }}>
-        <span className="text-[7px] font-light tracking-[0.4em] uppercase" style={{ color: S.label }}>system metrics</span>
+        <span className="text-sm font-light tracking-[0.25em] uppercase" style={{ color: S.label }}>system metrics</span>
         <div className="flex flex-col gap-3 my-auto w-full">
           <div className="flex flex-col gap-1 w-full">
             <div className="flex justify-between items-baseline">
-              <span className="text-[7px] font-light tracking-[0.3em] uppercase" style={{ color: S.label }}>cpu temp</span>
-              <span className="text-[11px] font-bold"
+              <span className="text-sm font-light tracking-[0.2em] uppercase" style={{ color: S.label }}>cpu temp</span>
+              <span className="text-base font-bold"
                 style={{ color: healthData.cpuTemp > 65 ? S.errorHot : S.strong }}>
                 {healthData.cpuTemp}°
               </span>
@@ -304,8 +304,8 @@ export default function DefinitionsMenu({
           </div>
           <div className="flex flex-col gap-1 w-full">
             <div className="flex justify-between items-baseline">
-              <span className="text-[7px] font-light tracking-[0.3em] uppercase" style={{ color: S.label }}>ram</span>
-              <span className="text-[11px] font-bold" style={{ color: S.strong }}>{healthData.ramLoad}%</span>
+              <span className="text-sm font-light tracking-[0.2em] uppercase" style={{ color: S.label }}>ram</span>
+              <span className="text-base font-bold" style={{ color: S.strong }}>{healthData.ramLoad}%</span>
             </div>
             <div className="w-full h-0.5 rounded-full overflow-hidden" style={{ background: S.track }}>
               <div className="h-full transition-all duration-500"
@@ -313,17 +313,17 @@ export default function DefinitionsMenu({
             </div>
           </div>
           <div className="flex justify-between items-baseline">
-            <span className="text-[7px] font-light tracking-[0.3em] uppercase" style={{ color: S.label }}>wi-fi</span>
+            <span className="text-sm font-light tracking-[0.2em] uppercase" style={{ color: S.label }}>wi-fi</span>
             <div className="flex items-center gap-1.5">
               <div className="w-1.5 h-1.5 rounded-full animate-pulse"
                 style={{ background: healthData.wifiSignal > -70 ? '#4a7c59' : S.muted }} />
-              <span className="text-[10px] font-semibold" style={{ color: S.strong }}>
+              <span className="text-sm font-semibold" style={{ color: S.strong }}>
                 {healthData.wifiSignal > -50 ? 'Excellent' : healthData.wifiSignal > -70 ? 'Good' : 'Fair'}
               </span>
             </div>
           </div>
         </div>
-        <span className="text-[7px] font-light tracking-[0.4em] uppercase" style={{ color: S.label }}>hardware health</span>
+        <span className="text-sm font-light tracking-[0.25em] uppercase" style={{ color: S.label }}>hardware health</span>
       </div>
 
       {/* 6. SPOTIFY DISCONNECT CARD */}
@@ -333,14 +333,14 @@ export default function DefinitionsMenu({
           className="w-[180px] shrink-0 p-5 rounded-2xl text-left flex flex-col justify-between transition-all duration-300 relative group overflow-hidden cursor-pointer menu-card menu-card-enter hover:scale-[1.01]"
           style={{ animationDelay: '240ms' }}
         >
-          <span className="text-[7px] font-light tracking-[0.4em] uppercase" style={{ color: S.label }}>connections</span>
+          <span className="text-sm font-light tracking-[0.25em] uppercase" style={{ color: S.label }}>connections</span>
           <div className="my-auto flex justify-center py-2">
             <LogOut strokeWidth={1} className="h-16 w-16 transition-colors duration-300"
               style={{ color: S.track }} />
           </div>
           <div className="flex items-end justify-between w-full">
-            <span className="text-[15px] font-black tracking-tight leading-none" style={{ color: S.muted }}>Spotify</span>
-            <span className="text-[8px] font-normal tracking-wide pb-0.5" style={{ color: S.label }}>sign out</span>
+            <span className="text-lg font-black tracking-tight leading-none" style={{ color: S.muted }}>Spotify</span>
+            <span className="text-sm font-normal tracking-wide pb-0.5" style={{ color: S.label }}>sign out</span>
           </div>
         </button>
       )}

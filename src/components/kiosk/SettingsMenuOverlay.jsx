@@ -52,13 +52,13 @@ export default function SettingsMenuOverlay() {
     >
       {/* Header & Close Button */}
       <div className="flex justify-between items-center mb-3 select-none shrink-0">
-        <h4 className="text-[11px] font-extrabold uppercase tracking-[0.2em]"
+        <h4 className="text-sm font-light tracking-[0.25em] uppercase"
           style={{ color: '#9a9896' }}>
           System Configuration Control Panel
         </h4>
         <button
           onClick={() => setIsMenuOpen(false)}
-          className="cursor-pointer text-[10px] font-extrabold font-sans px-4 py-1.5 rounded-full transition-all active:scale-95 active:opacity-80"
+          className="cursor-pointer text-sm font-extrabold font-sans px-4 py-1.5 rounded-full transition-all active:scale-95 active:opacity-80"
           style={{
             color: '#f0eeea',
             background: '#2a2826',

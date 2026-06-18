@@ -1,5 +1,5 @@
 import React from 'react';
-import { Palette, Sun, Monitor, X, Check } from 'lucide-react';
+import { Palette, Sun, Monitor, Check } from 'lucide-react';
 import { S, cardShadow, swatchRing } from '../styles/stone';
 
 export const THEME_COLORS = [
@@ -11,10 +11,12 @@ export const THEME_COLORS = [
 ];
 
 export const SCREEN_THEMES = [
-  { id: 'dot-matrix',  name: 'Retro Dot-Matrix',     desc: 'Phosphor LED grid matrix simulation'       },
-  { id: 'dreamplayer', name: 'Dreamplayer',           desc: 'Neo Glass Retrofuture — square buttons'    },
-  { id: 'glassplayer', name: 'Glassplayer',           desc: 'Liquid Glass Retrofuture'                  },
-  { id: 'minimalist',  name: 'Minimalist',            desc: 'Dynamic 2-column album color console'      },
+  { id: 'dot-matrix',  name: 'Retro Dot-Matrix', desc: 'Phosphor LED grid matrix simulation'    },
+  { id: 'dreamplayer', name: 'Dreamplayer',       desc: 'Neo Glass Retrofuture — square buttons' },
+  { id: 'glassplayer', name: 'Glassplayer',       desc: 'Liquid Glass Retrofuture'               },
+  { id: 'minimalist',  name: 'Minimalist',        desc: 'Dynamic 2-column album color console'   },
+  { id: 'neon-glow',   name: 'Cyberpunk Neon',    desc: 'Vibrant neon tube display mode',    disabled: true },
+  { id: 'vfd-chamber', name: 'VFD Vacuum Tube',   desc: 'Vacuum fluorescent display styling', disabled: true },
 ];
 
 export default function ThemeSettingsControl({
@@ -43,7 +45,7 @@ export default function ThemeSettingsControl({
         </div>
         {onClose && (
           <button onClick={onClose}
-            className="cursor-pointer px-4 py-1.5 rounded-full transition-all active:scale-95 active:opacity-80 text-sm font-extrabold font-sans"
+            className="cursor-pointer px-4 py-1.5 rounded-full transition-all active:scale-95 active:opacity-80 text-sm font-extrabold"
             style={{ background: S.accent, color: S.accentFg, border: 'none' }}>
             CLOSE
           </button>
@@ -57,9 +59,9 @@ export default function ThemeSettingsControl({
         <div className="lg:col-span-7 flex flex-col gap-4 overflow-y-auto rounded-xl p-4 stone-scrollbar"
           style={{ background: S.surface, border: `1px solid ${S.border}` }}>
 
-          {/* Screen theme selector */}
+          {/* Screen theme cards */}
           <div>
-            <span className="text-[7px] font-light tracking-[0.4em] uppercase block mb-2" style={{ color: S.label }}>
+            <span className="text-sm font-light tracking-[0.25em] uppercase block mb-3" style={{ color: S.label }}>
               display screen theme
             </span>
             <div className="grid grid-cols-4 gap-2">
@@ -71,26 +73,24 @@ export default function ThemeSettingsControl({
                     t.disabled ? 'opacity-35 cursor-not-allowed' : 'cursor-pointer active:scale-[0.98]'
                   }`}
                   style={{
-                    height: '130px',
+                    height: '160px',
                     background: activeTheme === t.id ? S.surface : S.surfaceLo,
                     border: `1px solid ${activeTheme === t.id ? S.accent : S.border}`,
                     boxShadow: cardShadow,
                   }}>
-                  {/* top row: icon + check */}
                   <div className="flex items-start justify-between">
-                    <Monitor className="w-4 h-4 shrink-0" strokeWidth={1}
+                    <Monitor className="w-5 h-5 shrink-0" strokeWidth={1}
                       style={{ color: activeTheme === t.id && !t.disabled ? S.accent : S.label }} />
                     {activeTheme === t.id && !t.disabled && (
-                      <Check className="w-3.5 h-3.5 shrink-0" strokeWidth={1.5} style={{ color: S.accent }} />
+                      <Check className="w-4 h-4 shrink-0" strokeWidth={1.5} style={{ color: S.accent }} />
                     )}
                   </div>
-                  {/* bottom: name + desc */}
                   <div>
-                    <div className="text-[10px] font-bold leading-tight"
+                    <div className="text-base font-bold leading-tight"
                       style={{ color: activeTheme === t.id && !t.disabled ? S.strong : S.muted }}>
                       {t.name}
                     </div>
-                    <div className="text-[7px] font-light mt-1 leading-normal" style={{ color: S.label }}>
+                    <div className="text-sm font-light mt-1 leading-snug" style={{ color: S.label }}>
                       {t.desc}
                     </div>
                   </div>
@@ -101,7 +101,7 @@ export default function ThemeSettingsControl({
 
           {/* Accent color palette */}
           <div>
-            <span className="text-[7px] font-light tracking-[0.4em] uppercase block mb-2" style={{ color: S.label }}>
+            <span className="text-sm font-light tracking-[0.25em] uppercase block mb-3" style={{ color: S.label }}>
               matrix light emission color
             </span>
             <div className="flex flex-wrap gap-2">
@@ -112,11 +112,11 @@ export default function ThemeSettingsControl({
                   style={{
                     background: themeColor === c.name ? S.surface : S.surfaceLo,
                     border: `1px solid ${themeColor === c.name ? S.borderHi : S.border}`,
-                   
+                    boxShadow: cardShadow,
                   }}>
-                  <div className="w-3 h-3 rounded-full shrink-0"
+                  <div className="w-3.5 h-3.5 rounded-full shrink-0"
                     style={{ background: c.value, boxShadow: swatchRing }} />
-                  <span className="text-[9px]"
+                  <span className="text-sm"
                     style={{ color: themeColor === c.name ? S.strong : S.muted,
                              fontWeight: themeColor === c.name ? 700 : 400 }}>
                     {c.label}
@@ -132,40 +132,38 @@ export default function ThemeSettingsControl({
           style={{ background: S.surface, border: `1px solid ${S.border}` }}>
           <div>
             <div className="flex items-center justify-between mb-3 shrink-0">
-              <span className="text-[7px] font-light tracking-[0.4em] uppercase" style={{ color: S.label }}>
+              <span className="text-sm font-light tracking-[0.25em] uppercase" style={{ color: S.label }}>
                 screen hardware parameters
               </span>
-              <Sun className="w-3.5 h-3.5" strokeWidth={1} style={{ color: S.label }} />
+              <Sun className="w-4 h-4" strokeWidth={1} style={{ color: S.label }} />
             </div>
 
             {/* Brightness */}
-            <div className="rounded-xl p-3 shrink-0"
+            <div className="rounded-xl p-4 shrink-0"
               style={{ background: S.bg, border: `1px solid ${S.track}` }}>
-              <div className="flex justify-between items-baseline mb-2">
-                <div className="flex items-center gap-1.5">
-                  <Sun className="w-3 h-3" strokeWidth={1} style={{ color: S.label }} />
-                  <span className="text-[8px] font-light tracking-wide" style={{ color: S.muted }}>
-                    Backlight Brightness
-                  </span>
+              <div className="flex justify-between items-baseline mb-3">
+                <div className="flex items-center gap-2">
+                  <Sun className="w-4 h-4" strokeWidth={1} style={{ color: S.label }} />
+                  <span className="text-sm font-light" style={{ color: S.muted }}>Backlight Brightness</span>
                 </div>
-                <span className="text-[13px] font-black tracking-tight" style={{ color: S.strong }}>
-                  {brightness}<span className="text-[9px] font-normal" style={{ color: S.label }}>%</span>
+                <span className="text-2xl font-black tracking-tight" style={{ color: S.strong }}>
+                  {brightness}<span className="text-sm font-normal" style={{ color: S.label }}>%</span>
                 </span>
               </div>
               <input type="range" min="10" max="100" step="5" value={brightness}
                 onChange={e => onBrightnessChange?.(Number(e.target.value))}
-                className="w-full h-0.5 rounded-full appearance-none cursor-pointer"
+                className="w-full h-1 rounded-full appearance-none cursor-pointer"
                 style={{ background: S.track, accentColor: S.accent }} />
-              <div className="flex justify-between mt-1.5 select-none">
-                <span className="text-[7px] font-light tracking-[0.3em] uppercase" style={{ color: S.label }}>dim</span>
-                <span className="text-[7px] font-light tracking-[0.3em] uppercase" style={{ color: S.label }}>full</span>
+              <div className="flex justify-between mt-2 select-none">
+                <span className="text-sm font-light tracking-widest uppercase" style={{ color: S.label }}>dim</span>
+                <span className="text-sm font-light tracking-widest uppercase" style={{ color: S.label }}>full</span>
               </div>
             </div>
 
             {/* Visualizer mode */}
-            <div className="rounded-xl p-3 mt-3 shrink-0"
+            <div className="rounded-xl p-4 mt-3 shrink-0"
               style={{ background: S.bg, border: `1px solid ${S.track}` }}>
-              <span className="text-[7px] font-light tracking-[0.4em] uppercase block mb-2.5" style={{ color: S.label }}>
+              <span className="text-sm font-light tracking-[0.25em] uppercase block mb-3" style={{ color: S.label }}>
                 active player visualizer
               </span>
               <div className="flex gap-2">
@@ -175,22 +173,22 @@ export default function ThemeSettingsControl({
                 ].map(m => (
                   <button key={m.id}
                     onClick={() => onVisualizerModeChange?.(m.id)}
-                    className="flex-1 py-2 rounded-xl text-center transition-all cursor-pointer select-none active:scale-95"
+                    className="flex-1 py-2.5 rounded-xl text-center transition-all cursor-pointer select-none active:scale-95"
                     style={{
                       background: visualizerMode === m.id ? S.accent : S.surfaceLo,
                       border: visualizerMode === m.id ? 'none' : `1px solid ${S.border}`,
                       color: visualizerMode === m.id ? S.accentFg : S.muted,
                       boxShadow: visualizerMode === m.id ? 'none' : cardShadow,
                     }}>
-                    <span className="text-[9px] font-medium">{m.label}</span>
+                    <span className="text-sm font-medium">{m.label}</span>
                   </button>
                 ))}
               </div>
             </div>
           </div>
 
-          <div className="pt-2 mt-2 shrink-0" style={{ borderTop: `0.5px solid ${S.border}` }}>
-            <p className="text-[7px] font-light text-center leading-relaxed" style={{ color: S.label }}>
+          <div className="pt-3 mt-2 shrink-0" style={{ borderTop: `0.5px solid ${S.border}` }}>
+            <p className="text-sm font-light text-center leading-relaxed" style={{ color: S.label }}>
               Backlight dimming applies a software rendering overlay to protect screen lifetime on Waveshare HDMI hardware.
             </p>
           </div>
