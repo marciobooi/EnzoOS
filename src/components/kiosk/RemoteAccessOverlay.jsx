@@ -1,6 +1,8 @@
 import { useContext } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
+import { Smartphone, Check } from 'lucide-react';
 import { Kk } from './KioskContext';
+import { S, cardShadow } from '../../styles/stone';
 
 export default function RemoteAccessOverlay() {
   const {
@@ -12,83 +14,136 @@ export default function RemoteAccessOverlay() {
     sendUpdate,
   } = useContext(Kk);
 
+  const toggle = (enabled) => {
+    setRemoteAccessEnabled(enabled);
+    sendUpdate('SET_REMOTE_ACCESS', { enabled });
+  };
+
   return (
     <div
-      className={`absolute inset-0 bg-[#0b0f19] border border-white/10 rounded-3xl shadow-2xl z-[60] transform transition-all duration-300 ease-in-out flex flex-col p-5 font-sans ${
+      className={`absolute inset-0 rounded-3xl z-[60] transform transition-all duration-300 ease-in-out flex flex-col p-5 font-sans ${
         isRemoteAccessOpen ? 'opacity-100 scale-100 pointer-events-auto' : 'opacity-0 scale-95 pointer-events-none'
       }`}
+      style={{ background: S.bg, border: `1px solid ${S.borderHi}` }}
     >
-      <div className="flex justify-between items-center mb-4 select-none shrink-0">
-        <h4 className="text-[11px] font-extrabold uppercase tracking-[0.2em] text-zinc-400">Remote Access Panel</h4>
+      {/* ── Header ──────────────────────────────────────────────────────────── */}
+      <div className="flex items-center justify-between pb-3 mb-4 shrink-0"
+        style={{ borderBottom: `1px solid ${S.border}` }}>
+        <div className="flex items-center gap-2">
+          <div className="w-6 h-6 rounded-full flex items-center justify-center shrink-0"
+            style={{ border: `1px solid ${S.border}` }}>
+            <Smartphone className="w-3.5 h-3.5" strokeWidth={1} style={{ color: S.label }} />
+          </div>
+          <span className="text-sm font-light tracking-[0.25em] uppercase" style={{ color: S.label }}>
+            remote access panel
+          </span>
+        </div>
         <button
           onClick={() => setIsRemoteAccessOpen(false)}
-          className="text-zinc-600 hover:text-zinc-900 transition-colors cursor-pointer text-[10px] font-extrabold font-sans px-3.5 py-1 rounded-lg bg-white border border-zinc-250 shadow-sm active:scale-95"
-        >
-          CLOSE [X]
+          className="cursor-pointer px-4 py-1.5 rounded-full transition-all active:scale-95 active:opacity-80 text-sm font-extrabold"
+          style={{ background: S.accent, color: S.accentFg, border: 'none' }}>
+          CLOSE
         </button>
       </div>
 
-      <div className="flex-grow flex flex-row gap-8 items-center min-h-0">
-        {/* Left: status + enable/disable */}
-        <div className="flex flex-col gap-4 shrink-0 w-52">
+      {/* ── Body — 2-col ────────────────────────────────────────────────────── */}
+      <div className="flex-grow flex flex-row gap-6 items-stretch min-h-0">
+
+        {/* Left — status + controls */}
+        <div className="w-56 shrink-0 flex flex-col gap-5 rounded-2xl p-5"
+          style={{ background: S.surface, border: `1px solid ${S.border}` }}>
+
+          {/* Status indicator */}
           <div className="flex items-center gap-2.5">
-            <div className={`w-2 h-2 rounded-full shrink-0 ${remoteAccessEnabled ? 'bg-emerald-400 animate-pulse' : 'bg-zinc-600'}`} />
-            <span className="text-[10px] font-extrabold uppercase tracking-widest text-zinc-200">
+            <div className="w-2 h-2 rounded-full shrink-0 transition-colors"
+              style={{ background: remoteAccessEnabled ? '#1a9e6a' : S.track }} />
+            <span className="text-sm font-semibold" style={{ color: remoteAccessEnabled ? S.strong : S.muted }}>
               {remoteAccessEnabled ? 'Access Enabled' : 'Access Disabled'}
             </span>
           </div>
-          <p className="text-[9px] text-zinc-500 leading-relaxed">
-            Allow mobile devices on the same network to connect and control this player.
+
+          <p className="text-sm font-light leading-relaxed" style={{ color: S.label }}>
+            Allow mobile devices on the same Wi-Fi to connect and control this player.
           </p>
-          <div className="flex flex-col gap-2">
+
+          {/* Enable / Disable */}
+          <div className="flex flex-col gap-2 mt-auto">
             <button
-              onClick={() => { setRemoteAccessEnabled(true); sendUpdate('SET_REMOTE_ACCESS', { enabled: true }); }}
-              className={`py-2.5 px-4 rounded-xl text-[10px] font-extrabold uppercase tracking-widest transition-all active:scale-95 cursor-pointer ${
-                remoteAccessEnabled
-                  ? 'bg-[var(--theme-color)] text-black shadow-[0_0_12px_var(--theme-color-glow)]'
-                  : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700 hover:text-white'
-              }`}
-            >
+              onClick={() => toggle(true)}
+              className="w-full py-3 rounded-xl text-sm font-semibold transition-all active:scale-95 cursor-pointer flex items-center justify-between px-4"
+              style={{
+                background: remoteAccessEnabled ? S.accent : S.surfaceLo,
+                border: remoteAccessEnabled ? 'none' : `1px solid ${S.border}`,
+                color: remoteAccessEnabled ? S.accentFg : S.muted,
+                boxShadow: remoteAccessEnabled ? 'none' : cardShadow,
+              }}>
               Enable Remote
+              {remoteAccessEnabled && <Check className="w-4 h-4" strokeWidth={1.5} />}
             </button>
             <button
-              onClick={() => { setRemoteAccessEnabled(false); sendUpdate('SET_REMOTE_ACCESS', { enabled: false }); }}
-              className={`py-2.5 px-4 rounded-xl text-[10px] font-extrabold uppercase tracking-widest transition-all active:scale-95 cursor-pointer ${
-                !remoteAccessEnabled
-                  ? 'bg-red-500/80 text-white'
-                  : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700 hover:text-white'
-              }`}
-            >
+              onClick={() => toggle(false)}
+              className="w-full py-3 rounded-xl text-sm font-semibold transition-all active:scale-95 cursor-pointer"
+              style={{
+                background: !remoteAccessEnabled ? `${S.errorHot}18` : S.surfaceLo,
+                border: !remoteAccessEnabled ? `1px solid ${S.errorHot}50` : `1px solid ${S.border}`,
+                color: !remoteAccessEnabled ? S.errorHot : S.muted,
+                boxShadow: remoteAccessEnabled ? cardShadow : 'none',
+              }}>
               Disable Remote
             </button>
           </div>
         </div>
 
         {/* Divider */}
-        <div className="w-px self-stretch bg-white/5 shrink-0" />
+        <div className="w-px shrink-0 self-stretch" style={{ background: S.border }} />
 
-        {/* Right: QR code + URL + instructions */}
-        <div className="flex-grow flex flex-row items-center gap-10">
-          <div className={`p-3 rounded-2xl shrink-0 transition-opacity duration-300 ${remoteAccessEnabled ? 'bg-white opacity-100' : 'bg-zinc-800 opacity-30'}`}>
+        {/* Right — QR + URL + instructions */}
+        <div className="flex-grow flex flex-row items-center gap-8 min-w-0">
+
+          {/* QR code */}
+          <div className="shrink-0 rounded-2xl p-3 transition-opacity duration-300"
+            style={{
+              background: '#ffffff',
+              border: `1px solid ${S.border}`,
+              boxShadow: cardShadow,
+              opacity: remoteAccessEnabled ? 1 : 0.3,
+            }}>
             <QRCodeSVG
-              value={remoteUrl}
+              value={remoteUrl || 'http://resonance.local'}
               size={148}
-              bgColor={remoteAccessEnabled ? '#ffffff' : '#1f2937'}
-              fgColor="#000000"
+              bgColor="#ffffff"
+              fgColor="#1a1918"
               level="M"
             />
           </div>
 
-          <div className="flex flex-col gap-4">
+          {/* URL + instructions */}
+          <div className="flex flex-col gap-5 min-w-0">
             <div>
-              <p className="text-[8px] font-extrabold uppercase tracking-widest text-zinc-500 mb-1.5">Remote URL</p>
-              <p className="text-[11px] font-mono text-[var(--theme-color)] break-all">{remoteUrl}</p>
+              <p className="text-sm font-light tracking-[0.25em] uppercase mb-2" style={{ color: S.label }}>
+                remote url
+              </p>
+              <p className="text-base font-medium break-all" style={{ color: S.strong }}>
+                {remoteUrl || '—'}
+              </p>
             </div>
-            <div className="flex flex-col gap-1.5">
-              <p className="text-[8px] font-extrabold uppercase tracking-widest text-zinc-500 mb-0.5">How to connect</p>
-              <p className="text-[9px] text-zinc-400">1 · Point your phone camera at the QR code</p>
-              <p className="text-[9px] text-zinc-400">2 · Open the link in your mobile browser</p>
-              <p className="text-[9px] text-zinc-400">3 · Both devices must be on the same Wi-Fi</p>
+
+            <div>
+              <p className="text-sm font-light tracking-[0.25em] uppercase mb-2" style={{ color: S.label }}>
+                how to connect
+              </p>
+              <div className="flex flex-col gap-2">
+                {[
+                  'Point your phone camera at the QR code',
+                  'Open the link in your mobile browser',
+                  'Both devices must be on the same Wi-Fi',
+                ].map((step, i) => (
+                  <div key={i} className="flex items-start gap-2.5">
+                    <span className="text-sm font-light shrink-0 tabular-nums w-4" style={{ color: S.label }}>{i + 1}</span>
+                    <span className="text-sm font-light" style={{ color: S.muted }}>{step}</span>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         </div>
