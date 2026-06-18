@@ -63,13 +63,23 @@ router.post('/previous', async (req, res) => {
 });
 
 // POST /api/player/volume -> Set local player volume
+// Applies a perceptual (^1.7) curve so the slider feels linear to the ear.
+// Linear MPD volume at 50% = -6dB which stacks with any hardware attenuation
+// and sounds near-silent; the curve maps 50 user → ~33 MPD (still -9.6dB
+// vs hardware max) giving proper perceived midpoint.
+function toMpcVolume(userVol) {
+  if (userVol <= 0) return 0;
+  if (userVol >= 100) return 100;
+  return Math.round(Math.pow(userVol / 100, 1.7) * 100);
+}
+
 router.post('/volume', async (req, res) => {
   const vol = parseInt(req.body.volume, 10);
   if (!Number.isFinite(vol) || vol < 0 || vol > 100) {
     return res.status(400).json({ error: 'Invalid volume: must be 0–100' });
   }
   try {
-    await execPromise(`mpc volume ${vol}`);
+    await execPromise(`mpc volume ${toMpcVolume(vol)}`);
     res.json({ success: true });
   } catch (err) {
     console.error('[Local Player] Volume failed:', err);
@@ -406,7 +416,7 @@ function generateCamillaConfig(answers, eqSettings, dacInfo) {
   let config = {
     devices: {
       samplerate: dacInfo.samplerate || 44100,
-      chunksize: 8192,
+      chunksize: 1024,
       queuelimit: 4,
       capture: { type: "Alsa", channels: 2, device: "loop_dsnoop", format: "S16LE" },
       playback: {
@@ -602,8 +612,8 @@ pcm.camilla_input {
         channels 2
         rate 44100
         format S16_LE
-        period_size 8192
-        buffer_size 32768
+        period_size 1024
+        buffer_size 4096
     }
 }
 
@@ -617,7 +627,7 @@ pcm.loop_dsnoop {
         channels 2
         rate 44100
         format S16_LE
-        period_size 8192
+        period_size 1024
     }
 }
 `;
@@ -642,6 +652,17 @@ pcm.loop_dsnoop {
   } catch (err) {
     console.warn('[ALSA] Failed to write /etc/asound.conf (non-root context or missing sudoers permission):', err.message);
   }
+
+  // Maximise hardware PCM output volume so only MPD software volume controls
+  // loudness. Without this the hardware attenuates by up to -23.8dB, making
+  // the lower half of the volume slider sound like silence.
+  try {
+    const { exec } = await import('child_process');
+    exec("amixer -c 0 cset name='PCM Playback Volume' 255,255", (err) => {
+      if (err) console.warn('[ALSA] Could not set PCM Playback Volume to max:', err.message);
+      else console.log('[ALSA] PCM Playback Volume set to 255 (0dB).');
+    });
+  } catch {}
 }
 
 // POST /api/player/dsp-calibration -> Save user DSP calibration answers & generate configuration
