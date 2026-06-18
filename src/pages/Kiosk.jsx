@@ -466,8 +466,17 @@ export default function Kiosk() {
     }
     setSource(nextSource);
     setPlaybackState(null);
+    setTrackPosition(0);
+    setTrackDuration(0);
     const isSpotify = nextSource === 'spotify';
     sendUpdate('SET_SOURCE', { spotify: isSpotify, source: nextSource });
+    // When switching to local, immediately stop MPD so the previous radio URL
+    // cannot be resumed during the race window before the server's queue-clear
+    // runs. Fire-and-forget — the server SET_SOURCE handler also clears but may
+    // be delayed by the serial event queue.
+    if (nextSource === 'local') {
+      fetch('/api/player/pause', { method: 'POST' }).catch(() => {});
+    }
   };
 
   const handleToggleFavoriteRadio = async (station) => {
@@ -801,9 +810,11 @@ export default function Kiosk() {
         const isPaused = playbackState ? playbackState.paused : true;
         if (isPaused) {
           await api.localPlay();
-          const newState = { ...(playbackState || {}), paused: false };
-          setPlaybackState(newState);
-          sendUpdate('BROADCAST_STATE', newState);
+          // Always fetch fresh MPD state after play — never spread the current
+          // playbackState, which may be stale from a previous source (e.g. a
+          // radio track that was still in the closure when the user switched to
+          // local and immediately pressed play).
+          setTimeout(syncLocalState, 350);
         } else {
           await api.localPause();
           const newState = { ...(playbackState || {}), paused: true };
