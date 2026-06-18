@@ -707,15 +707,60 @@ export async function updateCamillaConfigFromSettings() {
   fs.writeFileSync(configPath, yamlString, 'utf8');
   console.log(`[CamillaDSP] Generated sound profile successfully: ${configPath}`);
 
-  // Reload CamillaDSP service to apply the configuration profile
-  try {
-    await execPromise('sudo systemctl restart camilladsp');
-    console.log('[CamillaDSP] Restarted camilladsp service successfully.');
-  } catch (err) {
-    console.warn('[CamillaDSP] Failed to restart camilladsp service (might not be installed yet):', err.message);
+  // Apply config via CamillaDSP WebSocket hot-reload (no audio gap).
+  // Falls back to systemctl restart only when CamillaDSP WS isn't available.
+  const hotReloaded = await hotReloadCamilla(yamlString);
+  if (!hotReloaded) {
+    try {
+      await execPromise('sudo systemctl restart camilladsp');
+      console.log('[CamillaDSP] Restarted camilladsp service (fallback).');
+    } catch (err) {
+      console.warn('[CamillaDSP] Failed to restart camilladsp service:', err.message);
+    }
   }
 
   return dacInfo;
+}
+
+/**
+ * Hot-reload CamillaDSP config via its WebSocket API.
+ * Sends SetConfig to port 1234 — reloads filters while audio continues playing.
+ * Returns true on success, false if CamillaDSP WS is unreachable.
+ */
+async function hotReloadCamilla(yamlString) {
+  try {
+    const { WebSocket } = await import('ws');
+    return await new Promise((resolve) => {
+      const ws = new WebSocket('ws://localhost:1234');
+      const timer = setTimeout(() => { ws.terminate(); resolve(false); }, 3000);
+
+      ws.on('open', () => {
+        ws.send(JSON.stringify({ SetConfig: yamlString }));
+      });
+
+      ws.on('message', (data) => {
+        clearTimeout(timer);
+        ws.close();
+        try {
+          const msg = JSON.parse(data.toString());
+          const ok = msg.SetConfig === 'Ok';
+          console.log(ok
+            ? '[CamillaDSP] Hot-reload applied — no audio gap.'
+            : '[CamillaDSP] Hot-reload response:', msg);
+          resolve(ok);
+        } catch { resolve(false); }
+      });
+
+      ws.on('error', (err) => {
+        clearTimeout(timer);
+        console.warn('[CamillaDSP] Hot-reload WS error:', err.message);
+        resolve(false);
+      });
+    });
+  } catch (err) {
+    console.warn('[CamillaDSP] Hot-reload unavailable:', err.message);
+    return false;
+  }
 }
 
 // GET /api/player/library/artists

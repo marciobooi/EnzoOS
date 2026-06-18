@@ -219,7 +219,7 @@ export default function RemoteControl() {
   const handleVisualizerModeChange = m => { setVisualizerMode(m); localStorage.setItem('resonance_visualizer_mode', m); sendUpdate('SET_THEME_SETTINGS', { themeColor: theme, activeTheme, brightness, visualizerMode: m }); };
 
   // ── EQ handlers ───────────────────────────────────────────────────────────
-  const queueEqSync = (preset, bands, sat, nf, pa) => { clearTimeout(eqSyncTimeout.current); eqSyncTimeout.current = setTimeout(() => sendUpdate('SET_EQ_SETTINGS', { preset, bands, saturation: sat, noiseFloor: nf, preAmp: pa }), 400); };
+  const queueEqSync = (preset, bands, sat, nf, pa) => { clearTimeout(eqSyncTimeout.current); eqSyncTimeout.current = setTimeout(() => sendUpdate('SET_EQ_SETTINGS', { preset, bands, saturation: sat, noiseFloor: nf, preAmp: pa }), 800); };
   const handleEqPresetChange = name => {
     setEqPreset(name); localStorage.setItem('resonance_eq_preset', name);
     const f = EQ_PRESETS.find(p => p.name === name);

@@ -73,7 +73,7 @@ export default function Kiosk() {
         brightness: brightnessVal,
         visualizerMode: visualizerModeVal
       });
-    }, 400);
+    }, 800);
   };
 
   const handleThemeColorChange = (newColor) => {
@@ -155,7 +155,7 @@ export default function Kiosk() {
         noiseFloor,
         preAmp
       });
-    }, 400);
+    }, 800);
   };
 
   const handleEqPresetChange = (presetName) => {
