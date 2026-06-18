@@ -50,7 +50,7 @@ export default function RemoteAccessOverlay() {
       <div className="flex-grow grid grid-cols-3 gap-4 min-h-0 overflow-hidden">
 
         {/* Col 1 — status + controls */}
-        <div className="flex flex-col gap-4 rounded-2xl p-4 overflow-hidden"
+        <div className="flex flex-col gap-4 rounded-2xl p-4 overflow-y-auto stone-scrollbar"
           style={{ background: S.surface, border: `1px solid ${S.border}` }}>
 
           <div className="flex items-center gap-2.5">
@@ -91,12 +91,12 @@ export default function RemoteAccessOverlay() {
         </div>
 
         {/* Col 2 — QR code (hero, centered) */}
-        <div className="flex flex-col items-center justify-center gap-3 rounded-2xl p-4 overflow-hidden"
+        <div className="flex flex-col items-center justify-center gap-3 rounded-2xl p-4 overflow-hidden min-h-0"
           style={{ background: S.surface, border: `1px solid ${S.border}` }}>
           <p className="text-sm font-light tracking-[0.25em] uppercase shrink-0" style={{ color: S.label }}>
             scan to connect
           </p>
-          <div className="rounded-2xl p-3 transition-opacity duration-300 shrink-0"
+          <div className="rounded-2xl p-3 transition-opacity duration-300 w-full flex-1 flex items-center justify-center min-h-0"
             style={{
               background: '#ffffff',
               border: `1px solid ${S.border}`,
@@ -105,16 +105,17 @@ export default function RemoteAccessOverlay() {
             }}>
             <QRCodeSVG
               value={remoteUrl || 'http://resonance.local'}
-              size={150}
+              size={130}
               bgColor="#ffffff"
               fgColor="#1a1918"
               level="M"
+              style={{ maxWidth: '100%', height: 'auto' }}
             />
           </div>
         </div>
 
         {/* Col 3 — URL + instructions */}
-        <div className="flex flex-col gap-4 rounded-2xl p-4 overflow-hidden"
+        <div className="flex flex-col gap-4 rounded-2xl p-4 overflow-y-auto stone-scrollbar"
           style={{ background: S.surface, border: `1px solid ${S.border}` }}>
 
           <div className="shrink-0">
