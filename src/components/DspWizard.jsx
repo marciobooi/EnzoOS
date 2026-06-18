@@ -261,13 +261,10 @@ export default function DspWizard({ onClose, onCalibrationComplete }) {
         <div className="w-full lg:w-[65%] flex flex-col justify-between rounded-2xl p-4 min-h-0"
           style={{ background: S.surface, border: `1px solid ${S.border}` }}>
           <div className="space-y-2">
-            <span className="text-sm font-light tracking-[0.25em] uppercase" style={{ color: S.label }}>
-              question data card
-            </span>
             <h3 className="text-lg font-bold leading-snug" style={{ color: S.strong }}>
               {activeQuestion.question}
             </h3>
-            <p className="text-sm font-light leading-relaxed" style={{ color: S.muted }}>
+            <p className="text-[.6rem] font-light leading-relaxed" style={{ color: S.muted }}>
               {activeQuestion.description}
             </p>
           </div>
