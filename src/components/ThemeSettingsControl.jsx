@@ -182,6 +182,7 @@ export default function ThemeSettingsControl({
                       background: visualizerMode === m.id ? S.accent : S.surfaceLo,
                       border: visualizerMode === m.id ? 'none' : `1px solid ${S.border}`,
                       color: visualizerMode === m.id ? S.accentFg : S.muted,
+                      boxShadow: visualizerMode === m.id ? 'none' : cardShadow,
                     }}>
                     <span className="text-[9px] font-medium">{m.label}</span>
                   </button>
