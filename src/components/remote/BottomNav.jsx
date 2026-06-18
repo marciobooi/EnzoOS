@@ -1,8 +1,8 @@
 import React, { useContext } from 'react';
-import { Music, Library, Layers, Radio, Sliders } from 'lucide-react';
+import { Music, Library, Layers, Radio, Sliders, Search } from 'lucide-react';
 import { Tk } from './shared';
 
-const TABS = [
+const BASE_TABS = [
   { id: 'player',   Icon: Music,    label: 'Player'   },
   { id: 'library',  Icon: Library,  label: 'Library'  },
   { id: 'source',   Icon: Layers,   label: 'Source'   },
@@ -10,10 +10,19 @@ const TABS = [
   { id: 'settings', Icon: Sliders,  label: 'Settings' },
 ];
 
-const N = TABS.length;
+const N = BASE_TABS.length;
 
 export default function BottomNav({ navH }) {
-  const { C, activeTab, setActiveTab, darkMode } = useContext(Tk);
+  const { C, activeTab, setActiveTab, darkMode, source } = useContext(Tk);
+
+  const TABS = BASE_TABS.map(t =>
+    t.id === 'radio'
+      ? source === 'radio'
+        ? t
+        : { ...t, Icon: Search, label: 'Search' }
+      : t
+  );
+
   const activeIdx = TABS.findIndex(t => t.id === activeTab);
 
   return (

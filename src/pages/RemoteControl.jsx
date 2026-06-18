@@ -13,7 +13,8 @@ import BottomNav from '../components/remote/BottomNav';
 import PlayerTab   from '../components/remote/PlayerTab';
 import LibraryTab  from '../components/remote/LibraryTab';
 import SourceTab   from '../components/remote/SourceTab';
-import RadioTab    from '../components/remote/RadioTab';
+import RadioTab         from '../components/remote/RadioTab';
+import SpotifySearchTab from '../components/remote/SpotifySearchTab';
 import SettingsTab from '../components/remote/SettingsTab';
 import MiniPlayer  from '../components/remote/MiniPlayer';
 import QueuePanel  from '../components/remote/QueuePanel';
@@ -505,7 +506,7 @@ export default function RemoteControl() {
               {activeTab === 'player'   && <PlayerTab />}
               {activeTab === 'library'  && <LibraryTab />}
               {activeTab === 'source'   && <SourceTab />}
-              {activeTab === 'radio'    && <RadioTab />}
+              {activeTab === 'radio'    && (source === 'radio' ? <RadioTab /> : <SpotifySearchTab />)}
               {activeTab === 'settings' && <SettingsTab />}
             </div>
           </div>
