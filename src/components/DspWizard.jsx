@@ -270,7 +270,7 @@ export default function DspWizard({ onClose, onCalibrationComplete }) {
       <div className="flex-grow flex flex-col lg:flex-row gap-4 items-stretch min-h-0">
 
         {/* Left — question details */}
-        <div className="w-full lg:w-[45%] flex flex-col justify-between rounded-2xl p-4 min-h-0"
+        <div className="w-full lg:w-[65%] flex flex-col justify-between rounded-2xl p-4 min-h-0"
           style={{ background: S.surface, border: `1px solid ${S.border}` }}>
           <div className="space-y-2">
             <span className="text-sm font-light tracking-[0.25em] uppercase" style={{ color: S.label }}>
@@ -294,7 +294,7 @@ export default function DspWizard({ onClose, onCalibrationComplete }) {
         </div>
 
         {/* Right — options */}
-        <div className="w-full lg:w-[55%] flex flex-col gap-2 overflow-y-auto stone-scrollbar min-h-0">
+        <div className="w-full lg:w-[35%] flex flex-col gap-2 overflow-y-auto stone-scrollbar min-h-0">
           {activeQuestion.options.map(opt => {
             const isSelected = selectedValue === opt.value;
             return (
@@ -330,12 +330,6 @@ export default function DspWizard({ onClose, onCalibrationComplete }) {
       {/* Footer nav */}
       <div className="flex justify-between items-center mt-4 pt-3 shrink-0"
         style={{ borderTop: `1px solid ${S.border}` }}>
-        <button onClick={onClose}
-          className="w-9 h-9 rounded-full flex items-center justify-center active:scale-90 transition-all cursor-pointer"
-          style={{ background: `${S.errorHot}15`, border: `1px solid ${S.errorHot}40` }}>
-          <X className="h-4 w-4" style={{ color: S.errorHot }} />
-        </button>
-
         <button onClick={() => currentStep > 0 && setCurrentStep(p => p - 1)}
           disabled={currentStep === 0}
           className="flex items-center gap-1.5 text-sm font-semibold transition-colors cursor-pointer disabled:opacity-25"
