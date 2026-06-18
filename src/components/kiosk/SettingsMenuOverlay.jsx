@@ -107,7 +107,11 @@ export default function SettingsMenuOverlay() {
             sendUpdate('SET_REMOTE_ACCESS', { enabled });
           }}
           onOpenRemoteAccess={async () => {
+            // Open overlay immediately (z-[60] sits above this overlay's z-50)
+            // then close the menu — no flash of the player view
+            setIsRemoteAccessOpen(true);
             setIsMenuOpen(false);
+            // URL fetch runs in background; QR updates once it resolves
             try {
               const r = await fetch('/api/system/lan-url');
               const d = await r.json();
@@ -115,7 +119,6 @@ export default function SettingsMenuOverlay() {
             } catch {
               setRemoteUrl(`http://${window.location.hostname}:5000/remote`);
             }
-            setIsRemoteAccessOpen(true);
           }}
         />
       </div>
