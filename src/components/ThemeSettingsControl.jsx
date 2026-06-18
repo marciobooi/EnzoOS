@@ -45,9 +45,9 @@ export default function ThemeSettingsControl({
         </div>
         {onClose && (
           <button onClick={onClose}
-            className="cursor-pointer px-3 py-1 rounded-full transition-all active:scale-95 text-[8px] font-light tracking-wide"
+            className="cursor-pointer px-4 py-1.5 rounded-full transition-all active:scale-95 active:opacity-80 text-[10px] font-extrabold font-sans"
             style={{ background: S.accent, color: S.accentFg, border: 'none' }}>
-            close
+            CLOSE
           </button>
         )}
       </div>
