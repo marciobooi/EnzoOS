@@ -65,7 +65,7 @@ export default function RemoteAccessOverlay() {
             Allow mobile devices on the same Wi-Fi to connect and control this player.
           </p>
 
-          <div className="flex flex-col gap-2 mt-auto">
+          <div className="flex gap-2 mt-auto">
             <button onClick={() => toggle(true)}
               className="w-full py-3 rounded-xl text-sm font-semibold transition-all active:scale-95 cursor-pointer flex items-center justify-between px-4"
               style={{
@@ -106,6 +106,7 @@ export default function RemoteAccessOverlay() {
               value={remoteUrl || 'http://resonance.local'}
               size={130}
               fgColor="#1a1918"
+              bgColor="transparent"
               level="M"
               style={{ maxWidth: '100%', height: 'auto' }}
             />
