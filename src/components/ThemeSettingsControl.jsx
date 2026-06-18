@@ -64,7 +64,7 @@ export default function ThemeSettingsControl({
             <span className="text-[7px] font-light tracking-[0.4em] uppercase block mb-2" style={{ color: S.label }}>
               display screen theme
             </span>
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-4 gap-2">
               {SCREEN_THEMES.map(t => (
                 <button key={t.id}
                   disabled={t.disabled}
