@@ -464,19 +464,43 @@ export default function Kiosk() {
     if (!targetSource || typeof targetSource !== 'string') {
       nextSource = source === 'spotify' ? 'local' : (source === 'local' ? 'radio' : 'spotify');
     }
+
+    // ── Immediately silence the CURRENT source ────────────────────────────────
+    // Fire-and-forget before the async server event queue even processes
+    // SET_SOURCE. Every source type has a direct stop call so there is no
+    // audio bleed between sources regardless of queue latency.
+    switch (source) {
+      case 'local':
+      case 'radio':
+        fetch('/api/player/pause', { method: 'POST' }).catch(() => {});
+        break;
+      case 'spotify':
+        if (token) {
+          fetch('https://api.spotify.com/v1/me/player/pause', {
+            method: 'PUT',
+            headers: { 'Authorization': `Bearer ${token}` },
+          }).catch(() => {});
+        }
+        break;
+      case 'airplay':
+        fetch('/api/player/airplay/stop', { method: 'POST' }).catch(() => {});
+        break;
+      case 'upnp':
+        fetch('/api/player/upnp/stop', { method: 'POST' }).catch(() => {});
+        break;
+      case 'bluetooth':
+        fetch('/api/player/bluetooth/stop', { method: 'POST' }).catch(() => {});
+        break;
+      default:
+        break;
+    }
+
     setSource(nextSource);
     setPlaybackState(null);
     setTrackPosition(0);
     setTrackDuration(0);
     const isSpotify = nextSource === 'spotify';
     sendUpdate('SET_SOURCE', { spotify: isSpotify, source: nextSource });
-    // When switching to local, immediately stop MPD so the previous radio URL
-    // cannot be resumed during the race window before the server's queue-clear
-    // runs. Fire-and-forget — the server SET_SOURCE handler also clears but may
-    // be delayed by the serial event queue.
-    if (nextSource === 'local') {
-      fetch('/api/player/pause', { method: 'POST' }).catch(() => {});
-    }
   };
 
   const handleToggleFavoriteRadio = async (station) => {
