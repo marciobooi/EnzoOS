@@ -378,6 +378,11 @@ export const api = {
   /**
    * Seek local media.
    */
+  async localGetStatus() {
+    const response = await fetch('/api/player/status');
+    return handleResponse(response);
+  },
+
   async localSeek(position) {
     const response = await fetch('/api/player/seek', {
       method: 'POST',

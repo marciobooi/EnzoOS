@@ -186,14 +186,31 @@ async function handleEvent(type, payload, excludeWs) {
         }
 
         if (newSource === 'radio') {
-          // Auto-resume last radio station when switching TO radio (not when already on radio).
-          // Skip if same source — avoids restarting the stream when a client plays a station
-          // via the REST route (which already handles playback) and also sends SET_SOURCE over WS.
-          if (previousSource !== 'radio') {
-            const url = await getSetting('last_radio_url');
-            if (url) {
-              const name = await getSetting('last_radio_name');
-              const favicon = await getSetting('last_radio_favicon');
+          const url = await getSetting('last_radio_url');
+          const name = await getSetting('last_radio_name');
+          const favicon = await getSetting('last_radio_favicon');
+
+          if (url) {
+            // Always build the cached state from DB so the broadcast is correct regardless
+            // of whether this came from the REST play-radio route or a bare source switch.
+            cachedPlaybackState = {
+              paused: false,
+              position: 0,
+              duration: 0,
+              track_window: {
+                current_track: {
+                  name: name || 'WEB RADIO',
+                  artists: [{ name: 'Live Stream' }],
+                  album: { name: 'Web Radio Broadcast', images: favicon ? [{ url: favicon }] : [] },
+                  url,
+                },
+              },
+            };
+
+            // Only start MPC when the caller hasn't already done it (skipAutoResume).
+            // The play-radio REST route sets skipAutoResume=true after calling mpc itself
+            // to prevent a double-start of the stream.
+            if (!payload.skipAutoResume && previousSource !== 'radio') {
               try {
                 const { exec, execFile } = await import('child_process');
                 const { promisify } = await import('util');
@@ -202,27 +219,13 @@ async function handleEvent(type, payload, excludeWs) {
                 await execP('mpc clear');
                 await execFileP('mpc', ['add', url]);
                 await execP('mpc play');
-                cachedPlaybackState = {
-                  paused: false,
-                  position: 0,
-                  duration: 0,
-                  track_window: {
-                    current_track: {
-                      name: name || 'WEB RADIO',
-                      artists: [{ name: 'Live Stream' }],
-                      album: { name: 'Web Radio Broadcast', images: favicon ? [{ url: favicon }] : [] },
-                      url,
-                    },
-                  },
-                };
                 console.log(`[SET_SOURCE] Auto-resumed radio: ${name} (${url})`);
               } catch (err) {
                 console.error('[SET_SOURCE] Failed to auto-resume radio:', err);
-                cachedPlaybackState = null;
               }
-            } else {
-              cachedPlaybackState = null;
             }
+          } else {
+            cachedPlaybackState = null;
           }
 
         } else if (newSource === 'local') {

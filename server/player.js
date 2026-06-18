@@ -123,8 +123,9 @@ router.post('/play-radio', async (req, res) => {
       },
     };
 
-    // Route through EventService: persists active_source + broadcasts to all clients
-    await emit('SET_SOURCE', { spotify: false, source: 'radio' });
+    // Route through EventService: persists active_source + broadcasts to all clients.
+    // skipAutoResume=true tells the handler not to restart MPC — we already did it above.
+    await emit('SET_SOURCE', { spotify: false, source: 'radio', skipAutoResume: true });
     await emit('PLAYBACK_STATE', stateUpdate);
 
     res.json({ success: true });
@@ -153,6 +154,33 @@ router.post('/radios', async (req, res) => {
   try {
     const saved = await addFavoriteRadio(name, url, favicon, country, tags);
     res.json(saved);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/player/status -> Current MPD playback state (for local source polling)
+router.get('/status', async (req, res) => {
+  try {
+    const [curOut, statOut] = await Promise.all([
+      execPromise('mpc -f "%title%\\n%artist%\\n%album%\\n%file%" current').catch(() => ({ stdout: '' })),
+      execPromise('mpc status').catch(() => ({ stdout: '' })),
+    ]);
+    const lines = (curOut.stdout || '').trim().split('\n');
+    const [title, artist, album, file] = lines;
+    const statusText = statOut.stdout || '';
+    const isPlaying = statusText.includes('[playing]');
+    const timeMatch = statusText.match(/(\d+):(\d+)\/(\d+):(\d+)/);
+    const toMs = (m, s) => (Number(m) * 60 + Number(s)) * 1000;
+    res.json({
+      paused: !isPlaying,
+      position: timeMatch ? toMs(timeMatch[1], timeMatch[2]) : 0,
+      duration: timeMatch ? toMs(timeMatch[3], timeMatch[4]) : 0,
+      name:   title  || (file ? file.split('/').pop().replace(/\.[^.]+$/, '') : 'Unknown'),
+      artist: artist || '',
+      album:  album  || '',
+      file:   file   || '',
+    });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

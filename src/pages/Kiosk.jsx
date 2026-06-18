@@ -304,6 +304,18 @@ export default function Kiosk() {
     return () => clearInterval(pollIntervalId);
   }, [token, spotify]);
 
+  // Poll MPD state for local source so track info and paused state stay current
+  // on both kiosk and remote. Torn down when source changes away from local.
+  useEffect(() => {
+    if (source !== 'local') return;
+
+    syncLocalState();
+    const id = setInterval(() => {
+      if (!standbyRef.current) syncLocalState();
+    }, 3000);
+    return () => clearInterval(id);
+  }, [source]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Connect to the centralized WebSocket hook
   const { isConnected, ws, sendUpdate } = useResonanceWS({
     token,
@@ -471,9 +483,9 @@ export default function Kiosk() {
   const handlePlayRadio = async (url, name, favicon) => {
     try {
       await api.localPlayRadio(url, name, favicon);
-      if (source !== 'radio') {
-        handleToggleSource('radio');
-      }
+      // The REST route emits SET_SOURCE + PLAYBACK_STATE through the event queue,
+      // which broadcasts to all clients. Just update local source state — no WS send.
+      if (source !== 'radio') setSource('radio');
     } catch (err) {
       toast.error(`Failed to play radio: ${err.message}`);
     }
@@ -727,6 +739,29 @@ export default function Kiosk() {
     }
   };
 
+  // Build a BROADCAST_STATE-compatible object from the /status endpoint response
+  const syncLocalState = async () => {
+    try {
+      const status = await api.localGetStatus();
+      if (!status || (!status.name && !status.file)) return;
+      const newState = {
+        paused: status.paused,
+        position: status.position,
+        duration: status.duration,
+        track_window: {
+          current_track: {
+            name: status.name,
+            artists: [{ name: status.artist || 'Unknown' }],
+            album: { name: status.album || '', images: [] },
+            uri: status.file,
+          },
+        },
+      };
+      setPlaybackState(newState);
+      sendUpdate('BROADCAST_STATE', newState);
+    } catch {}
+  };
+
   // Playback Control Handlers
   const handlePlayPause = async () => {
     if (!spotify) {
@@ -734,10 +769,14 @@ export default function Kiosk() {
         const isPaused = playbackState ? playbackState.paused : true;
         if (isPaused) {
           await api.localPlay();
-          setPlaybackState(prev => ({ ...prev, paused: false }));
+          const newState = { ...(playbackState || {}), paused: false };
+          setPlaybackState(newState);
+          sendUpdate('BROADCAST_STATE', newState);
         } else {
           await api.localPause();
-          setPlaybackState(prev => ({ ...prev, paused: true }));
+          const newState = { ...(playbackState || {}), paused: true };
+          setPlaybackState(newState);
+          sendUpdate('BROADCAST_STATE', newState);
         }
       } catch (err) {
         toast.error(`Local action failed: ${err.message}`);
@@ -762,6 +801,7 @@ export default function Kiosk() {
     if (!spotify) {
       try {
         await api.localNext();
+        setTimeout(syncLocalState, 400);
       } catch (err) {
         toast.error(`Local skip failed: ${err.message}`);
       }
@@ -780,6 +820,7 @@ export default function Kiosk() {
     if (!spotify) {
       try {
         await api.localPrevious();
+        setTimeout(syncLocalState, 400);
       } catch (err) {
         toast.error(`Local back failed: ${err.message}`);
       }
