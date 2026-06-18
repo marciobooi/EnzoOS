@@ -114,7 +114,7 @@ export default function ThemeSettingsControl({
                   style={{
                     background: themeColor === c.name ? S.surface : S.surfaceLo,
                     border: `1px solid ${themeColor === c.name ? S.borderHi : S.border}`,
-                    boxShadow: cardShadow,
+                   
                   }}>
                   <div className="w-3 h-3 rounded-full shrink-0"
                     style={{ background: c.value, boxShadow: swatchRing }} />
