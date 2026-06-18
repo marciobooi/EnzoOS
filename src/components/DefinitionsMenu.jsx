@@ -162,7 +162,7 @@ export default function DefinitionsMenu({
         <span className="text-[9px] font-extrabold tracking-widest uppercase" style={{ color: S.label }}>LOCAL SYSTEM</span>
 
         <div className="my-auto flex justify-center py-2">
-          <Music className="h-16 w-16 transition-all duration-300"
+          <Music strokeWidth={1} className="h-16 w-16 transition-all duration-300"
             style={{ color: source === 'local' ? S.accent : S.track }} />
         </div>
 
@@ -183,7 +183,7 @@ export default function DefinitionsMenu({
         <span className="text-[9px] font-extrabold tracking-widest uppercase" style={{ color: S.label }}>STREAM RADIO</span>
 
         <div className="my-auto flex justify-center py-2">
-          <Radio className="h-16 w-16 transition-all duration-300"
+          <Radio strokeWidth={1} className="h-16 w-16 transition-all duration-300"
             style={{ color: source === 'radio' ? S.accent : S.track }} />
         </div>
 
@@ -202,7 +202,7 @@ export default function DefinitionsMenu({
         <span className="text-[9px] font-extrabold tracking-widest uppercase" style={{ color: S.label }}>APPEARANCE</span>
 
         <div className="my-auto flex justify-center py-2">
-          <Sliders className="h-16 w-16 transition-colors duration-300"
+          <Sliders strokeWidth={1} className="h-16 w-16 transition-colors duration-300"
             style={{ color: S.track }} />
         </div>
 
@@ -221,7 +221,7 @@ export default function DefinitionsMenu({
         <span className="text-[9px] font-extrabold tracking-widest uppercase" style={{ color: S.label }}>ACOUSTIC PROFILER</span>
 
         <div className="my-auto flex justify-center py-2">
-          <Waves className="h-16 w-16 transition-all duration-300"
+          <Waves strokeWidth={1} className="h-16 w-16 transition-all duration-300"
             style={{ color: S.track }} />
         </div>
 
@@ -245,7 +245,7 @@ export default function DefinitionsMenu({
         <span className="text-[9px] font-extrabold tracking-widest uppercase" style={{ color: S.label }}>ACCESS PANEL</span>
 
         <div className="my-auto flex justify-center py-2">
-          <Smartphone className="h-16 w-16 transition-all duration-300"
+          <Smartphone strokeWidth={1} className="h-16 w-16 transition-all duration-300"
             style={{ color: remoteAccessEnabled ? S.accent : S.track,
                      opacity: remoteAccessEnabled ? 1 : 0.5 }} />
         </div>
@@ -278,7 +278,7 @@ export default function DefinitionsMenu({
           ) : (
             <Download className="h-16 w-16 transition-all duration-300"
               style={{ color: updateStatus === 'available' ? S.accent : S.track }}
-              strokeWidth={updateStatus === 'available' ? 2.5 : 1.5}
+              strokeWidth={updateStatus === 'available' ? 1.5 : 1}
             />
           )}
         </div>
@@ -357,7 +357,7 @@ export default function DefinitionsMenu({
           <span className="text-[9px] font-extrabold tracking-widest uppercase" style={{ color: S.label }}>CONNECTIONS</span>
 
           <div className="my-auto flex justify-center py-2">
-            <LogOut className="h-16 w-16 transition-colors duration-300"
+            <LogOut strokeWidth={1} className="h-16 w-16 transition-colors duration-300"
               style={{ color: S.track }} />
           </div>
 
