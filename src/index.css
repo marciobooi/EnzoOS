@@ -576,42 +576,30 @@ div[data-theme="ruby"] *::selection {
   padding-left: 1.25rem;
 }
 
-/* Stone warm-greige neumorphic menu cards
-   Shadow pair for bg #cbccc7:
-     dark  → #a8a9a4  (≈15% darker, warm)
-     light → #eeeee9  (≈15% lighter, warm)
-*/
+/* Stone warm-greige menu cards — soft float, not neumorphic geometry */
 .menu-card {
-  background: #cbccc7 !important;
-  border: 1px solid transparent !important;
-  box-shadow:
-    6px 6px 14px #a8a9a4,
-    -6px -6px 14px #eeeee9 !important;
+  background: #d6d7d2 !important;
+  border: 1px solid #c8c9c4 !important;
+  box-shadow: 0 2px 8px rgba(42,40,38,0.10), 0 1px 2px rgba(42,40,38,0.06) !important;
 }
 
 .menu-card:hover {
-  background: #cbccc7 !important;
-  border-color: transparent !important;
-  box-shadow:
-    3px 3px 8px #a8a9a4,
-    -3px -3px 8px #eeeee9 !important;
+  background: #dadbD6 !important;
+  border-color: #c2c3be !important;
+  box-shadow: 0 4px 14px rgba(42,40,38,0.13), 0 1px 3px rgba(42,40,38,0.07) !important;
 }
 
 .menu-card:active {
-  background: #cbccc7 !important;
-  border-color: transparent !important;
-  box-shadow:
-    inset 4px 4px 9px #a8a9a4,
-    inset -4px -4px 9px #eeeee9 !important;
+  background: #d0d1cc !important;
+  border-color: #bbbcb8 !important;
+  box-shadow: 0 1px 3px rgba(42,40,38,0.08) !important;
 }
 
 .active-card,
 .menu-card.active-card {
-  background: #cbccc7 !important;
+  background: #d6d7d2 !important;
   border: 1.5px solid #2a2826 !important;
-  box-shadow:
-    inset 4px 4px 9px #a8a9a4,
-    inset -4px -4px 9px #eeeee9 !important;
+  box-shadow: 0 2px 8px rgba(42,40,38,0.12) !important;
 }
 
 /* OLED Burn-in prevention / pixel shifter */
