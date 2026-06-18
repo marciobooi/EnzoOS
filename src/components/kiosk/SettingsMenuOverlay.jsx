@@ -47,8 +47,7 @@ export default function SettingsMenuOverlay() {
       }`}
       style={{
         background: '#cbccc7',
-        border: '1px solid #c5c4c0',
-        boxShadow: '8px 8px 20px #b0b1ac, -8px -8px 20px #e6e7e2',
+        border: '1px solid #bbbcb8',
       }}
     >
       {/* Header & Close Button */}

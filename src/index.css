@@ -576,38 +576,42 @@ div[data-theme="ruby"] *::selection {
   padding-left: 1.25rem;
 }
 
-/* Stone warm-greige neumorphic menu cards */
+/* Stone warm-greige neumorphic menu cards
+   Shadow pair for bg #cbccc7:
+     dark  → #a8a9a4  (≈15% darker, warm)
+     light → #eeeee9  (≈15% lighter, warm)
+*/
 .menu-card {
-  background: #d2d3ce !important;
-  border: 1px solid #c5c4c0 !important;
+  background: #cbccc7 !important;
+  border: 1px solid transparent !important;
   box-shadow:
-    5px 5px 12px #b8b9b4,
-    -5px -5px 12px #ecede8 !important;
+    6px 6px 14px #a8a9a4,
+    -6px -6px 14px #eeeee9 !important;
 }
 
 .menu-card:hover {
-  background: #d8d9d4 !important;
-  border-color: #bbbcb8 !important;
+  background: #cbccc7 !important;
+  border-color: transparent !important;
   box-shadow:
-    3px 3px 8px #b8b9b4,
-    -3px -3px 8px #ecede8 !important;
+    3px 3px 8px #a8a9a4,
+    -3px -3px 8px #eeeee9 !important;
 }
 
 .menu-card:active {
-  background: #c8c9c4 !important;
-  border-color: #b8b9b4 !important;
+  background: #cbccc7 !important;
+  border-color: transparent !important;
   box-shadow:
-    inset 3px 3px 7px #b0b1ac,
-    inset -3px -3px 7px #d8d9d4 !important;
+    inset 4px 4px 9px #a8a9a4,
+    inset -4px -4px 9px #eeeee9 !important;
 }
 
 .active-card,
 .menu-card.active-card {
   background: #cbccc7 !important;
-  border: 1px solid #2a2826 !important;
+  border: 1.5px solid #2a2826 !important;
   box-shadow:
-    inset 3px 3px 7px #b0b1ac,
-    inset -3px -3px 7px #d8d9d4 !important;
+    inset 4px 4px 9px #a8a9a4,
+    inset -4px -4px 9px #eeeee9 !important;
 }
 
 /* OLED Burn-in prevention / pixel shifter */
