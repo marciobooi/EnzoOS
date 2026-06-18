@@ -701,7 +701,9 @@ fi
 # Write shairport-sync config: output to ALSA default → PipeWire → ResonanceInput.
 cat <<'SSEOF' > /etc/shairport-sync.conf
 // Resonance HiFi — shairport-sync 5.x configuration (AirPlay 2)
-// Routes AirPlay audio to PipeWire default output (ResonanceInput virtual sink).
+// AirPlay is inherently LAN-only: discovery uses mDNS/Bonjour (multicast)
+// which does not route through NAT, so external devices cannot connect.
+// The interface setting below further restricts to the primary LAN adapter.
 general = {
   name = "Resonance HiFi";
   drift_tolerance_in_seconds = 0.002;
@@ -820,16 +822,23 @@ apt-get remove -y bluealsa bluealsa-utils 2>/dev/null || true
 
 echo -e "${GREEN}Bluetooth configured: PipeWire handles A2DP sink natively via WirePlumber.${NC}"
 
-# Make Pi Bluetooth agent auto-accept pairing (simple pairing, no PIN)
+# Bluetooth pairing agent — DisplayYesNo capability.
+# The connecting device shows a 6-digit confirmation code and the user must
+# press "Pair" on their phone. This prevents any background device from pairing
+# without explicit user action. NoInputNoOutput (old setting) auto-accepted
+# everything silently — replaced here for household security.
+# Bluetooth is also only discoverable when the user activates it from the
+# kiosk menu (on-demand activation), providing a second layer of control.
 cat <<'BTEOF' > /etc/systemd/system/bt-agent.service
 [Unit]
-Description=Bluetooth Auto-Pair Agent (Resonance HiFi)
+Description=Bluetooth Pairing Agent (Resonance HiFi)
 After=bluetooth.service
 Requires=bluetooth.service
 
 [Service]
 Type=simple
-ExecStart=/usr/bin/bt-agent -c NoInputNoOutput
+User=pi
+ExecStart=/usr/bin/bt-agent -c DisplayYesNo
 Restart=always
 RestartSec=3
 

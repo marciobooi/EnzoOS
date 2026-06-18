@@ -773,6 +773,9 @@ export default function Kiosk() {
     try {
       const status = await api.localGetStatus();
       if (!status || (!status.name && !status.file)) return;
+      // MPD might still have a radio URL in its queue if the queue wasn't cleared yet.
+      // Don't show radio stream metadata as local track info.
+      if (status.file && (status.file.startsWith('http://') || status.file.startsWith('https://'))) return;
       const newState = {
         paused: status.paused,
         position: status.position,

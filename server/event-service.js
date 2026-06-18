@@ -349,10 +349,22 @@ async function handleEvent(type, payload, excludeWs) {
           }
 
         } else if (newSource === 'local') {
-          // MPD keeps its queue and position — just resume playback
+          // If MPD's current track is a URL (radio stream from a previous session),
+          // clear the queue so it doesn't bleed into local file mode.
+          // Otherwise keep the queue and position and resume playback.
           try {
             const { exec } = await import('child_process');
-            exec('mpc play');
+            const { promisify } = await import('util');
+            const execP = promisify(exec);
+            const { stdout } = await execP('mpc -f "%file%" current').catch(() => ({ stdout: '' }));
+            const currentFile = stdout.trim();
+            if (currentFile.startsWith('http://') || currentFile.startsWith('https://')) {
+              await execP('mpc stop');
+              await execP('mpc clear');
+              console.log('[SET_SOURCE] Cleared MPD radio queue on switch to local.');
+            } else {
+              exec('mpc play');
+            }
           } catch (err) {
             console.error('[SET_SOURCE] Failed to resume MPD:', err);
           }
