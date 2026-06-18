@@ -2,21 +2,36 @@ import React from 'react';
 import { Palette, Sun, Monitor, X, Check } from 'lucide-react';
 
 export const THEME_COLORS = [
-  { name: 'amber', value: '#f59e0b', label: 'Vintage Amber' },
-  { name: 'emerald', value: '#10b981', label: 'Classic Green' },
-  { name: 'cyan', value: '#06b6d4', label: 'Lab Blue' },
-  { name: 'amethyst', value: '#a855f7', label: 'Laser Purple' },
-  { name: 'ruby', value: '#ef4444', label: 'Neon Red' }
+  { name: 'amber',    value: '#f59e0b', label: 'Vintage Amber' },
+  { name: 'emerald',  value: '#10b981', label: 'Classic Green' },
+  { name: 'cyan',     value: '#06b6d4', label: 'Lab Blue'      },
+  { name: 'amethyst', value: '#a855f7', label: 'Laser Purple'  },
+  { name: 'ruby',     value: '#ef4444', label: 'Neon Red'      },
 ];
 
 export const SCREEN_THEMES = [
-  { id: 'dot-matrix', name: 'Retro Dot-Matrix', desc: 'Phosphor LED grid matrix simulation' },
-  { id: 'dreamplayer', name: 'Dreamplayer Theme', desc: 'Neo Glass Retrofuture (Square Buttons)' },
-  { id: 'glassplayer', name: 'Glassplayer Theme', desc: 'Liquid Glass Retrofuture Theme' },
-  { id: 'minimalist', name: 'Minimalist Theme', desc: 'Dynamic 2-column album color console' },
-  { id: 'neon-glow', name: 'Cyberpunk Neon (Future)', desc: 'Vibrant neon tube display mode', disabled: true },
-  { id: 'vfd-chamber', name: 'VFD Vacuum Tube (Future)', desc: 'Vacuum fluorescent display styling', disabled: true }
+  { id: 'dot-matrix',  name: 'Retro Dot-Matrix',     desc: 'Phosphor LED grid matrix simulation'       },
+  { id: 'dreamplayer', name: 'Dreamplayer',           desc: 'Neo Glass Retrofuture — square buttons'    },
+  { id: 'glassplayer', name: 'Glassplayer',           desc: 'Liquid Glass Retrofuture'                  },
+  { id: 'minimalist',  name: 'Minimalist',            desc: 'Dynamic 2-column album color console'      },
+  { id: 'neon-glow',   name: 'Cyberpunk Neon',        desc: 'Vibrant neon tube display mode',   disabled: true },
+  { id: 'vfd-chamber', name: 'VFD Vacuum Tube',       desc: 'Vacuum fluorescent display styling', disabled: true },
 ];
+
+// Stone palette — same tokens as DefinitionsMenu
+const S = {
+  bg:        '#cbccc7',
+  surface:   '#d6d7d2',
+  surfaceLo: '#d0d1cc',
+  border:    '#c8c9c4',
+  borderHi:  '#bbbcb8',
+  label:     '#9a9896',
+  muted:     '#6a6866',
+  strong:    '#1a1918',
+  accent:    '#2a2826',
+  accentFg:  '#f0eeea',
+  track:     '#c5c4c0',
+};
 
 export default function ThemeSettingsControl({
   activeTheme = 'dot-matrix',
@@ -27,95 +42,99 @@ export default function ThemeSettingsControl({
   onBrightnessChange,
   visualizerMode = 'vu',
   onVisualizerModeChange,
-  onClose
+  onClose,
 }) {
   return (
-    <div className="bg-[#0b0f19] border border-white/10 rounded-2xl p-5 relative overflow-hidden h-full flex flex-col justify-between text-zinc-100 font-sans shadow-2xl">
-      {/* Glossy sheen */}
-      <div className="absolute inset-0 pointer-events-none opacity-30 bg-gradient-to-tr from-transparent via-white/5 to-white/10" />
+    <div className="rounded-2xl p-5 h-full flex flex-col justify-between font-sans overflow-hidden"
+      style={{ background: S.bg, border: `1px solid ${S.borderHi}` }}>
 
-      {/* Header */}
-      <div className="flex items-center justify-between border-b border-white/10 pb-3 mb-3 shrink-0">
+      {/* ── Header ──────────────────────────────────────────────────────────── */}
+      <div className="flex items-center justify-between pb-3 mb-3 shrink-0"
+        style={{ borderBottom: `1px solid ${S.border}` }}>
         <div className="flex items-center gap-2">
-          <Palette className="w-4 h-4 text-[var(--theme-color)]" />
-          <span className="font-sans font-extrabold text-[10px] tracking-[0.2em] text-zinc-100 uppercase">
-            RESONANCE THEME & DISPLAY CONTROL
+          <Palette className="w-3.5 h-3.5" strokeWidth={1} style={{ color: S.label }} />
+          <span className="text-[7px] font-light tracking-[0.4em] uppercase" style={{ color: S.label }}>
+            resonance theme &amp; display control
           </span>
         </div>
         {onClose && (
-          <button
-            onClick={onClose}
-            className="text-zinc-400 hover:text-white transition-colors cursor-pointer p-0.5"
-            title="Close Theme Settings"
-          >
-            <X className="w-4 h-4" />
+          <button onClick={onClose}
+            className="cursor-pointer px-3 py-1 rounded-full transition-all active:scale-95 text-[8px] font-light tracking-wide"
+            style={{ background: S.accent, color: S.accentFg, border: 'none' }}>
+            close
           </button>
         )}
       </div>
 
-      {/* Grid Content */}
+      {/* ── Grid ────────────────────────────────────────────────────────────── */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-stretch flex-grow overflow-hidden">
-        {/* Left Side: Themes & Colors */}
-        <div className="lg:col-span-7 flex flex-col justify-between gap-4 overflow-y-auto pr-1">
-          {/* Themes Selector */}
+
+        {/* Left — Themes & Colors */}
+        <div className="lg:col-span-7 flex flex-col gap-4 overflow-y-auto pr-1 stone-scrollbar">
+
+          {/* Screen theme selector */}
           <div>
-            <span className="font-mono text-[9px] text-zinc-400 uppercase tracking-wider block mb-2">
-              DISPLAY SCREEN THEME
+            <span className="text-[7px] font-light tracking-[0.4em] uppercase block mb-2" style={{ color: S.label }}>
+              display screen theme
             </span>
-            <div className="flex flex-col gap-2">
-              {SCREEN_THEMES.map((t) => (
-                <button
-                  key={t.id}
+            <div className="flex flex-col gap-1.5">
+              {SCREEN_THEMES.map(t => (
+                <button key={t.id}
                   disabled={t.disabled}
-                  onClick={() => onThemeChange && onThemeChange(t.id)}
-                  className={`w-full p-3 rounded-xl border text-left flex items-start justify-between transition-all select-none ${
-                    t.disabled 
-                      ? 'opacity-40 cursor-not-allowed border-white/5 bg-black/20'
-                      : activeTheme === t.id
-                        ? 'border-[var(--theme-color)] bg-[var(--theme-color)]/5 cursor-pointer'
-                        : 'border-white/10 bg-zinc-900/60 hover:bg-zinc-800/80 cursor-pointer'
+                  onClick={() => onThemeChange?.(t.id)}
+                  className={`w-full p-3 rounded-xl text-left flex items-start justify-between transition-all select-none ${
+                    t.disabled ? 'opacity-35 cursor-not-allowed' : 'cursor-pointer active:scale-[0.99]'
                   }`}
-                >
+                  style={{
+                    background: activeTheme === t.id ? S.surface : S.surfaceLo,
+                    border: `1px solid ${activeTheme === t.id ? S.accent : S.border}`,
+                    boxShadow: activeTheme === t.id
+                      ? '0 2px 8px rgba(42,40,38,0.10), 0 1px 2px rgba(42,40,38,0.06)'
+                      : 'none',
+                  }}>
                   <div className="flex items-start gap-2.5">
-                    <Monitor className={`w-4 h-4 mt-0.5 ${activeTheme === t.id && !t.disabled ? 'text-[var(--theme-color)]' : 'text-zinc-500'}`} />
+                    <Monitor className="w-4 h-4 mt-0.5 shrink-0" strokeWidth={1}
+                      style={{ color: activeTheme === t.id && !t.disabled ? S.accent : S.label }} />
                     <div>
-                      <div className="text-[10px] font-bold uppercase tracking-wider text-zinc-100">
+                      <div className="text-[11px] font-bold leading-tight"
+                        style={{ color: activeTheme === t.id && !t.disabled ? S.strong : S.muted }}>
                         {t.name}
                       </div>
-                      <div className="text-[9px] text-zinc-400 font-sans mt-0.5 leading-normal">
+                      <div className="text-[8px] font-light mt-0.5 leading-normal" style={{ color: S.label }}>
                         {t.desc}
                       </div>
                     </div>
                   </div>
                   {activeTheme === t.id && !t.disabled && (
-                    <Check className="w-4 h-4 text-[var(--theme-color)]" />
+                    <Check className="w-4 h-4 shrink-0 mt-0.5" strokeWidth={1.5} style={{ color: S.accent }} />
                   )}
                 </button>
               ))}
             </div>
           </div>
 
-          {/* Color palette */}
+          {/* Accent color palette */}
           <div>
-            <span className="font-mono text-[9px] text-zinc-400 uppercase tracking-wider block mb-2">
-              MATRIX LIGHT EMISSION COLOR
+            <span className="text-[7px] font-light tracking-[0.4em] uppercase block mb-2" style={{ color: S.label }}>
+              matrix light emission color
             </span>
-            <div className="flex flex-wrap gap-2.5">
-              {THEME_COLORS.map((c) => (
-                <button
-                  key={c.name}
-                  onClick={() => onColorChange && onColorChange(c.name)}
-                  className={`px-3 py-2 rounded-xl border flex items-center gap-2 transition-all cursor-pointer select-none active:scale-95 ${
-                    themeColor === c.name
-                      ? 'border-white/20 bg-white/5 shadow-md'
-                      : 'border-white/10 bg-zinc-900/40 hover:bg-zinc-800/40'
-                  }`}
-                >
-                  <div 
-                    className="w-3.5 h-3.5 rounded-full border border-black/30 shadow-inner shrink-0" 
-                    style={{ backgroundColor: c.value }} 
-                  />
-                  <span className={`font-mono text-[10px] ${themeColor === c.name ? 'text-white font-bold' : 'text-zinc-400'}`}>
+            <div className="flex flex-wrap gap-2">
+              {THEME_COLORS.map(c => (
+                <button key={c.name}
+                  onClick={() => onColorChange?.(c.name)}
+                  className="px-3 py-2 rounded-xl flex items-center gap-2 transition-all cursor-pointer select-none active:scale-95"
+                  style={{
+                    background: themeColor === c.name ? S.surface : S.surfaceLo,
+                    border: `1px solid ${themeColor === c.name ? S.borderHi : S.border}`,
+                    boxShadow: themeColor === c.name
+                      ? '0 2px 6px rgba(42,40,38,0.10)'
+                      : 'none',
+                  }}>
+                  <div className="w-3 h-3 rounded-full shrink-0"
+                    style={{ background: c.value, boxShadow: 'inset 0 0 0 1px rgba(42,40,38,0.15)' }} />
+                  <span className="text-[9px]"
+                    style={{ color: themeColor === c.name ? S.strong : S.muted,
+                             fontWeight: themeColor === c.name ? 700 : 400 }}>
                     {c.label}
                   </span>
                 </button>
@@ -124,72 +143,70 @@ export default function ThemeSettingsControl({
           </div>
         </div>
 
-        {/* Right Side: Brightness & Performance */}
-        <div className="lg:col-span-5 bg-zinc-950/60 border border-white/5 rounded-xl p-4 flex flex-col justify-between overflow-hidden">
+        {/* Right — Hardware parameters */}
+        <div className="lg:col-span-5 rounded-xl p-4 flex flex-col justify-between overflow-hidden"
+          style={{ background: S.surface, border: `1px solid ${S.border}` }}>
           <div>
-            <div className="flex items-center justify-between mb-2 shrink-0">
-              <span className="font-mono text-[9px] text-zinc-400 tracking-wider">
-                SCREEN HARDWARE PARAMETERS
+            <div className="flex items-center justify-between mb-3 shrink-0">
+              <span className="text-[7px] font-light tracking-[0.4em] uppercase" style={{ color: S.label }}>
+                screen hardware parameters
               </span>
-              <Sun className="w-3.5 h-3.5 text-amber-500" />
+              <Sun className="w-3.5 h-3.5" strokeWidth={1} style={{ color: S.label }} />
             </div>
 
-            {/* Brightness slider */}
-            <div className="bg-zinc-900/40 border border-white/5 rounded-xl p-3 mt-1.5 shrink-0">
-              <div className="flex justify-between items-center text-[9.5px] mb-1 font-sans">
-                <span className="font-mono text-zinc-300 flex items-center gap-1.5">
-                  <Sun className="w-3 h-3 text-zinc-400" /> Backlight Brightness
+            {/* Brightness */}
+            <div className="rounded-xl p-3 shrink-0"
+              style={{ background: S.bg, border: `1px solid ${S.track}` }}>
+              <div className="flex justify-between items-baseline mb-2">
+                <div className="flex items-center gap-1.5">
+                  <Sun className="w-3 h-3" strokeWidth={1} style={{ color: S.label }} />
+                  <span className="text-[8px] font-light tracking-wide" style={{ color: S.muted }}>
+                    Backlight Brightness
+                  </span>
+                </div>
+                <span className="text-[13px] font-black tracking-tight" style={{ color: S.strong }}>
+                  {brightness}<span className="text-[9px] font-normal" style={{ color: S.label }}>%</span>
                 </span>
-                <span className="font-mono text-[var(--theme-color)] font-bold">{brightness}%</span>
               </div>
-              <input
-                type="range"
-                min="10"
-                max="100"
-                step="5"
-                value={brightness}
-                onChange={(e) => onBrightnessChange && onBrightnessChange(Number(e.target.value))}
-                className="w-full accent-[var(--theme-color)] h-1 bg-zinc-800 rounded-full appearance-none cursor-pointer"
-              />
-              <div className="flex justify-between text-[7.5px] text-zinc-500 font-mono mt-0.5 select-none">
-                <span>10% (Dim)</span>
-                <span>100% (Full Power)</span>
+              <input type="range" min="10" max="100" step="5" value={brightness}
+                onChange={e => onBrightnessChange?.(Number(e.target.value))}
+                className="w-full h-0.5 rounded-full appearance-none cursor-pointer accent-[var(--theme-color)]"
+                style={{ background: S.track }} />
+              <div className="flex justify-between mt-1.5 select-none">
+                <span className="text-[7px] font-light tracking-[0.3em] uppercase" style={{ color: S.label }}>dim</span>
+                <span className="text-[7px] font-light tracking-[0.3em] uppercase" style={{ color: S.label }}>full</span>
               </div>
             </div>
 
-            {/* Visualizer Mode Selection */}
-            <div className="bg-zinc-900/40 border border-white/5 rounded-xl p-3 mt-3 shrink-0">
-              <span className="font-mono text-[9px] text-zinc-400 uppercase tracking-wider block mb-2 font-bold">
-                ACTIVE PLAYER VISUALIZER
+            {/* Visualizer mode */}
+            <div className="rounded-xl p-3 mt-3 shrink-0"
+              style={{ background: S.bg, border: `1px solid ${S.track}` }}>
+              <span className="text-[7px] font-light tracking-[0.4em] uppercase block mb-2.5" style={{ color: S.label }}>
+                active player visualizer
               </span>
               <div className="flex gap-2">
-                <button
-                  onClick={() => onVisualizerModeChange && onVisualizerModeChange('vu')}
-                  className={`flex-1 py-1.5 rounded-xl border text-[9px] uppercase font-bold tracking-wider transition-all cursor-pointer text-center select-none active:scale-95 ${
-                    visualizerMode === 'vu'
-                      ? 'border-[var(--theme-color)] bg-[var(--theme-color)]/5 text-white'
-                      : 'border-white/10 bg-zinc-900/40 hover:bg-zinc-800/40 text-zinc-400'
-                  }`}
-                >
-                  VU Needles
-                </button>
-                <button
-                  onClick={() => onVisualizerModeChange && onVisualizerModeChange('digital')}
-                  className={`flex-1 py-1.5 rounded-xl border text-[9px] uppercase font-bold tracking-wider transition-all cursor-pointer text-center select-none active:scale-95 ${
-                    visualizerMode === 'digital'
-                      ? 'border-[var(--theme-color)] bg-[var(--theme-color)]/5 text-white'
-                      : 'border-white/10 bg-zinc-900/40 hover:bg-zinc-800/40 text-zinc-400'
-                  }`}
-                >
-                  7-Band Digital
-                </button>
+                {[
+                  { id: 'vu',      label: 'VU Needles' },
+                  { id: 'digital', label: '7-Band'     },
+                ].map(m => (
+                  <button key={m.id}
+                    onClick={() => onVisualizerModeChange?.(m.id)}
+                    className="flex-1 py-2 rounded-xl text-center transition-all cursor-pointer select-none active:scale-95"
+                    style={{
+                      background: visualizerMode === m.id ? S.accent : S.surfaceLo,
+                      border: visualizerMode === m.id ? 'none' : `1px solid ${S.border}`,
+                      color: visualizerMode === m.id ? S.accentFg : S.muted,
+                    }}>
+                    <span className="text-[9px] font-medium">{m.label}</span>
+                  </button>
+                ))}
               </div>
             </div>
           </div>
 
-          <div className="border-t border-white/5 pt-2 mt-2 shrink-0">
-            <p className="font-mono text-[7.5px] text-center text-zinc-500 leading-normal">
-              Backlight dimming applies a software rendering overlay to protect screen lifetime on Waveshare HDMI hardware. Refresh rate is maintained at standard sync depth.
+          <div className="pt-2 mt-2 shrink-0" style={{ borderTop: `0.5px solid ${S.border}` }}>
+            <p className="text-[7px] font-light text-center leading-relaxed" style={{ color: S.label }}>
+              Backlight dimming applies a software rendering overlay to protect screen lifetime on Waveshare HDMI hardware.
             </p>
           </div>
         </div>
