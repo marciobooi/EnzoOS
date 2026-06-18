@@ -15,8 +15,6 @@ export const SCREEN_THEMES = [
   { id: 'dreamplayer', name: 'Dreamplayer',           desc: 'Neo Glass Retrofuture — square buttons'    },
   { id: 'glassplayer', name: 'Glassplayer',           desc: 'Liquid Glass Retrofuture'                  },
   { id: 'minimalist',  name: 'Minimalist',            desc: 'Dynamic 2-column album color console'      },
-  { id: 'neon-glow',   name: 'Cyberpunk Neon',        desc: 'Vibrant neon tube display mode',   disabled: true },
-  { id: 'vfd-chamber', name: 'VFD Vacuum Tube',       desc: 'Vacuum fluorescent display styling', disabled: true },
 ];
 
 export default function ThemeSettingsControl({
@@ -38,14 +36,14 @@ export default function ThemeSettingsControl({
       <div className="flex items-center justify-between pb-3 mb-3 shrink-0"
         style={{ borderBottom: `1px solid ${S.border}` }}>
         <div className="flex items-center gap-2">
-          <Palette className="w-3.5 h-3.5" strokeWidth={1} style={{ color: S.label }} />
-          <span className="text-[7px] font-light tracking-[0.4em] uppercase" style={{ color: S.label }}>
+          <Palette className="w-4 h-4" strokeWidth={1} style={{ color: S.label }} />
+          <span className="text-sm font-light tracking-[0.25em] uppercase" style={{ color: S.label }}>
             resonance theme &amp; display control
           </span>
         </div>
         {onClose && (
           <button onClick={onClose}
-            className="cursor-pointer px-4 py-1.5 rounded-full transition-all active:scale-95 active:opacity-80 text-[10px] font-extrabold font-sans"
+            className="cursor-pointer px-4 py-1.5 rounded-full transition-all active:scale-95 active:opacity-80 text-sm font-extrabold font-sans"
             style={{ background: S.accent, color: S.accentFg, border: 'none' }}>
             CLOSE
           </button>
