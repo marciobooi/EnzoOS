@@ -102,8 +102,9 @@ function CountryPicker({ value, onChange }) {
                 onClick={() => { onChange(c.name); setOpen(false); }}
                 className="group flex flex-col items-center justify-center gap-1 py-2 px-1 rounded-lg transition-all duration-150 active:scale-95 cursor-pointer"
                 style={{
-                  background: value === c.name ? S.surface : 'transparent',
-                  border: `1px solid ${value === c.name ? S.accent : 'transparent'}`,
+                  background: value === c.name ? S.surface : S.surfaceLo,
+                  border: `1px solid ${value === c.name ? S.accent : S.border}`,
+                  boxShadow: cardShadow,
                 }}>
                 <span className="text-xl transition-transform duration-150 group-hover:scale-110">{c.flag}</span>
                 <span className="font-mono font-medium uppercase tracking-wider transition-colors"
