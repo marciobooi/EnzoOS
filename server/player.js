@@ -62,30 +62,55 @@ router.post('/previous', async (req, res) => {
   }
 });
 
-// POST /api/player/volume -> Set local player volume
-// Applies a perceptual (^1.7) curve so the slider feels linear to the ear.
-// Linear MPD volume at 50% = -6dB which stacks with any hardware attenuation
-// and sounds near-silent; the curve maps 50 user → ~33 MPD (still -9.6dB
-// vs hardware max) giving proper perceived midpoint.
-function toMpcVolume(userVol) {
-  if (userVol <= 0) return 0;
-  if (userVol >= 100) return 100;
-  return Math.round(Math.pow(userVol / 100, 1.7) * 100);
+// Map 0-100 slider → dB for CamillaDSP volume control.
+// Equal dB steps = equal perceived loudness steps (linear dB range).
+// 0 → mute, 50 → -30dB (medium), 75 → -15dB, 100 → 0dB (full).
+function toDb(userVol) {
+  if (userVol <= 0) return -100;
+  return -60 * (1 - userVol / 100);
 }
 
+// POST /api/player/volume -> Set volume via CamillaDSP (instant, all sources)
+// CamillaDSP applies gain after all ALSA buffers so there is zero lag.
+// MPD software mixer stays at 100% — CamillaDSP owns the volume stage.
 router.post('/volume', async (req, res) => {
   const vol = parseInt(req.body.volume, 10);
   if (!Number.isFinite(vol) || vol < 0 || vol > 100) {
     return res.status(400).json({ error: 'Invalid volume: must be 0–100' });
   }
   try {
-    await execPromise(`mpc volume ${toMpcVolume(vol)}`);
+    await setCamillaVolume(toDb(vol));
     res.json({ success: true });
   } catch (err) {
-    console.error('[Local Player] Volume failed:', err);
+    console.error('[Volume] Failed:', err);
     res.status(500).json({ success: false, error: err.message });
   }
 });
+
+/**
+ * Set CamillaDSP master volume in dB via WebSocket.
+ * Applied after ALL ALSA buffers — instant for every source.
+ */
+export async function setCamillaVolume(dB) {
+  try {
+    const { WebSocket } = await import('ws');
+    return await new Promise((resolve) => {
+      const ws = new WebSocket('ws://localhost:1234');
+      const timer = setTimeout(() => { ws.terminate(); resolve(false); }, 1500);
+      ws.on('open', () => ws.send(JSON.stringify({ SetVolume: dB })));
+      ws.on('message', (d) => {
+        clearTimeout(timer); ws.close();
+        try {
+          const msg = JSON.parse(d.toString());
+          const ok = msg.SetVolume?.result === 'Ok';
+          if (ok) console.log(`[Volume] CamillaDSP volume set to ${dB.toFixed(1)} dB`);
+          resolve(ok);
+        } catch { resolve(false); }
+      });
+      ws.on('error', (err) => { clearTimeout(timer); console.warn('[Volume] WS error:', err.message); resolve(false); });
+    });
+  } catch { return false; }
+}
 
 // POST /api/player/seek -> Seek local track
 router.post('/seek', async (req, res) => {
@@ -652,6 +677,9 @@ pcm.loop_dsnoop {
   } catch (err) {
     console.warn('[ALSA] Failed to write /etc/asound.conf (non-root context or missing sudoers permission):', err.message);
   }
+
+  // Keep MPD software mixer at 100% — CamillaDSP owns the volume stage now.
+  try { const { exec } = await import('child_process'); exec('mpc volume 100'); } catch {}
 
   // Maximise hardware PCM output volume so only MPD software volume controls
   // loudness. Without this the hardware attenuates by up to -23.8dB, making
