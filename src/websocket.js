@@ -8,11 +8,12 @@ import { toast } from './lib/toast';
  */
 function applyFullStatus(status, setters) {
   if (!status) return;
-  const { source, standby, remoteAccessEnabled, playback, eq, theme } = status;
+  const { source, standby, pureDirect, remoteAccessEnabled, playback, eq, theme } = status;
 
   if (source     !== undefined && setters.setSource)              setters.setSource(source);
   if (source     !== undefined && setters.setSpotify)             setters.setSpotify(source === 'spotify');
-  if (standby    !== undefined && setters.setStandby)             setters.setStandby(standby);
+  if (standby      !== undefined && setters.setStandby)      setters.setStandby(standby);
+  if (pureDirect   !== undefined && setters.setPureDirect)   setters.setPureDirect(pureDirect);
   if (remoteAccessEnabled !== undefined && setters.setRemoteAccessEnabled)
     setters.setRemoteAccessEnabled(remoteAccessEnabled);
 
@@ -112,6 +113,7 @@ export function useResonanceWS({
     setRemoteAccessEnabled,
     onAudioLevels,
     setVisualizerMode,
+    setPureDirect,
   }) {
     const [isConnected, setIsConnected] = useState(false);
     const ws = useRef(null);
@@ -233,6 +235,10 @@ export function useResonanceWS({
   
             if (type === 'SET_STANDBY') {
               if (setStandby) setStandby(payload.enabled);
+            }
+
+            if (type === 'SET_PURE_DIRECT') {
+              if (setPureDirect) setPureDirect(payload.enabled);
             }
   
             if (type === 'SET_TOKEN') {

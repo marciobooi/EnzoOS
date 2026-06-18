@@ -134,6 +134,8 @@ export default function Kiosk() {
   const [transitionScreen, setTransitionScreen] = useState('welcome'); // 'welcome' | 'goodbye' | null
   const [isDspWizardOpen, setIsDspWizardOpen] = useState(false);
   const [dspActive, setDspActive] = useState(false);
+  const [signalInfo, setSignalInfo] = useState(null);
+  const [pureDirect, setPureDirect] = useState(false);
   const [scale, setScale] = useState(1);
   const containerRef = useRef(null);
 
@@ -359,6 +361,7 @@ export default function Kiosk() {
       window.dispatchEvent(new CustomEvent('resonance-audio-levels', { detail: payload }));
     },
     setVisualizerMode,
+    setPureDirect,
   });
 
   const checkUpdates = async () => {
@@ -382,6 +385,32 @@ export default function Kiosk() {
       checkUpdates();
     }
   }, [isConnected]);
+
+  // Poll /api/player/signal-path every 5 s — live rate, clipping, and path info
+  useEffect(() => {
+    const poll = async () => {
+      try {
+        const r = await fetch('/api/player/signal-path');
+        if (r.ok) setSignalInfo(await r.json());
+      } catch {}
+    };
+    poll();
+    const id = setInterval(poll, 5000);
+    return () => clearInterval(id);
+  }, []);
+
+  const handleTogglePureDirect = useCallback(async (enabled) => {
+    try {
+      await fetch('/api/player/pure-direct', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ enabled }),
+      });
+      setPureDirect(enabled);
+    } catch (err) {
+      console.error('[Kiosk] Pure Direct toggle failed:', err);
+    }
+  }, []);
 
   const getGreeting = () => {
     const h = new Date().getHours();
@@ -1152,6 +1181,9 @@ export default function Kiosk() {
           favoriteStations={favoriteStations}
           onToggleFavoriteRadio={handleToggleFavoriteRadio}
           onToggleStandby={handleToggleStandby}
+          signalInfo={signalInfo}
+          pureDirect={pureDirect}
+          onTogglePureDirect={handleTogglePureDirect}
         />
 
         <EqualizerOverlay />

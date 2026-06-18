@@ -6,6 +6,7 @@ let cachedSourceState   = { spotify: true, source: 'spotify' };
 let cachedStandbyState  = false;
 let cachedVolume        = 50;
 let cachedMuted         = false;
+let cachedPureDirect    = false;
 let broadcastFn         = null;
 // Timestamp of last standby entry — BROADCAST_STATE auto-wake is suppressed
 // for 15 s after entering standby to prevent Spotify polling from waking it
@@ -78,6 +79,7 @@ export async function getFullStatus() {
   return {
     source:              cachedSourceState.source ?? 'spotify',
     standby:             cachedStandbyState,
+    pureDirect:          cachedPureDirect,
     remoteAccessEnabled: remoteRaw !== 'false',
     playback: {
       paused:   cachedPlaybackState?.paused   ?? true,
@@ -415,6 +417,17 @@ async function handleEvent(type, payload, excludeWs) {
       break;
     }
 
+    case 'SET_PURE_DIRECT': {
+      cachedPureDirect = !!payload.enabled;
+      await setSetting('pure_direct', cachedPureDirect ? 'true' : 'false');
+      broadcast({ type: 'SET_PURE_DIRECT', payload: { enabled: cachedPureDirect } }, excludeWs);
+      // Hot-reload CamillaDSP with or without EQ pipeline
+      import('./player.js').then(({ updateCamillaConfigFromSettings }) =>
+        updateCamillaConfigFromSettings({ skipAlsa: true, pureDirect: cachedPureDirect })
+      ).catch(err => console.error('[EventService] Pure Direct config update failed:', err));
+      break;
+    }
+
     case 'DSP_CALIBRATION': {
       broadcast({ type: 'DSP_CALIBRATION', payload }, excludeWs);
       break;
@@ -534,13 +547,27 @@ export const loadStateFromDB = async () => {
       }
     }
 
+    // Restore pure direct state
+    const pureDirectVal = await getSetting('pure_direct');
+    cachedPureDirect = pureDirectVal === 'true';
+    console.log(`[EventService] Loaded pure_direct: ${cachedPureDirect}`);
+
     // Restore CamillaDSP config
     try {
       const { updateCamillaConfigFromSettings } = await import('./player.js');
-      await updateCamillaConfigFromSettings();
+      await updateCamillaConfigFromSettings({ pureDirect: cachedPureDirect });
       console.log('[EventService] CamillaDSP config restored on startup.');
     } catch (err) {
       console.error('[EventService] Failed to restore CamillaDSP config:', err.message);
+    }
+
+    // Start MPD rate watcher — auto-reconfigures CamillaDSP when song sample rate changes
+    try {
+      const { startMpdRateWatcher } = await import('./player.js');
+      startMpdRateWatcher();
+      console.log('[EventService] MPD rate watcher started.');
+    } catch (err) {
+      console.warn('[EventService] Failed to start MPD rate watcher:', err.message);
     }
 
     // Start audio level monitor

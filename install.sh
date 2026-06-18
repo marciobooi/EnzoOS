@@ -165,6 +165,8 @@ cat <<'ASOUNDEOF' > /etc/asound.conf
 # Keep ALSA loopback dsnoop so CamillaDSP can still capture audio.
 # PipeWire loopback module (51-resonance-loopback.conf) bridges
 # ResonanceInput.monitor → hw:Loopback,0,0, feeding this dsnoop.
+# Rate is intentionally not fixed — PipeWire clock.allowed-rates drives
+# native sample-rate selection; CamillaDSP follows via the MPD rate watcher.
 pcm.loop_dsnoop {
     type dsnoop
     ipc_key 2048
@@ -172,7 +174,6 @@ pcm.loop_dsnoop {
     slave {
         pcm "hw:Loopback,1,0"
         channels 2
-        rate 44100
         format S16_LE
         period_size 1024
     }
@@ -192,8 +193,10 @@ echo -e "${YELLOW}Configuring PipeWire virtual sink and loopback for CamillaDSP 
 
 mkdir -p /etc/pipewire/pipewire.conf.d
 cat <<'PWEOF' > /etc/pipewire/pipewire.conf.d/50-resonance-sink.conf
-# Resonance HiFi — PipeWire virtual null sink (replaces old ALSA loopback dmix sink)
+# Resonance HiFi — PipeWire virtual null sink
 # All audio sources route here by default. CamillaDSP captures via ALSA loopback bridge.
+# No fixed audio.rate — PipeWire clock.allowed-rates (52-resonance-bitperfect.conf) picks
+# the native rate of the active source for bit-perfect passthrough.
 context.objects = [
   { factory = adapter
     args = {
@@ -202,7 +205,6 @@ context.objects = [
       node.description  = "Resonance HiFi Input"
       media.class       = "Audio/Sink"
       audio.channels    = 2
-      audio.rate        = 44100
       audio.format      = "S16LE"
       node.pause-on-idle = false
       priority.session  = 2000
@@ -234,6 +236,24 @@ context.modules = [
   }
 ]
 PWLBEOF
+
+# ── PipeWire bit-perfect: native clock rate switching ────────────────────────
+# clock.allowed-rates lets PipeWire switch its graph clock to match the dominant
+# source's native rate (44.1 kHz FLAC, 48 kHz stream, 96 kHz hi-res, etc.).
+# No resampling occurs when source rate is in this list — bit-perfect path.
+# The Resonance MPD rate watcher reconfigures CamillaDSP to match automatically.
+cat <<'BPEOF' > /etc/pipewire/pipewire.conf.d/52-resonance-bitperfect.conf
+# Resonance HiFi — native sample-rate selection (bit-perfect path)
+# PipeWire switches its processing clock to the source's native rate when it
+# appears in this list, eliminating inter-domain resampling for hi-res audio.
+context.properties = {
+    default.clock.rate          = 48000
+    default.clock.allowed-rates = [ 44100 48000 88200 96000 176400 192000 ]
+    default.clock.quantum       = 1024
+    default.clock.min-quantum   = 32
+    default.clock.max-quantum   = 8192
+}
+BPEOF
 
 # WirePlumber rule: set ResonanceInput as the default audio output
 mkdir -p /etc/wireplumber/wireplumber.conf.d

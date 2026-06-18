@@ -228,6 +228,12 @@ function FrequencyBand({ stations, onPlay, onToggleFavorite, favoriteStations = 
   );
 }
 
+// Map 0–100 slider value to a dB string for display (matches server toDb())
+function toVolumeDb(vol) {
+  if (vol <= 0) return '−∞';
+  return (-60 * (1 - vol / 100)).toFixed(0);
+}
+
 const PlayerDisplay = React.memo(function PlayerDisplay({
   theme = 'amber',
   activeTheme = 'dot-matrix',
@@ -268,7 +274,10 @@ const PlayerDisplay = React.memo(function PlayerDisplay({
   favoriteStations = [],
   onToggleFavoriteRadio,
   onToggleStandby,
-  onToggleSearch
+  onToggleSearch,
+  signalInfo = null,
+  pureDirect = false,
+  onTogglePureDirect,
 }) {
   const [showVolumeFeedback, setShowVolumeFeedback] = useState(false);
   const [showSearch, setShowSearch] = useState(true);
@@ -811,17 +820,32 @@ const PlayerDisplay = React.memo(function PlayerDisplay({
               </button>
            
               {spotify && (
-                <button 
+                <button
                   onClick={onTransferPlayback}
                   className={`status-pill cursor-pointer transition-colors ${
-                    isLocalDeviceActive 
-                      ? 'text-emerald-400 hover:text-emerald-300' 
+                    isLocalDeviceActive
+                      ? 'text-emerald-400 hover:text-emerald-300'
                       : 'theme-text hover:opacity-80 animate-pulse'
                   }`}
                   title={isLocalDeviceActive ? 'Spotify Connect Active' : 'Click to Route Audio to Resonance'}
                 >
                   <span className={`status-dot ${isLocalDeviceActive ? 'bg-emerald-400' : 'theme-bg'}`}></span>
                   {isLocalDeviceActive ? 'SPOTIFY CONNECT // ACTIVE' : 'ROUTE TO RESONANCE'}
+                </button>
+              )}
+
+              {onTogglePureDirect && (
+                <button
+                  onClick={() => onTogglePureDirect(!pureDirect)}
+                  className={`status-pill cursor-pointer transition-colors border font-sans ${
+                    pureDirect
+                      ? 'text-cyan-300 border-cyan-400/40 bg-cyan-400/8'
+                      : 'text-zinc-500 border-zinc-600/30 hover:text-zinc-300'
+                  }`}
+                  title={pureDirect ? 'Pure Direct active — EQ bypassed' : 'Enable Pure Direct (flat pipeline)'}
+                >
+                  <span className={`status-dot ${pureDirect ? 'bg-cyan-300' : 'bg-zinc-600'}`}></span>
+                  PURE DIRECT {pureDirect ? '// ON' : '// OFF'}
                 </button>
               )}
            
@@ -843,41 +867,58 @@ const PlayerDisplay = React.memo(function PlayerDisplay({
                 <div className="track-artist truncate">{trackArtist}</div>
                 <div className="track-album truncate">{trackAlbumName}</div>
                 
-                {/* Audiophile HUD Telemetry & Signal Path */}
-                <div className="flex items-center gap-1.5 mt-1 text-[8px] font-mono text-zinc-400 tracking-wider">
-                  <span className={`px-1 py-0.25 rounded-[3px] font-extrabold text-[7px] ${
-                    !playbackState || trackName === 'SYSTEM IDLE' || trackName === 'Ready to Stream'
-                      ? 'bg-zinc-800/40 text-zinc-500 border border-zinc-700/30'
-                      : source === 'spotify' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 
-                      source === 'radio' ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20' : 
-                      'bg-cyan-500/10 text-cyan-400 border border-cyan-500/20'
-                  }`}>
-                    {!playbackState || trackName === 'SYSTEM IDLE' || trackName === 'Ready to Stream'
-                      ? 'OFFLINE'
-                      : source === 'spotify' ? 'OGG VORBIS' : source === 'radio' ? 'AAC STREAM' : 'FLAC LOSSLESS'}
-                  </span>
-                  <span>
-                    {!playbackState || trackName === 'SYSTEM IDLE' || trackName === 'Ready to Stream'
-                      ? '-- / -- • -- kbps'
-                      : source === 'spotify' ? '16-bit / 44.1kHz • 320kbps' : 
-                      source === 'radio' ? '16-bit / 48.0kHz • 192kbps' : 
-                      '24-bit / 96.0kHz • 2822kbps'}
-                  </span>
-                  <span className="opacity-45">|</span>
-                  <span className="text-[7.5px] opacity-75 truncate max-w-[120px] lg:max-w-none" title={
-                    !playbackState || trackName === 'SYSTEM IDLE' || trackName === 'Ready to Stream'
-                      ? 'DSP Pipeline Suspended'
-                      : source === 'spotify' ? 'Spotify → Resampler 96kHz → CamillaDSP → DAC' : 
-                      source === 'radio' ? 'Stream → Resampler 96kHz → CamillaDSP → DAC' : 
-                      'Local → Direct Audio → CamillaDSP → DAC'
-                  }>
-                    {!playbackState || trackName === 'SYSTEM IDLE' || trackName === 'Ready to Stream'
-                      ? 'DSP Pipeline Suspended'
-                      : source === 'spotify' ? 'Spotify → Resampler 96kHz → CamillaDSP → DAC' : 
-                      source === 'radio' ? 'Stream → Resampler 96kHz → CamillaDSP → DAC' : 
-                      'Local → Direct Audio → CamillaDSP → DAC'}
-                  </span>
-                </div>
+                {/* Audiophile HUD Telemetry & Signal Path — live data from /api/player/signal-path */}
+                {(() => {
+                  const idle = !playbackState || trackName === 'SYSTEM IDLE' || trackName === 'Ready to Stream';
+                  const mpdFmt   = signalInfo?.mpd;
+                  const camilla  = signalInfo?.camilla;
+                  const isRunning = camilla?.state === 'Running';
+                  const hasLive  = !idle && mpdFmt?.rate && isRunning;
+                  const isClipping = (camilla?.clippedSamples ?? 0) > 0;
+
+                  const codecLabel = idle ? 'OFFLINE'
+                    : source === 'spotify' ? 'OGG VORBIS'
+                    : source === 'radio'   ? 'AAC STREAM'
+                    : 'PCM';
+
+                  const rateLabel = idle ? '-- / --'
+                    : hasLive
+                    ? `${mpdFmt.bits}-bit / ${(mpdFmt.rate / 1000).toFixed(1)}kHz`
+                    : source === 'spotify' ? '16-bit / 44.1kHz'
+                    : source === 'radio'   ? '16-bit / 48.0kHz'
+                    : '24-bit / 96.0kHz';
+
+                  const pathLabel = idle
+                    ? 'DSP Pipeline Suspended'
+                    : (signalInfo?.path || (
+                        source === 'spotify' ? 'Spotify → PipeWire → CamillaDSP → DAC'
+                        : 'MPD → PipeWire → CamillaDSP → DAC'
+                      ));
+
+                  const codecColor = idle
+                    ? 'bg-zinc-800/40 text-zinc-500 border-zinc-700/30'
+                    : source === 'spotify' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                    : source === 'radio'   ? 'bg-amber-500/10 text-amber-400 border-amber-500/20'
+                    : 'bg-cyan-500/10 text-cyan-400 border-cyan-500/20';
+
+                  return (
+                    <div className="flex items-center gap-1.5 mt-1 text-[8px] font-mono text-zinc-400 tracking-wider flex-wrap">
+                      <span className={`px-1 rounded-[3px] font-extrabold text-[7px] border ${codecColor}`}>
+                        {codecLabel}
+                      </span>
+                      <span>{rateLabel}</span>
+                      {isClipping && (
+                        <span className="px-1 rounded-[3px] text-[7px] font-extrabold border bg-rose-500/15 text-rose-400 border-rose-500/30 animate-pulse">
+                          CLIP
+                        </span>
+                      )}
+                      <span className="opacity-45">|</span>
+                      <span className="text-[7.5px] opacity-75 truncate max-w-[120px] lg:max-w-none" title={pathLabel}>
+                        {pathLabel}
+                      </span>
+                    </div>
+                  );
+                })()}
               </div>
 
               {/* Precision Mechanical VU Meters or 7-Band Digital (Click to Open EQ) */}
@@ -1137,9 +1178,12 @@ const PlayerDisplay = React.memo(function PlayerDisplay({
                   }%, rgba(255, 255, 255, 0.06) 100%)`
                 }}
               />
-              <span className="text-[10px] text-zinc-450 font-mono font-bold w-8 text-right shrink-0">
-                {isMuted ? 0 : volume}%
-              </span>
+              <div className="text-right shrink-0 min-w-[44px]">
+                <div className="text-[10px] text-zinc-300 font-mono font-bold leading-tight">
+                  {isMuted ? '−∞' : toVolumeDb(volume)}<span className="text-[8px] text-zinc-500"> dB</span>
+                </div>
+                <div className="text-[8px] text-zinc-600 font-mono leading-tight">{isMuted ? 'MUTE' : `${volume}%`}</div>
+              </div>
             </div>
           )}
         </div>

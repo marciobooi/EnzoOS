@@ -253,6 +253,47 @@ router.delete('/radios', async (req, res) => {
   }
 });
 
+// GET /api/player/signal-path → live audio chain telemetry
+router.get('/signal-path', async (req, res) => {
+  try {
+    const [camillaStatus, mpdFmt, activeSource] = await Promise.all([
+      getCamillaStatus(),
+      getMpdAudioFormat(),
+      getSetting('active_source').catch(() => 'unknown'),
+    ]);
+    const pathMap = {
+      local:     'MPD → PipeWire → CamillaDSP → DAC',
+      radio:     'MPD → PipeWire → CamillaDSP → DAC',
+      spotify:   'Spotify → raspotify → PipeWire → CamillaDSP → DAC',
+      airplay:   'AirPlay → shairport-sync → PipeWire → CamillaDSP → DAC',
+      upnp:      'UPnP → upmpdcli/MPD → PipeWire → CamillaDSP → DAC',
+      bluetooth: 'Bluetooth → bluealsa → PipeWire → CamillaDSP → DAC',
+      tidal:     'Tidal → PipeWire → CamillaDSP → DAC',
+      qobuz:     'Qobuz → PipeWire → CamillaDSP → DAC',
+    };
+    res.json({
+      source:  activeSource,
+      camilla: camillaStatus,
+      mpd:     mpdFmt,
+      path:    pathMap[activeSource] || 'Source → PipeWire → CamillaDSP → DAC',
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/player/pure-direct → toggle DSP-bypass (flat pipeline, no EQ)
+router.post('/pure-direct', async (req, res) => {
+  const { enabled } = req.body;
+  if (enabled === undefined) return res.status(400).json({ error: 'enabled required' });
+  try {
+    await emit('SET_PURE_DIRECT', { enabled: !!enabled });
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // --- CamillaDSP DAC & Audio Hardware Capabilities Detection ---
 function detectDac() {
   let detected = {
@@ -432,7 +473,8 @@ const presetDatabase = {
 };
 
 // --- CamillaDSP Configuration Generator ---
-function generateCamillaConfig(answers, eqSettings, dacInfo) {
+// pureDirect = true: bypass all EQ, output flat pipeline (volume control still active)
+function generateCamillaConfig(answers, eqSettings, dacInfo, { pureDirect = false } = {}) {
   const isDspActive = answers && (answers[0] === 'dsp' || answers['0'] === 'dsp');
   const isSubwooferSetup = answers && answers.q1_setup === "2 Speakers + 1 Subwoofer";
 
@@ -440,20 +482,51 @@ function generateCamillaConfig(answers, eqSettings, dacInfo) {
   
   let profile;
   if (selectedPresetName === 'Custom' && eqSettings) {
+    const bandGains = (eqSettings.bands || [0,0,0,0,0]).map(Number);
+    // Auto-headroom: subtract the largest positive band boost from pre-amp to prevent clipping.
+    const maxBoost = Math.max(0, ...bandGains);
     profile = {
-      preampGain: Number(eqSettings.preAmp) || 0.0,
+      preampGain: (Number(eqSettings.preAmp) || 0.0) - maxBoost,
       noiseFloorLevel: (eqSettings.noiseFloor > 0) ? (-105.0 + (Number(eqSettings.noiseFloor) * 2.0)) : null,
       useSaturation: (eqSettings.saturation > 0),
       bands: [
-        { type: "Lowshelf", freq: 60, gain: Number(eqSettings.bands[0]) || 0, q: 0.707 },
-        { type: "Peaking", freq: 250, gain: Number(eqSettings.bands[1]) || 0, q: 0.707 },
-        { type: "Peaking", freq: 1000, gain: Number(eqSettings.bands[2]) || 0, q: 0.707 },
-        { type: "Peaking", freq: 4000, gain: Number(eqSettings.bands[3]) || 0, q: 0.707 },
-        { type: "Highshelf", freq: 16000, gain: Number(eqSettings.bands[4]) || 0, q: 0.707 }
+        { type: "Lowshelf", freq: 60,    gain: bandGains[0], q: 0.707 },
+        { type: "Peaking",  freq: 250,   gain: bandGains[1], q: 0.707 },
+        { type: "Peaking",  freq: 1000,  gain: bandGains[2], q: 0.707 },
+        { type: "Peaking",  freq: 4000,  gain: bandGains[3], q: 0.707 },
+        { type: "Highshelf",freq: 16000, gain: bandGains[4], q: 0.707 },
       ]
     };
   } else {
     profile = presetDatabase[selectedPresetName] || presetDatabase["Clinical Reference"];
+  }
+
+  // Pure Direct: bypass all EQ — flat pipeline with unity gain only.
+  // Volume control via CamillaDSP SetVolume remains active.
+  if (pureDirect) {
+    const pdConfig = {
+      devices: {
+        samplerate: dacInfo.samplerate || 44100,
+        chunksize: 1024,
+        queuelimit: 4,
+        capture:  { type: "Alsa", channels: 2, device: "loop_dsnoop", format: "S16_LE" },
+        playback: { type: "Alsa", channels: dacInfo.channels || 2, device: dacInfo.device || "hw:CARD=DAC,DEV=0", format: dacInfo.format || "S24_3_LE" },
+      },
+      mixers: {
+        speaker_map: {
+          channels: { in: 2, out: 2 },
+          mapping: [
+            { dest: 0, sources: [{ channel: 0, gain: 0 }] },
+            { dest: 1, sources: [{ channel: 1, gain: 0 }] },
+          ],
+        },
+      },
+      filters: {},
+      pipeline: [
+        { type: "Mixer", name: "speaker_map" },
+      ],
+    };
+    return pdConfig;
   }
 
   let config = {
@@ -639,6 +712,9 @@ function generateCamillaConfig(answers, eqSettings, dacInfo) {
 // PipeWire's loopback module bridges ResonanceInput.monitor → hw:Loopback,0,0 for CamillaDSP.
 async function ensureAsoundConf() {
   const asoundConfPath = '/etc/asound.conf';
+  // No forced rate: PipeWire switches clock to match source (44100/48000/96000/etc).
+  // CamillaDSP captures at whatever rate PipeWire writes, enabling native bit-perfect
+  // when combined with PipeWire clock.allowed-rates configuration.
   const expectedContent = `# Resonance HiFi — ALSA config for PipeWire architecture
 # pcm.!default is provided by /usr/share/alsa/alsa.conf.d/99-pipewire-default.conf
 # (routes all default ALSA output to PipeWire automatically)
@@ -646,6 +722,8 @@ async function ensureAsoundConf() {
 # Keep ALSA loopback dsnoop so CamillaDSP can still capture audio.
 # PipeWire loopback module (51-resonance-loopback.conf) bridges
 # ResonanceInput.monitor → hw:Loopback,0,0, feeding this dsnoop.
+# Rate is intentionally not fixed — PipeWire clock.allowed-rates drives
+# native sample-rate selection and CamillaDSP follows via rate watcher.
 pcm.loop_dsnoop {
     type dsnoop
     ipc_key 2048
@@ -653,7 +731,6 @@ pcm.loop_dsnoop {
     slave {
         pcm "hw:Loopback,1,0"
         channels 2
-        rate 44100
         format S16_LE
         period_size 1024
     }
@@ -719,7 +796,7 @@ router.get('/dsp-calibration', async (req, res) => {
 });
 
 // Exportable helper to update configuration on any settings change
-export async function updateCamillaConfigFromSettings({ skipAlsa = false } = {}) {
+export async function updateCamillaConfigFromSettings({ skipAlsa = false, samplerate = null, pureDirect = false } = {}) {
   const dspVal = await getSetting('dsp_calibration');
   const eqVal = await getSetting('eq_settings');
 
@@ -741,8 +818,14 @@ export async function updateCamillaConfigFromSettings({ skipAlsa = false } = {})
     dacInfo.channels = 2;
   }
 
+  // Rate override from MPD rate watcher — matches CamillaDSP capture to source rate
+  if (samplerate && samplerate > 0) {
+    dacInfo.samplerate = samplerate;
+    console.log(`[CamillaDSP] Using MPD-detected sample rate: ${samplerate} Hz`);
+  }
+
   // Generate CamillaDSP yaml configuration
-  const configObj = generateCamillaConfig(answers, eqSettings, dacInfo);
+  const configObj = generateCamillaConfig(answers, eqSettings, dacInfo, { pureDirect });
   const yamlString = YAML.stringify(configObj, { indent: 2 });
 
   // Save configuration file
@@ -805,6 +888,119 @@ async function hotReloadCamilla(yamlString) {
     console.warn('[CamillaDSP] Hot-reload unavailable:', err.message);
     return false;
   }
+}
+
+/**
+ * Query CamillaDSP GetStatus — returns live signal metrics.
+ * Used by /api/player/signal-path for clipping detection, load, and RMS levels.
+ */
+export async function getCamillaStatus() {
+  try {
+    const { WebSocket } = await import('ws');
+    return await new Promise((resolve) => {
+      const ws = new WebSocket('ws://localhost:1234');
+      const timer = setTimeout(() => { ws.terminate(); resolve(null); }, 1500);
+      ws.on('open', () => ws.send(JSON.stringify({ GetStatus: null })));
+      ws.on('message', (d) => {
+        clearTimeout(timer); ws.close();
+        try {
+          const msg = JSON.parse(d.toString());
+          const v = msg.GetStatus?.value;
+          if (!v) { resolve(null); return; }
+          resolve({
+            state:           v.state           ?? 'Unknown',
+            clippedSamples:  v.clippedSamples   ?? 0,
+            bufferUnderruns: v.bufferUnderruns  ?? 0,
+            processingLoad:  v.processingLoad   ?? 0,
+            captureRmsL:     v.captureSignalRms?.[0]  ?? -100,
+            captureRmsR:     v.captureSignalRms?.[1]  ?? -100,
+          });
+        } catch { resolve(null); }
+      });
+      ws.on('error', () => { clearTimeout(timer); resolve(null); });
+    });
+  } catch { return null; }
+}
+
+/**
+ * Read current audio format from MPD (rate:bits:channels).
+ * Returns null when MPD is stopped or unreachable.
+ */
+async function getMpdAudioFormat() {
+  const net = await import('net');
+  return new Promise((resolve) => {
+    const socket = net.createConnection(6600, '127.0.0.1');
+    let buf = '';
+    let greeted = false;
+    const timer = setTimeout(() => { socket.destroy(); resolve(null); }, 1500);
+    socket.on('data', (chunk) => {
+      buf += chunk.toString();
+      if (!greeted && buf.includes('\n')) {
+        greeted = true; buf = '';
+        socket.write('status\n');
+        return;
+      }
+      if (greeted && (buf.includes('\nOK\n') || buf.endsWith('\nOK'))) {
+        clearTimeout(timer);
+        socket.destroy();
+        const m = buf.match(/^audio:\s*(\d+):(\d+):(\d+)/m);
+        resolve(m ? { rate: parseInt(m[1]), bits: parseInt(m[2]), channels: parseInt(m[3]) } : null);
+      }
+    });
+    socket.on('error', () => { clearTimeout(timer); resolve(null); });
+  });
+}
+
+let _lastMpdRate = 0;
+let _mpdRateWatcherActive = false;
+
+/**
+ * Start a persistent MPD idle connection that watches for player events.
+ * When a song with a different sample rate starts, CamillaDSP capture rate
+ * is updated automatically so no unnecessary resampling occurs inside CamillaDSP.
+ * Reconnects automatically on disconnect. Call once on server startup.
+ */
+export function startMpdRateWatcher() {
+  if (_mpdRateWatcherActive) return;
+  _mpdRateWatcherActive = true;
+  _connectMpdIdle();
+}
+
+function _connectMpdIdle() {
+  if (!_mpdRateWatcherActive) return;
+  import('net').then(({ default: net }) => {
+    const socket = net.createConnection(6600, '127.0.0.1');
+    let buf = '';
+    let greeted = false;
+    const reconnect = () => { socket.destroy(); setTimeout(_connectMpdIdle, 5000); };
+
+    socket.on('data', (chunk) => {
+      buf += chunk.toString();
+      if (!greeted && buf.includes('\n')) {
+        greeted = true; buf = '';
+        socket.write('idle player\n');
+        return;
+      }
+      if (greeted && (buf.includes('\nOK\n') || buf.endsWith('\nOK'))) {
+        const changed = buf.includes('changed: player');
+        buf = '';
+        if (changed) {
+          getMpdAudioFormat().then(fmt => {
+            if (fmt?.rate && fmt.rate !== _lastMpdRate) {
+              const prev = _lastMpdRate;
+              _lastMpdRate = fmt.rate;
+              console.log(`[MPD Rate] ${prev || '?'} → ${fmt.rate} Hz — updating CamillaDSP capture rate`);
+              updateCamillaConfigFromSettings({ skipAlsa: true, samplerate: fmt.rate })
+                .catch(err => console.warn('[MPD Rate] CamillaDSP update failed:', err.message));
+            }
+          });
+        }
+        socket.write('idle player\n');
+      }
+    });
+    socket.on('error', (err) => { console.warn('[MPD Idle] Error:', err.message); reconnect(); });
+    socket.on('close', reconnect);
+  });
 }
 
 // GET /api/player/library/artists
