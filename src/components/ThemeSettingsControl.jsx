@@ -124,7 +124,7 @@ export default function ThemeSettingsControl({
         </div>
 
         {/* Right — Hardware parameters */}
-        <div className="lg:col-span-5 rounded-xl p-4 flex flex-col justify-between overflow-hidden"
+        <div className="lg:col-span-5 rounded-xl p-4 flex flex-col justify-between overflow-y-auto stone-scrollbar"
           style={{ background: S.surface, border: `1px solid ${S.border}` }}>
           <div>
             <div className="flex items-center justify-between mb-3 shrink-0">
