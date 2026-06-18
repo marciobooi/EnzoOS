@@ -70,7 +70,7 @@ export default function ThemeSettingsControl({
                   className={`p-3 rounded-xl flex flex-col justify-between lowed' : 'cursor-pointer active:scale-[0.98]'
                   }`}
                   style={{
-                    height: '160px',
+                    height: '140px',
                     background: activeTheme === t.id ? S.surface : S.surfaceLo,
                     border: `1px solid ${activeTheme === t.id ? S.accent : S.border}`,
                     boxShadow: cardShadow,
@@ -82,7 +82,7 @@ export default function ThemeSettingsControl({
                       <Check className="w-4 h-4 shrink-0" strokeWidth={1.5} style={{ color: S.accent }} />
                     )}
                   </div>
-                  <div className="mt-2 flex flex-col gap-1 justify-between">
+                  <div className="mt-2 flex flex-col gap-4 p-2">
                     <div className="text-base font-bold leading-tight"
                       style={{ color: activeTheme === t.id && !t.disabled ? S.strong : S.muted }}>
                       {t.name}
