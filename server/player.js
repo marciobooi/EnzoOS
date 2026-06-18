@@ -461,6 +461,9 @@ function generateCamillaConfig(answers, eqSettings, dacInfo) {
       samplerate: dacInfo.samplerate || 44100,
       chunksize: 1024,
       queuelimit: 4,
+      // CamillaDSP 4.1.3 is built with ALSA-only backends (no Pulse/PipeWire).
+      // Audio reaches here via: PipeWire → ResonanceInput virtual sink
+      //   → PW loopback module → hw:Loopback,0,0 → ALSA dsnoop (loop_dsnoop)
       capture: { type: "Alsa", channels: 2, device: "loop_dsnoop", format: "S16_LE" },
       playback: {
         type: "Alsa",
@@ -630,36 +633,19 @@ function generateCamillaConfig(answers, eqSettings, dacInfo) {
   return config;
 }
 
-// Function to ensure /etc/asound.conf is correctly configured for ALSA Loopback
+// Function to ensure /etc/asound.conf is correctly configured for PipeWire architecture.
+// PipeWire owns the default ALSA device (via /usr/share/alsa/alsa.conf.d/99-pipewire-default.conf).
+// We only need to keep loop_dsnoop so CamillaDSP (ALSA-only build) can still capture audio.
+// PipeWire's loopback module bridges ResonanceInput.monitor → hw:Loopback,0,0 for CamillaDSP.
 async function ensureAsoundConf() {
   const asoundConfPath = '/etc/asound.conf';
-  const expectedContent = `# Resonance HiFi - Default ALSA Route to Loopback
-pcm.!default {
-    type plug
-    slave.pcm "camilla_input"
-}
+  const expectedContent = `# Resonance HiFi — ALSA config for PipeWire architecture
+# pcm.!default is provided by /usr/share/alsa/alsa.conf.d/99-pipewire-default.conf
+# (routes all default ALSA output to PipeWire automatically)
 
-ctl.!default {
-    type hw
-    card Loopback
-}
-
-# dmix allows MPD and raspotify to write simultaneously (no exclusive lock)
-pcm.camilla_input {
-    type dmix
-    ipc_key 1024
-    ipc_perm 0666
-    slave {
-        pcm "hw:Loopback,0,0"
-        channels 2
-        rate 44100
-        format S16_LE
-        period_size 1024
-        buffer_size 4096
-    }
-}
-
-# dsnoop allows CamillaDSP and arecord monitor to read simultaneously
+# Keep ALSA loopback dsnoop so CamillaDSP can still capture audio.
+# PipeWire loopback module (51-resonance-loopback.conf) bridges
+# ResonanceInput.monitor → hw:Loopback,0,0, feeding this dsnoop.
 pcm.loop_dsnoop {
     type dsnoop
     ipc_key 2048
@@ -695,19 +681,9 @@ pcm.loop_dsnoop {
     console.warn('[ALSA] Failed to write /etc/asound.conf (non-root context or missing sudoers permission):', err.message);
   }
 
-  // Keep MPD software mixer at 100% — CamillaDSP owns the volume stage now.
-  try { const { exec } = await import('child_process'); exec('mpc volume 100'); } catch {}
-
-  // Maximise hardware PCM output volume so only MPD software volume controls
-  // loudness. Without this the hardware attenuates by up to -23.8dB, making
-  // the lower half of the volume slider sound like silence.
-  try {
-    const { exec } = await import('child_process');
-    exec("amixer -c 0 cset name='PCM Playback Volume' 255,255", (err) => {
-      if (err) console.warn('[ALSA] Could not set PCM Playback Volume to max:', err.message);
-      else console.log('[ALSA] PCM Playback Volume set to 255 (0dB).');
-    });
-  } catch {}
+  // With PipeWire, volume is managed at the PipeWire graph level by CamillaDSP.
+  // MPD runs with mixer_type none (PipeWire output), so mpc volume is not applicable.
+  // ALSA PCM volume does not affect the PipeWire → loopback → CamillaDSP chain.
 }
 
 // POST /api/player/dsp-calibration -> Save user DSP calibration answers & generate configuration

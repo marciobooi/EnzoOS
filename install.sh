@@ -138,44 +138,28 @@ apt-get install -y \
   xinput \
   evtest
 
-# Enable ALSA Loopback kernel module immediately and on boot
-echo -e "${YELLOW}Enabling ALSA Loopback device module (snd-aloop)...${NC}"
+# Enable ALSA Loopback kernel module immediately and on boot.
+# CamillaDSP (ALSA-only build) still captures from this loopback via dsnoop.
+# PipeWire loopback module bridges: ResonanceInput virtual sink → hw:Loopback,0,0
+echo -e "${YELLOW}Enabling ALSA Loopback device module (snd-aloop) for CamillaDSP capture...${NC}"
 modprobe snd-aloop || true
 if ! grep -q "snd-aloop" /etc/modules; then
   echo "snd-aloop" >> /etc/modules
 fi
 
-# Configure ALSA Default Device to route to Loopback using dmix (shared write access)
-echo -e "${YELLOW}Creating default ALSA configuration (/etc/asound.conf) routing to Loopback...${NC}"
-cat <<EOF > /etc/asound.conf
-# Resonance HiFi - Default ALSA Route to Loopback
-# dmix on camilla_input lets raspotify and MPD share the loopback write side.
-pcm.!default {
-    type plug
-    slave.pcm "camilla_input"
-}
+# Configure /etc/asound.conf for PipeWire architecture.
+# pcm.!default is handled by /usr/share/alsa/alsa.conf.d/99-pipewire-default.conf
+# (installed with pipewire-alsa), which routes all ALSA default output to PipeWire.
+# We only keep loop_dsnoop so CamillaDSP can capture via ALSA dsnoop on the loopback.
+echo -e "${YELLOW}Creating ALSA configuration (/etc/asound.conf) for PipeWire architecture...${NC}"
+cat <<'ASOUNDEOF' > /etc/asound.conf
+# Resonance HiFi — ALSA config for PipeWire architecture
+# pcm.!default is provided by /usr/share/alsa/alsa.conf.d/99-pipewire-default.conf
+# (routes all default ALSA output to PipeWire automatically)
 
-ctl.!default {
-    type hw
-    card Loopback
-}
-
-# dmix allows multiple writers (raspotify + MPD) to share the loopback simultaneously
-pcm.camilla_input {
-    type dmix
-    ipc_key 1024
-    ipc_perm 0666
-    slave {
-        pcm "hw:Loopback,0,0"
-        channels 2
-        rate 44100
-        format S16_LE
-        period_size 8192
-        buffer_size 32768
-    }
-}
-
-# Share loopback capture side so CamillaDSP can read without exclusive locks
+# Keep ALSA loopback dsnoop so CamillaDSP can still capture audio.
+# PipeWire loopback module (51-resonance-loopback.conf) bridges
+# ResonanceInput.monitor → hw:Loopback,0,0, feeding this dsnoop.
 pcm.loop_dsnoop {
     type dsnoop
     ipc_key 2048
@@ -185,46 +169,73 @@ pcm.loop_dsnoop {
         channels 2
         rate 44100
         format S16_LE
-        period_size 8192
+        period_size 1024
     }
 }
-EOF
+ASOUNDEOF
 
-# Configure PipeWire to route all audio through the ALSA loopback → CamillaDSP chain.
-# PipeWire replaces PulseAudio as the sound server. Chromium/Spotify Web SDK uses
-# PipeWire natively. MPD and Raspotify use ALSA dmix directly. All paths meet at
-# the camilla_input dmix which feeds hw:Loopback,0,0 → CamillaDSP → DAC.
-echo -e "${YELLOW}Configuring PipeWire to route audio through ALSA loopback → CamillaDSP...${NC}"
+# ── PipeWire configuration: virtual null sink + loopback bridge ──────────────
+# Architecture:
+#   Sources (MPD/raspotify/shairport/BT/Chromium)
+#     → PipeWire "ResonanceInput" virtual null sink (native PipeWire mixing, ~5ms)
+#     → PW loopback module → hw:Loopback,0,0
+#     → ALSA dsnoop (loop_dsnoop)
+#     → CamillaDSP (EQ/DSP) → hw:CARD=Intel,DEV=0
+#
+# This replaces the old dmix/dsnoop-only chain (93ms buffer, no native BT codecs).
+echo -e "${YELLOW}Configuring PipeWire virtual sink and loopback for CamillaDSP bridge...${NC}"
 
-# PipeWire sink that writes to our dmix loopback device (shared with MPD/Raspotify)
 mkdir -p /etc/pipewire/pipewire.conf.d
 cat <<'PWEOF' > /etc/pipewire/pipewire.conf.d/50-resonance-sink.conf
-# Resonance HiFi: PipeWire output sink → ALSA loopback dmix → CamillaDSP
+# Resonance HiFi — PipeWire virtual null sink (replaces old ALSA loopback dmix sink)
+# All audio sources route here by default. CamillaDSP captures via ALSA loopback bridge.
 context.objects = [
-  {   factory = adapter
-      args = {
-        factory.name      = api.alsa.pcm.sink
-        node.name         = "alsa_output.resonance_loopback"
-        node.description  = "Resonance HiFi (via CamillaDSP)"
-        media.class       = "Audio/Sink"
-        api.alsa.path     = "camilla_input"
-        audio.format      = "S16LE"
-        audio.rate        = 44100
-        audio.channels    = 2
-        audio.allowed-rates = [ 44100 ]
-        node.pause-on-idle = false
-        priority.session  = 2000
-      }
+  { factory = adapter
+    args = {
+      factory.name      = support.null-audio-sink
+      node.name         = "ResonanceInput"
+      node.description  = "Resonance HiFi Input"
+      media.class       = "Audio/Sink"
+      audio.channels    = 2
+      audio.rate        = 44100
+      audio.format      = "S16LE"
+      node.pause-on-idle = false
+      priority.session  = 2000
+    }
   }
 ]
 PWEOF
 
-# WirePlumber rule: set the loopback sink as the default audio output
+cat <<'PWLBEOF' > /etc/pipewire/pipewire.conf.d/51-resonance-loopback.conf
+# Resonance HiFi — PipeWire loopback: ResonanceInput monitor → ALSA Loopback
+# Bridges the PipeWire virtual sink to hw:Loopback,0,0 for CamillaDSP ALSA capture.
+context.modules = [
+  { name = libpipewire-module-loopback
+    args = {
+      node.description = "Resonance loopback to CamillaDSP"
+      capture.props = {
+        node.name         = "resonance.loopback.capture"
+        audio.position    = [ FL FR ]
+        stream.dont-remix = true
+        node.passive      = true
+        target.object     = "ResonanceInput"
+      }
+      playback.props = {
+        node.name      = "resonance.loopback.playback"
+        audio.position = [ FL FR ]
+        target.object  = "hw:Loopback,0,0"
+      }
+    }
+  }
+]
+PWLBEOF
+
+# WirePlumber rule: set ResonanceInput as the default audio output
 mkdir -p /etc/wireplumber/wireplumber.conf.d
 cat <<'WPEOF' > /etc/wireplumber/wireplumber.conf.d/51-resonance-default-sink.conf
-# Resonance HiFi: route all PipeWire audio to loopback → CamillaDSP by default
+# Resonance HiFi: route all PipeWire audio to ResonanceInput virtual sink by default
 wireplumber.settings = {
-  default-configured-audio-sink = "alsa_output.resonance_loopback"
+  default-configured-audio-sink = "ResonanceInput"
 }
 WPEOF
 
@@ -234,38 +245,69 @@ cp /etc/wireplumber/wireplumber.conf.d/51-resonance-default-sink.conf \
    "$USER_HOME/.config/wireplumber/wireplumber.conf.d/"
 chown -R $TARGET_USER:$TARGET_USER "$USER_HOME/.config/wireplumber"
 
+# PipeWire-pulse TCP listener: lets system services (MPD, shairport) connect via
+# 127.0.0.1:4713 when they cannot access the user socket at /run/user/1000/pulse/native
+mkdir -p "$USER_HOME/.config/pipewire/pipewire-pulse.conf.d"
+cat <<'PWPEOF' > "$USER_HOME/.config/pipewire/pipewire-pulse.conf.d/99-resonance.conf"
+# Resonance HiFi — PipeWire-pulse override: enable TCP listener for system services
+pulse.properties = {
+  server.address = [
+    "unix:native"
+    "tcp:127.0.0.1:4713"
+  ]
+}
+PWPEOF
+chown -R $TARGET_USER:$TARGET_USER "$USER_HOME/.config/pipewire"
+
 # Enable lingering so PipeWire user services survive before X session starts
 loginctl enable-linger $TARGET_USER 2>/dev/null || true
 
 # Enable and start PipeWire user services for the kiosk user
-sudo -u $TARGET_USER XDG_RUNTIME_DIR=/run/user/$(id -u $TARGET_USER) \
+TARGET_UID=$(id -u $TARGET_USER)
+sudo -u $TARGET_USER XDG_RUNTIME_DIR=/run/user/$TARGET_UID \
   systemctl --user enable pipewire pipewire-pulse wireplumber 2>/dev/null || true
 
-echo -e "${GREEN}PipeWire configured: Chromium/Spotify → PipeWire → loopback → CamillaDSP.${NC}"
+echo -e "${GREEN}PipeWire configured: all sources → ResonanceInput → loopback → CamillaDSP.${NC}"
 
-# Write complete MPD configuration (always overwrite to prevent partial configs)
-echo -e "${YELLOW}Writing complete MPD configuration (/etc/mpd.conf)...${NC}"
-cat <<EOF > /etc/mpd.conf
+# Write complete MPD configuration (always overwrite to prevent partial configs).
+# MPD runs as TARGET_USER (not system user 'mpd') so it can access the PipeWire user socket.
+# Uses native PipeWire output — volume is managed by CamillaDSP, not MPD mixer.
+echo -e "${YELLOW}Writing complete MPD configuration (/etc/mpd.conf) for PipeWire...${NC}"
+cat <<'MPDEOF' > /etc/mpd.conf
 music_directory         "/var/lib/mpd/music"
 playlist_directory      "/var/lib/mpd/playlists"
 db_file                 "/var/lib/mpd/tag_cache"
 state_file              "/var/lib/mpd/state"
 sticker_file            "/var/lib/mpd/sticker.sql"
 
-user                    "mpd"
 bind_to_address         "any"
 port                    "6600"
 
 audio_output {
-    type            "alsa"
-    name            "ALSA Software Volume"
-    device          "camilla_input"
-    mixer_type      "software"
+    type            "pipewire"
+    name            "Resonance MPD"
 }
-EOF
+MPDEOF
+
+# MPD must run as TARGET_USER to access the PipeWire socket (/run/user/<uid>/pipewire-0).
+# Override the systemd service User and inject PipeWire environment variables.
+echo -e "${YELLOW}Configuring MPD to run as $TARGET_USER with PipeWire environment...${NC}"
+TARGET_UID=$(id -u $TARGET_USER)
+mkdir -p /etc/systemd/system/mpd.service.d
+cat > /etc/systemd/system/mpd.service.d/run-as-user.conf <<MPDOVEOF
+[Service]
+User=$TARGET_USER
+Group=$TARGET_USER
+Environment="XDG_RUNTIME_DIR=/run/user/$TARGET_UID"
+Environment="PIPEWIRE_REMOTE=/run/user/$TARGET_UID/pipewire-0"
+MPDOVEOF
+
+# Give TARGET_USER ownership of MPD state files
+chown -R $TARGET_USER:$TARGET_USER /var/lib/mpd 2>/dev/null || true
 
 # Enable and start MPD service
 echo -e "${YELLOW}Enabling and starting Media Player Daemon (MPD)...${NC}"
+systemctl daemon-reload
 systemctl enable mpd
 systemctl restart mpd
 
@@ -306,7 +348,10 @@ chmod +x /usr/bin/camilladsp
 rm -f /tmp/camilladsp.tar.gz
 echo -e "${GREEN}CamillaDSP ${CAMILLA_VERSION} installed successfully in /usr/bin/camilladsp.${NC}"
 
-# Create default flat CamillaDSP v4 configuration to prevent crash on initial run
+# Create default flat CamillaDSP v4 configuration to prevent crash on initial run.
+# CamillaDSP 4.x is built with ALSA-only backends (no Pulse/PipeWire capture).
+# Audio path: PipeWire → ResonanceInput virtual sink → PW loopback → hw:Loopback,0,0
+#             → ALSA dsnoop (loop_dsnoop) → CamillaDSP capture (this config)
 # Note: v4 uses S16_LE format strings and 'channels' (array) in pipeline Filter steps
 echo -e "${YELLOW}Creating initial flat CamillaDSP configuration...${NC}"
 cat <<EOF > "$PROJECT_DIR/camilladsp.yml"
@@ -397,11 +442,13 @@ sed -i 's/#LIBRESPOT_BITRATE=160/LIBRESPOT_BITRATE=320/g' /etc/raspotify/conf
 sed -i 's/LIBRESPOT_DISABLE_CREDENTIAL_CACHE=/#LIBRESPOT_DISABLE_CREDENTIAL_CACHE=/g' /etc/raspotify/conf
 sed -i 's/#LIBRESPOT_INITIAL_VOLUME=50/LIBRESPOT_INITIAL_VOLUME=50/g' /etc/raspotify/conf
 sed -i 's/#LIBRESPOT_BACKEND=/LIBRESPOT_BACKEND=alsa/g' /etc/raspotify/conf
-# Route Spotify Connect to the dmix loopback (shared with PipeWire and MPD)
+# Route Spotify Connect to PipeWire via ALSA "default" device.
+# /usr/share/alsa/alsa.conf.d/99-pipewire-default.conf (from pipewire-alsa)
+# makes "default" route to PipeWire → ResonanceInput virtual sink → CamillaDSP.
 if grep -q "LIBRESPOT_DEVICE=" /etc/raspotify/conf; then
-  sed -i 's/.*LIBRESPOT_DEVICE=.*/LIBRESPOT_DEVICE="camilla_input"/g' /etc/raspotify/conf
+  sed -i 's/.*LIBRESPOT_DEVICE=.*/LIBRESPOT_DEVICE="default"/g' /etc/raspotify/conf
 else
-  echo 'LIBRESPOT_DEVICE="camilla_input"' >> /etc/raspotify/conf
+  echo 'LIBRESPOT_DEVICE="default"' >> /etc/raspotify/conf
 fi
 
 # Enable and start native Raspotify systemd daemon
@@ -411,10 +458,10 @@ systemctl enable raspotify
 systemctl restart raspotify
 echo -e "${GREEN}Raspotify Spotify Connect service configured and started.${NC}"
 
-# Configure passwordless sudo for Spotify and CamillaDSP daemon management
-echo -e "${YELLOW}Configuring sudo permissions for Spotify and CamillaDSP daemon management...${NC}"
+# Configure passwordless sudo for service management (CamillaDSP, Spotify, AirPlay, etc.)
+echo -e "${YELLOW}Configuring sudo permissions for service management...${NC}"
 cat <<EOF > /etc/sudoers.d/resonance
-$TARGET_USER ALL=(ALL) NOPASSWD: /usr/bin/tee /etc/raspotify/conf, /bin/tee /etc/raspotify/conf, /usr/bin/tee /etc/asound.conf, /bin/tee /etc/asound.conf, /usr/bin/systemctl restart raspotify, /bin/systemctl restart raspotify, /usr/bin/systemctl restart camilladsp, /bin/systemctl restart camilladsp, /usr/bin/systemctl reload camilladsp, /bin/systemctl reload camilladsp, /usr/local/bin/kiosk-power.sh, /usr/local/bin/kiosk-brightness.sh, /usr/bin/systemctl start shairport-sync, /bin/systemctl start shairport-sync, /usr/bin/systemctl stop shairport-sync, /bin/systemctl stop shairport-sync, /usr/bin/systemctl start upmpdcli, /bin/systemctl start upmpdcli, /usr/bin/systemctl stop upmpdcli, /bin/systemctl stop upmpdcli, /usr/bin/systemctl start bluealsa, /bin/systemctl start bluealsa, /usr/bin/systemctl stop bluealsa, /bin/systemctl stop bluealsa
+$TARGET_USER ALL=(ALL) NOPASSWD: /usr/bin/tee /etc/raspotify/conf, /bin/tee /etc/raspotify/conf, /usr/bin/tee /etc/asound.conf, /bin/tee /etc/asound.conf, /usr/bin/systemctl restart raspotify, /bin/systemctl restart raspotify, /usr/bin/systemctl restart camilladsp, /bin/systemctl restart camilladsp, /usr/bin/systemctl reload camilladsp, /bin/systemctl reload camilladsp, /usr/local/bin/kiosk-power.sh, /usr/local/bin/kiosk-brightness.sh, /usr/bin/systemctl start shairport-sync, /bin/systemctl start shairport-sync, /usr/bin/systemctl stop shairport-sync, /bin/systemctl stop shairport-sync, /usr/bin/systemctl start upmpdcli, /bin/systemctl start upmpdcli, /usr/bin/systemctl stop upmpdcli, /bin/systemctl stop upmpdcli, /usr/bin/systemctl restart mpd, /bin/systemctl restart mpd
 EOF
 chmod 440 /etc/sudoers.d/resonance
 
@@ -562,10 +609,11 @@ apt-get install -y \
   libavahi-client3 \
   libavahi-common3 2>/dev/null || true
 
-# Write shairport-sync config: output to ALSA camilla_input dmix
+# Write shairport-sync config: output to PipeWire default sink (ResonanceInput).
+# ALSA "default" device routes to PipeWire via 99-pipewire-default.conf.
 cat <<'SSEOF' > /etc/shairport-sync.conf
-// Resonance HiFi — shairport-sync configuration
-// Routes AirPlay audio to the ALSA dmix loopback shared with CamillaDSP.
+// Resonance HiFi — shairport-sync configuration (PipeWire architecture)
+// Routes AirPlay audio to PipeWire default output (ResonanceInput virtual sink).
 general = {
   name = "Resonance HiFi";
   drift_tolerance_in_seconds = 0.002;
@@ -574,8 +622,7 @@ general = {
 };
 
 alsa = {
-  output_device = "camilla_input";
-  mixer_control_name = "PCM";
+  output_device = "default";
 };
 
 sessioncontrol = {
@@ -611,12 +658,10 @@ systemctl disable upmpdcli 2>/dev/null || true
 systemctl stop upmpdcli 2>/dev/null || true
 echo -e "${GREEN}upmpdcli installed and configured (demand-activated).${NC}"
 
-# ── Bluetooth A2DP: bluez + bluealsa ────────────────────────────────────────
-echo -e "${YELLOW}Installing Bluetooth A2DP packages (bluez + bluealsa)...${NC}"
-apt-get install -y \
-  bluez \
-  bluez-tools \
-  bluealsa-utils 2>/dev/null || \
+# ── Bluetooth A2DP: PipeWire handles BT natively via WirePlumber ─────────────
+# PipeWire + WirePlumber provide native Bluetooth A2DP support including LDAC/AAC/aptX.
+# bluealsa is NOT needed and conflicts with PipeWire's BT stack.
+echo -e "${YELLOW}Installing Bluetooth packages (bluez — PipeWire handles A2DP natively)...${NC}"
 apt-get install -y \
   bluez \
   bluez-tools 2>/dev/null || true
@@ -625,40 +670,13 @@ apt-get install -y \
 systemctl enable bluetooth 2>/dev/null || true
 systemctl start bluetooth 2>/dev/null || true
 
-# Configure bluealsa to route A2DP sink to ALSA camilla_input
-# bluealsa-aplay bridges the A2DP PCM to ALSA on demand; write a systemd override.
-if command -v bluealsa &> /dev/null; then
-  mkdir -p /etc/systemd/system/bluealsa.service.d
-  cat <<'BSEOF' > /etc/systemd/system/bluealsa.service.d/resonance.conf
-[Service]
-ExecStart=
-ExecStart=/usr/bin/bluealsa --profile=a2dp-sink --profile=hfp-ag
-BSEOF
+# Disable bluealsa if installed — conflicts with PipeWire BT handling
+systemctl disable --now bluealsa 2>/dev/null || true
+systemctl disable --now bluealsa-aplay 2>/dev/null || true
+# Remove bluealsa packages if present
+apt-get remove -y bluealsa bluealsa-utils 2>/dev/null || true
 
-  # Systemd unit for bluealsa-aplay — routes A2DP audio to our ALSA loopback
-  cat <<'BAEOF' > /etc/systemd/system/bluealsa-aplay.service
-[Unit]
-Description=BlueALSA ALSA Player (Resonance HiFi)
-After=bluealsa.service
-Requires=bluealsa.service
-
-[Service]
-Type=simple
-User=root
-ExecStart=/usr/bin/bluealsa-aplay --pcm=camilla_input 00:00:00:00:00:00
-Restart=always
-RestartSec=3
-
-[Install]
-WantedBy=multi-user.target
-BAEOF
-
-  systemctl daemon-reload
-  systemctl disable bluealsa 2>/dev/null || true
-  systemctl disable bluealsa-aplay 2>/dev/null || true
-  systemctl stop bluealsa 2>/dev/null || true
-  systemctl stop bluealsa-aplay 2>/dev/null || true
-fi
+echo -e "${GREEN}Bluetooth configured: PipeWire handles A2DP sink natively via WirePlumber.${NC}"
 
 # Make Pi Bluetooth agent auto-accept pairing (simple pairing, no PIN)
 cat <<'BTEOF' > /etc/systemd/system/bt-agent.service

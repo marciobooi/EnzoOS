@@ -112,7 +112,9 @@ export function startAudioLevelMonitor() {
     return;
   }
 
-  console.log('[Audio Monitor] Starting arecord loopback level monitor...');
+  // loop_dsnoop (ALSA dsnoop on hw:Loopback,1,0) receives audio from:
+  // PipeWire → ResonanceInput virtual sink → PW loopback → hw:Loopback,0,0 → dsnoop
+  console.log('[Audio Monitor] Starting arecord VU meter (loop_dsnoop via PipeWire loopback)...');
 
   try {
     arecordProcess = spawn('arecord', [
