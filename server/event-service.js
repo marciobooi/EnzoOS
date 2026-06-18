@@ -35,6 +35,15 @@ export function getStandbyState() {
   return cachedStandbyState;
 }
 
+/**
+ * Returns the current cached volume as a dB value for CamillaDSP SetVolume.
+ * Used by player.js to restore volume after CamillaDSP config apply/restart.
+ */
+export function getCachedVolumeDb() {
+  if (cachedMuted || cachedVolume <= 0) return -100;
+  return -60 * (1 - cachedVolume / 100);
+}
+
 /** Returns a snapshot of all cached state for new WS client handshake. */
 export function getState() {
   return {
@@ -552,7 +561,16 @@ export const loadStateFromDB = async () => {
     cachedPureDirect = pureDirectVal === 'true';
     console.log(`[EventService] Loaded pure_direct: ${cachedPureDirect}`);
 
-    // Restore CamillaDSP config
+    // Pre-mute CamillaDSP before applying config so there is no window at 0 dB
+    // (CamillaDSP defaults to full volume on every start; the config apply will
+    //  restore the correct level, but this closes any race with early playback).
+    try {
+      const { setCamillaVolume } = await import('./player.js');
+      await setCamillaVolume(-100);
+      console.log('[EventService] CamillaDSP pre-muted for safe startup.');
+    } catch {}
+
+    // Restore CamillaDSP config — volume is restored inside this call
     try {
       const { updateCamillaConfigFromSettings } = await import('./player.js');
       await updateCamillaConfigFromSettings({ pureDirect: cachedPureDirect });

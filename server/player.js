@@ -6,7 +6,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import YAML from 'yaml';
 import { getFavoriteRadios, addFavoriteRadio, deleteFavoriteRadioByUrl, setSetting, getSetting } from './db.js';
-import { emit, getStandbyState } from './event-service.js';
+import { emit, getStandbyState, getCachedVolumeDb } from './event-service.js';
 
 // ── Streaming source helpers ──────────────────────────────────────────────────
 async function systemctlAction(action, service) {
@@ -737,8 +737,11 @@ function generateCamillaConfig(answers, eqSettings, dacInfo, { pureDirect = fals
   }
 
   // --- STAGE E: PREAMP GAIN ---
+  // Extra -1 dB safety headroom is applied here for all pipelines.
+  // This prevents any multi-stage EQ summing from exceeding 0 dBFS,
+  // which would cause hard clipping and potential speaker damage.
   const preampGainDb = Number(isDspActive ? (profile.preampGain - 6.0) : profile.preampGain) || 0;
-  config.filters.preamp_gain = { type: "Gain", parameters: { gain: preampGainDb, inverted: false, mute: false } };
+  config.filters.preamp_gain = { type: "Gain", parameters: { gain: preampGainDb - 1.0, inverted: false, mute: false } };
   leftPipeline.push("preamp_gain");
   rightPipeline.push("preamp_gain");
   if (isSubwooferSetup) subPipeline.push("preamp_gain");
@@ -898,9 +901,23 @@ export async function updateCamillaConfigFromSettings({ skipAlsa = false, sample
     try {
       await execPromise('sudo systemctl restart camilladsp');
       console.log('[CamillaDSP] Restarted camilladsp service (fallback).');
+      // Service restart takes ~800 ms before it accepts WS commands.
+      await new Promise(r => setTimeout(r, 900));
     } catch (err) {
       console.warn('[CamillaDSP] Failed to restart camilladsp service:', err.message);
     }
+  }
+
+  // SAFETY: Always restore stored volume after any config operation.
+  // CamillaDSP defaults to 0 dB (full volume) on every start; SetConfig preserves
+  // whatever it currently has — on boot that is also 0 dB. Without this, the first
+  // playback after startup or a service restart would be at full hardware volume.
+  try {
+    const targetDb = getCachedVolumeDb();
+    const ok = await setCamillaVolume(targetDb);
+    if (ok) console.log(`[CamillaDSP] Volume restored to ${targetDb.toFixed(1)} dB after config apply.`);
+  } catch (err) {
+    console.warn('[CamillaDSP] Volume restore failed (non-fatal):', err.message);
   }
 
   return dacInfo;
