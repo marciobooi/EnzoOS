@@ -1184,8 +1184,6 @@ export default function Kiosk() {
           onToggleFavoriteRadio={handleToggleFavoriteRadio}
           onToggleStandby={handleToggleStandby}
           signalInfo={signalInfo}
-          pureDirect={pureDirect}
-          onTogglePureDirect={handleTogglePureDirect}
         />
 
         <EqualizerOverlay />

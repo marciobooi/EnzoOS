@@ -6,6 +6,8 @@ export default function DspWizardOverlay() {
   const {
     setIsDspWizardOpen,
     setDspActive,
+    pureDirect,
+    handleTogglePureDirect,
   } = useContext(Kk);
 
   return (
@@ -13,6 +15,8 @@ export default function DspWizardOverlay() {
       <DspWizard
         onClose={() => setIsDspWizardOpen(false)}
         onCalibrationComplete={(active) => setDspActive(active)}
+        pureDirect={pureDirect}
+        onPureDirectChange={handleTogglePureDirect}
       />
     </div>
   );

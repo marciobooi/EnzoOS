@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Waves, ChevronLeft, Check, X, Cpu } from 'lucide-react';
+import { Waves, ChevronLeft, Check, X, Cpu, AudioLines } from 'lucide-react';
 import { api } from '../api';
 import { S, cardShadow } from '../styles/stone';
 
@@ -9,10 +9,11 @@ const QUESTIONS = [
     question: "Choose your Audio Processing Mode",
     description: "Decide whether to use the manual parametric equalizer or let the Acoustic DSP profiler calibrate your audio output automatically.",
     options: [
-      { label: "Manual Equalizer", sublabel: "Bypasses Acoustic Room Correction", value: "eq" },
-      { label: "Acoustic Room Correction", sublabel: "Bypasses manual equalizer", value: "dsp" },
+      { label: "Manual Equalizer", sublabel: "Parametric EQ, presets, tone control", value: "eq" },
+      { label: "Acoustic Room Correction", sublabel: "Harman curve + room calibration filters", value: "dsp" },
+      { label: "Pure Direct", sublabel: "Flat signal — no EQ or DSP processing", value: "pure-direct" },
     ],
-    action: "Selecting 'Manual Equalizer' disables Acoustic Room Correction filters. Selecting 'Acoustic Room Correction' activates room calibration filters.",
+    action: "Manual EQ and Room Correction apply CamillaDSP filter chains. Pure Direct bypasses all filters — signal goes through the mixer only with volume control preserved.",
   },
   {
     id: "1",
@@ -120,7 +121,7 @@ function WizardHeader({ title, subtitle, onClose }) {
   );
 }
 
-export default function DspWizard({ onClose, onCalibrationComplete }) {
+export default function DspWizard({ onClose, onCalibrationComplete, pureDirect = false, onPureDirectChange }) {
   const [currentStep, setCurrentStep] = useState(0);
   const [answers, setAnswers] = useState({});
   const [isSaving, setIsSaving] = useState(false);
@@ -135,17 +136,27 @@ export default function DspWizard({ onClose, onCalibrationComplete }) {
 
     setTimeout(async () => {
       if (currentStep === 0) {
-        if (value === 'eq') {
-          setIsSaving(true);
-          try {
-            await api.saveDspCalibration(nextAnswers);
+        setIsSaving(true);
+        try {
+          if (value === 'pure-direct') {
+            // Pure Direct: disable all EQ/DSP, enable flat pipeline
+            await api.saveDspCalibration({ ...nextAnswers, 0: 'eq' }); // treated as eq (dspActive=false)
             onCalibrationComplete?.(false);
-            setCurrentStep(99);
-          } catch {}
-          finally { setIsSaving(false); }
-        } else {
-          setCurrentStep(1);
-        }
+            await onPureDirectChange?.(true);
+            setCurrentStep(98);
+          } else {
+            // Manual EQ or Room Correction: ensure Pure Direct is off first
+            if (pureDirect) await onPureDirectChange?.(false);
+            await api.saveDspCalibration(nextAnswers);
+            if (value === 'eq') {
+              onCalibrationComplete?.(false);
+              setCurrentStep(99);
+            } else {
+              setCurrentStep(1);
+            }
+          }
+        } catch {}
+        finally { setIsSaving(false); }
       } else if (currentStep < QUESTIONS.length - 1) {
         setCurrentStep(p => p + 1);
       } else {
@@ -159,6 +170,57 @@ export default function DspWizard({ onClose, onCalibrationComplete }) {
       }
     }, 180);
   };
+
+  // ── Pure Direct success ──────────────────────────────────────────────────────
+  if (currentStep === 98) return (
+    <div className="flex flex-col h-full font-sans p-6 select-none"
+      style={{ background: S.bg, color: S.strong }}>
+      <WizardHeader title="acoustic calibration wizard" subtitle="pure direct" onClose={onClose} />
+
+      <div className="flex-grow flex flex-row gap-5 min-h-0">
+        <div className="w-[38%] flex flex-col justify-center items-center gap-4 text-center shrink-0 rounded-2xl p-6"
+          style={{ background: S.surface, border: `1px solid ${S.border}` }}>
+          <div className="w-16 h-16 rounded-full flex items-center justify-center"
+            style={{ border: '1.5px solid #0e9ab8', background: S.bg }}>
+            <AudioLines className="h-7 w-7" strokeWidth={1.5} style={{ color: '#0e9ab8' }} />
+          </div>
+          <div>
+            <p className="text-sm font-light tracking-[0.25em] uppercase mb-1" style={{ color: S.label }}>activated</p>
+            <h2 className="text-xl font-bold" style={{ color: S.strong }}>Pure Direct Active</h2>
+          </div>
+          <p className="text-sm font-light leading-relaxed" style={{ color: S.muted }}>
+            All EQ and DSP filters are bypassed. Volume control via CamillaDSP remains active.
+          </p>
+        </div>
+
+        <div className="flex-grow flex flex-col justify-between min-h-0">
+          <div className="space-y-3">
+            <p className="text-sm font-light leading-relaxed" style={{ color: S.muted }}>
+              The signal path is flat — source audio passes through the CamillaDSP mixer directly to the DAC with no filtering or frequency adjustment.
+            </p>
+            <div className="rounded-xl p-4 text-sm font-light space-y-1.5"
+              style={{ background: S.surface, border: `1px solid ${S.border}`, color: S.muted }}>
+              <p><span className="font-semibold" style={{ color: S.text }}>Manual EQ</span> — disabled while Pure Direct is active</p>
+              <p><span className="font-semibold" style={{ color: S.text }}>Room Correction</span> — disabled while Pure Direct is active</p>
+              <p><span className="font-semibold" style={{ color: S.text }}>Presets & bands</span> — preserved, resume when you switch back</p>
+            </div>
+          </div>
+          <div className="flex gap-3 mt-4 shrink-0">
+            <button onClick={() => setCurrentStep(0)}
+              className="flex-1 py-3 rounded-xl text-sm font-semibold transition-all active:scale-95 cursor-pointer"
+              style={{ background: S.surfaceLo, border: `1px solid ${S.border}`, color: S.muted, boxShadow: cardShadow }}>
+              Switch to Manual EQ or DSP
+            </button>
+            <button onClick={onClose}
+              className="flex-1 py-3 rounded-xl text-sm font-extrabold transition-all active:scale-95 cursor-pointer"
+              style={{ background: S.accent, color: S.accentFg, border: 'none' }}>
+              Return to Player
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 
   // ── EQ success — 2-col: status left, info right ─────────────────────────────
   if (currentStep === 99) return (
@@ -268,7 +330,10 @@ export default function DspWizard({ onClose, onCalibrationComplete }) {
 
   // ── Main wizard ─────────────────────────────────────────────────────────────
   const activeQuestion = QUESTIONS[currentStep];
-  const selectedValue = activeQuestion ? answers[activeQuestion.id] : null;
+  // For step 0: Pure Direct takes priority over the saved DSP calibration answer
+  const selectedValue = activeQuestion
+    ? (currentStep === 0 && pureDirect ? 'pure-direct' : answers[activeQuestion.id])
+    : null;
 
   return (
     <div className="flex flex-col h-full font-sans p-6 select-none"
@@ -306,14 +371,19 @@ export default function DspWizard({ onClose, onCalibrationComplete }) {
         <div className="w-full lg:w-[35%] flex flex-col gap-2 overflow-y-auto stone-scrollbar min-h-0 pb-4">
           {activeQuestion.options.map(opt => {
             const isSelected = selectedValue === opt.value;
+            // When Pure Direct is active on step 0, dim the EQ/DSP options to signal they're inactive
+            const isDimmed = currentStep === 0 && pureDirect && opt.value !== 'pure-direct' && !isSelected;
+            const isPureDirectOpt = opt.value === 'pure-direct';
+            const accentColor = isPureDirectOpt ? '#0e9ab8' : S.accent;
             return (
               <button key={opt.value}
                 onClick={() => handleSelectOption(opt.value)}
                 className="w-full p-4 rounded-xl text-left flex items-center justify-between transition-all duration-200 cursor-pointer active:scale-[0.99]"
                 style={{
                   background: isSelected ? S.surface : S.surfaceLo,
-                  border: `1px solid ${isSelected ? S.accent : S.border}`,
+                  border: `1px solid ${isSelected ? accentColor : S.border}`,
                   boxShadow: cardShadow,
+                  opacity: isDimmed ? 0.45 : 1,
                 }}>
                 <div>
                   <p className="text-base font-bold leading-tight"
@@ -327,7 +397,7 @@ export default function DspWizard({ onClose, onCalibrationComplete }) {
                   )}
                 </div>
                 {isSelected
-                  ? <Check className="h-4 w-4 shrink-0" strokeWidth={1.5} style={{ color: S.accent }} />
+                  ? <Check className="h-4 w-4 shrink-0" strokeWidth={1.5} style={{ color: accentColor }} />
                   : <div className="w-4 h-4 rounded-full shrink-0" style={{ border: `1px solid ${S.border}` }} />
                 }
               </button>

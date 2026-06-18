@@ -276,8 +276,6 @@ const PlayerDisplay = React.memo(function PlayerDisplay({
   onToggleStandby,
   onToggleSearch,
   signalInfo = null,
-  pureDirect = false,
-  onTogglePureDirect,
 }) {
   const [showVolumeFeedback, setShowVolumeFeedback] = useState(false);
   const [showSearch, setShowSearch] = useState(true);
@@ -834,20 +832,6 @@ const PlayerDisplay = React.memo(function PlayerDisplay({
                 </button>
               )}
 
-              {onTogglePureDirect && (
-                <button
-                  onClick={() => onTogglePureDirect(!pureDirect)}
-                  className={`status-pill cursor-pointer transition-colors border font-sans ${
-                    pureDirect
-                      ? 'text-cyan-300 border-cyan-400/40 bg-cyan-400/8'
-                      : 'text-zinc-500 border-zinc-600/30 hover:text-zinc-300'
-                  }`}
-                  title={pureDirect ? 'Pure Direct active — EQ bypassed' : 'Enable Pure Direct (flat pipeline)'}
-                >
-                  <span className={`status-dot ${pureDirect ? 'bg-cyan-300' : 'bg-zinc-600'}`}></span>
-                  PURE DIRECT {pureDirect ? '// ON' : '// OFF'}
-                </button>
-              )}
            
             </div>
 
