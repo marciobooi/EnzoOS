@@ -85,51 +85,51 @@ body {
 
 /* Custom 2026 Dot Matrix Player Styles */
 :root {
-  --theme-color: #ff8e00;
-  --theme-color-glow: rgba(255, 142, 0, 0.25);
-  --theme-color-dim: rgba(255, 142, 0, 0.05);
+  --theme-color: #c8841c;
+  --theme-color-glow: rgba(200, 132, 28, 0.30);
+  --theme-color-dim: rgba(200, 132, 28, 0.07);
   --color-active: #ffffff;
-  --color-faded: #ff8e00;
+  --color-faded: #c8841c;
 }
 
 [data-theme="amber"] {
-  --theme-color: #ff8e00;
-  --theme-color-glow: rgba(255, 142, 0, 0.25);
-  --theme-color-dim: rgba(255, 142, 0, 0.05);
+  --theme-color: #c8841c;
+  --theme-color-glow: rgba(200, 132, 28, 0.30);
+  --theme-color-dim: rgba(200, 132, 28, 0.07);
   --color-active: #ffffff;
-  --color-faded: #ff8e00;
+  --color-faded: #c8841c;
 }
 
 [data-theme="emerald"] {
-  --theme-color: #00ff66;
-  --theme-color-glow: rgba(0, 255, 102, 0.25);
-  --theme-color-dim: rgba(0, 255, 102, 0.05);
+  --theme-color: #1a9e6a;
+  --theme-color-glow: rgba(26, 158, 106, 0.30);
+  --theme-color-dim: rgba(26, 158, 106, 0.07);
   --color-active: #ffffff;
-  --color-faded: #00ff66;
+  --color-faded: #1a9e6a;
 }
 
 [data-theme="cyan"] {
-  --theme-color: #00ffff;
-  --theme-color-glow: rgba(0, 255, 255, 0.25);
-  --theme-color-dim: rgba(0, 255, 255, 0.05);
+  --theme-color: #0e9ab8;
+  --theme-color-glow: rgba(14, 154, 184, 0.30);
+  --theme-color-dim: rgba(14, 154, 184, 0.07);
   --color-active: #ffffff;
-  --color-faded: #00ffff;
+  --color-faded: #0e9ab8;
 }
 
 [data-theme="amethyst"] {
-  --theme-color: #a855f7;
-  --theme-color-glow: rgba(168, 85, 247, 0.25);
-  --theme-color-dim: rgba(168, 85, 247, 0.05);
+  --theme-color: #8a4edc;
+  --theme-color-glow: rgba(138, 78, 220, 0.30);
+  --theme-color-dim: rgba(138, 78, 220, 0.07);
   --color-active: #ffffff;
-  --color-faded: #a855f7;
+  --color-faded: #8a4edc;
 }
 
 [data-theme="ruby"] {
-  --theme-color: #ff3366;
-  --theme-color-glow: rgba(255, 51, 102, 0.25);
-  --theme-color-dim: rgba(255, 51, 102, 0.05);
+  --theme-color: #d03535;
+  --theme-color-glow: rgba(208, 53, 53, 0.30);
+  --theme-color-dim: rgba(208, 53, 53, 0.07);
   --color-active: #ffffff;
-  --color-faded: #ff3366;
+  --color-faded: #d03535;
 }
 
 /* Theme Utility Helper Classes */

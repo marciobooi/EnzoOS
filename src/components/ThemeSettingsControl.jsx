@@ -3,11 +3,11 @@ import { Palette, Sun, Monitor, X, Check } from 'lucide-react';
 import { S, cardShadow, swatchRing } from '../styles/stone';
 
 export const THEME_COLORS = [
-  { name: 'amber',    value: '#f59e0b', label: 'Vintage Amber' },
-  { name: 'emerald',  value: '#10b981', label: 'Classic Green' },
-  { name: 'cyan',     value: '#06b6d4', label: 'Lab Blue'      },
-  { name: 'amethyst', value: '#a855f7', label: 'Laser Purple'  },
-  { name: 'ruby',     value: '#ef4444', label: 'Neon Red'      },
+  { name: 'amber',    value: '#c8841c', label: 'Vintage Amber' },
+  { name: 'emerald',  value: '#1a9e6a', label: 'Classic Green' },
+  { name: 'cyan',     value: '#0e9ab8', label: 'Lab Blue'      },
+  { name: 'amethyst', value: '#8a4edc', label: 'Laser Purple'  },
+  { name: 'ruby',     value: '#d03535', label: 'Neon Red'      },
 ];
 
 export const SCREEN_THEMES = [
