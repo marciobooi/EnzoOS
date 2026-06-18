@@ -58,19 +58,14 @@ export default function SettingsMenuOverlay() {
         </h4>
         <button
           onClick={() => setIsMenuOpen(false)}
-          className="cursor-pointer text-[10px] font-extrabold font-sans px-3.5 py-1 rounded-lg transition-all active:scale-95"
+          className="cursor-pointer text-[10px] font-extrabold font-sans px-4 py-1.5 rounded-full transition-all active:scale-95 active:opacity-80"
           style={{
-            color: '#3a3836',
-            background: '#d2d3ce',
-            border: '1px solid #c5c4c0',
-            boxShadow: '2px 2px 5px #b8b9b4, -2px -2px 5px #ecede8',
+            color: '#f0eeea',
+            background: '#2a2826',
+            border: 'none',
           }}
-          onMouseEnter={e => e.currentTarget.style.boxShadow = '1px 1px 3px #b8b9b4, -1px -1px 3px #ecede8'}
-          onMouseLeave={e => e.currentTarget.style.boxShadow = '2px 2px 5px #b8b9b4, -2px -2px 5px #ecede8'}
-          onMouseDown={e => e.currentTarget.style.boxShadow = 'inset 2px 2px 4px #b0b1ac, inset -2px -2px 4px #d8d9d4'}
-          onMouseUp={e => e.currentTarget.style.boxShadow = '2px 2px 5px #b8b9b4, -2px -2px 5px #ecede8'}
         >
-          CLOSE [X]
+          CLOSE
         </button>
       </div>
 
