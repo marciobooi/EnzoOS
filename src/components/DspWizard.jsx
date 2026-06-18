@@ -312,8 +312,8 @@ export default function DspWizard({ onClose, onCalibrationComplete }) {
         </div>
       </div>
 
-      {/* Footer — quit / progress / previous */}
-      <div className="flex items-center gap-4 mt-4 pt-3 shrink-0"
+      {/* Footer — only shown after user enters the DSP questionnaire (step 1+) */}
+      {currentStep >= 1 && <div className="flex items-center gap-4 mt-4 pt-3 shrink-0"
         style={{ borderTop: `1px solid ${S.border}` }}>
 
         {/* Quit */}
@@ -346,7 +346,7 @@ export default function DspWizard({ onClose, onCalibrationComplete }) {
           Previous
         </button>
 
-      </div>
+      </div>}
     </div>
   );
 }
