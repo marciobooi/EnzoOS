@@ -617,18 +617,7 @@ function generateCamillaConfig(answers, eqSettings, dacInfo) {
   rightPipeline.push("preamp_gain");
   if (isSubwooferSetup) subPipeline.push("preamp_gain");
 
-  // --- STAGE F: MASTER VOLUME (required for SetVolume WS command to work) ---
-  // ramp_time: 30ms — smooth enough to avoid clicks, fast enough to feel instant.
-  // SetVolume sends a dB target; CamillaDSP ramps to it over ramp_time ms.
-  // Without this filter in the pipeline, SetVolume is acknowledged but ignored.
-  // CamillaDSP v2 requires `fader: "Main"` on Volume filters — without it the
-  // config is rejected at startup. SetVolume WS command targets the Main fader.
-  config.filters.master_volume = { type: "Volume", parameters: { ramp_time: 30.0, fader: "Main" } };
-  leftPipeline.push("master_volume");
-  rightPipeline.push("master_volume");
-  if (isSubwooferSetup) subPipeline.push("master_volume");
-
-  // --- STAGE G: COMPILE THE PIPELINE MATRIX ---
+  // --- STAGE F: COMPILE THE PIPELINE MATRIX ---
   // CamillaDSP v2: Mixer uses 'name' (not 'mapping'), Filter uses individual
   // steps with 'name' (singular string) instead of a 'names' array.
   // CamillaDSP v2: Mixer uses 'name' (not 'mapping'); Filter still uses 'names' array.
