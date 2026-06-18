@@ -234,6 +234,20 @@ function toVolumeDb(vol) {
   return (-60 * (1 - vol / 100)).toFixed(0);
 }
 
+// Some radio stations (e.g. Rádio Comercial) send ICY StreamTitle as raw XML.
+// MPD passes it through unchanged, so it arrives as the track name.
+// Extract meaningful fields when possible; fall back to stripped plain text.
+function sanitizeTrackName(name) {
+  if (!name || !name.includes('<')) return name;
+  // RadioInfo XML (common Portuguese/Spanish stations via Dalet automation)
+  const song   = name.match(/<DB_SONG_NAME>([^<]+)<\/DB_SONG_NAME>/)?.[1];
+  const artist = name.match(/<DB_LEAD_ARTIST_NAME>([^<]+)<\/DB_LEAD_ARTIST_NAME>/)?.[1];
+  if (song) return artist ? `${song} — ${artist}` : song;
+  // Generic fallback: strip all XML/HTML tags
+  const stripped = name.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+  return stripped || name;
+}
+
 const PlayerDisplay = React.memo(function PlayerDisplay({
   theme = 'amber',
   activeTheme = 'dot-matrix',
@@ -837,8 +851,8 @@ const PlayerDisplay = React.memo(function PlayerDisplay({
 
             {/* Title Container & Live Volume Popup */}
             <div className="title-container mt-1">
-              <h1 className="track-title truncate w-[75%]" title={trackName}>
-                {trackName}
+              <h1 className="track-title truncate w-[75%]" title={sanitizeTrackName(trackName)}>
+                {sanitizeTrackName(trackName)}
               </h1>
               <div className={`volume-feedback ${showVolumeFeedback ? 'visible' : ''}`} aria-live="polite">
                 {isMuted ? 'MUTE' : volume}

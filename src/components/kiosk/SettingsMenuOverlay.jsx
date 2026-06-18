@@ -86,8 +86,23 @@ export default function SettingsMenuOverlay() {
           setOtaPercent={setOtaPercent}
           source={source}
           onSetSource={(src) => {
+            // Direct-play sources: switch and close the menu immediately.
+            // Streaming receiver sources (AirPlay, UPnP, BT, Tidal, Qobuz): keep the
+            // menu open — the user still needs to connect from another device.
+            // Also call the proper service-start REST endpoint for the three daemon-based
+            // sources; SET_SOURCE alone does not start shairport-sync/upmpdcli/bluealsa.
+            const serviceStart = {
+              airplay:   '/api/player/airplay/start',
+              upnp:      '/api/player/upnp/start',
+              bluetooth: '/api/player/bluetooth/start',
+            };
             handleToggleSource(src);
-            setIsMenuOpen(false);
+            if (serviceStart[src]) {
+              fetch(serviceStart[src], { method: 'POST' }).catch(() => {});
+              // menu stays open — user connects from phone/app while card shows "active"
+            } else {
+              setIsMenuOpen(false);
+            }
           }}
           updateStatus={updateStatus}
           setUpdateStatus={setUpdateStatus}
