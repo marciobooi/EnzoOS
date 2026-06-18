@@ -52,7 +52,7 @@ export default function SettingsMenuOverlay() {
     >
       {/* Header & Close Button */}
       <div className="flex justify-between items-center mb-3 select-none shrink-0">
-        <h4 className="text-sm font-light tracking-[0.25em] uppercase"
+        <h4 className="text-sm font-light tracking-[0.25em] uppercase underline underline-offset-8 decoration-[#2a2826] decoration-2"
           style={{ color: '#9a9896' }}>
           System Configuration Control Panel
         </h4>
