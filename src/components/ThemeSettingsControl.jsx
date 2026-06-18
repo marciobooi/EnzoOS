@@ -64,35 +64,38 @@ export default function ThemeSettingsControl({
             <span className="text-[7px] font-light tracking-[0.4em] uppercase block mb-2" style={{ color: S.label }}>
               display screen theme
             </span>
-            <div className="flex flex-col gap-1.5">
+            <div className="grid grid-cols-3 gap-2">
               {SCREEN_THEMES.map(t => (
                 <button key={t.id}
                   disabled={t.disabled}
                   onClick={() => onThemeChange?.(t.id)}
-                  className={`w-full p-3 rounded-xl text-left flex items-start justify-between transition-all select-none ${
-                    t.disabled ? 'opacity-35 cursor-not-allowed' : 'cursor-pointer active:scale-[0.99]'
+                  className={`p-3 rounded-xl flex flex-col justify-between transition-all select-none ${
+                    t.disabled ? 'opacity-35 cursor-not-allowed' : 'cursor-pointer active:scale-[0.98]'
                   }`}
                   style={{
+                    height: '130px',
                     background: activeTheme === t.id ? S.surface : S.surfaceLo,
                     border: `1px solid ${activeTheme === t.id ? S.accent : S.border}`,
                     boxShadow: cardShadow,
                   }}>
-                  <div className="flex items-start gap-2.5">
-                    <Monitor className="w-4 h-4 mt-0.5 shrink-0" strokeWidth={1}
+                  {/* top row: icon + check */}
+                  <div className="flex items-start justify-between">
+                    <Monitor className="w-4 h-4 shrink-0" strokeWidth={1}
                       style={{ color: activeTheme === t.id && !t.disabled ? S.accent : S.label }} />
-                    <div>
-                      <div className="text-[11px] font-bold leading-tight"
-                        style={{ color: activeTheme === t.id && !t.disabled ? S.strong : S.muted }}>
-                        {t.name}
-                      </div>
-                      <div className="text-[8px] font-light mt-0.5 leading-normal" style={{ color: S.muted }}>
-                        {t.desc}
-                      </div>
+                    {activeTheme === t.id && !t.disabled && (
+                      <Check className="w-3.5 h-3.5 shrink-0" strokeWidth={1.5} style={{ color: S.accent }} />
+                    )}
+                  </div>
+                  {/* bottom: name + desc */}
+                  <div>
+                    <div className="text-[10px] font-bold leading-tight"
+                      style={{ color: activeTheme === t.id && !t.disabled ? S.strong : S.muted }}>
+                      {t.name}
+                    </div>
+                    <div className="text-[7px] font-light mt-1 leading-normal" style={{ color: S.label }}>
+                      {t.desc}
                     </div>
                   </div>
-                  {activeTheme === t.id && !t.disabled && (
-                    <Check className="w-4 h-4 shrink-0 mt-0.5" strokeWidth={1.5} style={{ color: S.accent }} />
-                  )}
                 </button>
               ))}
             </div>
