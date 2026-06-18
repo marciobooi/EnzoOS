@@ -225,12 +225,16 @@ router.get('/status', async (req, res) => {
     const isPlaying = statusText.includes('[playing]');
     const timeMatch = statusText.match(/(\d+):(\d+)\/(\d+):(\d+)/);
     const toMs = (m, s) => (Number(m) * 60 + Number(s)) * 1000;
+    const isUrl = (s) => s && (s.startsWith('http://') || s.startsWith('https://'));
+    // MPD uses the stream URL as %title% for HLS/AAC streams with no ICY metadata.
+    // Never surface a raw URL as a track name — use empty string instead.
+    const displayName = isUrl(title) ? '' : (title || '');
     res.json({
       paused: !isPlaying,
       position: timeMatch ? toMs(timeMatch[1], timeMatch[2]) : 0,
       duration: timeMatch ? toMs(timeMatch[3], timeMatch[4]) : 0,
-      name:   title  || (file ? file.split('/').pop().replace(/\.[^.]+$/, '') : 'Unknown'),
-      artist: artist || '',
+      name:   displayName,
+      artist: isUrl(artist) ? '' : (artist || ''),
       album:  album  || '',
       file:   file   || '',
     });

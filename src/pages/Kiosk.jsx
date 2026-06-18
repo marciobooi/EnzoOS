@@ -817,9 +817,11 @@ export default function Kiosk() {
       // Source changed while the request was in-flight — discard stale result
       if (sourceRef.current !== capturedSource || sourceRef.current !== 'local') return;
       if (!status || (!status.name && !status.file)) return;
-      // MPD might still have a radio URL in its queue if the queue wasn't cleared yet.
-      // Don't show radio stream metadata as local track info.
-      if (status.file && (status.file.startsWith('http://') || status.file.startsWith('https://'))) return;
+      // MPD might still have a radio/stream URL in its queue.
+      // Don't show stream metadata (URL or empty name) as local file info.
+      const isStreamUrl = (s) => s && (s.startsWith('http://') || s.startsWith('https://'));
+      if (isStreamUrl(status.file)) return;
+      if (!status.name && !status.file) return;
       const newState = {
         paused: status.paused,
         position: status.position,

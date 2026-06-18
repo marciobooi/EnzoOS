@@ -234,12 +234,16 @@ function toVolumeDb(vol) {
   return (-60 * (1 - vol / 100)).toFixed(0);
 }
 
-// Some radio stations (e.g. Rádio Comercial) send ICY StreamTitle as raw XML.
-// MPD passes it through unchanged, so it arrives as the track name.
-// Extract meaningful fields when possible; fall back to stripped plain text.
+// Sanitise track names that come from MPD ICY/stream metadata.
+// MPD can set %title% to the stream URL itself (common with HLS/AAC streams
+// that have no ICY metadata), or to raw XML from Dalet-based automation.
 function sanitizeTrackName(name) {
-  if (!name || !name.includes('<')) return name;
-  // RadioInfo XML (common Portuguese/Spanish stations via Dalet automation)
+  if (!name) return name;
+  // If the name IS a URL (MPD fallback for streams without ICY title), suppress it —
+  // showing a raw URL as a track title is worse than showing nothing.
+  if (name.startsWith('http://') || name.startsWith('https://')) return '';
+  if (!name.includes('<')) return name;
+  // RadioInfo XML (Portuguese/Spanish stations via Dalet automation systems)
   const song   = name.match(/<DB_SONG_NAME>([^<]+)<\/DB_SONG_NAME>/)?.[1];
   const artist = name.match(/<DB_LEAD_ARTIST_NAME>([^<]+)<\/DB_LEAD_ARTIST_NAME>/)?.[1];
   if (song) return artist ? `${song} — ${artist}` : song;
