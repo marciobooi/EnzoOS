@@ -131,11 +131,11 @@ export default function DefinitionsMenu({
             <path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm4.586 14.424a.622.622 0 01-.857.207c-2.348-1.435-5.304-1.76-8.785-.964a.622.622 0 01-.277-1.215c3.809-.87 7.077-.496 9.712 1.115a.622.622 0 01.207.857zm1.223-2.722a.779.779 0 01-1.07.257c-2.687-1.652-6.785-2.131-9.965-1.166a.78.78 0 01-.973-.519.781.781 0 01.519-.972c3.632-1.102 8.147-.568 11.233 1.33a.779.779 0 01.256 1.07zm.105-2.835C14.692 8.95 9.375 8.775 6.297 9.71a.935.935 0 11-.543-1.79c3.533-1.072 9.404-.866 13.115 1.338a.936.936 0 01-.955 1.609z"/>
           </svg>
         </div>
-        <div className="flex items-end justify-between w-full">
+        <div className="flex items-baseline justify-between w-full">
           <span className="text-lg font-black tracking-tight leading-none"
             style={{ color: source === 'spotify' ? S.strong : S.muted }}>Spotify</span>
           {source === 'spotify' && (
-            <span className="text-sm font-normal tracking-wide pb-0.5" style={{ color: S.accent }}>active</span>
+            <span className="text-sm font-normal tracking-wide" style={{ color: S.accent }}>active</span>
           )}
         </div>
       </button>
@@ -153,11 +153,11 @@ export default function DefinitionsMenu({
           <Music strokeWidth={1} className="h-16 w-16 transition-all duration-300"
             style={{ color: source === 'local' ? S.accent : S.track }} />
         </div>
-        <div className="flex items-end justify-between w-full">
+        <div className="flex items-baseline justify-between w-full">
           <span className="text-lg font-black tracking-tight leading-none"
             style={{ color: source === 'local' ? S.strong : S.muted }}>Local</span>
           {source === 'local' && (
-            <span className="text-sm font-normal tracking-wide pb-0.5" style={{ color: S.accent }}>active</span>
+            <span className="text-sm font-normal tracking-wide" style={{ color: S.accent }}>active</span>
           )}
         </div>
       </button>
@@ -175,11 +175,11 @@ export default function DefinitionsMenu({
           <Radio strokeWidth={1} className="h-16 w-16 transition-all duration-300"
             style={{ color: source === 'radio' ? S.accent : S.track }} />
         </div>
-        <div className="flex items-end justify-between w-full">
+        <div className="flex items-baseline justify-between w-full">
           <span className="text-lg font-black tracking-tight leading-none"
             style={{ color: source === 'radio' ? S.strong : S.muted }}>Radio</span>
           {source === 'radio' && (
-            <span className="text-sm font-normal tracking-wide pb-0.5" style={{ color: S.accent }}>active</span>
+            <span className="text-sm font-normal tracking-wide" style={{ color: S.accent }}>active</span>
           )}
         </div>
       </button>
@@ -195,9 +195,9 @@ export default function DefinitionsMenu({
           <Sliders strokeWidth={1} className="h-16 w-16 transition-colors duration-300"
             style={{ color: S.track }} />
         </div>
-        <div className="flex items-end justify-between w-full">
+        <div className="flex items-baseline justify-between w-full">
           <span className="text-lg font-black tracking-tight leading-none" style={{ color: S.muted }}>Theme</span>
-          <span className="text-sm font-normal tracking-wide pb-0.5" style={{ color: S.label }}>settings</span>
+          <span className="text-sm font-normal tracking-wide" style={{ color: S.label }}>settings</span>
         </div>
       </button>
 
@@ -212,9 +212,9 @@ export default function DefinitionsMenu({
           <Waves strokeWidth={1} className="h-16 w-16 transition-all duration-300"
             style={{ color: S.track }} />
         </div>
-        <div className="flex items-end justify-between w-full">
+        <div className="flex items-baseline justify-between w-full">
           <span className="text-lg font-black tracking-tight leading-none" style={{ color: S.muted }}>Acoustic</span>
-          <span className="text-sm font-normal tracking-wide pb-0.5" style={{ color: S.label }}>calibrate</span>
+          <span className="text-sm font-normal tracking-wide" style={{ color: S.label }}>calibrate</span>
         </div>
       </button>
 
@@ -235,10 +235,10 @@ export default function DefinitionsMenu({
             style={{ color: remoteAccessEnabled ? S.accent : S.track,
                      opacity: remoteAccessEnabled ? 1 : 0.45 }} />
         </div>
-        <div className="flex items-end justify-between w-full">
+        <div className="flex items-baseline justify-between w-full">
           <span className="text-lg font-black tracking-tight leading-none"
             style={{ color: remoteAccessEnabled ? S.strong : S.muted }}>Remote</span>
-          <span className="text-sm font-normal tracking-wide pb-0.5"
+          <span className="text-sm font-normal tracking-wide"
             style={{ color: remoteAccessEnabled ? S.accent : S.label }}>
             {remoteAccessEnabled ? 'enabled' : 'off'}
           </span>
@@ -268,10 +268,10 @@ export default function DefinitionsMenu({
             />
           )}
         </div>
-        <div className="flex items-end justify-between w-full">
+        <div className="flex items-baseline justify-between w-full">
           <span className="text-lg font-black tracking-tight leading-none"
             style={{ color: updateStatus === 'available' ? S.strong : S.muted }}>Update</span>
-          <span className="text-sm font-normal tracking-wide pb-0.5"
+          <span className="text-sm font-normal tracking-wide"
             style={{ color: updateStatus === 'available' ? S.accent : S.label }}>
             {updateStatus === 'checking'  && 'checking'}
             {updateStatus === 'updating'  && (otaPercent === 100 ? 'rebooting' : 'installing')}
@@ -338,9 +338,9 @@ export default function DefinitionsMenu({
             <LogOut strokeWidth={1} className="h-16 w-16 transition-colors duration-300"
               style={{ color: S.track }} />
           </div>
-          <div className="flex items-end justify-between w-full">
+          <div className="flex items-baseline justify-between w-full">
             <span className="text-lg font-black tracking-tight leading-none" style={{ color: S.muted }}>Spotify</span>
-            <span className="text-sm font-normal tracking-wide pb-0.5" style={{ color: S.label }}>sign out</span>
+            <span className="text-sm font-normal tracking-wide" style={{ color: S.label }}>sign out</span>
           </div>
         </button>
       )}
