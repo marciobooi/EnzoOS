@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Play, Pause, SkipForward, SkipBack, Shuffle, Repeat, Volume2, VolumeX, Home, Volume1, Sliders, Radio, Heart, Power, ChevronDown } from 'lucide-react';
+import { Play, Pause, SkipForward, SkipBack, Shuffle, Repeat, Volume2, VolumeX, Home, Volume1, Sliders, Radio, Heart, Power, ChevronDown, Search } from 'lucide-react';
 
 // ── Radio: country list ────────────────────────────────────────────────────────
 const COUNTRIES = [
