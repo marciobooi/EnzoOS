@@ -63,15 +63,6 @@ export default function EqualizerControl({
         </div>
       )}
 
-      {/* ── Decorative screws ────────────────────────────────────────────── */}
-      {['top-2.5 left-2.5 rotate-45', 'top-2.5 right-2.5 -rotate-45',
-        'bottom-2.5 left-2.5 -rotate-12', 'bottom-2.5 right-2.5 rotate-12'].map((pos, i) => (
-        <div key={i} className={`absolute ${pos.split(' ').slice(0,2).join(' ')} w-3 h-3 rounded-full flex items-center justify-center`}
-          style={{ border: `1px solid ${S.border}`, background: S.surface }}>
-          <div className={`w-1.5 h-0.5 transform ${pos.split(' ')[2]}`}
-            style={{ background: S.label }} />
-        </div>
-      ))}
 
       {/* ── Header ──────────────────────────────────────────────────────── */}
       <div className="flex items-center justify-between pb-3 mb-3 shrink-0"
@@ -106,7 +97,7 @@ export default function EqualizerControl({
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-stretch flex-grow overflow-hidden">
 
         {/* Left — preset + tube params */}
-        <div className="lg:col-span-4 flex flex-col gap-4 overflow-hidden">
+        <div className="lg:col-span-4 flex flex-col gap-4 overflow-y-auto stone-scrollbar">
 
           {/* Preset selector */}
           <div>
