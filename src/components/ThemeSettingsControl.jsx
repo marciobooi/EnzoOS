@@ -170,8 +170,8 @@ export default function ThemeSettingsControl({
               </div>
               <input type="range" min="10" max="100" step="5" value={brightness}
                 onChange={e => onBrightnessChange?.(Number(e.target.value))}
-                className="w-full h-0.5 rounded-full appearance-none cursor-pointer accent-[var(--theme-color)]"
-                style={{ background: S.track }} />
+                className="w-full h-0.5 rounded-full appearance-none cursor-pointer"
+                style={{ background: S.track, accentColor: S.accent }} />
               <div className="flex justify-between mt-1.5 select-none">
                 <span className="text-[7px] font-light tracking-[0.3em] uppercase" style={{ color: S.label }}>dim</span>
                 <span className="text-[7px] font-light tracking-[0.3em] uppercase" style={{ color: S.label }}>full</span>
