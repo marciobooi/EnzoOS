@@ -1,4 +1,4 @@
-# Resonance HiFi / EnzoOS
+# Resonance HiFi OS
 
 > Premium HiFi streaming system for Raspberry Pi
 

@@ -400,8 +400,8 @@ export default function DefinitionsMenu({
         <div className="flex flex-col gap-3 my-auto w-full">
           <div className="flex flex-col gap-1 w-full">
             <div className="flex justify-between items-baseline">
-              <span className="text-sm font-light tracking-[0.2em] uppercase" style={{ color: S.label }}>cpu temp</span>
-              <span className="text-base font-bold"
+              <span className="text-xs font-light tracking-[0.2em]" style={{ color: S.label }}>cpu temp</span>
+              <span className="text-xs font-bold"
                 style={{ color: healthData.cpuTemp > 65 ? S.errorHot : S.strong }}>
                 {healthData.cpuTemp}°
               </span>
@@ -414,8 +414,8 @@ export default function DefinitionsMenu({
           </div>
           <div className="flex flex-col gap-1 w-full">
             <div className="flex justify-between items-baseline">
-              <span className="text-sm font-light tracking-[0.2em] uppercase" style={{ color: S.label }}>ram</span>
-              <span className="text-base font-bold" style={{ color: S.strong }}>{healthData.ramLoad}%</span>
+              <span className="text-xs font-light tracking-[0.2em]" style={{ color: S.label }}>ram</span>
+              <span className="text-xs font-bold" style={{ color: S.strong }}>{healthData.ramLoad}%</span>
             </div>
             <div className="w-full h-0.5 rounded-full overflow-hidden" style={{ background: S.track }}>
               <div className="h-full transition-all duration-500"
@@ -423,7 +423,7 @@ export default function DefinitionsMenu({
             </div>
           </div>
           <div className="flex justify-between items-baseline">
-            <span className="text-sm font-light tracking-[0.2em] uppercase" style={{ color: S.label }}>wi-fi</span>
+            <span className="text-xs font-light tracking-[0.2em]" style={{ color: S.label }}>wi-fi</span>
             <div className="flex items-center gap-1.5">
               <div className="w-1.5 h-1.5 rounded-full animate-pulse"
                 style={{ background: healthData.wifiSignal > -70 ? '#4a7c59' : S.muted }} />
