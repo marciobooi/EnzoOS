@@ -119,7 +119,7 @@ export default function DefinitionsMenu({
       {/* 1. SPOTIFY CARD */}
       <button
         onClick={() => onSetSource('spotify')}
-        className={`w-[180px] shrink-0 p-5 rounded-2xl text-left flex flex-col justify-between transition-all duration-300 relative group overflow-hidden cursor-pointer menu-card-enter ${
+        className={`w-[180px] shrink-0 p-2 rounded-2xl text-left flex flex-col justify-between transition-all duration-300 relative group overflow-hidden cursor-pointer menu-card-enter ${
           source === 'spotify' ? 'active-card scale-[1.02]' : 'menu-card hover:scale-[1.01]'
         }`}
         style={{ animationDelay: '0ms' }}
@@ -143,7 +143,7 @@ export default function DefinitionsMenu({
       {/* 2. LOCAL MUSIC CARD */}
       <button
         onClick={() => onSetSource('local')}
-        className={`w-[180px] shrink-0 p-5 rounded-2xl text-left flex flex-col justify-between transition-all duration-300 relative group overflow-hidden cursor-pointer menu-card-enter ${
+        className={`w-[180px] shrink-0 p-2 rounded-2xl text-left flex flex-col justify-between transition-all duration-300 relative group overflow-hidden cursor-pointer menu-card-enter ${
           source === 'local' ? 'active-card scale-[1.02]' : 'menu-card hover:scale-[1.01]'
         }`}
         style={{ animationDelay: '30ms' }}
@@ -165,7 +165,7 @@ export default function DefinitionsMenu({
       {/* 3. WEB RADIO CARD */}
       <button
         onClick={() => onSetSource('radio')}
-        className={`w-[180px] shrink-0 p-5 rounded-2xl text-left flex flex-col justify-between transition-all duration-300 relative group overflow-hidden cursor-pointer menu-card-enter ${
+        className={`w-[180px] shrink-0 p-2 rounded-2xl text-left flex flex-col justify-between transition-all duration-300 relative group overflow-hidden cursor-pointer menu-card-enter ${
           source === 'radio' ? 'active-card scale-[1.02]' : 'menu-card hover:scale-[1.01]'
         }`}
         style={{ animationDelay: '60ms' }}
@@ -187,7 +187,7 @@ export default function DefinitionsMenu({
       {/* 4. AIRPLAY CARD */}
       <button
         onClick={() => onSetSource('airplay')}
-        className={`w-[180px] shrink-0 p-5 rounded-2xl text-left flex flex-col justify-between transition-all duration-300 relative group overflow-hidden cursor-pointer menu-card-enter ${
+        className={`w-[180px] shrink-0 p-2 rounded-2xl text-left flex flex-col justify-between transition-all duration-300 relative group overflow-hidden cursor-pointer menu-card-enter ${
           source === 'airplay' ? 'active-card scale-[1.02]' : 'menu-card hover:scale-[1.01]'
         }`}
         style={{ animationDelay: '90ms' }}
@@ -209,7 +209,7 @@ export default function DefinitionsMenu({
       {/* 5. UPNP / DLNA CARD */}
       <button
         onClick={() => onSetSource('upnp')}
-        className={`w-[180px] shrink-0 p-5 rounded-2xl text-left flex flex-col justify-between transition-all duration-300 relative group overflow-hidden cursor-pointer menu-card-enter ${
+        className={`w-[180px] shrink-0 p-2 rounded-2xl text-left flex flex-col justify-between transition-all duration-300 relative group overflow-hidden cursor-pointer menu-card-enter ${
           source === 'upnp' ? 'active-card scale-[1.02]' : 'menu-card hover:scale-[1.01]'
         }`}
         style={{ animationDelay: '120ms' }}
@@ -231,7 +231,7 @@ export default function DefinitionsMenu({
       {/* 6. BLUETOOTH A2DP CARD */}
       <button
         onClick={() => onSetSource('bluetooth')}
-        className={`w-[180px] shrink-0 p-5 rounded-2xl text-left flex flex-col justify-between transition-all duration-300 relative group overflow-hidden cursor-pointer menu-card-enter ${
+        className={`w-[180px] shrink-0 p-2 rounded-2xl text-left flex flex-col justify-between transition-all duration-300 relative group overflow-hidden cursor-pointer menu-card-enter ${
           source === 'bluetooth' ? 'active-card scale-[1.02]' : 'menu-card hover:scale-[1.01]'
         }`}
         style={{ animationDelay: '150ms' }}
@@ -253,7 +253,7 @@ export default function DefinitionsMenu({
       {/* 7. TIDAL CARD */}
       <button
         onClick={() => onSetSource('tidal')}
-        className={`w-[180px] shrink-0 p-5 rounded-2xl text-left flex flex-col justify-between transition-all duration-300 relative group overflow-hidden cursor-pointer menu-card-enter ${
+        className={`w-[180px] shrink-0 p-2 rounded-2xl text-left flex flex-col justify-between transition-all duration-300 relative group overflow-hidden cursor-pointer menu-card-enter ${
           source === 'tidal' ? 'active-card scale-[1.02]' : 'menu-card hover:scale-[1.01]'
         }`}
         style={{ animationDelay: '180ms' }}
@@ -275,7 +275,7 @@ export default function DefinitionsMenu({
       {/* 8. QOBUZ CARD */}
       <button
         onClick={() => onSetSource('qobuz')}
-        className={`w-[180px] shrink-0 p-5 rounded-2xl text-left flex flex-col justify-between transition-all duration-300 relative group overflow-hidden cursor-pointer menu-card-enter ${
+        className={`w-[180px] shrink-0 p-2 rounded-2xl text-left flex flex-col justify-between transition-all duration-300 relative group overflow-hidden cursor-pointer menu-card-enter ${
           source === 'qobuz' ? 'active-card scale-[1.02]' : 'menu-card hover:scale-[1.01]'
         }`}
         style={{ animationDelay: '210ms' }}
@@ -297,7 +297,7 @@ export default function DefinitionsMenu({
       {/* THEME SETTINGS CARD */}
       <button
         onClick={handleCycleTheme}
-        className="w-[180px] shrink-0 p-5 rounded-2xl text-left flex flex-col justify-between transition-all duration-300 relative group overflow-hidden cursor-pointer menu-card menu-card-enter hover:scale-[1.01]"
+        className="w-[180px] shrink-0 p-2 rounded-2xl text-left flex flex-col justify-between transition-all duration-300 relative group overflow-hidden cursor-pointer menu-card menu-card-enter hover:scale-[1.01]"
         style={{ animationDelay: '240ms' }}
       >
         <span className="text-sm font-light tracking-[0.25em] uppercase" style={{ color: S.label }}>appearance</span>
@@ -314,7 +314,7 @@ export default function DefinitionsMenu({
       {/* 4b. ACOUSTIC PROFILE CARD */}
       <button
         onClick={onOpenDspWizard}
-        className="w-[180px] shrink-0 p-5 rounded-2xl text-left flex flex-col justify-between transition-all duration-300 relative group overflow-hidden cursor-pointer menu-card menu-card-enter hover:scale-[1.01]"
+        className="w-[180px] shrink-0 p-2 rounded-2xl text-left flex flex-col justify-between transition-all duration-300 relative group overflow-hidden cursor-pointer menu-card menu-card-enter hover:scale-[1.01]"
         style={{ animationDelay: '120ms' }}
       >
         <span className="text-sm font-light tracking-[0.25em] uppercase" style={{ color: S.label }}>acoustic profiler</span>
@@ -334,7 +334,7 @@ export default function DefinitionsMenu({
           if (onOpenRemoteAccess) onOpenRemoteAccess();
           else if (onToggleRemoteAccess) onToggleRemoteAccess(!remoteAccessEnabled);
         }}
-        className={`w-[180px] shrink-0 p-5 rounded-2xl text-left flex flex-col justify-between transition-all duration-300 relative group overflow-hidden cursor-pointer menu-card-enter ${
+        className={`w-[180px] shrink-0 p-2 rounded-2xl text-left flex flex-col justify-between transition-all duration-300 relative group overflow-hidden cursor-pointer menu-card-enter ${
           remoteAccessEnabled ? 'active-card scale-[1.02]' : 'menu-card hover:scale-[1.01]'
         }`}
         style={{ animationDelay: '150ms' }}
@@ -359,7 +359,7 @@ export default function DefinitionsMenu({
       <button
         onClick={handleUpdateClick}
         disabled={updateStatus === 'updating' || updateStatus === 'checking'}
-        className="w-[180px] shrink-0 p-5 rounded-2xl text-left flex flex-col justify-between transition-all duration-300 relative group overflow-hidden cursor-pointer menu-card menu-card-enter hover:scale-[1.01]"
+        className="w-[180px] shrink-0 p-2 rounded-2xl text-left flex flex-col justify-between transition-all duration-300 relative group overflow-hidden cursor-pointer menu-card menu-card-enter hover:scale-[1.01]"
         style={{ animationDelay: '180ms' }}
       >
         <span className="text-sm font-light tracking-[0.25em] uppercase" style={{ color: S.label }}>system firmware</span>
@@ -394,7 +394,7 @@ export default function DefinitionsMenu({
       </button>
 
       {/* 5b. SYSTEM HEALTH CARD */}
-      <div className="w-[180px] shrink-0 p-5 rounded-2xl text-left flex flex-col justify-between transition-all duration-300 relative group overflow-hidden menu-card menu-card-enter"
+      <div className="w-[180px] shrink-0 p-2 rounded-2xl text-left flex flex-col justify-between transition-all duration-300 relative group overflow-hidden menu-card menu-card-enter"
         style={{ animationDelay: '210ms' }}>
         <span className="text-sm font-light tracking-[0.25em] uppercase" style={{ color: S.label }}>system metrics</span>
         <div className="flex flex-col gap-3 my-auto w-full">
@@ -440,7 +440,7 @@ export default function DefinitionsMenu({
       {token && (
         <button
           onClick={handleLogout}
-          className="w-[180px] shrink-0 p-5 rounded-2xl text-left flex flex-col justify-between transition-all duration-300 relative group overflow-hidden cursor-pointer menu-card menu-card-enter hover:scale-[1.01]"
+          className="w-[180px] shrink-0 p-2 rounded-2xl text-left flex flex-col justify-between transition-all duration-300 relative group overflow-hidden cursor-pointer menu-card menu-card-enter hover:scale-[1.01]"
           style={{ animationDelay: '240ms' }}
         >
           <span className="text-sm font-light tracking-[0.25em] uppercase" style={{ color: S.label }}>connections</span>
