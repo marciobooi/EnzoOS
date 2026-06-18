@@ -19,6 +19,8 @@ export default function EqualizerOverlay() {
     handlePreAmpChange,
     dspActive,
     handleDeactivateDsp,
+    pureDirect,
+    handleTogglePureDirect,
   } = useContext(Kk);
 
   return (
@@ -42,6 +44,8 @@ export default function EqualizerOverlay() {
         onClose={() => setIsEqualizerOpen(false)}
         dspActive={dspActive}
         onDeactivateDsp={handleDeactivateDsp}
+        pureDirect={pureDirect}
+        onDisablePureDirect={() => handleTogglePureDirect(false)}
       />
     </div>
   );

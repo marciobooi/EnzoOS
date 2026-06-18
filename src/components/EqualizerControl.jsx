@@ -26,12 +26,43 @@ export default function EqualizerControl({
   noiseFloor, onNoiseFloorChange,
   preAmp, onPreAmpChange,
   onClose, dspActive, onDeactivateDsp,
+  pureDirect = false, onDisablePureDirect,
 }) {
   const handleReset = () => onPresetChange('Clinical Reference');
 
   return (
     <div className="rounded-2xl p-5 relative overflow-hidden h-full flex flex-col justify-between font-sans"
       style={{ background: S.bg, border: `1px solid ${S.borderHi}` }}>
+
+      {/* ── Pure Direct Overlay — EQ bypassed while flat pipeline is active ── */}
+      {pureDirect && (
+        <div className="absolute inset-0 z-[110] flex flex-col items-center justify-center p-6 text-center rounded-2xl"
+          style={{ background: `${S.bg}f5`, backdropFilter: 'blur(4px)' }}>
+          <div className="w-12 h-12 rounded-full flex items-center justify-center mb-3"
+            style={{ background: 'rgba(14,154,184,0.12)', border: '1px solid rgba(14,154,184,0.35)' }}>
+            <AudioLines className="h-6 w-6" style={{ color: '#0e9ab8' }} strokeWidth={1} />
+          </div>
+          <p className="text-sm font-light tracking-[0.25em] uppercase mb-1" style={{ color: S.label }}>
+            pure direct active
+          </p>
+          <h3 className="text-base font-bold mb-2" style={{ color: S.strong }}>EQ Bypassed</h3>
+          <p className="text-sm font-light max-w-sm leading-relaxed mb-5" style={{ color: S.muted }}>
+            Pure Direct mode is active. The signal path is flat — no EQ or DSP processing is applied. All parameters are preserved and will resume when Pure Direct is disabled.
+          </p>
+          <div className="flex gap-3 w-full max-w-xs">
+            <button onClick={onClose}
+              className="flex-1 py-2.5 rounded-xl text-sm font-semibold transition-all active:scale-95 cursor-pointer"
+              style={{ background: S.surfaceLo, border: `1px solid ${S.border}`, color: S.muted, boxShadow: cardShadow }}>
+              Keep Pure Direct
+            </button>
+            <button onClick={onDisablePureDirect}
+              className="flex-1 py-2.5 rounded-xl text-sm font-extrabold transition-all active:scale-95 cursor-pointer"
+              style={{ background: S.accent, color: S.accentFg, border: 'none' }}>
+              Use Manual EQ
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* ── DSP Active Overlay ────────────────────────────────────────────── */}
       {dspActive && (

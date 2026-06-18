@@ -1064,6 +1064,7 @@ export default function Kiosk() {
     handleEqPresetChange, handleBandChange, handleSaturationChange,
     handleNoiseFloorChange, handlePreAmpChange,
     dspActive, handleDeactivateDsp,
+    pureDirect, handleTogglePureDirect,
     // settings menu
     isMenuOpen, setIsMenuOpen,
     token, handleLogout,
@@ -1094,6 +1095,7 @@ export default function Kiosk() {
     isEqualizerOpen, eqPreset, eqBands, eqSaturation, eqNoiseFloor, eqPreAmp,
     handleEqPresetChange, handleBandChange, handleSaturationChange,
     handleNoiseFloorChange, handlePreAmpChange, dspActive, handleDeactivateDsp,
+    pureDirect, handleTogglePureDirect,
     isMenuOpen, token, handleLogout, devices, isFetchingDevices,
     transferPlayback, fetchDevices, theme, handleThemeColorChange,
     otaProgress, otaPercent, source, handleToggleSource,
