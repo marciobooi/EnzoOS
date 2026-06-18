@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Play, Pause, SkipForward, SkipBack, Shuffle, Repeat, Volume2, VolumeX, Home, Volume1, Sliders, Radio, Heart, Power, Search } from 'lucide-react';
 import { S, cardShadow } from '../styles/stone';
-import RadioPanel from './RadioPanel';
 
 
 
@@ -60,20 +59,14 @@ const PlayerDisplay = React.memo(function PlayerDisplay({
   onToggleSource,
   onToggleEqualizer,
   source,
-  radioCountry,
-  setRadioCountry,
-  stationsList,
-  isSearching,
-  handleRadioByCountry,
-  onPlayRadio,
   favoriteStations = [],
   onToggleFavoriteRadio,
   onToggleStandby,
   onToggleSearch,
+  onToggleRadioSearch,
   signalInfo = null,
 }) {
   const [showVolumeFeedback, setShowVolumeFeedback] = useState(false);
-  const [showSearch, setShowSearch] = useState(true);
   const [showVolumePopup, setShowVolumePopup] = useState(false);
   const feedbackTimeout = useRef(null);
   const volumePopupRef = useRef(null);
@@ -97,11 +90,7 @@ const PlayerDisplay = React.memo(function PlayerDisplay({
     };
   }, [showVolumePopup]);
 
-  useEffect(() => {
-    if (source === 'radio') {
-      setShowSearch(true);
-    }
-  }, [source]);
+
 
   // Handle VU meter levels directly in DOM to avoid React re-render lag, with live ALSA audio updates and simulated watchdog fallback
   useEffect(() => {
@@ -502,23 +491,7 @@ const PlayerDisplay = React.memo(function PlayerDisplay({
       </section>
 
       {/* 2. Details and Controls Column */}
-      {/* 2. Details and Controls Column */}
-      {source === 'radio' && showSearch ? (
-        <section className="details-column" aria-label="Web Radio controls">
-          <RadioPanel
-            onToggleSource={onToggleSource}
-            onClose={() => setShowSearch(false)}
-            radioCountry={radioCountry}
-            setRadioCountry={setRadioCountry}
-            stationsList={stationsList}
-            isSearching={isSearching}
-            handleRadioByCountry={handleRadioByCountry}
-            onPlayRadio={onPlayRadio}
-            favoriteStations={favoriteStations}
-            onToggleFavoriteRadio={onToggleFavoriteRadio}
-          />
-        </section>
-      ) : (
+      {(
         <section className="details-column" aria-label="Track details and playback controls">
           
           {/* Topline Readout & Audio Router */}
@@ -766,12 +739,12 @@ const PlayerDisplay = React.memo(function PlayerDisplay({
               </button>
             )}
 
-            {source === 'radio' && (
-              <button 
-                onClick={() => setShowSearch(true)}
+            {source === 'radio' && onToggleRadioSearch && (
+              <button
+                onClick={onToggleRadioSearch}
                 className="icon-button search text-amber-500 border-amber-500/50"
-                type="button" 
-                aria-label="Search"
+                type="button"
+                aria-label="Search Stations"
                 title="Search Stations"
               >
                 <Radio className="h-5 w-5" />

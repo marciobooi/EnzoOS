@@ -16,6 +16,7 @@ import SearchOverlay from '../components/kiosk/SearchOverlay';
 import ThemeSettingsOverlay from '../components/kiosk/ThemeSettingsOverlay';
 import RemoteAccessOverlay from '../components/kiosk/RemoteAccessOverlay';
 import DspWizardOverlay from '../components/kiosk/DspWizardOverlay';
+import RadioSearchOverlay from '../components/kiosk/RadioSearchOverlay';
 
 export default function Kiosk() {
   // Authentication state (server-managed, synchronized via WebSocket)
@@ -130,6 +131,7 @@ export default function Kiosk() {
   const [radioCountry, setRadioCountry] = useState('');
   const [stationsList, setStationsList] = useState([]);
   const [isSearching, setIsSearching] = useState(false);
+  const [isRadioSearchOpen, setIsRadioSearchOpen] = useState(false);
   const [standby, setStandby] = useState(false);
   const [transitionScreen, setTransitionScreen] = useState('welcome'); // 'welcome' | 'goodbye' | null
   const [isDspWizardOpen, setIsDspWizardOpen] = useState(false);
@@ -1123,6 +1125,11 @@ export default function Kiosk() {
     theme, handleThemeColorChange,
     otaProgress, setOtaProgress, otaPercent, setOtaPercent,
     source, handleToggleSource,
+    isRadioSearchOpen, setIsRadioSearchOpen,
+    radioCountry, setRadioCountry,
+    stationsList, isSearching,
+    handleRadioByCountry, handlePlayRadio,
+    favoriteStations, handleToggleFavoriteRadio,
     updateStatus, setUpdateStatus,
     errorMessage, setErrorMessage,
     setIsDspWizardOpen, setIsThemeSettingsOpen,
@@ -1150,6 +1157,8 @@ export default function Kiosk() {
     isMenuOpen, token, handleLogout, devices, isFetchingDevices,
     transferPlayback, fetchDevices, theme, handleThemeColorChange,
     otaProgress, otaPercent, source, handleToggleSource,
+    isRadioSearchOpen, radioCountry, stationsList, isSearching,
+    handleRadioByCountry, handlePlayRadio, favoriteStations, handleToggleFavoriteRadio,
     updateStatus, errorMessage, setIsDspWizardOpen, setIsThemeSettingsOpen,
     remoteAccessEnabled, setRemoteAccessEnabled, sendUpdate,
     setIsRemoteAccessOpen, setRemoteUrl,
@@ -1224,13 +1233,8 @@ export default function Kiosk() {
           onToggleSource={handleToggleSource}
           onToggleEqualizer={onToggleEqualizer}
           onToggleSearch={onToggleSearch}
+          onToggleRadioSearch={() => setIsRadioSearchOpen(true)}
           source={source}
-          radioCountry={radioCountry}
-          setRadioCountry={setRadioCountry}
-          stationsList={stationsList}
-          isSearching={isSearching}
-          handleRadioByCountry={handleRadioByCountry}
-          onPlayRadio={handlePlayRadio}
           favoriteStations={favoriteStations}
           onToggleFavoriteRadio={handleToggleFavoriteRadio}
           onToggleStandby={handleToggleStandby}
@@ -1243,6 +1247,7 @@ export default function Kiosk() {
         <ThemeSettingsOverlay />
         <RemoteAccessOverlay />
         {isDspWizardOpen && <DspWizardOverlay />}
+        <RadioSearchOverlay />
       </div>
 
       {/* Backlight Brightness hardware simulation overlay */}
