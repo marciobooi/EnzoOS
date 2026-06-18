@@ -47,10 +47,10 @@ export default function RemoteAccessOverlay() {
       </div>
 
       {/* ── Body — 3-col grid ───────────────────────────────────────────────── */}
-      <div className="flex-grow grid grid-cols-3 gap-5 min-h-0">
+      <div className="flex-grow grid grid-cols-3 gap-4 min-h-0 overflow-hidden">
 
         {/* Col 1 — status + controls */}
-        <div className="flex flex-col gap-5 rounded-2xl p-5"
+        <div className="flex flex-col gap-4 rounded-2xl p-4 overflow-hidden"
           style={{ background: S.surface, border: `1px solid ${S.border}` }}>
 
           <div className="flex items-center gap-2.5">
@@ -91,12 +91,12 @@ export default function RemoteAccessOverlay() {
         </div>
 
         {/* Col 2 — QR code (hero, centered) */}
-        <div className="flex flex-col items-center justify-center gap-4 rounded-2xl p-5"
+        <div className="flex flex-col items-center justify-center gap-3 rounded-2xl p-4 overflow-hidden"
           style={{ background: S.surface, border: `1px solid ${S.border}` }}>
-          <p className="text-sm font-light tracking-[0.25em] uppercase" style={{ color: S.label }}>
+          <p className="text-sm font-light tracking-[0.25em] uppercase shrink-0" style={{ color: S.label }}>
             scan to connect
           </p>
-          <div className="rounded-2xl p-4 transition-opacity duration-300"
+          <div className="rounded-2xl p-3 transition-opacity duration-300 shrink-0"
             style={{
               background: '#ffffff',
               border: `1px solid ${S.border}`,
@@ -105,7 +105,7 @@ export default function RemoteAccessOverlay() {
             }}>
             <QRCodeSVG
               value={remoteUrl || 'http://resonance.local'}
-              size={180}
+              size={150}
               bgColor="#ffffff"
               fgColor="#1a1918"
               level="M"
@@ -114,36 +114,34 @@ export default function RemoteAccessOverlay() {
         </div>
 
         {/* Col 3 — URL + instructions */}
-        <div className="flex flex-col justify-between rounded-2xl p-5"
+        <div className="flex flex-col gap-4 rounded-2xl p-4 overflow-hidden"
           style={{ background: S.surface, border: `1px solid ${S.border}` }}>
 
-          <div>
-            <p className="text-sm font-light tracking-[0.25em] uppercase mb-2" style={{ color: S.label }}>
+          <div className="shrink-0">
+            <p className="text-sm font-light tracking-[0.25em] uppercase mb-1.5" style={{ color: S.label }}>
               remote url
             </p>
-            <p className="text-lg font-bold break-all leading-snug" style={{ color: S.strong }}>
+            <p className="text-base font-bold break-all leading-snug" style={{ color: S.strong }}>
               {remoteUrl || '—'}
             </p>
           </div>
 
-          <div>
-            <p className="text-sm font-light tracking-[0.25em] uppercase mb-3" style={{ color: S.label }}>
+          <div className="flex flex-col gap-2 min-h-0">
+            <p className="text-sm font-light tracking-[0.25em] uppercase shrink-0" style={{ color: S.label }}>
               how to connect
             </p>
-            <div className="flex flex-col gap-3">
-              {[
-                'Point your phone camera at the QR code',
-                'Open the link in your mobile browser',
-                'Both devices must be on the same Wi-Fi',
-              ].map((step, i) => (
-                <div key={i} className="flex items-start gap-3 p-3 rounded-xl"
-                  style={{ background: S.surfaceLo, border: `1px solid ${S.border}` }}>
-                  <span className="text-sm font-black shrink-0 w-5 h-5 rounded-full flex items-center justify-center"
-                    style={{ background: S.accent, color: S.accentFg, fontSize: '11px' }}>{i + 1}</span>
-                  <span className="text-sm font-light" style={{ color: S.muted }}>{step}</span>
-                </div>
-              ))}
-            </div>
+            {[
+              'Point your phone camera at the QR code',
+              'Open the link in your mobile browser',
+              'Both devices must be on the same Wi-Fi',
+            ].map((step, i) => (
+              <div key={i} className="flex items-center gap-3 p-2.5 rounded-xl shrink-0"
+                style={{ background: S.surfaceLo, border: `1px solid ${S.border}` }}>
+                <span className="text-xs font-black shrink-0 w-5 h-5 rounded-full flex items-center justify-center"
+                  style={{ background: S.accent, color: S.accentFg }}>{i + 1}</span>
+                <span className="text-sm font-light" style={{ color: S.muted }}>{step}</span>
+              </div>
+            ))}
           </div>
         </div>
       </div>
