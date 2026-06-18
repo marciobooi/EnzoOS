@@ -1,5 +1,6 @@
 import React from 'react';
 import { Palette, Sun, Monitor, X, Check } from 'lucide-react';
+import { S, cardShadow, swatchRing } from '../styles/stone';
 
 export const THEME_COLORS = [
   { name: 'amber',    value: '#f59e0b', label: 'Vintage Amber' },
@@ -17,21 +18,6 @@ export const SCREEN_THEMES = [
   { id: 'neon-glow',   name: 'Cyberpunk Neon',        desc: 'Vibrant neon tube display mode',   disabled: true },
   { id: 'vfd-chamber', name: 'VFD Vacuum Tube',       desc: 'Vacuum fluorescent display styling', disabled: true },
 ];
-
-// Stone palette — same tokens as DefinitionsMenu
-const S = {
-  bg:        '#cbccc7',
-  surface:   '#d6d7d2',
-  surfaceLo: '#d0d1cc',
-  border:    '#c8c9c4',
-  borderHi:  '#bbbcb8',
-  label:     '#9a9896',
-  muted:     '#6a6866',
-  strong:    '#1a1918',
-  accent:    '#2a2826',
-  accentFg:  '#f0eeea',
-  track:     '#c5c4c0',
-};
 
 export default function ThemeSettingsControl({
   activeTheme = 'dot-matrix',
@@ -88,9 +74,7 @@ export default function ThemeSettingsControl({
                   style={{
                     background: activeTheme === t.id ? S.surface : S.surfaceLo,
                     border: `1px solid ${activeTheme === t.id ? S.accent : S.border}`,
-                    boxShadow: activeTheme === t.id
-                      ? '0 2px 8px rgba(42,40,38,0.10), 0 1px 2px rgba(42,40,38,0.06)'
-                      : 'none',
+                    boxShadow: activeTheme === t.id ? cardShadow : 'none',
                   }}>
                   <div className="flex items-start gap-2.5">
                     <Monitor className="w-4 h-4 mt-0.5 shrink-0" strokeWidth={1}
@@ -100,7 +84,7 @@ export default function ThemeSettingsControl({
                         style={{ color: activeTheme === t.id && !t.disabled ? S.strong : S.muted }}>
                         {t.name}
                       </div>
-                      <div className="text-[8px] font-light mt-0.5 leading-normal" style={{ color: S.label }}>
+                      <div className="text-[8px] font-light mt-0.5 leading-normal" style={{ color: S.muted }}>
                         {t.desc}
                       </div>
                     </div>
@@ -126,12 +110,10 @@ export default function ThemeSettingsControl({
                   style={{
                     background: themeColor === c.name ? S.surface : S.surfaceLo,
                     border: `1px solid ${themeColor === c.name ? S.borderHi : S.border}`,
-                    boxShadow: themeColor === c.name
-                      ? '0 2px 6px rgba(42,40,38,0.10)'
-                      : 'none',
+                    boxShadow: themeColor === c.name ? cardShadow : 'none',
                   }}>
                   <div className="w-3 h-3 rounded-full shrink-0"
-                    style={{ background: c.value, boxShadow: 'inset 0 0 0 1px rgba(42,40,38,0.15)' }} />
+                    style={{ background: c.value, boxShadow: swatchRing }} />
                   <span className="text-[9px]"
                     style={{ color: themeColor === c.name ? S.strong : S.muted,
                              fontWeight: themeColor === c.name ? 700 : 400 }}>

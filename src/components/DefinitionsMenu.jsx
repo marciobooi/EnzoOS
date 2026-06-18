@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Sliders, Music, Download, LogOut, Radio, Waves, Smartphone, ShieldCheck } from 'lucide-react';
 import { api } from '../api';
+import { S } from '../styles/stone';
 
 export default function DefinitionsMenu({
   token,
@@ -109,17 +110,6 @@ export default function DefinitionsMenu({
         setUpdateStatus('no-update');
       }
     }
-  };
-
-  // ── Stone palette tokens ────────────────────────────────────────────────────
-  const S = {
-    label:    '#9a9896', // category labels (tertiary)
-    text:     '#3a3836', // body text (secondary)
-    strong:   '#1a1918', // primary / active text
-    muted:    '#6a6866', // helper text
-    accent:   '#2a2826', // active indicator / ACTIVE badge
-    track:    '#c5c4c0', // progress bar track
-    errorHot: '#7a3535', // CPU overtemp
   };
 
   return (
