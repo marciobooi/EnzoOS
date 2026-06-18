@@ -11,6 +11,7 @@ import systemRouter from './system.js';
 import spotifyAuthRouter from './spotify-auth.js';
 import playerRouter from './player.js';
 import spotifyDaemonRouter from './spotify-daemon.js';
+import statusRouter from './status.js';
 import { setupWebSocket, stopAudioLevelMonitor } from './websocket.js';
 import { loadStateFromDB } from './event-service.js';
 import { closeDB } from './db.js';
@@ -47,6 +48,9 @@ app.use('/api/player', playerRouter);
 
 // Spotify Connect daemon configuration routes
 app.use('/api/spotify', spotifyDaemonRouter);
+
+// Global system status — single-fetch snapshot for client connect/reconnect
+app.use('/api/status', statusRouter);
 
 // Fallback all non-API requests to index.html for Single Page App client routing
 app.use((req, res, next) => {

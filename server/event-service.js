@@ -2,12 +2,16 @@ import { getSetting, setSetting, dbReady } from './db.js';
 
 // ─── Cached state (single source of truth) ───────────────────────────────────
 let cachedPlaybackState = null;
-let cachedSourceState = { spotify: true, source: 'spotify' };
-let cachedStandbyState = false;
-let broadcastFn = null;
+let cachedSourceState   = { spotify: true, source: 'spotify' };
+let cachedStandbyState  = false;
+let cachedVolume        = 50;
+let cachedMuted         = false;
+let broadcastFn         = null;
 // Timestamp of last standby entry — BROADCAST_STATE auto-wake is suppressed
 // for 15 s after entering standby to prevent Spotify polling from waking it
-let standbyEnteredAt = 0;
+let standbyEnteredAt    = 0;
+// Debounce timer for volume persistence — avoid a DB write on every slider tick
+let volumeSaveTimer     = null;
 
 // ─── Serial queue: all state-mutating events run one at a time ───────────────
 let stateQueue = Promise.resolve();
@@ -36,6 +40,69 @@ export function getState() {
     playbackState: cachedPlaybackState,
     sourceState: cachedSourceState,
     standbyState: cachedStandbyState,
+  };
+}
+
+/**
+ * Builds the full system status object from cached state + DB.
+ * Used by GET /api/status — the authoritative single-fetch snapshot
+ * that clients call on connect/reconnect to hydrate all state at once.
+ */
+export async function getFullStatus() {
+  const [eqRaw, dspRaw, themeRaw, remoteRaw] = await Promise.all([
+    getSetting('eq_settings').catch(() => null),
+    getSetting('dsp_calibration').catch(() => null),
+    getSetting('theme_settings').catch(() => null),
+    getSetting('remote_access_enabled').catch(() => 'true'),
+  ]);
+
+  let eq = { preset: 'Clinical Reference', bands: [0,0,0,0,0], saturation: 0, noiseFloor: 0, preAmp: 0 };
+  try { if (eqRaw) eq = JSON.parse(eqRaw); } catch {}
+
+  let dsp = null;
+  try { if (dspRaw) dsp = JSON.parse(dspRaw); } catch {}
+
+  let theme = { themeColor: 'amber', activeTheme: 'dot-matrix', brightness: 100, visualizerMode: 'vu' };
+  try { if (themeRaw) theme = { ...theme, ...JSON.parse(themeRaw) }; } catch {}
+
+  const t = cachedPlaybackState?.track_window?.current_track ?? null;
+  const track = t ? {
+    name:     t.name || '',
+    artist:   t.artists?.map(a => a.name).join(', ') || '',
+    album:    t.album?.name || '',
+    albumArt: t.album?.images?.[0]?.url || '',
+    uri:      t.uri  || '',
+    radioUrl: t.url  || null,
+  } : null;
+
+  return {
+    source:              cachedSourceState.source ?? 'spotify',
+    standby:             cachedStandbyState,
+    remoteAccessEnabled: remoteRaw !== 'false',
+    playback: {
+      paused:   cachedPlaybackState?.paused   ?? true,
+      position: cachedPlaybackState?.position ?? 0,
+      duration: cachedPlaybackState?.duration ?? 0,
+      shuffle:  cachedPlaybackState?.shuffle_state ?? false,
+      repeat:   cachedPlaybackState?.repeat_state  ?? 'off',
+      volume:   cachedVolume,
+      muted:    cachedMuted,
+      track,
+    },
+    eq: {
+      preset:     eq.preset,
+      bands:      eq.bands,
+      saturation: eq.saturation,
+      noiseFloor: eq.noiseFloor,
+      preAmp:     eq.preAmp,
+      dspActive:  !!(dsp && (dsp[0] === 'dsp' || dsp['0'] === 'dsp')),
+    },
+    theme: {
+      color:          theme.themeColor,
+      activeTheme:    theme.activeTheme,
+      brightness:     theme.brightness,
+      visualizerMode: theme.visualizerMode || 'vu',
+    },
   };
 }
 
@@ -134,6 +201,19 @@ async function handleEvent(type, payload, excludeWs) {
   switch (type) {
     case 'BROADCAST_STATE': {
       cachedPlaybackState = payload;
+
+      // Keep volume/muted in sync — persist to DB debounced so slider drags
+      // don't cause a write on every tick
+      if (payload && payload.volume !== undefined) {
+        cachedVolume = payload.volume;
+        cachedMuted  = payload.is_muted ?? false;
+        clearTimeout(volumeSaveTimer);
+        volumeSaveTimer = setTimeout(() => {
+          setSetting('volume', String(cachedVolume));
+          setSetting('muted',  cachedMuted ? 'true' : 'false');
+        }, 1500);
+      }
+
       // Auto-wake only if standby has been active for > 15 s to avoid the Spotify
       // polling race (kiosk sends BROADCAST_STATE right after entering standby)
       if (cachedStandbyState && payload && !payload.paused) {
@@ -355,6 +435,14 @@ export const loadStateFromDB = async () => {
     }
     cachedSourceState = { spotify: activeSource === 'spotify', source: activeSource };
     console.log(`[EventService] Loaded active source: ${activeSource}`);
+
+    // Volume / muted
+    const volumeVal = await getSetting('volume');
+    const mutedVal  = await getSetting('muted');
+    cachedVolume = volumeVal ? Math.max(0, Math.min(100, Number(volumeVal))) : 50;
+    cachedMuted  = mutedVal === 'true';
+    if (!volumeVal) await setSetting('volume', '50');
+    console.log(`[EventService] Loaded volume: ${cachedVolume}, muted: ${cachedMuted}`);
 
     // Remote access default
     const remoteAccessVal = await getSetting('remote_access_enabled');

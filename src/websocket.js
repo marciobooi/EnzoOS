@@ -2,6 +2,80 @@ import { useEffect, useRef, useState } from 'react';
 import { toast } from './lib/toast';
 
 /**
+ * Apply a full /api/status snapshot to all React state setters at once.
+ * Called on WS connect so all clients get a consistent view in one shot
+ * instead of waiting for the multi-message WS handshake sequence.
+ */
+function applyFullStatus(status, setters) {
+  if (!status) return;
+  const { source, standby, remoteAccessEnabled, playback, eq, theme } = status;
+
+  if (source     !== undefined && setters.setSource)              setters.setSource(source);
+  if (source     !== undefined && setters.setSpotify)             setters.setSpotify(source === 'spotify');
+  if (standby    !== undefined && setters.setStandby)             setters.setStandby(standby);
+  if (remoteAccessEnabled !== undefined && setters.setRemoteAccessEnabled)
+    setters.setRemoteAccessEnabled(remoteAccessEnabled);
+
+  if (playback) {
+    const ps = playback.track ? {
+      paused:        playback.paused,
+      position:      playback.position,
+      duration:      playback.duration,
+      shuffle_state: playback.shuffle,
+      repeat_state:  playback.repeat,
+      volume:        playback.volume,
+      is_muted:      playback.muted,
+      track_window: {
+        current_track: {
+          name:    playback.track.name,
+          artists: [{ name: playback.track.artist }],
+          album:   { name: playback.track.album, images: playback.track.albumArt ? [{ url: playback.track.albumArt }] : [] },
+          uri:     playback.track.uri,
+          url:     playback.track.radioUrl,
+        },
+      },
+    } : null;
+
+    if (setters.setPlaybackState)  setters.setPlaybackState(ps);
+    if (setters.setTrackPosition)  setters.setTrackPosition(playback.position  ?? 0);
+    if (setters.setTrackDuration)  setters.setTrackDuration(playback.duration  ?? 0);
+    if (setters.setShuffleState)   setters.setShuffleState(playback.shuffle    ?? false);
+    if (setters.setRepeatState)    setters.setRepeatState(playback.repeat      ?? 'off');
+    if (playback.volume !== undefined && setters.setVolume)   setters.setVolume(playback.volume);
+    if (playback.muted  !== undefined && setters.setIsMuted)  setters.setIsMuted(playback.muted);
+  }
+
+  if (eq) {
+    if (setters.setEqPreset)    setters.setEqPreset(eq.preset);
+    if (setters.setEqBands)     setters.setEqBands(eq.bands);
+    if (setters.setEqSaturation) setters.setEqSaturation(eq.saturation);
+    if (setters.setEqNoiseFloor) setters.setEqNoiseFloor(eq.noiseFloor);
+    if (setters.setEqPreAmp)    setters.setEqPreAmp(eq.preAmp);
+    if (setters.setDspActive)   setters.setDspActive(eq.dspActive);
+    try {
+      localStorage.setItem('resonance_eq_preset',  eq.preset);
+      localStorage.setItem('resonance_eq_bands',   JSON.stringify(eq.bands));
+      localStorage.setItem('resonance_eq_saturation', String(eq.saturation));
+      localStorage.setItem('resonance_eq_noise',   String(eq.noiseFloor));
+      localStorage.setItem('resonance_eq_preamp',  String(eq.preAmp));
+    } catch {}
+  }
+
+  if (theme) {
+    if (setters.setTheme)          setters.setTheme(theme.color);
+    if (setters.setActiveTheme)    setters.setActiveTheme(theme.activeTheme);
+    if (setters.setBrightness)     setters.setBrightness(theme.brightness);
+    if (setters.setVisualizerMode) setters.setVisualizerMode(theme.visualizerMode || 'vu');
+    try {
+      localStorage.setItem('resonance_theme',            theme.color);
+      localStorage.setItem('resonance_theme_active',     theme.activeTheme);
+      localStorage.setItem('resonance_theme_brightness', String(theme.brightness));
+      localStorage.setItem('resonance_visualizer_mode',  theme.visualizerMode || 'vu');
+    } catch {}
+  }
+}
+
+/**
  * A custom hook that manages the WebSocket connection lifecycle for Resonance clients.
  * It handles connection, auto-reconnection, parsing messages, updating shared React states,
  * and syncing tokens.
@@ -67,25 +141,48 @@ export function useResonanceWS({
         socket = new WebSocket(wsUrl);
         ws.current = socket;
   
-        socket.onopen = () => {
+        socket.onopen = async () => {
           setIsConnected(true);
           console.log(`[Resonance Client] Connected to WebSocket. Remote: ${isRemote}`);
-          
+
           if (localStorage.getItem('resonance_updating') === 'true') {
             localStorage.removeItem('resonance_updating');
             console.log('[Resonance WS] Successfully reconnected after system update. Reloading screen...');
             window.location.reload();
             return;
           }
-          
-          if (setUpdateStatus) {
-            setUpdateStatus(null);
+
+          if (setUpdateStatus) setUpdateStatus(null);
+
+          // ── Primary hydration: single atomic HTTP fetch replaces the multi-message
+          // WS handshake. Source, playback, volume, EQ, DSP, theme, standby all land
+          // together — no partial-state window between messages.
+          try {
+            const res = await fetch('/api/status');
+            if (res.ok) {
+              const status = await res.json();
+              applyFullStatus(status, {
+                setSource, setSpotify, setStandby, setRemoteAccessEnabled,
+                setPlaybackState, setTrackPosition, setTrackDuration,
+                setShuffleState, setRepeatState, setVolume, setIsMuted,
+                setEqPreset, setEqBands, setEqSaturation, setEqNoiseFloor, setEqPreAmp,
+                setDspActive, setTheme, setActiveTheme, setBrightness, setVisualizerMode,
+              });
+              console.log('[Resonance WS] Hydrated from /api/status');
+            }
+          } catch (e) {
+            console.warn('[Resonance WS] /api/status fetch failed, WS messages will hydrate state:', e.message);
           }
-  
+
+          // Token is intentionally excluded from /api/status (security).
+          // Send it separately so the server can push SET_TOKEN if the server
+          // already has a fresher token from the OAuth refresh cycle.
           if (tokenRef.current) {
             socket.send(JSON.stringify({ type: 'SET_TOKEN', payload: { token: tokenRef.current } }));
           }
-          
+
+          // Remote: ask kiosk to push its live Spotify position/device state.
+          // /api/status covers everything else so this is only for Spotify live data.
           if (isRemote) {
             socket.send(JSON.stringify({ type: 'REQUEST_SYNC' }));
           }
