@@ -138,6 +138,10 @@ export default function Kiosk() {
   const [pureDirect, setPureDirect] = useState(false);
   const [scale, setScale] = useState(1);
   const containerRef = useRef(null);
+  // Tracks the current source synchronously — used to fence in-flight async
+  // polls so they don't overwrite state after a source switch.
+  const sourceRef = useRef(source);
+  useEffect(() => { sourceRef.current = source; }, [source]);
 
   // UI state variables derived from playbackState
   const currentTrack = playbackState?.track_window?.current_track;
@@ -495,10 +499,13 @@ export default function Kiosk() {
         break;
     }
 
+    // Clear all playback display fields immediately — before the server responds
     setSource(nextSource);
     setPlaybackState(null);
     setTrackPosition(0);
     setTrackDuration(0);
+    setShuffleState(false);
+    setRepeatState('off');
     const isSpotify = nextSource === 'spotify';
     sendUpdate('SET_SOURCE', { spotify: isSpotify, source: nextSource });
   };
@@ -803,8 +810,12 @@ export default function Kiosk() {
 
   // Build a BROADCAST_STATE-compatible object from the /status endpoint response
   const syncLocalState = async () => {
+    // Capture source at call time — discard result if source changed while awaiting
+    const capturedSource = sourceRef.current;
     try {
       const status = await api.localGetStatus();
+      // Source changed while the request was in-flight — discard stale result
+      if (sourceRef.current !== capturedSource || sourceRef.current !== 'local') return;
       if (!status || (!status.name && !status.file)) return;
       // MPD might still have a radio URL in its queue if the queue wasn't cleared yet.
       // Don't show radio stream metadata as local track info.
