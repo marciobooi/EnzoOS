@@ -75,7 +75,7 @@ export default function ThemeSettingsControl({
                   style={{
                     background: activeTheme === t.id ? S.surface : S.surfaceLo,
                     border: `1px solid ${activeTheme === t.id ? S.accent : S.border}`,
-                    boxShadow: activeTheme === t.id ? cardShadow : 'none',
+                    boxShadow: cardShadow,
                   }}>
                   <div className="flex items-start gap-2.5">
                     <Monitor className="w-4 h-4 mt-0.5 shrink-0" strokeWidth={1}
@@ -111,7 +111,7 @@ export default function ThemeSettingsControl({
                   style={{
                     background: themeColor === c.name ? S.surface : S.surfaceLo,
                     border: `1px solid ${themeColor === c.name ? S.borderHi : S.border}`,
-                    boxShadow: themeColor === c.name ? cardShadow : 'none',
+                    boxShadow: cardShadow,
                   }}>
                   <div className="w-3 h-3 rounded-full shrink-0"
                     style={{ background: c.value, boxShadow: swatchRing }} />
