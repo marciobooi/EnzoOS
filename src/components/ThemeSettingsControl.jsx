@@ -67,8 +67,7 @@ export default function ThemeSettingsControl({
                 <button key={t.id}
                   disabled={t.disabled}
                   onClick={() => onThemeChange?.(t.id)}
-                  className={`p-3 rounded-xl flex flex-col justify-between transition-all select-none ${
-                    t.disabled ? 'opacity-35 cursor-not-allowed' : 'cursor-pointer active:scale-[0.98]'
+                  className={`p-3 rounded-xl flex flex-col justify-between lowed' : 'cursor-pointer active:scale-[0.98]'
                   }`}
                   style={{
                     height: '160px',
@@ -83,7 +82,7 @@ export default function ThemeSettingsControl({
                       <Check className="w-4 h-4 shrink-0" strokeWidth={1.5} style={{ color: S.accent }} />
                     )}
                   </div>
-                  <div>
+                  <div className="mt-2 flex flex-col gap-1 justify-between">
                     <div className="text-base font-bold leading-tight"
                       style={{ color: activeTheme === t.id && !t.disabled ? S.strong : S.muted }}>
                       {t.name}
