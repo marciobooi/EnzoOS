@@ -792,17 +792,8 @@ a {
 }
 
 .radio-container {
-    padding: 8px;
-    border-radius: 12px;
-    background: #ffffff12 !important;
-    border: 1px solid #ffffff1f !important;
-    box-shadow: 0 8px 24px #000000a6, 0 16px 48px #050d1c80, inset 0 1px #ffffff1a !important;
-}
-
-.radio-container:hover {
-    background: #ffffff1c !important;
-    border-color: #fff3 !important;
-    box-shadow: 0 12px 32px #000000b3, 0 16px 48px #050d1c99, inset 0 1px #ffffff26 !important;
+    /* Structural only — colours handled by Stone tokens in RadioPanel.jsx */
+    padding: 4px 0;
 }
 
 .input-btn {
