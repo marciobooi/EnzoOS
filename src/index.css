@@ -427,7 +427,7 @@ div[data-theme="ruby"] *::selection {
 
 .vu-needle {
   width: 1px;
-  height: 90%;
+  height: 70%;
   background-color: var(--theme-color);
   position: absolute;
   bottom: 0;

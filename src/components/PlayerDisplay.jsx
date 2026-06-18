@@ -809,7 +809,7 @@ const PlayerDisplay = React.memo(function PlayerDisplay({
                 <span className={`status-dot ${source === 'spotify' ? 'bg-emerald-400' : 'bg-amber-500'}`}></span>
                 PLUGIN: {source?.toUpperCase() || ''}
               </button>
-              <span className="system-readout">DOT MATRIX / 2026</span>
+           
               {spotify && (
                 <button 
                   onClick={onTransferPlayback}
@@ -824,7 +824,7 @@ const PlayerDisplay = React.memo(function PlayerDisplay({
                   {isLocalDeviceActive ? 'SPOTIFY CONNECT // ACTIVE' : 'ROUTE TO RESONANCE'}
                 </button>
               )}
-              <span className="system-readout">DOT MATRIX / 2026</span>
+           
             </div>
 
             {/* Title Container & Live Volume Popup */}
