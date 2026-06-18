@@ -36,7 +36,10 @@ export default function ThemeSettingsControl({
       <div className="flex items-center justify-between pb-3 mb-3 shrink-0"
         style={{ borderBottom: `1px solid ${S.border}` }}>
         <div className="flex items-center gap-2">
-          <Palette className="w-4 h-4" strokeWidth={1} style={{ color: S.label, borderColor: S.label, borderRadius: '50%' }} />
+          <div className="w-6 h-6 rounded-full flex items-center justify-center shrink-0"
+            style={{ border: `1px solid ${S.border}` }}>
+            <Palette className="w-3.5 h-3.5" strokeWidth={1} style={{ color: S.label }} />
+          </div>
           <span className="text-sm font-light tracking-[0.25em] uppercase underline underline-offset-8 decoration-[#2a2826] decoration-1" style={{ color: S.label }}>
             resonance theme &amp; display control
           </span>
