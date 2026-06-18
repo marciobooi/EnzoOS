@@ -34,7 +34,7 @@ export default function RemoteAccessOverlay() {
             style={{ border: `1px solid ${S.border}` }}>
             <Smartphone className="w-3.5 h-3.5" strokeWidth={1} style={{ color: S.label }} />
           </div>
-          <span className="text-sm font-light tracking-[0.25em] uppercase" style={{ color: S.label }}>
+          <span className="text-sm font-light tracking-[0.25em] uppercase underline underline-offset-8 decoration-[#2a2826] decoration-1" style={{ color: S.label }}>
             remote access panel
           </span>
         </div>
