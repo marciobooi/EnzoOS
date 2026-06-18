@@ -151,8 +151,7 @@ export default function ThemeSettingsControl({
               </div>
               <input type="range" min="10" max="100" step="5" value={brightness}
                 onChange={e => onBrightnessChange?.(Number(e.target.value))}
-                className="w-full h-1 rounded-full appearance-none cursor-pointer"
-                style={{ background: S.track, accentColor: S.accent }} />
+                className="stone-range w-full" />
               <div className="flex justify-between mt-2 select-none">
                 <span className="text-sm font-light tracking-widest uppercase" style={{ color: S.label }}>dim</span>
                 <span className="text-sm font-light tracking-widest uppercase" style={{ color: S.label }}>full</span>

@@ -58,6 +58,47 @@ body {
   scrollbar-color: var(--theme-color-glow) transparent;
 }
 
+/* Stone range slider — charcoal border, stone-bg fill, warm track */
+.stone-range {
+  -webkit-appearance: none;
+  appearance: none;
+  cursor: pointer;
+  height: 4px;
+  border-radius: 9999px;
+  background: #c5c4c0;
+  outline: none;
+  border: none;
+}
+.stone-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #cbccc7;
+  border: 2px solid #2a2826;
+  cursor: pointer;
+  box-shadow: 0 1px 4px rgba(42,40,38,0.25);
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
+}
+.stone-range::-webkit-slider-thumb:hover  { transform: scale(1.15); box-shadow: 0 2px 8px rgba(42,40,38,0.30); }
+.stone-range::-webkit-slider-thumb:active { transform: scale(0.92); }
+.stone-range::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #cbccc7;
+  border: 2px solid #2a2826;
+  cursor: pointer;
+  box-shadow: 0 1px 4px rgba(42,40,38,0.25);
+}
+.stone-range::-moz-range-track {
+  height: 4px;
+  border-radius: 9999px;
+  background: #c5c4c0;
+  border: none;
+}
+
 /* Stone-palette scrollbar — used by SettingsMenuOverlay */
 .stone-scrollbar::-webkit-scrollbar        { width: 4px; height: 4px; }
 .stone-scrollbar::-webkit-scrollbar-track  { background: transparent; }
