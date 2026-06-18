@@ -103,7 +103,7 @@ function WizardHeader({ title, subtitle, onClose }) {
           <Waves className="w-3.5 h-3.5" strokeWidth={1} style={{ color: S.label }} />
         </div>
         <div>
-          <span className="text-sm font-light tracking-[0.25em] uppercase" style={{ color: S.label }}>
+          <span className="text-sm font-light tracking-[0.25em] uppercase underline underline-offset-8 decoration-[#2a2826] decoration-1" style={{ color: S.label }}>
             {title}
           </span>
           {subtitle && (
@@ -264,7 +264,7 @@ export default function DspWizard({ onClose, onCalibrationComplete }) {
             <h3 className="text-lg font-bold leading-snug" style={{ color: S.strong }}>
               {activeQuestion.question}
             </h3>
-            <p className="text-[.8rem] font-light leading-relaxed " style={{ color: 'rgb(75 73 71)' }}>
+            <p className="text-[.9rem] font-light leading-relaxed " style={{ color: 'rgb(75 73 71)' }}>
               {activeQuestion.description}
             </p>
           </div>
@@ -279,7 +279,7 @@ export default function DspWizard({ onClose, onCalibrationComplete }) {
         </div>
 
         {/* Right — options */}
-        <div className="w-full lg:w-[35%] flex flex-col gap-2 overflow-y-auto stone-scrollbar min-h-0">
+        <div className="w-full lg:w-[35%] flex flex-col gap-2 overflow-y-auto stone-scrollbar min-h-0 pb-4">
           {activeQuestion.options.map(opt => {
             const isSelected = selectedValue === opt.value;
             return (
