@@ -56,7 +56,8 @@ export default function ThemeSettingsControl({
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-stretch flex-grow overflow-hidden">
 
         {/* Left — Themes & Colors */}
-        <div className="lg:col-span-7 flex flex-col gap-4 overflow-y-auto pr-1 stone-scrollbar">
+        <div className="lg:col-span-7 flex flex-col gap-4 overflow-y-auto rounded-xl p-4 stone-scrollbar"
+          style={{ background: S.surface, border: `1px solid ${S.border}` }}>
 
           {/* Screen theme selector */}
           <div>
