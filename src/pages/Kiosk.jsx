@@ -287,21 +287,22 @@ export default function Kiosk() {
 
 
 
-  // Set up periodic device list and state fetching
+  // Set up periodic device list and state fetching — only while source is Spotify.
+  // Must depend on `spotify` so the interval is torn down when switching away from Spotify;
+  // otherwise the stale closure keeps polling and overwrites non-Spotify playback state.
   useEffect(() => {
-    if (!token) return;
+    if (!token || !spotify) return;
 
     fetchDevices();
     syncCurrentState();
 
-    // Poll every 3 seconds to track devices and playback state
     const pollIntervalId = setInterval(() => {
       fetchDevices();
       syncCurrentState();
     }, 3000);
 
     return () => clearInterval(pollIntervalId);
-  }, [token]);
+  }, [token, spotify]);
 
   // Connect to the centralized WebSocket hook
   const { isConnected, ws, sendUpdate } = useResonanceWS({
