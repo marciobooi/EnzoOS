@@ -1,232 +1,9 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Play, Pause, SkipForward, SkipBack, Shuffle, Repeat, Volume2, VolumeX, Home, Volume1, Sliders, Radio, Heart, Power, ChevronDown, Search } from 'lucide-react';
+import { Play, Pause, SkipForward, SkipBack, Shuffle, Repeat, Volume2, VolumeX, Home, Volume1, Sliders, Radio, Heart, Power, Search } from 'lucide-react';
+import { S, cardShadow } from '../styles/stone';
+import RadioPanel from './RadioPanel';
 
-// ── Radio: country list ────────────────────────────────────────────────────────
-const COUNTRIES = [
-  { code: 'AT', name: 'Austria',        flag: '🇦🇹' },
-  { code: 'AU', name: 'Australia',      flag: '🇦🇺' },
-  { code: 'BE', name: 'Belgium',        flag: '🇧🇪' },
-  { code: 'BR', name: 'Brazil',         flag: '🇧🇷' },
-  { code: 'CA', name: 'Canada',         flag: '🇨🇦' },
-  { code: 'CH', name: 'Switzerland',    flag: '🇨🇭' },
-  { code: 'DE', name: 'Germany',        flag: '🇩🇪' },
-  { code: 'DK', name: 'Denmark',        flag: '🇩🇰' },
-  { code: 'ES', name: 'Spain',          flag: '🇪🇸' },
-  { code: 'FI', name: 'Finland',        flag: '🇫🇮' },
-  { code: 'FR', name: 'France',         flag: '🇫🇷' },
-  { code: 'GB', name: 'United Kingdom', flag: '🇬🇧' },
-  { code: 'IE', name: 'Ireland',        flag: '🇮🇪' },
-  { code: 'IT', name: 'Italy',          flag: '🇮🇹' },
-  { code: 'JP', name: 'Japan',          flag: '🇯🇵' },
-  { code: 'NL', name: 'Netherlands',    flag: '🇳🇱' },
-  { code: 'NO', name: 'Norway',         flag: '🇳🇴' },
-  { code: 'NZ', name: 'New Zealand',    flag: '🇳🇿' },
-  { code: 'PL', name: 'Poland',         flag: '🇵🇱' },
-  { code: 'PT', name: 'Portugal',       flag: '🇵🇹' },
-  { code: 'SE', name: 'Sweden',         flag: '🇸🇪' },
-  { code: 'US', name: 'United States',  flag: '🇺🇸' },
-];
 
-// Premium station avatar — squared, depth-layered
-function StationAvatar({ station, size = 38 }) {
-  const [failed, setFailed] = useState(false);
-  const initials = station.name.trim().split(/\s+/).slice(0, 2).map(w => w[0]).join('').toUpperCase() || '??';
-  return (
-    <div className="rounded-xl overflow-hidden flex items-center justify-center shrink-0"
-      style={{ width: size, height: size, minWidth: size, background: 'linear-gradient(145deg, rgba(38,44,64,0.9) 0%, rgba(10,14,26,0.95) 100%)', border: '1px solid rgba(255,255,255,0.1)', boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.06), 0 2px 8px rgba(0,0,0,0.5)' }}>
-      {station.favicon && !failed
-        ? <img src={station.favicon} alt="" className="w-full h-full object-cover" onError={() => setFailed(true)} />
-        : <span className="font-extrabold tracking-tighter" style={{ fontSize: Math.max(9, size * 0.3), color: 'var(--theme-color)' }}>{initials}</span>
-      }
-    </div>
-  );
-}
-
-// Custom flag-grid country picker — replaces native <select>
-function CountryPicker({ value, onChange }) {
-  const [open, setOpen] = useState(false);
-  const ref = useRef(null);
-  const selected = COUNTRIES.find(c => c.name === value);
-
-  useEffect(() => {
-    if (!open) return;
-    const fn = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
-    document.addEventListener('mousedown', fn);
-    return () => document.removeEventListener('mousedown', fn);
-  }, [open]);
-
-  return (
-    <div className="relative flex-grow" ref={ref}>
-      <button
-        onClick={() => setOpen(v => !v)}
-        className="w-full flex items-center gap-2 rounded-xl px-3 py-2 cursor-pointer transition-all focus:outline-none"
-        style={{ border: open ? '1px solid var(--theme-color)' : '1px solid rgba(255,255,255,0.1)' }}
-      >
-        {selected
-          ? <><span style={{ fontSize: 15, lineHeight: 1 }}>{selected.flag}</span><span className="font-mono text-xs text-zinc-200 flex-1 text-left truncate">{selected.name}</span></>
-          : <span className="font-mono text-xs text-zinc-300 flex-1 text-left">Select country…</span>
-        }
-        <ChevronDown className={`h-3 w-3 text-zinc-300 shrink-0 transition-transform duration-150 ${open ? 'rotate-180' : ''}`} />
-      </button>
-      {open && (
-        <div className="absolute z-50 left-0 right-0 mt-2 rounded-xl overflow-hidden backdrop-blur-md"
-          style={{ background: 'rgba(15,18,28,0.85)', border: '1px solid rgba(255,255,255,0.08)', boxShadow: '0 20px 40px -15px rgba(0,0,0,0.7)' }}>
-          <div className="grid grid-cols-6 gap-1.5 p-2 max-h-[160px] overflow-y-auto custom-scrollbar">
-            {COUNTRIES.map(c => (
-              <button key={c.code} onClick={() => { onChange(c.name); setOpen(false); }}
-                className="group flex flex-col items-center justify-center gap-1.5 py-2.5 px-1 rounded-lg transition-all duration-200 ease-out active:scale-95 cursor-pointer countries-btn"
-                style={{
-                  background: value === c.name ? 'rgba(255,255,255,0.07)' : 'transparent',
-                  border: `1px solid ${value === c.name ? 'var(--theme-color)' : 'transparent'}`,
-                }}>
-                <span className="text-xl transition-transform duration-200 group-hover:scale-110"
-                  style={{ filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.3))' }}>{c.flag}</span>
-                <span className="font-mono font-medium uppercase tracking-wider text-zinc-400 group-hover:text-white transition-colors"
-                  style={{ fontSize: 8 }}>{c.code}</span>
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-// Vintage FM frequency band — deep CRT aesthetic, drag needle to tune
-function FrequencyBand({ stations, onPlay, onToggleFavorite, favoriteStations = [] }) {
-  const [needleIdx, setNeedleIdx] = useState(null);
-  const [playedIdx, setPlayedIdx] = useState(null);
-  const isDragging = useRef(false);
-  const bandRef = useRef(null);
-
-  const activeIdx = needleIdx ?? playedIdx;
-  const displayStation = activeIdx !== null ? stations[activeIdx] ?? null : null;
-  const isFav = displayStation ? favoriteStations.some(f => f.url === displayStation.url) : false;
-
-  const getIdxFromX = useCallback((clientX) => {
-    if (!bandRef.current || stations.length === 0) return null;
-    const rect = bandRef.current.getBoundingClientRect();
-    const x = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
-    return Math.round(x * (stations.length - 1));
-  }, [stations.length]);
-
-  const handlePointerDown = (e) => {
-    isDragging.current = true;
-    bandRef.current?.setPointerCapture(e.pointerId);
-    const idx = getIdxFromX(e.clientX);
-    if (idx !== null) setNeedleIdx(idx);
-  };
-  const handlePointerMove = (e) => {
-    if (!isDragging.current) return;
-    const idx = getIdxFromX(e.clientX);
-    if (idx !== null) setNeedleIdx(idx);
-  };
-  const handlePointerUp = () => {
-    isDragging.current = false;
-    if (needleIdx !== null && stations[needleIdx]) {
-      setPlayedIdx(needleIdx);
-      onPlay(stations[needleIdx]);
-    }
-    setNeedleIdx(null);
-  };
-
-  const needlePct = activeIdx !== null && stations.length > 1
-    ? (activeIdx / (stations.length - 1)) * 100
-    : null;
-
-  const tooltipPct = needleIdx !== null && stations.length > 1
-    ? (needleIdx / (stations.length - 1)) * 100
-    : null;
-
-  useEffect(() => { setNeedleIdx(null); setPlayedIdx(null); }, [stations]);
-
-  return (
-    <div className="mt-2 shrink-0 radio-container">
-
-      {/* Scale labels + band wrapped for tooltip positioning */}
-      <div className="relative">
-
-        {/* Needle tooltip — follows drag, auto-hides on release */}
-        {tooltipPct !== null && displayStation && (
-          <div className="absolute pointer-events-none" style={{ left: `${tooltipPct}%`, bottom: 'calc(100% + 7px)', transform: 'translateX(-50%)', zIndex: 20 }}>
-            <div style={{ background: 'rgba(8,12,24,0.97)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 8, padding: '5px 10px', whiteSpace: 'nowrap', boxShadow: '0 4px 16px rgba(0,0,0,0.7)' }}>
-              <p style={{ fontSize: 9, color: 'white', fontFamily: 'Space Mono, monospace', letterSpacing: '0.05em', textTransform: 'uppercase', lineHeight: 1.3 }}>
-                {displayStation.name}
-              </p>
-              {displayStation.country && (
-                <p style={{ fontSize: 7, color: 'rgba(255,255,255,0.5)', fontFamily: 'Space Mono, monospace', letterSpacing: '0.1em', textTransform: 'uppercase', marginTop: 2 }}>
-                  {displayStation.country}
-                </p>
-              )}
-            </div>
-            <div style={{ position: 'absolute', left: '50%', top: '100%', transform: 'translateX(-50%)', width: 0, height: 0, borderLeft: '5px solid transparent', borderRight: '5px solid transparent', borderTop: '5px solid rgba(8,12,24,0.97)' }} />
-          </div>
-        )}
-
-        {/* Scale labels */}
-        <div className="flex justify-between px-0.5 mb-0.5">
-          {['88', '92', '96', '100', '104', '108'].map(l => (
-            <span key={l} className="font-mono" style={{ fontSize: 7, color: 'rgba(255,255,255,0.65)', letterSpacing: '0.02em' }}>{l}</span>
-          ))}
-        </div>
-
-      {/* Band — deep CRT inset */}
-      <div
-        ref={bandRef}
-        data-tooltip="Drag the needle to tune"
-        className="relative rounded-xl overflow-hidden cursor-pointer select-none touch-none"
-        style={{ height: 64, border: '1px solid rgba(255,255,255,0.06)', boxShadow: 'inset 0 3px 14px rgba(0,0,0,0.95), inset 0 -1px 4px rgba(0,0,0,0.7), inset 0 1px 0 rgba(255,255,255,0.025)' }}
-        onPointerDown={handlePointerDown}
-        onPointerMove={handlePointerMove}
-        onPointerUp={handlePointerUp}
-        onPointerCancel={handlePointerUp}
-      >
-        {/* CRT scanlines */}
-        <div className="absolute inset-0 pointer-events-none" style={{ backgroundImage: 'repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.2) 2px, rgba(0,0,0,0.2) 3px)', zIndex: 3 }} />
-        {/* Center groove */}
-        <div className="absolute inset-x-0 pointer-events-none" style={{ top: '50%', height: 1, background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.2) 10%, rgba(255,255,255,0.32) 50%, rgba(255,255,255,0.2) 90%, transparent)', transform: 'translateY(-50%)', zIndex: 1 }} />
-        {/* Needle bloom */}
-        {needlePct !== null && (
-          <div className="absolute inset-y-0 pointer-events-none" style={{ left: `${needlePct}%`, width: 100, transform: 'translateX(-50%)', background: 'var(--theme-color)', opacity: 0.05, filter: 'blur(16px)' }} />
-        )}
-        {/* Station ticks */}
-        {stations.map((_, i) => {
-          const pct = stations.length > 1 ? (i / (stations.length - 1)) * 100 : 50;
-          const isAct = i === activeIdx;
-          const isMajor = i % Math.max(1, Math.floor(stations.length / 10)) === 0;
-          const dist = activeIdx !== null ? Math.abs(i - activeIdx) : Infinity;
-          return (
-            <div key={i} className="absolute pointer-events-none" style={{
-              left: `${pct}%`, top: '50%', transform: 'translate(-50%, -50%)',
-              width: isAct ? 2.5 : 1,
-              height: isAct ? 46 : isMajor ? 26 : 13,
-              background: isAct ? 'var(--theme-color)' : dist === 1 ? 'rgba(255,255,255,0.75)' : dist === 2 ? 'rgba(255,255,255,0.55)' : isMajor ? 'rgba(255,255,255,0.5)' : 'rgba(255,255,255,0.3)',
-              borderRadius: 2,
-              boxShadow: isAct ? '0 0 6px var(--theme-color), 0 0 14px var(--theme-color)' : 'none',
-              zIndex: isAct ? 4 : 1,
-              transition: isAct ? 'none' : 'background 0.06s',
-            }} />
-          );
-        })}
-        {/* Needle — triangle cap + gradient stem */}
-        {needlePct !== null && (
-          <>
-            <div className="absolute pointer-events-none" style={{ top: 0, left: `${needlePct}%`, transform: 'translateX(-50%)', width: 0, height: 0, borderLeft: '5px solid transparent', borderRight: '5px solid transparent', borderTop: '7px solid var(--theme-color)', filter: 'drop-shadow(0 0 4px var(--theme-color))', zIndex: 6 }} />
-            <div className="absolute pointer-events-none" style={{ left: `${needlePct}%`, top: 7, bottom: 2, transform: 'translateX(-50%)', width: 1.5, background: 'linear-gradient(180deg, var(--theme-color) 0%, var(--theme-color) 80%, transparent 100%)', zIndex: 5 }} />
-          </>
-        )}
-      </div>
-
-      {/* Bottom ruler */}
-      <div className="flex justify-between mt-0.5 px-0.5">
-        {Array.from({ length: 21 }).map((_, i) => (
-          <div key={i} style={{ width: i % 5 === 0 ? 1.5 : 1, height: i % 5 === 0 ? 5 : 3, background: i % 5 === 0 ? 'rgba(255,255,255,0.45)' : 'rgba(255,255,255,0.2)', borderRadius: 1 }} />
-        ))}
-      </div>
-      </div>{/* end relative wrapper */}
-    </div>
-  );
-}
 
 // Map 0–100 slider value to a dB string for display (matches server toDb())
 function toVolumeDb(vol) {
@@ -325,10 +102,6 @@ const PlayerDisplay = React.memo(function PlayerDisplay({
       setShowSearch(true);
     }
   }, [source]);
-
-  useEffect(() => {
-    if (radioCountry) handleRadioByCountry(radioCountry);
-  }, [radioCountry]);
 
   // Handle VU meter levels directly in DOM to avoid React re-render lag, with live ALSA audio updates and simulated watchdog fallback
   useEffect(() => {
@@ -732,89 +505,18 @@ const PlayerDisplay = React.memo(function PlayerDisplay({
       {/* 2. Details and Controls Column */}
       {source === 'radio' && showSearch ? (
         <section className="details-column" aria-label="Web Radio controls">
-          <div className="track-details h-full flex flex-col justify-between" style={{ minHeight: '230px' }}>
-            <div className="hifi-topline">
-              <button 
-                onClick={onToggleSource}
-                className="status-pill cursor-pointer transition-colors border text-amber-500 border-amber-500/20 bg-amber-500/5 font-sans"
-              >
-                <span className="status-dot bg-amber-500"></span>
-                PLUGIN: WEB RADIO
-              </button>
-              <button
-                onClick={() => setShowSearch(false)}
-                className="status-pill cursor-pointer transition-all border border-zinc-650 hover:bg-white/5 px-2 py-0.5 rounded text-zinc-400 font-sans"
-              >
-                [CLOSE X]
-              </button>
-            </div>
-
-            {/* Country picker — auto-scans on change */}
-            <div className="flex gap-2 items-center mt-2 shrink-0 radio-container">
-              <CountryPicker value={radioCountry} onChange={setRadioCountry} />
-              {isSearching && (
-                <span className="flex items-end gap-0.5 h-3 shrink-0">
-                  {[0.6, 1, 0.7].map((h, i) => (
-                    <span key={i} className="w-0.5 rounded-full animate-pulse"
-                      style={{ height: `${Math.round(h * 12)}px`, background: 'var(--theme-color)', animationDelay: `${i * 120}ms` }} />
-                  ))}
-                </span>
-              )}
-            </div>
-
-            {/* Frequency band (shows after scan) */}
-            {stationsList.length > 0 ? (
-              <FrequencyBand
-                stations={stationsList}
-                onPlay={(station) => { onPlayRadio(station.url, station.name, station.favicon); setShowSearch(false); }}
-                onToggleFavorite={onToggleFavoriteRadio}
-                favoriteStations={favoriteStations}
-              />
-            ) : (
-              /* Empty band — show frequency dial only */
-              <div className="mt-2 shrink-0 radio-container">
-                <div className="flex justify-between px-0.5 mb-0.5">
-                  {['88', '92', '96', '100', '104', '108'].map(l => (
-                    <span key={l} className="font-mono" style={{ fontSize: 7, color: 'rgba(255,255,255,0.5)' }}>{l}</span>
-                  ))}
-                </div>
-                <div className="relative rounded-xl overflow-hidden" style={{ height: 64, background: 'linear-gradient(180deg, #010204 0%, #03060e 40%, #010204 100%)', border: '1px solid rgba(255,255,255,0.08)', opacity: 0.6 }}>
-                  <div className="absolute inset-0" style={{ backgroundImage: 'repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.2) 2px, rgba(0,0,0,0.2) 3px)' }} />
-                  <div className="absolute inset-x-0" style={{ top: '50%', height: 1, background: 'rgba(255,255,255,0.25)', transform: 'translateY(-50%)' }} />
-                  {Array.from({ length: 20 }).map((_, i) => (
-                    <div key={i} className="absolute" style={{ left: `${(i / 19) * 100}%`, top: '50%', transform: 'translate(-50%, -50%)', width: 1, height: i % 4 === 0 ? 20 : 10, background: 'rgba(255,255,255,0.4)', borderRadius: 1 }} />
-                  ))}
-                </div>
-                <div className="flex justify-between mt-0.5 px-0.5">
-                  {Array.from({ length: 21 }).map((_, i) => (
-                    <div key={i} style={{ width: i % 5 === 0 ? 1.5 : 1, height: i % 5 === 0 ? 5 : 3, background: 'rgba(255,255,255,0.25)', borderRadius: 1 }} />
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Saved stations */}
-            {favoriteStations.length > 0 && (
-              <>
-                <div className="flex justify-between items-center mt-2 px-0.5 shrink-0 radio-container">
-                  <span className="text-[8px] font-extrabold font-mono uppercase tracking-widest" style={{ color: 'rgba(255,255,255,0.75)' }}>Saved Stations</span>
-                  <span className="text-[8px] font-mono" style={{ color: 'rgba(255,255,255,0.5)' }}>{favoriteStations.length}</span>
-                
-                <div className="flex-grow overflow-y-auto pr-0.5 mt-1.5 custom-scrollbar grid gap-1 max-h-[80px]">
-                  {favoriteStations.map((station, idx) => (
-                    <div key={`${station.url}-${idx}`}
-                      className="group flex items-center gap-1 p-1 rounded-lg transition-all cursor-pointer"
-                      style={{ border: '1px solid rgba(255,255,255,0.05)', maxWidth: '12rem', background: 'linear-gradient(rgb(1, 2, 4) 0%, rgb(3, 6, 14) 40%, rgb(1, 2, 4) 100%)' }}
-                      onClick={() => { onPlayRadio(station.url, station.name, station.favicon); setShowSearch(false); }}>
-                      <StationAvatar station={station} size={20} />
-                      <p className="text-[8px] font-bold text-white truncate flex-1 group-hover:text-[var(--theme-color)] transition-colors leading-tight">{station.name}</p>
-                    </div>
-                  ))}
-                </div>
-                </div>
-              </>
-            )}
-          </div>
+          <RadioPanel
+            onToggleSource={onToggleSource}
+            onClose={() => setShowSearch(false)}
+            radioCountry={radioCountry}
+            setRadioCountry={setRadioCountry}
+            stationsList={stationsList}
+            isSearching={isSearching}
+            handleRadioByCountry={handleRadioByCountry}
+            onPlayRadio={onPlayRadio}
+            favoriteStations={favoriteStations}
+            onToggleFavoriteRadio={onToggleFavoriteRadio}
+          />
         </section>
       ) : (
         <section className="details-column" aria-label="Track details and playback controls">
