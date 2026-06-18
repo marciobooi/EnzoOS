@@ -5,6 +5,9 @@ let cachedPlaybackState = null;
 let cachedSourceState = { spotify: true, source: 'spotify' };
 let cachedStandbyState = false;
 let broadcastFn = null;
+// Timestamp of last standby entry — BROADCAST_STATE auto-wake is suppressed
+// for 15 s after entering standby to prevent Spotify polling from waking it
+let standbyEnteredAt = 0;
 
 // ─── Serial queue: all state-mutating events run one at a time ───────────────
 let stateQueue = Promise.resolve();
@@ -85,6 +88,7 @@ async function setHardwareBrightness(brightness) {
 
 // ─── Standby side-effects (runs inside queue) ────────────────────────────────
 async function applyStandby(enabled) {
+  if (enabled) standbyEnteredAt = Date.now();
   cachedStandbyState = enabled;
   await setSetting('standby', enabled ? 'true' : 'false');
   broadcast({ type: 'SET_STANDBY', payload: { enabled } });
@@ -100,8 +104,23 @@ async function applyStandby(enabled) {
   try {
     const { exec } = await import('child_process');
     if (enabled) {
+      // Stop MPD (covers local files and radio streams)
       exec('mpc stop');
       exec('sudo /usr/local/bin/kiosk-power.sh standby');
+
+      // Pause Spotify if a valid token is available
+      try {
+        const { getValidAccessToken } = await import('./spotify-auth.js');
+        const token = await getValidAccessToken();
+        if (token) {
+          fetch('https://api.spotify.com/v1/me/player/pause', {
+            method: 'PUT',
+            headers: { 'Authorization': `Bearer ${token}` },
+          }).catch(err => console.warn('[Standby] Spotify pause failed (non-fatal):', err.message));
+        }
+      } catch (err) {
+        console.warn('[Standby] Could not pause Spotify:', err.message);
+      }
     } else {
       exec('sudo /usr/local/bin/kiosk-power.sh wake');
     }
@@ -115,8 +134,12 @@ async function handleEvent(type, payload, excludeWs) {
   switch (type) {
     case 'BROADCAST_STATE': {
       cachedPlaybackState = payload;
+      // Auto-wake only if standby has been active for > 15 s to avoid the Spotify
+      // polling race (kiosk sends BROADCAST_STATE right after entering standby)
       if (cachedStandbyState && payload && !payload.paused) {
-        await applyStandby(false);
+        if (Date.now() - standbyEnteredAt > 15000) {
+          await applyStandby(false);
+        }
       }
       broadcast({ type: 'PLAYBACK_STATE', payload }, excludeWs);
       break;

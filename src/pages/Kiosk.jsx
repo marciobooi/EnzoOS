@@ -117,6 +117,7 @@ export default function Kiosk() {
 
   const lastVolumeChangeTime = useRef(0);
   const volumeApiTimeout = useRef(null);
+  const standbyRef = useRef(false);
   const [favoriteStations, setFavoriteStations] = useState([]);
 
   const [otaProgress, setOtaProgress] = useState([]);
@@ -380,6 +381,8 @@ export default function Kiosk() {
   const handleToggleStandby = (enabled) => {
     if (transitionScreen) return;
     if (enabled) {
+      // Mark standby immediately so syncCurrentState stops polling during the goodbye animation
+      standbyRef.current = true;
       setTransitionScreen('goodbye');
       setTimeout(() => {
         setTransitionScreen(null);
@@ -389,6 +392,7 @@ export default function Kiosk() {
         }
       }, 2200);
     } else {
+      standbyRef.current = false;
       setStandby(false);
       if (ws.current && ws.current.readyState === WebSocket.OPEN) {
         ws.current.send(JSON.stringify({ type: 'SET_STANDBY', payload: { enabled: false } }));
@@ -397,6 +401,9 @@ export default function Kiosk() {
       setTimeout(() => setTransitionScreen(null), 2800);
     }
   };
+
+  // Keep standbyRef always current so async callbacks (syncCurrentState, polling) can read it
+  useEffect(() => { standbyRef.current = standby; }, [standby]);
 
   // Auto-standby idle timer (10 minutes of paused/idle state triggers standby)
   useEffect(() => {
@@ -825,6 +832,7 @@ export default function Kiosk() {
   async function syncCurrentState() {
     if (!spotify) return;
     if (!token) return;
+    if (standbyRef.current) return;
     try {
       const state = await api.getPlaybackState(token);
       if (state) {
