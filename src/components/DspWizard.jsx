@@ -160,84 +160,108 @@ export default function DspWizard({ onClose, onCalibrationComplete }) {
     }, 180);
   };
 
-  // ── EQ success ──────────────────────────────────────────────────────────────
+  // ── EQ success — 2-col: status left, info right ─────────────────────────────
   if (currentStep === 99) return (
     <div className="flex flex-col h-full font-sans p-6 select-none"
       style={{ background: S.bg, color: S.strong }}>
       <WizardHeader title="acoustic calibration wizard" subtitle="equalizer mode" onClose={onClose} />
 
-      <div className="flex-grow flex flex-col justify-center items-center gap-4 text-center">
-        <div className="w-16 h-16 rounded-full flex items-center justify-center"
-          style={{ border: `1.5px solid ${S.accent}`, background: S.surface }}>
-          <Check className="h-7 w-7" strokeWidth={1.5} style={{ color: S.accent }} />
+      <div className="flex-grow flex flex-row gap-5 min-h-0">
+        {/* Left — status */}
+        <div className="w-[38%] flex flex-col justify-center items-center gap-4 text-center shrink-0 rounded-2xl p-6"
+          style={{ background: S.surface, border: `1px solid ${S.border}` }}>
+          <div className="w-16 h-16 rounded-full flex items-center justify-center"
+            style={{ border: `1.5px solid ${S.accent}`, background: S.bg }}>
+            <Check className="h-7 w-7" strokeWidth={1.5} style={{ color: S.accent }} />
+          </div>
+          <div>
+            <p className="text-sm font-light tracking-[0.25em] uppercase mb-1" style={{ color: S.label }}>activated</p>
+            <h2 className="text-xl font-bold" style={{ color: S.strong }}>Manual Equalizer Active</h2>
+          </div>
         </div>
-        <div>
-          <p className="text-sm font-light tracking-[0.25em] uppercase mb-1" style={{ color: S.label }}>activated</p>
-          <h2 className="text-lg font-bold" style={{ color: S.strong }}>Manual Equalizer Active</h2>
-        </div>
-        <p className="text-sm font-light max-w-md leading-relaxed" style={{ color: S.muted }}>
-          Acoustic room correction filters are now bypassed. Adjust presets and frequency bands by tapping the VU dial on the main display.
-        </p>
-      </div>
 
-      <div className="flex gap-3 mt-4 shrink-0">
-        <button onClick={() => setCurrentStep(0)}
-          className="flex-1 py-3 rounded-xl text-sm font-semibold transition-all active:scale-95 cursor-pointer"
-          style={{ background: S.surfaceLo, border: `1px solid ${S.border}`, color: S.muted, boxShadow: cardShadow }}>
-          Configure Acoustic DSP instead
-        </button>
-        <button onClick={onClose}
-          className="flex-1 py-3 rounded-xl text-sm font-extrabold transition-all active:scale-95 cursor-pointer"
-          style={{ background: S.accent, color: S.accentFg, border: 'none' }}>
-          Return to Player
-        </button>
+        {/* Right — info + buttons */}
+        <div className="flex-grow flex flex-col justify-between min-h-0">
+          <p className="text-sm font-light leading-relaxed" style={{ color: S.muted }}>
+            Acoustic room correction filters are now bypassed. Adjust presets and frequency bands by tapping the VU dial on the main display.
+          </p>
+          <div className="flex gap-3 mt-4 shrink-0">
+            <button onClick={() => setCurrentStep(0)}
+              className="flex-1 py-3 rounded-xl text-sm font-semibold transition-all active:scale-95 cursor-pointer"
+              style={{ background: S.surfaceLo, border: `1px solid ${S.border}`, color: S.muted, boxShadow: cardShadow }}>
+              Configure Acoustic DSP instead
+            </button>
+            <button onClick={onClose}
+              className="flex-1 py-3 rounded-xl text-sm font-extrabold transition-all active:scale-95 cursor-pointer"
+              style={{ background: S.accent, color: S.accentFg, border: 'none' }}>
+              Return to Player
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   );
 
-  // ── DSP success ─────────────────────────────────────────────────────────────
+  // ── DSP success — 2-col: status left, DSP map right ─────────────────────────
   if (currentStep === QUESTIONS.length) return (
     <div className="flex flex-col h-full font-sans p-6 select-none"
       style={{ background: S.bg, color: S.strong }}>
       <WizardHeader title="acoustic calibration wizard" subtitle="calibration complete" onClose={onClose} />
 
-      <div className="flex-grow flex flex-col justify-center items-center gap-4 text-center min-h-0">
-        <div className="w-16 h-16 rounded-full flex items-center justify-center"
-          style={{ border: `1.5px solid ${S.accent}`, background: S.surface }}>
-          <Check className="h-7 w-7" strokeWidth={1.5} style={{ color: S.accent }} />
-        </div>
-        <div>
-          <p className="text-sm font-light tracking-[0.25em] uppercase mb-1" style={{ color: S.label }}>complete</p>
-          <h2 className="text-lg font-bold" style={{ color: S.strong }}>Acoustic Profile Generated</h2>
-        </div>
-        <p className="text-sm font-light max-w-md leading-relaxed" style={{ color: S.muted }}>
-          DSP active filters and biquad curves have been recalculated and hot-reloaded on the Resonance backend.
-        </p>
-
-        <div className="rounded-xl p-4 text-left w-full max-w-lg mt-1 text-sm font-light space-y-1.5 max-h-[120px] overflow-y-auto stone-scrollbar"
+      <div className="flex-grow flex flex-row gap-5 min-h-0">
+        {/* Left — status */}
+        <div className="w-[35%] flex flex-col justify-center items-center gap-4 text-center shrink-0 rounded-2xl p-6"
           style={{ background: S.surface, border: `1px solid ${S.border}` }}>
-          <p className="font-semibold mb-2" style={{ color: S.strong }}>Applied DSP Map</p>
-          <p style={{ color: S.muted }}>· Channel Layout: {answers[1] === 'subwoofer' ? '2.1 Crossover (80Hz Linkwitz-Riley)' : '2.0 Pass-Through'}</p>
-          <p style={{ color: S.muted }}>· Room Reflection EQ: {answers[2] === 'echoey' ? 'HF Shelf −3dB @ 8kHz' : 'Flat HF Response'}</p>
-          <p style={{ color: S.muted }}>· Speaker Delay: {answers[3] === 'left' ? 'Left +1.2ms' : answers[3] === 'right' ? 'Right +1.2ms' : '0.0ms aligned'}</p>
-          <p style={{ color: S.muted }}>· Voicing: {answers[4] ? answers[4].charAt(0).toUpperCase() + answers[4].slice(1) : 'Balanced'}</p>
-          <p style={{ color: S.muted }}>· HPF: {answers[5] === 'small' ? '80Hz protective cut' : answers[5] === 'medium' ? '45Hz infrasonic cut' : 'Full range (20Hz)'}</p>
-          <p style={{ color: S.muted }}>· Loudness: {answers[6] === 'quiet' ? 'Fletcher-Munson active' : 'Off (reference flat)'}</p>
-          <p style={{ color: S.muted }}>· Boundary EQ: {answers[7] === 'wall' ? 'Wall −2dB' : answers[7] === 'corner' ? 'Corner −4dB' : 'None (free space)'}</p>
+          <div className="w-16 h-16 rounded-full flex items-center justify-center"
+            style={{ border: `1.5px solid ${S.accent}`, background: S.bg }}>
+            <Check className="h-7 w-7" strokeWidth={1.5} style={{ color: S.accent }} />
+          </div>
+          <div>
+            <p className="text-sm font-light tracking-[0.25em] uppercase mb-1" style={{ color: S.label }}>complete</p>
+            <h2 className="text-xl font-bold" style={{ color: S.strong }}>Acoustic Profile Generated</h2>
+          </div>
+          <p className="text-sm font-light leading-relaxed" style={{ color: S.muted }}>
+            DSP filters and biquad curves recalculated and hot-reloaded on the Resonance backend.
+          </p>
         </div>
-      </div>
 
-      <div className="flex gap-3 mt-4 shrink-0">
-        <button onClick={() => setCurrentStep(0)}
-          className="flex-1 py-3 rounded-xl text-sm font-semibold transition-all active:scale-95 cursor-pointer"
-          style={{ background: S.surfaceLo, border: `1px solid ${S.border}`, color: S.muted, boxShadow: cardShadow }}>
-          Switch to Manual Equalizer
-        </button>
-        <button onClick={onClose}
-          className="flex-1 py-3 rounded-xl text-sm font-extrabold transition-all active:scale-95 cursor-pointer"
-          style={{ background: S.accent, color: S.accentFg, border: 'none' }}>
-          Return to Player
-        </button>
+        {/* Right — DSP map + buttons */}
+        <div className="flex-grow flex flex-col gap-4 min-h-0">
+          <div className="flex-grow rounded-xl p-4 text-sm font-light overflow-y-auto stone-scrollbar"
+            style={{ background: S.surface, border: `1px solid ${S.border}` }}>
+            <p className="text-sm font-semibold mb-3 tracking-[0.15em] uppercase" style={{ color: S.label }}>Applied DSP Map</p>
+            <div className="space-y-2">
+              {[
+                ['Channel Layout',    answers[1] === 'subwoofer' ? '2.1 Crossover — 80Hz Linkwitz-Riley' : '2.0 Stereo Pass-Through'],
+                ['Room Reflection',   answers[2] === 'echoey' ? 'HF Shelf −3dB @ 8kHz' : 'Flat HF Response'],
+                ['Speaker Delay',     answers[3] === 'left' ? 'Left +1.2ms' : answers[3] === 'right' ? 'Right +1.2ms' : '0.0ms — time-aligned'],
+                ['Voicing Target',    answers[4] ? answers[4].charAt(0).toUpperCase() + answers[4].slice(1) : 'Balanced'],
+                ['HPF Cutoff',        answers[5] === 'small' ? '80Hz protective cut' : answers[5] === 'medium' ? '45Hz infrasonic cut' : 'Full range — 20Hz'],
+                ['Loudness Mode',     answers[6] === 'quiet' ? 'Fletcher-Munson active' : 'Off — reference flat'],
+                ['Boundary EQ',       answers[7] === 'wall' ? 'Wall −2dB @ 180Hz' : answers[7] === 'corner' ? 'Corner −4dB @ 180Hz' : 'None — free space'],
+              ].map(([key, val]) => (
+                <div key={key} className="flex items-baseline justify-between gap-4 py-1.5"
+                  style={{ borderBottom: `0.5px solid ${S.border}` }}>
+                  <span className="text-sm font-light shrink-0" style={{ color: S.label }}>{key}</span>
+                  <span className="text-sm font-medium text-right" style={{ color: S.strong }}>{val}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="flex gap-3 shrink-0">
+            <button onClick={() => setCurrentStep(0)}
+              className="flex-1 py-3 rounded-xl text-sm font-semibold transition-all active:scale-95 cursor-pointer"
+              style={{ background: S.surfaceLo, border: `1px solid ${S.border}`, color: S.muted, boxShadow: cardShadow }}>
+              Switch to Manual Equalizer
+            </button>
+            <button onClick={onClose}
+              className="flex-1 py-3 rounded-xl text-sm font-extrabold transition-all active:scale-95 cursor-pointer"
+              style={{ background: S.accent, color: S.accentFg, border: 'none' }}>
+              Return to Player
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   );
