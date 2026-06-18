@@ -269,32 +269,45 @@ echo -e "${YELLOW}Enabling and starting Media Player Daemon (MPD)...${NC}"
 systemctl enable mpd
 systemctl restart mpd
 
-echo -e "\n${GREEN}Installing CamillaDSP...${NC}"
-if ! command -v camilladsp &> /dev/null; then
-  ARCH=$(uname -m)
-  echo -e "${YELLOW}Detected CPU architecture: ${ARCH}${NC}"
-  if [ "$ARCH" = "aarch64" ]; then
-    CAMILLA_ARCH="aarch64"
-  elif [ "$ARCH" = "x86_64" ]; then
-    CAMILLA_ARCH="amd64"
-  elif [[ "$ARCH" =~ "arm" ]]; then
-    CAMILLA_ARCH="armv7"
-  else
-    CAMILLA_ARCH="aarch64"
-  fi
-  
-  echo -e "${YELLOW}Downloading CamillaDSP v2.0.3 for ${CAMILLA_ARCH}...${NC}"
-  wget -q "https://github.com/HEnquist/camilladsp/releases/download/v2.0.3/camilladsp-linux-${CAMILLA_ARCH}.tar.gz" -O /tmp/camilladsp.tar.gz
-  tar -xzf /tmp/camilladsp.tar.gz -C /tmp/
-  mv /tmp/camilladsp /usr/bin/camilladsp
-  chmod +x /usr/bin/camilladsp
-  rm -f /tmp/camilladsp.tar.gz
-  echo -e "${GREEN}CamillaDSP v2.0.3 installed successfully in /usr/bin/camilladsp.${NC}"
+echo -e "\n${GREEN}Installing CamillaDSP (latest stable)...${NC}"
+ARCH=$(uname -m)
+echo -e "${YELLOW}Detected CPU architecture: ${ARCH}${NC}"
+if [ "$ARCH" = "aarch64" ]; then
+  CAMILLA_ARCH="aarch64"
+elif [ "$ARCH" = "x86_64" ]; then
+  CAMILLA_ARCH="amd64"
+elif [[ "$ARCH" =~ "arm" ]]; then
+  CAMILLA_ARCH="armv7"
 else
-  echo -e "${YELLOW}CamillaDSP already installed: $(camilladsp --version || true)${NC}"
+  CAMILLA_ARCH="aarch64"
 fi
 
-# Create default flat CamillaDSP configuration to prevent crash on initial run
+# Fetch latest release tag and download URL from GitHub API (ALSA-only binary, no PipeWire/PA)
+echo -e "${YELLOW}Fetching latest CamillaDSP release from GitHub...${NC}"
+CAMILLA_URL=$(curl -s https://api.github.com/repos/HEnquist/camilladsp/releases/latest \
+  | python3 -c "import sys,json; r=json.load(sys.stdin); assets=[a['browser_download_url'] for a in r['assets'] if 'linux-${CAMILLA_ARCH}.tar.gz' == a['name'].split('camilladsp-')[1]]; print(assets[0] if assets else '')" 2>/dev/null || true)
+CAMILLA_VERSION=$(curl -s https://api.github.com/repos/HEnquist/camilladsp/releases/latest \
+  | python3 -c "import sys,json; print(json.load(sys.stdin)['tag_name'])" 2>/dev/null || echo "unknown")
+
+if [ -z "$CAMILLA_URL" ]; then
+  echo -e "${YELLOW}GitHub API lookup failed — falling back to known v4.1.3 URL.${NC}"
+  CAMILLA_URL="https://github.com/HEnquist/camilladsp/releases/download/v4.1.3/camilladsp-linux-${CAMILLA_ARCH}.tar.gz"
+  CAMILLA_VERSION="v4.1.3"
+fi
+
+# Stop existing camilladsp before replacing binary (avoids "Text file busy")
+systemctl stop camilladsp 2>/dev/null || true
+
+echo -e "${YELLOW}Downloading CamillaDSP ${CAMILLA_VERSION} for ${CAMILLA_ARCH}...${NC}"
+wget -q "$CAMILLA_URL" -O /tmp/camilladsp.tar.gz
+tar -xzf /tmp/camilladsp.tar.gz -C /tmp/
+mv /tmp/camilladsp /usr/bin/camilladsp
+chmod +x /usr/bin/camilladsp
+rm -f /tmp/camilladsp.tar.gz
+echo -e "${GREEN}CamillaDSP ${CAMILLA_VERSION} installed successfully in /usr/bin/camilladsp.${NC}"
+
+# Create default flat CamillaDSP v4 configuration to prevent crash on initial run
+# Note: v4 uses S16_LE format strings and 'channels' (array) in pipeline Filter steps
 echo -e "${YELLOW}Creating initial flat CamillaDSP configuration...${NC}"
 cat <<EOF > "$PROJECT_DIR/camilladsp.yml"
 devices:
@@ -305,12 +318,12 @@ devices:
     type: Alsa
     channels: 2
     device: loop_dsnoop
-    format: S16LE
+    format: S16_LE
   playback:
     type: Alsa
     channels: 2
     device: hw:0,0
-    format: S16LE
+    format: S16_LE
 mixers:
   speaker_map:
     channels:

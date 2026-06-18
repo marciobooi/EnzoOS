@@ -258,7 +258,7 @@ function detectDac() {
   let detected = {
     device: "hw:0,0",
     samplerate: 44100,
-    format: "S16LE",
+    format: "S16_LE",
     channels: 2
   };
 
@@ -330,15 +330,15 @@ function detectDac() {
             rate = rates[0];
           }
 
-          let camillaFormat = "S16LE";
+          let camillaFormat = "S16_LE";
           if (formats.some(f => f.includes("S32_LE"))) {
-            camillaFormat = "S32LE";
-          } else if (formats.some(f => f.includes("S24_LE"))) {
-            camillaFormat = "S24LE";
+            camillaFormat = "S32_LE";
           } else if (formats.some(f => f.includes("S24_3LE"))) {
-            camillaFormat = "S24LE3";
+            camillaFormat = "S24_3_LE";
+          } else if (formats.some(f => f.includes("S24_LE"))) {
+            camillaFormat = "S24_3_LE";
           } else if (formats.some(f => f.includes("S16_LE"))) {
-            camillaFormat = "S16LE";
+            camillaFormat = "S16_LE";
           }
 
           usbDac = {
@@ -461,12 +461,12 @@ function generateCamillaConfig(answers, eqSettings, dacInfo) {
       samplerate: dacInfo.samplerate || 44100,
       chunksize: 1024,
       queuelimit: 4,
-      capture: { type: "Alsa", channels: 2, device: "loop_dsnoop", format: "S16LE" },
+      capture: { type: "Alsa", channels: 2, device: "loop_dsnoop", format: "S16_LE" },
       playback: {
         type: "Alsa",
         channels: dacInfo.channels || 2,
         device: dacInfo.device || "hw:CARD=DAC,DEV=0",
-        format: dacInfo.format || "S24LE"
+        format: dacInfo.format || "S24_3_LE"
       }
     },
     mixers: {},
@@ -618,14 +618,13 @@ function generateCamillaConfig(answers, eqSettings, dacInfo) {
   if (isSubwooferSetup) subPipeline.push("preamp_gain");
 
   // --- STAGE F: COMPILE THE PIPELINE MATRIX ---
-  // CamillaDSP v2: Mixer uses 'name' (not 'mapping'), Filter uses individual
-  // steps with 'name' (singular string) instead of a 'names' array.
-  // CamillaDSP v2: Mixer uses 'name' (not 'mapping'); Filter still uses 'names' array.
+  // CamillaDSP v4: Filter steps use 'channels' (array) instead of v2's 'channel' (integer).
+  // SetVolume controls the built-in main volume fader — no Volume filter needed in pipeline.
   config.pipeline.push({ type: "Mixer", name: "speaker_map" });
-  config.pipeline.push({ type: "Filter", channel: 0, names: leftPipeline });
-  config.pipeline.push({ type: "Filter", channel: 1, names: rightPipeline });
+  config.pipeline.push({ type: "Filter", channels: [0], names: leftPipeline });
+  config.pipeline.push({ type: "Filter", channels: [1], names: rightPipeline });
   if (isSubwooferSetup) {
-    config.pipeline.push({ type: "Filter", channel: 2, names: subPipeline });
+    config.pipeline.push({ type: "Filter", channels: [2], names: subPipeline });
   }
 
   return config;
