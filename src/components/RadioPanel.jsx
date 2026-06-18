@@ -335,7 +335,101 @@ function EmptyBand() {
   );
 }
 
-// ── Main export — full radio search panel ─────────────────────────────────
+// ── Wide variants for the overlay (taller band, more space) ───────────────
+function FrequencyBandWide({ stations, onPlay, favoriteStations = [] }) {
+  const [needleIdx, setNeedleIdx]   = useState(null);
+  const [playedIdx, setPlayedIdx]   = useState(null);
+  const isDragging = useRef(false);
+  const bandRef    = useRef(null);
+  const activeIdx      = needleIdx ?? playedIdx;
+  const displayStation = activeIdx !== null ? stations[activeIdx] ?? null : null;
+
+  const getIdxFromX = useCallback((clientX) => {
+    if (!bandRef.current || stations.length === 0) return null;
+    const rect = bandRef.current.getBoundingClientRect();
+    return Math.round(Math.max(0, Math.min(1, (clientX - rect.left) / rect.width)) * (stations.length - 1));
+  }, [stations.length]);
+
+  const handlePointerDown = (e) => { isDragging.current = true; bandRef.current?.setPointerCapture(e.pointerId); const idx = getIdxFromX(e.clientX); if (idx !== null) setNeedleIdx(idx); };
+  const handlePointerMove = (e) => { if (!isDragging.current) return; const idx = getIdxFromX(e.clientX); if (idx !== null) setNeedleIdx(idx); };
+  const handlePointerUp   = () => { isDragging.current = false; if (needleIdx !== null && stations[needleIdx]) { setPlayedIdx(needleIdx); onPlay(stations[needleIdx]); } setNeedleIdx(null); };
+
+  const needlePct  = activeIdx !== null && stations.length > 1 ? (activeIdx / (stations.length - 1)) * 100 : null;
+  const tooltipPct = needleIdx !== null && stations.length > 1 ? (needleIdx / (stations.length - 1)) * 100 : null;
+  useEffect(() => { setNeedleIdx(null); setPlayedIdx(null); }, [stations]);
+
+  return (
+    <div className="w-full">
+      <div className="relative">
+        {tooltipPct !== null && displayStation && (
+          <div className="absolute pointer-events-none" style={{ left: `${tooltipPct}%`, bottom: 'calc(100% + 8px)', transform: 'translateX(-50%)', zIndex: 20 }}>
+            <div style={{ background: S.accent, borderRadius: 8, padding: '6px 12px', whiteSpace: 'nowrap', boxShadow: `0 4px 16px rgba(42,40,38,0.22)` }}>
+              <p style={{ fontSize: 10, color: S.accentFg, letterSpacing: '0.05em', textTransform: 'uppercase', lineHeight: 1.3 }}>{displayStation.name}</p>
+              {displayStation.country && <p style={{ fontSize: 8, color: `${S.accentFg}99`, letterSpacing: '0.1em', textTransform: 'uppercase', marginTop: 2 }}>{displayStation.country}</p>}
+            </div>
+            <div style={{ position: 'absolute', left: '50%', top: '100%', transform: 'translateX(-50%)', width: 0, height: 0, borderLeft: '5px solid transparent', borderRight: '5px solid transparent', borderTop: `5px solid ${S.accent}` }} />
+          </div>
+        )}
+        <div className="flex justify-between px-0.5 mb-1">
+          {['88', '92', '96', '100', '104', '108'].map(l => (
+            <span key={l} className="font-mono" style={{ fontSize: 8, color: S.label, letterSpacing: '0.04em' }}>{l} MHz</span>
+          ))}
+        </div>
+        <div ref={bandRef} className="relative rounded-xl overflow-hidden cursor-pointer select-none touch-none"
+          style={{ height: 96, background: S.surfaceLo, border: `1px solid ${S.border}`, boxShadow: `inset 0 2px 10px rgba(42,40,38,0.10), inset 0 -1px 4px rgba(42,40,38,0.05), ${cardShadow}` }}
+          onPointerDown={handlePointerDown} onPointerMove={handlePointerMove} onPointerUp={handlePointerUp} onPointerCancel={handlePointerUp}>
+          <div className="absolute inset-0 pointer-events-none" style={{ backgroundImage: `repeating-linear-gradient(0deg, transparent, transparent 3px, rgba(42,40,38,0.03) 3px, rgba(42,40,38,0.03) 4px)`, zIndex: 3 }} />
+          <div className="absolute inset-x-0 pointer-events-none" style={{ top: '50%', height: 1, background: `linear-gradient(90deg, transparent, ${S.borderHi} 10%, ${S.border} 50%, ${S.borderHi} 90%, transparent)`, transform: 'translateY(-50%)', zIndex: 1 }} />
+          {needlePct !== null && <div className="absolute inset-y-0 pointer-events-none" style={{ left: `${needlePct}%`, width: 80, transform: 'translateX(-50%)', background: S.accent, opacity: 0.07, filter: 'blur(12px)' }} />}
+          {stations.map((_, i) => {
+            const pct = stations.length > 1 ? (i / (stations.length - 1)) * 100 : 50;
+            const isAct = i === activeIdx;
+            const isMajor = i % Math.max(1, Math.floor(stations.length / 10)) === 0;
+            const dist = activeIdx !== null ? Math.abs(i - activeIdx) : Infinity;
+            return <div key={i} className="absolute pointer-events-none" style={{ left: `${pct}%`, top: '50%', transform: 'translate(-50%, -50%)', width: isAct ? 2 : 1, height: isAct ? 72 : isMajor ? 36 : 18, background: isAct ? S.accent : dist === 1 ? S.muted : dist === 2 ? S.label : isMajor ? S.track : S.border, borderRadius: 2, boxShadow: isAct ? `0 0 4px rgba(42,40,38,0.4)` : 'none', zIndex: isAct ? 4 : 1, transition: isAct ? 'none' : 'background 0.06s' }} />;
+          })}
+          {needlePct !== null && <>
+            <div className="absolute pointer-events-none" style={{ top: 0, left: `${needlePct}%`, transform: 'translateX(-50%)', width: 0, height: 0, borderLeft: '6px solid transparent', borderRight: '6px solid transparent', borderTop: `9px solid ${S.accent}`, zIndex: 6 }} />
+            <div className="absolute pointer-events-none" style={{ left: `${needlePct}%`, top: 9, bottom: 2, transform: 'translateX(-50%)', width: 2, background: `linear-gradient(180deg, ${S.accent} 0%, ${S.accent} 80%, transparent 100%)`, zIndex: 5 }} />
+          </>}
+        </div>
+        <div className="flex justify-between mt-1 px-0.5">
+          {Array.from({ length: 21 }).map((_, i) => (
+            <div key={i} style={{ width: i % 5 === 0 ? 1.5 : 1, height: i % 5 === 0 ? 6 : 3, background: i % 5 === 0 ? S.track : S.border, borderRadius: 1 }} />
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function EmptyBandWide() {
+  return (
+    <div className="w-full">
+      <div className="flex justify-between px-0.5 mb-1">
+        {['88', '92', '96', '100', '104', '108'].map(l => (
+          <span key={l} className="font-mono" style={{ fontSize: 8, color: S.label, letterSpacing: '0.04em' }}>{l} MHz</span>
+        ))}
+      </div>
+      <div className="relative rounded-xl overflow-hidden" style={{ height: 96, background: S.surfaceLo, border: `1px solid ${S.border}`, opacity: 0.5, boxShadow: cardShadow }}>
+        <div className="absolute inset-x-0" style={{ top: '50%', height: 1, background: S.border, transform: 'translateY(-50%)' }} />
+        {Array.from({ length: 20 }).map((_, i) => (
+          <div key={i} className="absolute" style={{ left: `${(i / 19) * 100}%`, top: '50%', transform: 'translate(-50%, -50%)', width: 1, height: i % 4 === 0 ? 30 : 15, background: S.track, borderRadius: 1 }} />
+        ))}
+      </div>
+      <div className="flex justify-between mt-1 px-0.5">
+        {Array.from({ length: 21 }).map((_, i) => (
+          <div key={i} style={{ width: i % 5 === 0 ? 1.5 : 1, height: i % 5 === 0 ? 6 : 3, background: i % 5 === 0 ? S.track : S.border, borderRadius: 1 }} />
+        ))}
+      </div>
+      <p className="text-sm font-light text-center mt-3" style={{ color: S.label }}>
+        Select a country above to scan stations
+      </p>
+    </div>
+  );
+}
+
+// ── Main export — full-overlay radio search panel ─────────────────────────
 export default function RadioPanel({
   onToggleSource,
   onClose,
@@ -353,83 +447,117 @@ export default function RadioPanel({
   }, [radioCountry]);
 
   return (
-    <div className="track-details h-full flex flex-col justify-between font-sans" style={{ minHeight: '230px' }}>
+    <div className="rounded-2xl p-5 h-full flex flex-col justify-between font-sans overflow-hidden"
+      style={{ background: S.bg, border: `1px solid ${S.borderHi}` }}>
 
-      {/* ── Topline ── */}
-      <div className="hifi-topline">
-        <button
-          onClick={onToggleSource}
-          className="status-pill cursor-pointer transition-colors border text-amber-500 border-amber-500/20 bg-amber-500/5 font-sans"
-        >
-          <span className="status-dot bg-amber-500" />
-          PLUGIN: WEB RADIO
-        </button>
-        <button
-          onClick={onClose}
-          className="cursor-pointer px-3 py-1 rounded-full text-sm font-extrabold transition-all active:scale-95 active:opacity-80"
-          style={{ background: S.accent, color: S.accentFg, border: 'none' }}
-        >
+      {/* ── Header — mirrors ThemeSettingsControl / EqualizerControl ── */}
+      <div className="flex items-center justify-between pb-3 mb-3 shrink-0"
+        style={{ borderBottom: `1px solid ${S.border}` }}>
+        <div className="flex items-center gap-2">
+          <div className="w-6 h-6 rounded-full flex items-center justify-center shrink-0"
+            style={{ border: `1px solid ${S.border}` }}>
+            <Radio className="w-3.5 h-3.5" strokeWidth={1} style={{ color: S.label }} />
+          </div>
+          <span className="text-sm font-light tracking-[0.25em] uppercase" style={{ color: S.label }}>
+            web radio station search
+          </span>
+        </div>
+        <button onClick={onClose}
+          className="cursor-pointer px-4 py-1.5 rounded-full transition-all active:scale-95 active:opacity-80 text-sm font-extrabold"
+          style={{ background: S.accent, color: S.accentFg, border: 'none' }}>
           CLOSE
         </button>
       </div>
 
-      {/* ── Country picker ── */}
-      <div className="flex gap-2 items-center mt-2 shrink-0 radio-container">
-        <CountryPicker value={radioCountry} onChange={setRadioCountry} />
-        {isSearching && (
-          <span className="flex items-end gap-0.5 h-3 shrink-0">
-            {[0.6, 1, 0.7].map((h, i) => (
-              <span key={i} className="w-0.5 rounded-full animate-pulse"
-                style={{ height: `${Math.round(h * 12)}px`, background: S.accent, animationDelay: `${i * 120}ms` }} />
-            ))}
-          </span>
-        )}
-      </div>
+      {/* ── Two-column grid — left: selector + stations | right: tuner band ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-stretch flex-grow overflow-hidden">
 
-      {/* ── Frequency band ── */}
-      {stationsList.length > 0
-        ? <FrequencyBand
-            stations={stationsList}
-            onPlay={(station) => { onPlayRadio(station.url, station.name, station.favicon); onClose(); }}
-            favoriteStations={favoriteStations}
-          />
-        : <EmptyBand />
-      }
+        {/* Left column — country picker + saved stations */}
+        <div className="lg:col-span-4 flex flex-col gap-3 overflow-y-auto stone-scrollbar min-h-0">
 
-      {/* ── Saved stations ── */}
-      {favoriteStations.length > 0 && (
-        <div className="flex flex-col mt-2 px-0.5 shrink-0 radio-container gap-1.5">
-          <div className="flex justify-between items-center">
-            <span className="text-sm font-light tracking-[0.25em] uppercase" style={{ color: S.label }}>
-              saved stations
+          {/* Country picker */}
+          <div>
+            <span className="text-sm font-light tracking-[0.25em] uppercase block mb-2" style={{ color: S.label }}>
+              select country
             </span>
-            <span className="text-sm font-light tabular-nums" style={{ color: S.label }}>
-              {favoriteStations.length}
-            </span>
+            <div className="flex gap-2 items-center">
+              <CountryPicker value={radioCountry} onChange={setRadioCountry} />
+              {isSearching && (
+                <span className="flex items-end gap-0.5 h-3 shrink-0">
+                  {[0.6, 1, 0.7].map((h, i) => (
+                    <span key={i} className="w-0.5 rounded-full animate-pulse"
+                      style={{ height: `${Math.round(h * 12)}px`, background: S.accent, animationDelay: `${i * 120}ms` }} />
+                  ))}
+                </span>
+              )}
+            </div>
           </div>
 
-          <div className="overflow-y-auto stone-scrollbar grid gap-1 max-h-[80px]">
-            {favoriteStations.map((station, idx) => (
-              <button
-                key={`${station.url}-${idx}`}
-                className="group flex items-center gap-2 p-1.5 rounded-xl text-left transition-all cursor-pointer active:scale-[0.99]"
-                style={{
-                  background: S.surface,
-                  border: `1px solid ${S.border}`,
-                  boxShadow: cardShadow,
-                }}
-                onClick={() => { onPlayRadio(station.url, station.name, station.favicon); onClose(); }}
-              >
-                <StationAvatar station={station} size={22} />
-                <p className="text-sm font-medium truncate flex-1 transition-colors leading-tight"
-                  style={{ color: S.strong }}>
-                  {station.name}
-                </p>
-              </button>
-            ))}
+          {/* Saved stations */}
+          {favoriteStations.length > 0 && (
+            <div className="flex flex-col gap-2 flex-grow min-h-0 rounded-xl p-3"
+              style={{ background: S.surface, border: `1px solid ${S.border}` }}>
+              <div className="flex justify-between items-center shrink-0">
+                <span className="text-sm font-light tracking-[0.25em] uppercase" style={{ color: S.label }}>
+                  saved stations
+                </span>
+                <span className="text-sm font-light tabular-nums" style={{ color: S.label }}>
+                  {favoriteStations.length}
+                </span>
+              </div>
+              <div className="overflow-y-auto stone-scrollbar flex flex-col gap-1.5 flex-grow min-h-0">
+                {favoriteStations.map((station, idx) => (
+                  <button
+                    key={`${station.url}-${idx}`}
+                    className="flex items-center gap-2 p-2 rounded-xl text-left transition-all cursor-pointer active:scale-[0.99] shrink-0"
+                    style={{ background: S.surfaceLo, border: `1px solid ${S.border}`, boxShadow: cardShadow }}
+                    onClick={() => { onPlayRadio(station.url, station.name, station.favicon); onClose(); }}
+                  >
+                    <StationAvatar station={station} size={28} />
+                    <p className="text-sm font-medium truncate flex-1 leading-tight" style={{ color: S.strong }}>
+                      {station.name}
+                    </p>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {favoriteStations.length === 0 && (
+            <div className="flex-grow rounded-xl flex items-center justify-center"
+              style={{ background: S.surface, border: `1px solid ${S.border}` }}>
+              <p className="text-sm font-light text-center px-4" style={{ color: S.label }}>
+                No saved stations yet.<br />Select a country and pick one from the dial.
+              </p>
+            </div>
+          )}
+        </div>
+
+        {/* Right column — tuner band, full width */}
+        <div className="lg:col-span-8 flex flex-col justify-between rounded-xl p-4"
+          style={{ background: S.surface, border: `1px solid ${S.border}` }}>
+
+          <span className="text-sm font-light tracking-[0.25em] uppercase block mb-3 shrink-0" style={{ color: S.label }}>
+            frequency band
+            {stationsList.length > 0 && (
+              <span className="normal-case tracking-normal ml-2 text-sm font-light" style={{ color: S.label }}>
+                — drag needle to tune · {stationsList.length} stations
+              </span>
+            )}
+          </span>
+
+          <div className="flex-grow flex flex-col justify-center">
+            {stationsList.length > 0
+              ? <FrequencyBandWide
+                  stations={stationsList}
+                  onPlay={(station) => { onPlayRadio(station.url, station.name, station.favicon); onClose(); }}
+                  favoriteStations={favoriteStations}
+                />
+              : <EmptyBandWide />
+            }
           </div>
         </div>
-      )}
+      </div>
     </div>
   );
 }
