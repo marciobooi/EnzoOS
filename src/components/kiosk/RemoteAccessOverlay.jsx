@@ -126,7 +126,7 @@ export default function RemoteAccessOverlay() {
             </p>
           </div>
 
-          <div className="flex flex-col gap-2 min-h-0 pb-4">
+          <div className="flex flex-col gap-2 min-h-0 pb-6">
             <p className="text-sm font-light tracking-[0.25em] uppercase shrink-0" style={{ color: S.label }}>
               how to connect
             </p>
