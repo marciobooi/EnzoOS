@@ -124,7 +124,7 @@ export default function DefinitionsMenu({
         }`}
         style={{ animationDelay: '0ms' }}
       >
-        <span className="text-sm font-light tracking-[0.25em] uppercase" style={{ color: S.label }}>stream service</span>
+        <span className="text-[.6rem] font-light tracking-[0.25em] uppercase" style={{ color: S.label }}>stream service</span>
         <div className="my-auto flex justify-center py-2">
           <svg viewBox="0 0 24 24" className="h-16 w-16 transition-all duration-300"
             style={{ fill: source === 'spotify' ? S.accent : S.track }}>
@@ -148,7 +148,7 @@ export default function DefinitionsMenu({
         }`}
         style={{ animationDelay: '30ms' }}
       >
-        <span className="text-sm font-light tracking-[0.25em] uppercase" style={{ color: S.label }}>local system</span>
+        <span className="text-[0.6rem] font-light tracking-[0.25em] uppercase" style={{ color: S.label }}>local system</span>
         <div className="my-auto flex justify-center py-2">
           <Music strokeWidth={1} className="h-16 w-16 transition-all duration-300"
             style={{ color: source === 'local' ? S.accent : S.track }} />
@@ -170,7 +170,7 @@ export default function DefinitionsMenu({
         }`}
         style={{ animationDelay: '60ms' }}
       >
-        <span className="text-sm font-light tracking-[0.25em] uppercase" style={{ color: S.label }}>stream radio</span>
+        <span className="text-[0.6rem] font-light tracking-[0.25em] uppercase" style={{ color: S.label }}>stream radio</span>
         <div className="my-auto flex justify-center py-2">
           <Radio strokeWidth={1} className="h-16 w-16 transition-all duration-300"
             style={{ color: source === 'radio' ? S.accent : S.track }} />
@@ -190,7 +190,7 @@ export default function DefinitionsMenu({
         className="w-[180px] shrink-0 p-5 rounded-2xl text-left flex flex-col justify-between transition-all duration-300 relative group overflow-hidden cursor-pointer menu-card menu-card-enter hover:scale-[1.01]"
         style={{ animationDelay: '90ms' }}
       >
-        <span className="text-sm font-light tracking-[0.25em] uppercase" style={{ color: S.label }}>appearance</span>
+        <span className="text-[0.6rem] font-light tracking-[0.25em] uppercase" style={{ color: S.label }}>appearance</span>
         <div className="my-auto flex justify-center py-2">
           <Sliders strokeWidth={1} className="h-16 w-16 transition-colors duration-300"
             style={{ color: S.track }} />
@@ -207,7 +207,7 @@ export default function DefinitionsMenu({
         className="w-[180px] shrink-0 p-5 rounded-2xl text-left flex flex-col justify-between transition-all duration-300 relative group overflow-hidden cursor-pointer menu-card menu-card-enter hover:scale-[1.01]"
         style={{ animationDelay: '120ms' }}
       >
-        <span className="text-sm font-light tracking-[0.25em] uppercase" style={{ color: S.label }}>acoustic profiler</span>
+        <span className="text-[0.6rem] font-light tracking-[0.25em] uppercase" style={{ color: S.label }}>acoustic profiler</span>
         <div className="my-auto flex justify-center py-2">
           <Waves strokeWidth={1} className="h-16 w-16 transition-all duration-300"
             style={{ color: S.track }} />
@@ -229,7 +229,7 @@ export default function DefinitionsMenu({
         }`}
         style={{ animationDelay: '150ms' }}
       >
-        <span className="text-sm font-light tracking-[0.25em] uppercase" style={{ color: S.label }}>access panel</span>
+        <span className="text-[0.6rem] font-light tracking-[0.25em] uppercase" style={{ color: S.label }}>access panel</span>
         <div className="my-auto flex justify-center py-2">
           <Smartphone strokeWidth={1} className="h-16 w-16 transition-all duration-300"
             style={{ color: remoteAccessEnabled ? S.accent : S.track,
@@ -252,7 +252,7 @@ export default function DefinitionsMenu({
         className="w-[180px] shrink-0 p-5 rounded-2xl text-left flex flex-col justify-between transition-all duration-300 relative group overflow-hidden cursor-pointer menu-card menu-card-enter hover:scale-[1.01]"
         style={{ animationDelay: '180ms' }}
       >
-        <span className="text-sm font-light tracking-[0.25em] uppercase" style={{ color: S.label }}>system firmware</span>
+        <span className="text-[0.6rem] font-light tracking-[0.25em] uppercase" style={{ color: S.label }}>system firmware</span>
         <div className="my-auto flex justify-center py-2 w-full">
           {updateStatus === 'updating' ? (
             <div className="flex flex-col items-center gap-1.5 w-full">
@@ -286,7 +286,7 @@ export default function DefinitionsMenu({
       {/* 5b. SYSTEM HEALTH CARD */}
       <div className="w-[180px] shrink-0 p-5 rounded-2xl text-left flex flex-col justify-between transition-all duration-300 relative group overflow-hidden menu-card menu-card-enter"
         style={{ animationDelay: '210ms' }}>
-        <span className="text-sm font-light tracking-[0.25em] uppercase" style={{ color: S.label }}>system metrics</span>
+        <span className="text-[0.6rem] font-light tracking-[0.25em] uppercase" style={{ color: S.label }}>system metrics</span>
         <div className="flex flex-col gap-3 my-auto w-full">
           <div className="flex flex-col gap-1 w-full">
             <div className="flex justify-between items-baseline">
@@ -323,7 +323,7 @@ export default function DefinitionsMenu({
             </div>
           </div>
         </div>
-        <span className="text-sm font-light tracking-[0.25em] uppercase" style={{ color: S.label }}>hardware health</span>
+        <span className="text-[0.6rem] font-light tracking-[0.25em] uppercase" style={{ color: S.label }}>hardware health</span>
       </div>
 
       {/* 6. SPOTIFY DISCONNECT CARD */}
@@ -333,7 +333,7 @@ export default function DefinitionsMenu({
           className="w-[180px] shrink-0 p-5 rounded-2xl text-left flex flex-col justify-between transition-all duration-300 relative group overflow-hidden cursor-pointer menu-card menu-card-enter hover:scale-[1.01]"
           style={{ animationDelay: '240ms' }}
         >
-          <span className="text-sm font-light tracking-[0.25em] uppercase" style={{ color: S.label }}>connections</span>
+          <span className="text-[0.6rem] font-light tracking-[0.25em] uppercase" style={{ color: S.label }}>connections</span>
           <div className="my-auto flex justify-center py-2">
             <LogOut strokeWidth={1} className="h-16 w-16 transition-colors duration-300"
               style={{ color: S.track }} />
