@@ -264,7 +264,7 @@ export default function DspWizard({ onClose, onCalibrationComplete }) {
             <h3 className="text-lg font-bold leading-snug" style={{ color: S.strong }}>
               {activeQuestion.question}
             </h3>
-            <p className="text-[.6rem] font-light leading-relaxed" style={{ color: S.muted }}>
+            <p className="text-[.8rem] font-light leading-relaxed " style={{ color: 'rgb(75 73 71)' }}>
               {activeQuestion.description}
             </p>
           </div>
