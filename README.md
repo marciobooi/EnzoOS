@@ -27,7 +27,7 @@ Resonance HiFi is an open-source, self-hosted audio streaming platform for Raspb
 - **Automatic DAC detection** — scans `/proc/asound` at startup to detect the connected DAC's card name, supported formats (S16/S24/S32), and all supported sample rates
 - **Rate-following** — persistent MPD idle connection watches for song changes; when the audio format changes, CamillaDSP capture rate is reconfigured automatically via hot-reload with no audio gap
 - **Zero-lag volume** — volume applied post-buffer inside CamillaDSP via `SetVolume`, instant response on all sources regardless of buffer depth
-- **Pure Direct mode** — bypass all EQ and DSP filters entirely; signal passes through flat (mixer only), with volume control preserved. Toggle from the player HUD
+- **Pure Direct mode** — bypass all EQ and DSP filters entirely; signal passes through flat (mixer only), with volume control preserved. Selectable from the DSP wizard alongside Manual EQ and Room Correction
 - **Auto-headroom** — Custom EQ preset automatically subtracts the largest positive band boost from the pre-amp gain to prevent clipping
 - **-1 dB safety headroom** — applied at Stage E (preamp gain) across all built-in and custom pipelines as a guard against multi-stage EQ filter gains summing above 0 dBFS
 - **Safe startup sequence** — CamillaDSP is pre-muted to -100 dB before config apply on startup, then volume is restored from the stored value. Prevents the 0 dB (full volume) window that occurs on every CamillaDSP process start
@@ -35,9 +35,12 @@ Resonance HiFi is an open-source, self-hosted audio streaming platform for Raspb
 ### DSP
 - **CamillaDSP 4.1.3** — real-time parametric EQ, biquad filters, crossovers, room correction
 - **Hot-reload** — EQ/filter changes apply via WebSocket `SetConfig` with no audio interruption
-- **Acoustic Room Calibration wizard** — guided questionnaire generates a corrective Harman curve + speaker safety filters
+- **Three audio processing modes** — selected from a single wizard screen:
+  - *Manual Equalizer* — parametric EQ with 5 bands, saturation, noise floor, and pre-amp
+  - *Acoustic Room Correction* — guided 8-question wizard generates a Harman-curve corrective pipeline
+  - *Pure Direct* — flat pipeline, all filters bypassed, volume control only
+- **EQ guard** — opening the equalizer while Pure Direct or Room Correction is active shows a blocking overlay explaining the conflict and offering a one-tap switch
 - **5 built-in valve presets** — Clinical Reference, Warm Valve, Bass Boost, Vocal Clarity, Hi-Fi Spatial
-- **5-band parametric EQ** — custom bands, saturation, noise floor, and pre-amp controls
 
 ### Live Signal Telemetry (`GET /api/player/signal-path`)
 - **Real-time rate display** — shows actual codec, bit depth, and sample rate from MPD and CamillaDSP
@@ -53,9 +56,18 @@ Resonance HiFi is an open-source, self-hosted audio streaming platform for Raspb
 - **Mobile remote** — same React codebase, responsive layout for phones and tablets
 - **QR code access** — tap the Remote card on the kiosk to display a scannable QR code
 - **Source-aware search** — search tab reflects the active source (Spotify search for Spotify, radio scanner for radio)
+- **Streaming source menu behaviour** — AirPlay, UPnP, and Bluetooth cards keep the settings menu open on activation (connect-and-wait flow); Spotify, Local, and Radio close it immediately
+- **ICY/XML track title sanitiser** — stations that send StreamTitle as raw XML (e.g. Dalet automation systems) are parsed to extract song name and artist before display
 - **OTA updates** — `git pull` + PM2 restart, triggered from the kiosk settings menu
 - **System health monitor** — live CPU temperature, RAM, and Wi-Fi signal in the settings panel
 - **mDNS discovery** — accessible at `resonance.local` on the local network via Avahi
+
+### Security
+- **AirPlay — LAN only** — discovery via mDNS/Bonjour (multicast) does not route through NAT; external devices cannot discover or connect
+- **UPnP/DLNA — LAN only** — SSDP discovery is multicast and LAN-bound by protocol; invisible outside the local subnet
+- **Bluetooth — confirmation pairing** — `bt-agent` uses `DisplayYesNo` capability; connecting device shows a 6-digit code the user must confirm. Silent auto-accept (`NoInputNoOutput`) is disabled
+- **On-demand activation** — AirPlay, UPnP, and Bluetooth services are stopped at boot and only started when the user explicitly activates them from the kiosk menu
+- **Remote web interface** — HTTPS with username/password login; self-signed certificate; accessible only on the local network
 
 ---
 
@@ -320,19 +332,21 @@ On every startup, `detectDac()` scans `/proc/asound/card*/stream*` and returns:
 
 ---
 
-## Pure Direct Mode
+## Audio Processing Modes
 
-Pure Direct bypasses all equalisation and DSP filters. The audio path becomes:
+All three modes are selected from the first screen of the **Acoustic Calibration Wizard** (Settings → Acoustic card). Switching mode hot-reloads CamillaDSP with no audio gap.
+
+| Mode | Pipeline | EQ controls |
+|------|----------|-------------|
+| Manual Equalizer | Full filter chain: profile EQ → saturation → preamp | Active |
+| Acoustic Room Correction | DSP Harman curve + room filters → profile EQ → preamp | Bypassed |
+| Pure Direct | Mixer only | Bypassed |
 
 ```
-Source → PipeWire → CamillaDSP (mixer only) → DAC
+Pure Direct path:  Source → PipeWire → CamillaDSP (mixer + SetVolume) → DAC
 ```
 
-Volume control via CamillaDSP `SetVolume` remains active.
-
-**To enable:** tap the **PURE DIRECT // OFF** chip in the player topline.
-
-**EQ guard:** opening the parametric EQ while Pure Direct is active shows a blocking overlay with options to keep Pure Direct or switch to manual EQ. This prevents accidentally modifying EQ settings that will have no effect.
+**EQ guard:** opening the equalizer while Pure Direct or Room Correction is active shows a blocking overlay. It explains what is active and offers a one-tap switch to Manual EQ — preventing edits to settings that would have no audible effect.
 
 ---
 
@@ -360,8 +374,8 @@ https://resonance.local:5001/remote
 | Source selection | Settings button → source cards |
 | Volume | Drag slider on kiosk or remote; dB value shown in popup |
 | Parametric EQ | Tap the VU meter display |
-| DSP / Room calibration | Settings → **Acoustic** → Calibration Wizard |
-| Pure Direct | PURE DIRECT chip in the player topline |
+| Audio processing mode | Settings → **Acoustic** → Calibration Wizard → first screen |
+| Pure Direct | Calibration Wizard → **Pure Direct** option |
 | Theme | Settings → **Theme** card |
 | Remote access | Settings → **Remote** card |
 | OTA update | Settings → **Update** card |
