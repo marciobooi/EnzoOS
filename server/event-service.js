@@ -334,15 +334,14 @@ async function handleEvent(type, payload, excludeWs) {
     }
 
     case 'SET_EQ_SETTINGS': {
-      console.log('[EventService] EQ settings update:', payload);
       await setSetting('eq_settings', JSON.stringify(payload));
-      try {
-        const { updateCamillaConfigFromSettings } = await import('./player.js');
-        await updateCamillaConfigFromSettings();
-      } catch (err) {
-        console.error('[EventService] CamillaDSP update failed on EQ change:', err);
-      }
       broadcast({ type: 'EQ_SETTINGS', payload }, excludeWs);
+      // Fire CamillaDSP hot-reload outside the serial queue so other events
+      // are not blocked. skipAlsa=true avoids the sudo tee /etc/asound.conf
+      // overhead — ALSA config is irrelevant to EQ band/level changes.
+      import('./player.js').then(({ updateCamillaConfigFromSettings }) =>
+        updateCamillaConfigFromSettings({ skipAlsa: true })
+      ).catch(err => console.error('[EventService] CamillaDSP EQ update failed:', err));
       break;
     }
 

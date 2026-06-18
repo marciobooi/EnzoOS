@@ -677,15 +677,16 @@ router.get('/dsp-calibration', async (req, res) => {
 });
 
 // Exportable helper to update configuration on any settings change
-export async function updateCamillaConfigFromSettings() {
+export async function updateCamillaConfigFromSettings({ skipAlsa = false } = {}) {
   const dspVal = await getSetting('dsp_calibration');
   const eqVal = await getSetting('eq_settings');
 
   const answers = dspVal ? JSON.parse(dspVal) : null;
   const eqSettings = eqVal ? JSON.parse(eqVal) : null;
 
-  // Auto-configure ALSA Loopback routing
-  await ensureAsoundConf();
+  // Auto-configure ALSA Loopback routing — skip during EQ updates since
+  // ALSA config never changes when only EQ bands/levels are adjusted
+  if (!skipAlsa) await ensureAsoundConf();
 
   // Scan for DAC capability automatically
   const dacInfo = detectDac();
@@ -732,7 +733,7 @@ async function hotReloadCamilla(yamlString) {
     const { WebSocket } = await import('ws');
     return await new Promise((resolve) => {
       const ws = new WebSocket('ws://localhost:1234');
-      const timer = setTimeout(() => { ws.terminate(); resolve(false); }, 3000);
+      const timer = setTimeout(() => { ws.terminate(); resolve(false); }, 1500);
 
       ws.on('open', () => {
         ws.send(JSON.stringify({ SetConfig: yamlString }));
