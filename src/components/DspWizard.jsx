@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Waves, ChevronRight, ChevronLeft, Check, X, ShieldAlert, Cpu } from 'lucide-react';
+import { Waves, ChevronLeft, Check, X, Cpu } from 'lucide-react';
 import { api } from '../api';
+import { S, cardShadow } from '../styles/stone';
 
 const QUESTIONS = [
   {
@@ -8,358 +9,339 @@ const QUESTIONS = [
     question: "Choose your Audio Processing Mode",
     description: "Decide whether to use the manual parametric equalizer or let the Acoustic DSP profiler calibrate your audio output automatically.",
     options: [
-      { label: "Manual Equalizer (Bypasses Acoustic Room Correction)", value: "eq" },
-      { label: "Acoustic Room Correction (Bypasses manual equalizer)", value: "dsp" }
+      { label: "Manual Equalizer", sublabel: "Bypasses Acoustic Room Correction", value: "eq" },
+      { label: "Acoustic Room Correction", sublabel: "Bypasses manual equalizer", value: "dsp" },
     ],
-    action: "System Action: Selecting 'Manual Equalizer' disables Acoustic Room Correction filters. Selecting 'Acoustic Room Correction' activates room calibration filters."
+    action: "Selecting 'Manual Equalizer' disables Acoustic Room Correction filters. Selecting 'Acoustic Room Correction' activates room calibration filters.",
   },
   {
     id: "1",
     question: "What kind of speakers do you have?",
     description: "Configures Acoustic DSP outputs for standard stereo or separates low frequencies to a subwoofer channel.",
     options: [
-      { label: "2 Speakers (Stereo)", value: "stereo" },
-      { label: "2 Speakers + 1 Subwoofer", value: "subwoofer" }
+      { label: "2 Speakers", sublabel: "Stereo", value: "stereo" },
+      { label: "2 Speakers + 1 Subwoofer", sublabel: "2.1 crossover", value: "subwoofer" },
     ],
-    action: "Acoustic DSP Action: Configures audio pipeline route to either 2.0 (Stereo) output or 2.1 crossover routing, splitting low frequencies to a dedicated LFE sub channel."
+    action: "Configures audio pipeline to either 2.0 stereo output or 2.1 crossover routing, splitting low frequencies to a dedicated LFE sub channel.",
   },
   {
     id: "2",
-    question: "How does your room sound when you clap your hands?",
+    question: "How does your room sound when you clap?",
     description: "Echoey rooms need soft roll-offs to sound natural, while dry rooms benefit from crisp highs.",
     options: [
-      { label: "Echoey (Bare floors, high ceilings, lots of glass)", value: "echoey" },
-      { label: "Normal (Has rugs, curtains, or standard furniture)", value: "normal" },
-      { label: "Quiet/Soft (Lots of carpets, heavy couches, or wall panels)", value: "quiet" }
+      { label: "Echoey", sublabel: "Bare floors, high ceilings, lots of glass", value: "echoey" },
+      { label: "Normal", sublabel: "Rugs, curtains, or standard furniture", value: "normal" },
+      { label: "Quiet / Soft", sublabel: "Carpets, heavy couches, or wall panels", value: "quiet" },
     ],
-    action: "Acoustic DSP Action: For 'Echoey', applies a high-frequency roll-off shelf filter starting at 8kHz (-3dB). For 'Quiet', keeps high frequency response crisp (0dB shelf)."
+    action: "For 'Echoey', applies a high-frequency roll-off shelf filter starting at 8kHz (−3dB). For 'Quiet', keeps high frequency response crisp (0dB shelf).",
   },
   {
     id: "3",
-    question: "Where are you sitting compared to your speakers?",
+    question: "Where are you sitting relative to your speakers?",
     description: "Applies precise delays to align the sound waves from both speakers at your seat.",
     options: [
-      { label: "Right in the Middle", value: "center" },
-      { label: "Closer to the Left Speaker", value: "left" },
-      { label: "Closer to the Right Speaker", value: "right" }
+      { label: "Right in the Middle", sublabel: "Equidistant from both speakers", value: "center" },
+      { label: "Closer to the Left", sublabel: "Off-centre left", value: "left" },
+      { label: "Closer to the Right", sublabel: "Off-centre right", value: "right" },
     ],
-    action: "Acoustic DSP Action: If off-center, calculates and injects a 1.2ms time-delay filter to the closer channel, aligning sound arrivals at your listening position."
+    action: "If off-centre, calculates and injects a 1.2ms time-delay filter to the closer channel, aligning sound arrivals at your listening position.",
   },
   {
     id: "4",
     question: "How do you like your music to sound?",
     description: "Predefined parametric EQ voicing presets to suit your listening taste.",
     options: [
-      { label: "Balanced & Natural (Studio style, how the artist intended)", value: "balanced" },
-      { label: "Warm & Bass Punchy (Deeper bass, smooth highs for easy listening)", value: "warm" },
-      { label: "Clear & Detailed (Boosts vocals, instruments, and high notes)", value: "clear" }
+      { label: "Balanced & Natural", sublabel: "Studio style, as the artist intended", value: "balanced" },
+      { label: "Warm & Punchy", sublabel: "Deeper bass, smooth highs for easy listening", value: "warm" },
+      { label: "Clear & Detailed", sublabel: "Boosts vocals, instruments, and high notes", value: "clear" },
     ],
-    action: "Acoustic DSP Action: Maps to biquad filter curves. 'Warm' boosts low-shelf at 120Hz (+3dB) and cuts 10kHz (-1dB). 'Clear' boosts vocals/treble presence at 3kHz (+2dB)."
+    action: "'Warm' boosts low-shelf at 120Hz (+3dB) and cuts 10kHz (−1dB). 'Clear' boosts vocals and treble presence at 3kHz (+2dB).",
   },
   {
     id: "5",
     question: "How big are your main speakers?",
-    description: "Protects smaller woofers from over-excursion and distortion by filtering out deep sub-bass.",
+    description: "Protects smaller woofers from over-excursion by filtering out deep sub-bass.",
     options: [
-      { label: "Small / Desktop (Like computer speakers or small bookshelves)", value: "small" },
-      { label: "Medium / Bookshelf (Standard size, fits on a stand or shelf)", value: "medium" },
-      { label: "Large / Floor-standing (Big tower speakers that sit on the floor)", value: "large" }
+      { label: "Small / Desktop", sublabel: "Computer speakers or small bookshelves", value: "small" },
+      { label: "Medium / Bookshelf", sublabel: "Standard size, fits on a stand or shelf", value: "medium" },
+      { label: "Large / Floor-standing", sublabel: "Big tower speakers on the floor", value: "large" },
     ],
-    action: "Acoustic DSP Action: For 'Small', applies a Butterworth high-pass filter at 80Hz (12dB/octave). 'Medium' high-passes at 45Hz. 'Large' allows full-range down to 20Hz."
+    action: "'Small' applies a Butterworth high-pass at 80Hz (12dB/oct). 'Medium' high-passes at 45Hz. 'Large' allows full-range down to 20Hz.",
   },
   {
     id: "6",
-    question: "At what volume do you usually listen to music?",
+    question: "At what volume do you usually listen?",
     description: "Compensates for the human ear's reduced sensitivity to bass at lower levels (Equal Loudness).",
     options: [
-      { label: "Quiet / Background (Late night listening, working, chatting)", value: "quiet" },
-      { label: "Normal / Moderate (Comfortable, everyday listening)", value: "normal" },
-      { label: "Loud / Party (Crank it up, filling the room)", value: "loud" }
+      { label: "Quiet / Background", sublabel: "Late night, working, chatting", value: "quiet" },
+      { label: "Normal / Moderate", sublabel: "Comfortable everyday listening", value: "normal" },
+      { label: "Loud / Party", sublabel: "Filling the room", value: "loud" },
     ],
-    action: "Acoustic DSP Action: For 'Quiet', activates a dynamic loudness contour filter (Fletcher-Munson compensation) boosting sub-bass (+4dB) and highs (+2dB)."
+    action: "'Quiet' activates a dynamic loudness contour (Fletcher-Munson compensation) boosting sub-bass (+4dB) and highs (+2dB).",
   },
   {
     id: "7",
     question: "Where are your speakers placed?",
-    description: "Acoustic boundaries (walls and corners) amplify bass, creating boomy or muddy sound.",
+    description: "Acoustic boundaries amplify bass, creating boomy or muddy sound.",
     options: [
-      { label: "Out in the open (Away from walls, on stands)", value: "open" },
-      { label: "Pushed against a wall (On a console, desk, or near a back wall)", value: "wall" },
-      { label: "Tucked in a corner / Shelf (Enclosed space or corner of the room)", value: "corner" }
+      { label: "Out in the open", sublabel: "Away from walls, on stands", value: "open" },
+      { label: "Against a wall", sublabel: "On a console, desk, or near a back wall", value: "wall" },
+      { label: "In a corner / shelf", sublabel: "Enclosed space or corner of the room", value: "corner" },
     ],
-    action: "Acoustic DSP Action: For 'Wall', applies a low-shelf boundary filter at 180Hz (-2dB). For 'Corner', applies a low-shelf boundary filter at 180Hz (-4dB)."
-  }
+    action: "'Wall' applies a low-shelf boundary filter at 180Hz (−2dB). 'Corner' applies the same at (−4dB).",
+  },
 ];
 
+// ── Shared header bar ────────────────────────────────────────────────────────
+function WizardHeader({ title, subtitle, onClose }) {
+  return (
+    <div className="flex items-center justify-between pb-3 mb-3 shrink-0"
+      style={{ borderBottom: `1px solid ${S.border}` }}>
+      <div className="flex items-center gap-2">
+        <div className="w-6 h-6 rounded-full flex items-center justify-center shrink-0"
+          style={{ border: `1px solid ${S.border}` }}>
+          <Waves className="w-3.5 h-3.5" strokeWidth={1} style={{ color: S.label }} />
+        </div>
+        <div>
+          <span className="text-sm font-light tracking-[0.25em] uppercase" style={{ color: S.label }}>
+            {title}
+          </span>
+          {subtitle && (
+            <span className="text-sm font-light ml-3" style={{ color: S.muted }}>{subtitle}</span>
+          )}
+        </div>
+      </div>
+      <button onClick={onClose}
+        className="cursor-pointer px-4 py-1.5 rounded-full transition-all active:scale-95 active:opacity-80 text-sm font-extrabold"
+        style={{ background: S.accent, color: S.accentFg, border: 'none' }}>
+        CLOSE
+      </button>
+    </div>
+  );
+}
+
 export default function DspWizard({ onClose, onCalibrationComplete }) {
-  const [currentStep, setCurrentStep] = useState(0); // 0 to 7, 99 (EQ success), or 8 (DSP success)
+  const [currentStep, setCurrentStep] = useState(0);
   const [answers, setAnswers] = useState({});
   const [isSaving, setIsSaving] = useState(false);
 
-  // Load existing calibration on mount
   useEffect(() => {
-    async function loadCalibration() {
-      try {
-        const saved = await api.getDspCalibration();
-        if (saved) {
-          setAnswers(saved);
-        }
-      } catch (err) {
-        console.warn('Failed to load existing DSP calibration:', err);
-      }
-    }
-    loadCalibration();
+    api.getDspCalibration().then(saved => { if (saved) setAnswers(saved); }).catch(() => {});
   }, []);
 
   const handleSelectOption = (value) => {
-    const nextAnswers = {
-      ...answers,
-      [QUESTIONS[currentStep].id]: value
-    };
+    const nextAnswers = { ...answers, [QUESTIONS[currentStep].id]: value };
     setAnswers(nextAnswers);
 
-    // Auto-advance or apply calibration
     setTimeout(async () => {
       if (currentStep === 0) {
         if (value === 'eq') {
           setIsSaving(true);
           try {
             await api.saveDspCalibration(nextAnswers);
-            if (onCalibrationComplete) {
-              onCalibrationComplete(false);
-            }
-            setCurrentStep(99); // Go to EQ success screen
-          } catch (err) {
-            console.error('Failed to save calibration profile:', err);
-          } finally {
-            setIsSaving(false);
-          }
+            onCalibrationComplete?.(false);
+            setCurrentStep(99);
+          } catch {}
+          finally { setIsSaving(false); }
         } else {
-          setCurrentStep(1); // Proceed to first calibration question
+          setCurrentStep(1);
         }
       } else if (currentStep < QUESTIONS.length - 1) {
-        setCurrentStep(prev => prev + 1);
+        setCurrentStep(p => p + 1);
       } else {
         setIsSaving(true);
         try {
           await api.saveDspCalibration(nextAnswers);
-          if (onCalibrationComplete) {
-            onCalibrationComplete(true);
-          }
-          setCurrentStep(QUESTIONS.length); // Navigate to DSP success step
-        } catch (err) {
-          console.error('Failed to save calibration profile:', err);
-        } finally {
-          setIsSaving(false);
-        }
+          onCalibrationComplete?.(true);
+          setCurrentStep(QUESTIONS.length);
+        } catch {}
+        finally { setIsSaving(false); }
       }
     }, 180);
   };
 
-  const handleBack = () => {
-    if (currentStep > 0) {
-      setCurrentStep(prev => prev - 1);
-    }
-  };
+  // ── EQ success ──────────────────────────────────────────────────────────────
+  if (currentStep === 99) return (
+    <div className="flex flex-col h-full font-sans p-6 select-none"
+      style={{ background: S.bg, color: S.strong }}>
+      <WizardHeader title="acoustic calibration wizard" subtitle="equalizer mode" onClose={onClose} />
 
+      <div className="flex-grow flex flex-col justify-center items-center gap-4 text-center">
+        <div className="w-16 h-16 rounded-full flex items-center justify-center"
+          style={{ border: `1.5px solid ${S.accent}`, background: S.surface }}>
+          <Check className="h-7 w-7" strokeWidth={1.5} style={{ color: S.accent }} />
+        </div>
+        <div>
+          <p className="text-sm font-light tracking-[0.25em] uppercase mb-1" style={{ color: S.label }}>activated</p>
+          <h2 className="text-lg font-bold" style={{ color: S.strong }}>Manual Equalizer Active</h2>
+        </div>
+        <p className="text-sm font-light max-w-md leading-relaxed" style={{ color: S.muted }}>
+          Acoustic room correction filters are now bypassed. Adjust presets and frequency bands by tapping the VU dial on the main display.
+        </p>
+      </div>
+
+      <div className="flex gap-3 mt-4 shrink-0">
+        <button onClick={() => setCurrentStep(0)}
+          className="flex-1 py-3 rounded-xl text-sm font-semibold transition-all active:scale-95 cursor-pointer"
+          style={{ background: S.surfaceLo, border: `1px solid ${S.border}`, color: S.muted, boxShadow: cardShadow }}>
+          Configure Acoustic DSP instead
+        </button>
+        <button onClick={onClose}
+          className="flex-1 py-3 rounded-xl text-sm font-extrabold transition-all active:scale-95 cursor-pointer"
+          style={{ background: S.accent, color: S.accentFg, border: 'none' }}>
+          Return to Player
+        </button>
+      </div>
+    </div>
+  );
+
+  // ── DSP success ─────────────────────────────────────────────────────────────
+  if (currentStep === QUESTIONS.length) return (
+    <div className="flex flex-col h-full font-sans p-6 select-none"
+      style={{ background: S.bg, color: S.strong }}>
+      <WizardHeader title="acoustic calibration wizard" subtitle="calibration complete" onClose={onClose} />
+
+      <div className="flex-grow flex flex-col justify-center items-center gap-4 text-center min-h-0">
+        <div className="w-16 h-16 rounded-full flex items-center justify-center"
+          style={{ border: `1.5px solid ${S.accent}`, background: S.surface }}>
+          <Check className="h-7 w-7" strokeWidth={1.5} style={{ color: S.accent }} />
+        </div>
+        <div>
+          <p className="text-sm font-light tracking-[0.25em] uppercase mb-1" style={{ color: S.label }}>complete</p>
+          <h2 className="text-lg font-bold" style={{ color: S.strong }}>Acoustic Profile Generated</h2>
+        </div>
+        <p className="text-sm font-light max-w-md leading-relaxed" style={{ color: S.muted }}>
+          DSP active filters and biquad curves have been recalculated and hot-reloaded on the Resonance backend.
+        </p>
+
+        <div className="rounded-xl p-4 text-left w-full max-w-lg mt-1 text-sm font-light space-y-1.5 max-h-[120px] overflow-y-auto stone-scrollbar"
+          style={{ background: S.surface, border: `1px solid ${S.border}` }}>
+          <p className="font-semibold mb-2" style={{ color: S.strong }}>Applied DSP Map</p>
+          <p style={{ color: S.muted }}>· Channel Layout: {answers[1] === 'subwoofer' ? '2.1 Crossover (80Hz Linkwitz-Riley)' : '2.0 Pass-Through'}</p>
+          <p style={{ color: S.muted }}>· Room Reflection EQ: {answers[2] === 'echoey' ? 'HF Shelf −3dB @ 8kHz' : 'Flat HF Response'}</p>
+          <p style={{ color: S.muted }}>· Speaker Delay: {answers[3] === 'left' ? 'Left +1.2ms' : answers[3] === 'right' ? 'Right +1.2ms' : '0.0ms aligned'}</p>
+          <p style={{ color: S.muted }}>· Voicing: {answers[4] ? answers[4].charAt(0).toUpperCase() + answers[4].slice(1) : 'Balanced'}</p>
+          <p style={{ color: S.muted }}>· HPF: {answers[5] === 'small' ? '80Hz protective cut' : answers[5] === 'medium' ? '45Hz infrasonic cut' : 'Full range (20Hz)'}</p>
+          <p style={{ color: S.muted }}>· Loudness: {answers[6] === 'quiet' ? 'Fletcher-Munson active' : 'Off (reference flat)'}</p>
+          <p style={{ color: S.muted }}>· Boundary EQ: {answers[7] === 'wall' ? 'Wall −2dB' : answers[7] === 'corner' ? 'Corner −4dB' : 'None (free space)'}</p>
+        </div>
+      </div>
+
+      <div className="flex gap-3 mt-4 shrink-0">
+        <button onClick={() => setCurrentStep(0)}
+          className="flex-1 py-3 rounded-xl text-sm font-semibold transition-all active:scale-95 cursor-pointer"
+          style={{ background: S.surfaceLo, border: `1px solid ${S.border}`, color: S.muted, boxShadow: cardShadow }}>
+          Switch to Manual Equalizer
+        </button>
+        <button onClick={onClose}
+          className="flex-1 py-3 rounded-xl text-sm font-extrabold transition-all active:scale-95 cursor-pointer"
+          style={{ background: S.accent, color: S.accentFg, border: 'none' }}>
+          Return to Player
+        </button>
+      </div>
+    </div>
+  );
+
+  // ── Main wizard ─────────────────────────────────────────────────────────────
   const activeQuestion = QUESTIONS[currentStep];
   const selectedValue = activeQuestion ? answers[activeQuestion.id] : null;
 
-  // Render EQ Mode Success Screen
-  if (currentStep === 99) {
-    return (
-      <div className="flex flex-col h-full text-zinc-150 p-6 select-none font-mono">
-        <div className="flex justify-between items-center mb-3 shrink-0">
-          <h4 className="text-sm lg:text-[11px] font-extrabold uppercase tracking-[0.2em] text-emerald-400 flex items-center gap-1.5">
-            <Cpu className="h-4 w-4 animate-pulse" />
-            Equalizer Mode Activated
-          </h4>
-          <button onClick={onClose}
-            className="w-9 h-9 rounded-full flex items-center justify-center active:scale-90 transition-all cursor-pointer"
-            style={{ background: 'rgba(255,255,255,0.06)', border: '0.5px solid rgba(255,255,255,0.12)' }}>
-            <X className="h-4 w-4 text-zinc-400" />
-          </button>
-        </div>
-
-        <div className="flex-grow flex flex-col justify-center items-center gap-3 text-center my-auto">
-          <div className="w-16 h-16 rounded-full bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400 animate-pulse mb-1">
-            <Check className="h-8 w-8 stroke-[2.5]" />
-          </div>
-          <h2 className="text-sm font-bold text-white uppercase tracking-widest">Manual Equalizer Active</h2>
-          <p className="text-[13px] lg:text-[10px] text-zinc-400 max-w-md leading-relaxed font-sans font-medium">
-            Acoustic room correction filters are now bypassed. Manual Parametric Equalizer mode is fully active. You can adjust presets and frequency bands by tapping the visualizer VU dial on the main display.
-          </p>
-        </div>
-
-        <div className="flex gap-2.5 mt-3 shrink-0">
-          <button 
-            onClick={() => setCurrentStep(0)}
-            className="flex-1 py-2.5 rounded-xl bg-zinc-800 text-zinc-300 font-extrabold text-[13px] lg:text-[10px] uppercase tracking-wider active:scale-95 border border-white/5 transition-all cursor-pointer hover:bg-zinc-750"
-          >
-            Configure Acoustic DSP instead
-          </button>
-          <button 
-            onClick={onClose}
-            className="flex-1 py-2.5 rounded-xl bg-emerald-500 text-black font-extrabold text-[13px] lg:text-[10px] uppercase tracking-wider active:scale-95 transition-all cursor-pointer hover:bg-emerald-400"
-          >
-            Return to Player display
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  // Render DSP Success Screen
-  if (currentStep === QUESTIONS.length) {
-    return (
-      <div className="flex flex-col h-full text-zinc-150 p-6 select-none font-mono">
-        <div className="flex justify-between items-center mb-3 shrink-0">
-          <h4 className="text-sm lg:text-[11px] font-extrabold uppercase tracking-[0.2em] text-emerald-400 flex items-center gap-1.5">
-            <Cpu className="h-4 w-4 animate-pulse" />
-            Calibration Completed Successfully
-          </h4>
-          <button onClick={onClose}
-            className="w-9 h-9 rounded-full flex items-center justify-center active:scale-90 transition-all cursor-pointer"
-            style={{ background: 'rgba(255,255,255,0.06)', border: '0.5px solid rgba(255,255,255,0.12)' }}>
-            <X className="h-4 w-4 text-zinc-400" />
-          </button>
-        </div>
-
-        <div className="flex-grow flex flex-col justify-center items-center gap-3 text-center my-auto">
-          <div className="w-16 h-16 rounded-full bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400 animate-pulse mb-1">
-            <Check className="h-8 w-8 stroke-[2.5]" />
-          </div>
-          <h2 className="text-sm font-bold text-white uppercase tracking-widest">Acoustic Profile Generated</h2>
-          <p className="text-[13px] lg:text-[13px] lg:text-[10px] text-zinc-400 max-w-md leading-relaxed font-sans">
-            Acoustic DSP active filters and biquad curves have been recalculated and hot-reloaded successfully on the Resonance backend server.
-          </p>
-
-          <div className="bg-black/35 border border-white/5 rounded-xl p-3 text-left w-full max-w-lg mt-1 font-mono text-[11px] lg:text-[9px] text-zinc-500 space-y-1 max-h-[100px] overflow-y-auto custom-scrollbar">
-            <p className="text-zinc-400 font-bold uppercase tracking-wider mb-1">Applied DSP Map:</p>
-            <p>• Channel Layout: {answers[1] === 'subwoofer' ? '2.1 Crossover Active (80Hz Linkwitz-Riley)' : '2.0 Pass-Through'}</p>
-            <p>• Room Reflection EQ: {answers[2] === 'echoey' ? 'Tamed HF Shelf (-3dB @ 8kHz)' : 'Flat HF Response'}</p>
-            <p>• Speaker Delay: {answers[3] === 'left' ? 'Left channel delayed 1.2ms' : answers[3] === 'right' ? 'Right channel delayed 1.2ms' : '0.0ms Time Alignment'}</p>
-            <p>• Voicing Target: {answers[4] ? answers[4].toUpperCase() : 'BALANCED'}</p>
-            <p>• Low-Frequency HPF: {answers[5] === 'small' ? '80Hz Protective Cut' : answers[5] === 'medium' ? '45Hz Infrasonic Cut' : 'Full Range (20Hz)'}</p>
-            <p>• Loudness Mode: {answers[6] === 'quiet' ? 'Fletcher-Munson Active' : 'Off (Reference Flat)'}</p>
-            <p>• Boundary EQ: {answers[7] === 'wall' ? 'Wall boundary cut (-2dB)' : answers[7] === 'corner' ? 'Corner boundary cut (-4dB)' : 'None (Free space)'}</p>
-          </div>
-        </div>
-
-        <div className="flex gap-2.5 mt-3 shrink-0">
-          <button 
-            onClick={() => setCurrentStep(0)}
-            className="flex-1 py-2.5 rounded-xl bg-zinc-800 text-zinc-300 font-extrabold text-[13px] lg:text-[10px] uppercase tracking-wider active:scale-95 border border-white/5 transition-all cursor-pointer hover:bg-zinc-750"
-          >
-            Switch to Manual Equalizer
-          </button>
-          <button 
-            onClick={onClose}
-            className="flex-1 py-2.5 rounded-xl bg-emerald-500 text-black font-extrabold text-[13px] lg:text-[10px] uppercase tracking-wider active:scale-95 transition-all cursor-pointer hover:bg-emerald-400"
-          >
-            Return to Player display
-          </button>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="flex flex-col h-full text-zinc-150 p-6 select-none font-mono">
-      {/* Header */}
-      <div className="flex justify-between items-center mb-3 shrink-0">
-        <h4 className="text-sm lg:text-[11px] font-extrabold uppercase tracking-[0.2em] theme-text flex items-center gap-1.5">
-          <Waves className="h-4 w-4 text-[var(--theme-color)]" />
-          Acoustic Calibration Wizard
-        </h4>
-        <button onClick={onClose}
-          className="w-9 h-9 rounded-full flex items-center justify-center active:scale-90 transition-all cursor-pointer"
-          style={{ background: 'rgba(255,255,255,0.06)', border: '0.5px solid rgba(255,255,255,0.12)' }}>
-          <X className="h-4 w-4 text-zinc-400" />
-        </button>
-      </div>
+    <div className="flex flex-col h-full font-sans p-6 select-none"
+      style={{ background: S.bg, color: S.strong }}>
 
-      {/* Step Progress Bar */}
-      <div className="w-full flex items-center gap-2 mb-3 shrink-0">
-        <span className="text-[11px] lg:text-[9px] text-zinc-550 shrink-0 font-bold">
-          STEP {String(currentStep + 1).padStart(2, '0')} / {String(QUESTIONS.length).padStart(2, '0')}
+      <WizardHeader title="acoustic calibration wizard" onClose={onClose} />
+
+      {/* Step progress */}
+      <div className="flex items-center gap-3 mb-4 shrink-0">
+        <span className="text-sm font-light shrink-0 tabular-nums" style={{ color: S.label }}>
+          {String(currentStep + 1).padStart(2, '0')} / {String(QUESTIONS.length).padStart(2, '0')}
         </span>
-        <div className="flex-grow h-1 bg-white/5 rounded-full overflow-hidden flex gap-0.5">
+        <div className="flex-grow h-1 rounded-full overflow-hidden flex gap-0.5"
+          style={{ background: S.track }}>
           {QUESTIONS.map((_, idx) => (
-            <div 
-              key={idx}
-              className={`h-full flex-grow transition-all duration-355 ${
-                idx <= currentStep ? 'bg-[var(--theme-color)]' : 'bg-white/5'
-              }`}
-            />
+            <div key={idx} className="h-full flex-grow transition-all duration-300"
+              style={{ background: idx <= currentStep ? S.accent : S.track }} />
           ))}
         </div>
       </div>
 
-      {/* Question Layout — col on mobile remote, row on wide kiosk */}
+      {/* Question layout */}
       <div className="flex-grow flex flex-col lg:flex-row gap-4 items-stretch min-h-0">
 
-        {/* Left Side: Question Details */}
-        <div className="w-full lg:w-[45%] flex flex-col justify-between p-4 bg-black/20 border border-white/5 rounded-2xl min-h-0">
-          <div className="space-y-1.5">
-            <span className="text-[10px] lg:text-[8px] font-extrabold text-[var(--theme-color)] uppercase tracking-widest">QUESTION DATA CARD</span>
-            <h3 className="text-[15px] lg:text-[11px] font-bold text-white uppercase tracking-wide leading-normal">
+        {/* Left — question details */}
+        <div className="w-full lg:w-[45%] flex flex-col justify-between rounded-2xl p-4 min-h-0"
+          style={{ background: S.surface, border: `1px solid ${S.border}` }}>
+          <div className="space-y-2">
+            <span className="text-sm font-light tracking-[0.25em] uppercase" style={{ color: S.label }}>
+              question data card
+            </span>
+            <h3 className="text-lg font-bold leading-snug" style={{ color: S.strong }}>
               {activeQuestion.question}
             </h3>
-            <p className="text-[12px] lg:text-[9px] text-zinc-400 leading-relaxed font-sans font-medium">
+            <p className="text-sm font-light leading-relaxed" style={{ color: S.muted }}>
               {activeQuestion.description}
             </p>
           </div>
 
-          <div className="mt-3 pt-2.5 border-t border-white/5 text-[11px] lg:text-[8px] text-zinc-500 leading-normal flex items-start gap-1.5">
-            <Cpu className="h-3.5 w-3.5 text-zinc-650 shrink-0 mt-0.5" />
-            <p className="font-mono">{activeQuestion.action}</p>
+          <div className="mt-3 pt-3 flex items-start gap-2"
+            style={{ borderTop: `1px solid ${S.border}` }}>
+            <Cpu className="w-4 h-4 shrink-0 mt-0.5" strokeWidth={1} style={{ color: S.label }} />
+            <p className="text-sm font-light leading-relaxed" style={{ color: S.label }}>
+              {activeQuestion.action}
+            </p>
           </div>
         </div>
 
-        {/* Right Side: Options Selector */}
-        <div className="w-full lg:w-[55%] flex flex-col gap-2 overflow-y-auto pr-1.5 custom-scrollbar min-h-0">
-          {activeQuestion.options.map((opt) => {
+        {/* Right — options */}
+        <div className="w-full lg:w-[55%] flex flex-col gap-2 overflow-y-auto stone-scrollbar min-h-0">
+          {activeQuestion.options.map(opt => {
             const isSelected = selectedValue === opt.value;
             return (
-              <button
-                key={opt.value}
+              <button key={opt.value}
                 onClick={() => handleSelectOption(opt.value)}
-                className={`w-full p-3.5 rounded-xl border text-left flex items-center justify-between transition-all duration-200 cursor-pointer ${
-                  isSelected 
-                    ? 'bg-[var(--theme-color)]/5 border-[var(--theme-color)] text-white' 
-                    : 'bg-white/5 border-white/10 text-zinc-400 hover:border-white/20 hover:text-white'
-                }`}
-                type="button"
-              >
-                <span className="text-[13px] lg:text-[10px] font-bold uppercase tracking-wider">{opt.label}</span>
-                {isSelected ? (
-                  <Check className="h-4 w-4 text-[var(--theme-color)] shrink-0" />
-                ) : (
-                  <div className="w-4 h-4 rounded-full border border-white/10 shrink-0" />
-                )}
+                className="w-full p-4 rounded-xl text-left flex items-center justify-between transition-all duration-200 cursor-pointer active:scale-[0.99]"
+                style={{
+                  background: isSelected ? S.surface : S.surfaceLo,
+                  border: `1px solid ${isSelected ? S.accent : S.border}`,
+                  boxShadow: cardShadow,
+                }}>
+                <div>
+                  <p className="text-base font-bold leading-tight"
+                    style={{ color: isSelected ? S.strong : S.muted }}>
+                    {opt.label}
+                  </p>
+                  {opt.sublabel && (
+                    <p className="text-sm font-light mt-0.5" style={{ color: S.label }}>
+                      {opt.sublabel}
+                    </p>
+                  )}
+                </div>
+                {isSelected
+                  ? <Check className="h-4 w-4 shrink-0" strokeWidth={1.5} style={{ color: S.accent }} />
+                  : <div className="w-4 h-4 rounded-full shrink-0" style={{ border: `1px solid ${S.border}` }} />
+                }
               </button>
             );
           })}
         </div>
-
       </div>
 
-      {/* Navigation Footer */}
-      <div className="flex justify-between items-center mt-3 pt-2 border-t border-white/5 shrink-0">
+      {/* Footer nav */}
+      <div className="flex justify-between items-center mt-4 pt-3 shrink-0"
+        style={{ borderTop: `1px solid ${S.border}` }}>
         <button onClick={onClose}
           className="w-9 h-9 rounded-full flex items-center justify-center active:scale-90 transition-all cursor-pointer"
-          style={{ background: 'rgba(239,68,68,0.08)', border: '0.5px solid rgba(239,68,68,0.25)' }}>
-          <X className="h-4 w-4 text-rose-500" />
+          style={{ background: `${S.errorHot}15`, border: `1px solid ${S.errorHot}40` }}>
+          <X className="h-4 w-4" style={{ color: S.errorHot }} />
         </button>
 
-        <button
-          onClick={handleBack}
+        <button onClick={() => currentStep > 0 && setCurrentStep(p => p - 1)}
           disabled={currentStep === 0}
-          className="flex items-center gap-1.5 text-[12px] lg:text-[10px] font-extrabold text-zinc-500 hover:text-white disabled:opacity-20 disabled:hover:text-zinc-500 transition-colors cursor-pointer font-sans"
-        >
-          <ChevronLeft className="h-4 w-4" />
-          PREVIOUS QUESTION
+          className="flex items-center gap-1.5 text-sm font-semibold transition-colors cursor-pointer disabled:opacity-25"
+          style={{ color: S.muted }}>
+          <ChevronLeft className="h-4 w-4" strokeWidth={1.5} />
+          Previous
         </button>
       </div>
     </div>
