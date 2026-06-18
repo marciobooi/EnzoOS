@@ -96,9 +96,8 @@ export default function RemoteAccessOverlay() {
           <p className="text-sm font-light tracking-[0.25em] uppercase shrink-0" style={{ color: S.label }}>
             scan to connect
           </p>
-          <div className="rounded-2xl p-3 transition-opacity duration-300 w-full flex-1 flex items-center justify-center min-h-0"
+          <div className="rounded-2xl p-3 transition-opacity duration-300 w-[50%] flex-1 flex items-center justify-center min-h-0"
             style={{
-              background: '#ffffff',
               border: `1px solid ${S.border}`,
               boxShadow: cardShadow,
               opacity: remoteAccessEnabled ? 1 : 0.25,
@@ -106,7 +105,6 @@ export default function RemoteAccessOverlay() {
             <QRCodeSVG
               value={remoteUrl || 'http://resonance.local'}
               size={130}
-              bgColor="#ffffff"
               fgColor="#1a1918"
               level="M"
               style={{ maxWidth: '100%', height: 'auto' }}
