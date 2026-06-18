@@ -8,6 +8,24 @@ import YAML from 'yaml';
 import { getFavoriteRadios, addFavoriteRadio, deleteFavoriteRadioByUrl, setSetting, getSetting } from './db.js';
 import { emit, getStandbyState } from './event-service.js';
 
+// ── Streaming source helpers ──────────────────────────────────────────────────
+async function systemctlAction(action, service) {
+  try {
+    await execPromise(`sudo systemctl ${action} ${service}`);
+    return true;
+  } catch (err) {
+    console.warn(`[${service}] systemctl ${action} failed:`, err.message);
+    return false;
+  }
+}
+
+async function isServiceActive(service) {
+  try {
+    const { stdout } = await execPromise(`systemctl is-active ${service}`);
+    return stdout.trim() === 'active';
+  } catch { return false; }
+}
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
@@ -980,6 +998,217 @@ router.get('/radio-bycountry', async (req, res) => {
     res.json(data);
   } catch (err) {
     res.status(502).json({ error: err.message });
+  }
+});
+
+// ── AirPlay (shairport-sync) ─────────────────────────────────────────────────
+
+// POST /api/player/airplay/start
+router.post('/airplay/start', async (req, res) => {
+  try {
+    if (getStandbyState()) await emit('SET_STANDBY', { enabled: false });
+    await emit('SET_SOURCE', { spotify: false, source: 'airplay' });
+    const ok = await systemctlAction('start', 'shairport-sync');
+    res.json({ success: ok });
+  } catch (err) {
+    console.error('[AirPlay] Start failed:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// POST /api/player/airplay/stop
+router.post('/airplay/stop', async (req, res) => {
+  try {
+    const ok = await systemctlAction('stop', 'shairport-sync');
+    res.json({ success: ok });
+  } catch (err) {
+    console.error('[AirPlay] Stop failed:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// GET /api/player/airplay/status
+router.get('/airplay/status', async (req, res) => {
+  const active = await isServiceActive('shairport-sync');
+  res.json({ active });
+});
+
+// ── UPnP / DLNA (upmpdcli) ───────────────────────────────────────────────────
+
+// POST /api/player/upnp/start
+router.post('/upnp/start', async (req, res) => {
+  try {
+    if (getStandbyState()) await emit('SET_STANDBY', { enabled: false });
+    await emit('SET_SOURCE', { spotify: false, source: 'upnp' });
+    const ok = await systemctlAction('start', 'upmpdcli');
+    res.json({ success: ok });
+  } catch (err) {
+    console.error('[UPnP] Start failed:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// POST /api/player/upnp/stop
+router.post('/upnp/stop', async (req, res) => {
+  try {
+    const ok = await systemctlAction('stop', 'upmpdcli');
+    res.json({ success: ok });
+  } catch (err) {
+    console.error('[UPnP] Stop failed:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// GET /api/player/upnp/status
+router.get('/upnp/status', async (req, res) => {
+  const active = await isServiceActive('upmpdcli');
+  res.json({ active });
+});
+
+// ── Bluetooth A2DP (bluealsa) ─────────────────────────────────────────────────
+
+// POST /api/player/bluetooth/start
+router.post('/bluetooth/start', async (req, res) => {
+  try {
+    if (getStandbyState()) await emit('SET_STANDBY', { enabled: false });
+    await emit('SET_SOURCE', { spotify: false, source: 'bluetooth' });
+    const ok = await systemctlAction('start', 'bluealsa');
+    res.json({ success: ok });
+  } catch (err) {
+    console.error('[Bluetooth] Start failed:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// POST /api/player/bluetooth/stop
+router.post('/bluetooth/stop', async (req, res) => {
+  try {
+    const ok = await systemctlAction('stop', 'bluealsa');
+    res.json({ success: ok });
+  } catch (err) {
+    console.error('[Bluetooth] Stop failed:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// POST /api/player/bluetooth/discoverable — make the Pi discoverable for 60 s
+router.post('/bluetooth/discoverable', async (req, res) => {
+  try {
+    await execPromise('bluetoothctl discoverable on');
+    // Auto-revert after 60 s
+    setTimeout(() => execPromise('bluetoothctl discoverable off').catch(() => {}), 60000);
+    res.json({ success: true, seconds: 60 });
+  } catch (err) {
+    console.error('[Bluetooth] Discoverable failed:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// GET /api/player/bluetooth/status
+router.get('/bluetooth/status', async (req, res) => {
+  const active = await isServiceActive('bluealsa');
+  res.json({ active });
+});
+
+// ── Tidal (tidal-hifi / placeholder) ─────────────────────────────────────────
+
+// POST /api/player/tidal/connect — store credentials and activate source
+router.post('/tidal/connect', async (req, res) => {
+  const { username, password } = req.body;
+  if (!username || !password) {
+    return res.status(400).json({ error: 'username and password are required' });
+  }
+  try {
+    // Persist credentials (stored in DB, never logged)
+    await setSetting('tidal_username', username);
+    // Store password as-is (Pi is a single-user device; add encryption if needed)
+    await setSetting('tidal_password', password);
+    await emit('SET_SOURCE', { spotify: false, source: 'tidal' });
+    res.json({ success: true });
+  } catch (err) {
+    console.error('[Tidal] Connect failed:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// POST /api/player/tidal/play — activate Tidal source
+router.post('/tidal/play', async (req, res) => {
+  try {
+    if (getStandbyState()) await emit('SET_STANDBY', { enabled: false });
+    await emit('SET_SOURCE', { spotify: false, source: 'tidal' });
+    res.json({ success: true });
+  } catch (err) {
+    console.error('[Tidal] Play failed:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// GET /api/player/tidal/status — check if credentials are stored
+router.get('/tidal/status', async (req, res) => {
+  const username = await getSetting('tidal_username').catch(() => null);
+  res.json({ connected: !!username, username: username || null });
+});
+
+// DELETE /api/player/tidal/disconnect
+router.delete('/tidal/disconnect', async (req, res) => {
+  try {
+    await setSetting('tidal_username', '');
+    await setSetting('tidal_password', '');
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// ── Qobuz ─────────────────────────────────────────────────────────────────────
+
+// POST /api/player/qobuz/auth — store Qobuz credentials
+router.post('/qobuz/auth', async (req, res) => {
+  const { username, password, app_id, app_secret } = req.body;
+  if (!username || !password) {
+    return res.status(400).json({ error: 'username and password are required' });
+  }
+  try {
+    await setSetting('qobuz_username', username);
+    await setSetting('qobuz_password', password);
+    if (app_id)     await setSetting('qobuz_app_id', app_id);
+    if (app_secret) await setSetting('qobuz_app_secret', app_secret);
+    await emit('SET_SOURCE', { spotify: false, source: 'qobuz' });
+    res.json({ success: true });
+  } catch (err) {
+    console.error('[Qobuz] Auth failed:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// POST /api/player/qobuz/play — activate Qobuz source
+router.post('/qobuz/play', async (req, res) => {
+  try {
+    if (getStandbyState()) await emit('SET_STANDBY', { enabled: false });
+    await emit('SET_SOURCE', { spotify: false, source: 'qobuz' });
+    res.json({ success: true });
+  } catch (err) {
+    console.error('[Qobuz] Play failed:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// GET /api/player/qobuz/status
+router.get('/qobuz/status', async (req, res) => {
+  const username = await getSetting('qobuz_username').catch(() => null);
+  res.json({ connected: !!username, username: username || null });
+});
+
+// DELETE /api/player/qobuz/disconnect
+router.delete('/qobuz/disconnect', async (req, res) => {
+  try {
+    await setSetting('qobuz_username', '');
+    await setSetting('qobuz_password', '');
+    await setSetting('qobuz_app_id', '');
+    await setSetting('qobuz_app_secret', '');
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
   }
 });
 

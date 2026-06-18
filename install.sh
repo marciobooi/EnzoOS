@@ -401,7 +401,7 @@ echo -e "${GREEN}Raspotify Spotify Connect service configured and started.${NC}"
 # Configure passwordless sudo for Spotify and CamillaDSP daemon management
 echo -e "${YELLOW}Configuring sudo permissions for Spotify and CamillaDSP daemon management...${NC}"
 cat <<EOF > /etc/sudoers.d/resonance
-$TARGET_USER ALL=(ALL) NOPASSWD: /usr/bin/tee /etc/raspotify/conf, /bin/tee /etc/raspotify/conf, /usr/bin/tee /etc/asound.conf, /bin/tee /etc/asound.conf, /usr/bin/systemctl restart raspotify, /bin/systemctl restart raspotify, /usr/bin/systemctl restart camilladsp, /bin/systemctl restart camilladsp, /usr/bin/systemctl reload camilladsp, /bin/systemctl reload camilladsp, /usr/local/bin/kiosk-power.sh, /usr/local/bin/kiosk-brightness.sh
+$TARGET_USER ALL=(ALL) NOPASSWD: /usr/bin/tee /etc/raspotify/conf, /bin/tee /etc/raspotify/conf, /usr/bin/tee /etc/asound.conf, /bin/tee /etc/asound.conf, /usr/bin/systemctl restart raspotify, /bin/systemctl restart raspotify, /usr/bin/systemctl restart camilladsp, /bin/systemctl restart camilladsp, /usr/bin/systemctl reload camilladsp, /bin/systemctl reload camilladsp, /usr/local/bin/kiosk-power.sh, /usr/local/bin/kiosk-brightness.sh, /usr/bin/systemctl start shairport-sync, /bin/systemctl start shairport-sync, /usr/bin/systemctl stop shairport-sync, /bin/systemctl stop shairport-sync, /usr/bin/systemctl start upmpdcli, /bin/systemctl start upmpdcli, /usr/bin/systemctl stop upmpdcli, /bin/systemctl stop upmpdcli, /usr/bin/systemctl start bluealsa, /bin/systemctl start bluealsa, /usr/bin/systemctl stop bluealsa, /bin/systemctl stop bluealsa
 EOF
 chmod 440 /etc/sudoers.d/resonance
 
@@ -538,6 +538,136 @@ if ! grep -q "Autostart X Server on TTY1 Boot" "$PROFILE_FILE"; then
 else
   echo -e "${YELLOW}Autostart loop already present in $PROFILE_FILE.${NC}"
 fi
+
+# ── [6b/7] Streaming Sources: AirPlay, UPnP/DLNA, Bluetooth A2DP ────────────
+echo -e "\n${GREEN}[6b/7] Installing streaming source services (AirPlay, UPnP, Bluetooth)...${NC}"
+
+# ── AirPlay: shairport-sync ──────────────────────────────────────────────────
+echo -e "${YELLOW}Installing shairport-sync (AirPlay receiver)...${NC}"
+apt-get install -y \
+  shairport-sync \
+  libavahi-client3 \
+  libavahi-common3 2>/dev/null || true
+
+# Write shairport-sync config: output to ALSA camilla_input dmix
+cat <<'SSEOF' > /etc/shairport-sync.conf
+// Resonance HiFi — shairport-sync configuration
+// Routes AirPlay audio to the ALSA dmix loopback shared with CamillaDSP.
+general = {
+  name = "Resonance HiFi";
+  drift_tolerance_in_seconds = 0.002;
+  ignore_volume_control = "no";
+  volume_range_db = 60;
+};
+
+alsa = {
+  output_device = "camilla_input";
+  mixer_control_name = "PCM";
+};
+
+sessioncontrol = {
+  run_this_before_play_begins = "";
+  run_this_after_play_ends = "";
+  wait_for_completion = "no";
+  allow_session_interruption = "yes";
+  session_timeout = 120;
+};
+SSEOF
+
+# Do NOT enable shairport-sync at boot — the kiosk activates it on demand
+systemctl disable shairport-sync 2>/dev/null || true
+systemctl stop shairport-sync 2>/dev/null || true
+echo -e "${GREEN}shairport-sync installed and configured (demand-activated).${NC}"
+
+# ── UPnP / DLNA: upmpdcli ───────────────────────────────────────────────────
+echo -e "${YELLOW}Installing upmpdcli (UPnP/DLNA renderer)...${NC}"
+apt-get install -y upmpdcli 2>/dev/null || true
+
+# Write upmpdcli config: connect to MPD on localhost:6600
+cat <<'UPEOF' > /etc/upmpdcli.conf
+# Resonance HiFi — upmpdcli configuration
+# Connects as UPnP renderer, delegates to MPD for local audio.
+friendlyname = Resonance HiFi
+mpdhost = localhost
+mpdport = 6600
+ownqueue = 1
+checkcontentformat = 1
+UPEOF
+
+systemctl disable upmpdcli 2>/dev/null || true
+systemctl stop upmpdcli 2>/dev/null || true
+echo -e "${GREEN}upmpdcli installed and configured (demand-activated).${NC}"
+
+# ── Bluetooth A2DP: bluez + bluealsa ────────────────────────────────────────
+echo -e "${YELLOW}Installing Bluetooth A2DP packages (bluez + bluealsa)...${NC}"
+apt-get install -y \
+  bluez \
+  bluez-tools \
+  bluealsa-utils 2>/dev/null || \
+apt-get install -y \
+  bluez \
+  bluez-tools 2>/dev/null || true
+
+# Enable Bluetooth controller
+systemctl enable bluetooth 2>/dev/null || true
+systemctl start bluetooth 2>/dev/null || true
+
+# Configure bluealsa to route A2DP sink to ALSA camilla_input
+# bluealsa-aplay bridges the A2DP PCM to ALSA on demand; write a systemd override.
+if command -v bluealsa &> /dev/null; then
+  mkdir -p /etc/systemd/system/bluealsa.service.d
+  cat <<'BSEOF' > /etc/systemd/system/bluealsa.service.d/resonance.conf
+[Service]
+ExecStart=
+ExecStart=/usr/bin/bluealsa --profile=a2dp-sink --profile=hfp-ag
+BSEOF
+
+  # Systemd unit for bluealsa-aplay — routes A2DP audio to our ALSA loopback
+  cat <<'BAEOF' > /etc/systemd/system/bluealsa-aplay.service
+[Unit]
+Description=BlueALSA ALSA Player (Resonance HiFi)
+After=bluealsa.service
+Requires=bluealsa.service
+
+[Service]
+Type=simple
+User=root
+ExecStart=/usr/bin/bluealsa-aplay --pcm=camilla_input 00:00:00:00:00:00
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target
+BAEOF
+
+  systemctl daemon-reload
+  systemctl disable bluealsa 2>/dev/null || true
+  systemctl disable bluealsa-aplay 2>/dev/null || true
+  systemctl stop bluealsa 2>/dev/null || true
+  systemctl stop bluealsa-aplay 2>/dev/null || true
+fi
+
+# Make Pi Bluetooth agent auto-accept pairing (simple pairing, no PIN)
+cat <<'BTEOF' > /etc/systemd/system/bt-agent.service
+[Unit]
+Description=Bluetooth Auto-Pair Agent (Resonance HiFi)
+After=bluetooth.service
+Requires=bluetooth.service
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/bt-agent -c NoInputNoOutput
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target
+BTEOF
+
+systemctl daemon-reload
+systemctl enable bt-agent 2>/dev/null || true
+systemctl start bt-agent 2>/dev/null || true
+echo -e "${GREEN}Bluetooth A2DP configured (demand-activated via kiosk).${NC}"
 
 # 9. Install Node modules, build code and startup PM2
 echo -e "\n${GREEN}[7/7] Building application & setting up PM2 server daemon...${NC}"

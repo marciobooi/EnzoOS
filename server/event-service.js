@@ -175,6 +175,11 @@ async function applyStandby(enabled) {
       exec('mpc stop');
       exec('sudo /usr/local/bin/kiosk-power.sh standby');
 
+      // Stop streaming passthrough services
+      exec('sudo systemctl stop shairport-sync 2>/dev/null || true');
+      exec('sudo systemctl stop upmpdcli 2>/dev/null || true');
+      exec('sudo systemctl stop bluealsa 2>/dev/null || true');
+
       // Pause Spotify if a valid token is available
       try {
         const { getValidAccessToken } = await import('./spotify-auth.js');
@@ -237,14 +242,38 @@ async function handleEvent(type, payload, excludeWs) {
       cachedSourceState = payload;
       await setSetting('active_source', newSource);
 
-      if (newSource === 'spotify') {
-        // Kill local/radio playback when entering Spotify
-        try {
-          const { exec } = await import('child_process');
+      // ── Stop services belonging to the PREVIOUS source ───────────────────
+      try {
+        const { exec } = await import('child_process');
+        // Always stop MPD (covers local + radio)
+        if (['local', 'radio', 'spotify', 'airplay', 'upnp'].includes(previousSource)) {
           exec('mpc stop');
-        } catch (err) {
-          console.error('[SET_SOURCE] Failed to stop mpc:', err);
         }
+        // Stop shairport-sync when leaving AirPlay
+        if (previousSource === 'airplay') {
+          exec('sudo systemctl stop shairport-sync');
+          console.log('[SET_SOURCE] Stopped shairport-sync (was AirPlay)');
+        }
+        // Stop upmpdcli when leaving UPnP
+        if (previousSource === 'upnp') {
+          exec('sudo systemctl stop upmpdcli');
+          console.log('[SET_SOURCE] Stopped upmpdcli (was UPnP)');
+        }
+        // Stop bluealsa when leaving Bluetooth
+        if (previousSource === 'bluetooth') {
+          exec('sudo systemctl stop bluealsa');
+          console.log('[SET_SOURCE] Stopped bluealsa (was Bluetooth)');
+        }
+      } catch (err) {
+        console.error('[SET_SOURCE] Failed to stop previous source services:', err);
+      }
+
+      // ── Stop services that conflict with the NEW source ───────────────────
+      // Whenever we switch TO a passthrough source (airplay/upnp/bluetooth/tidal/qobuz)
+      // make sure MPD is not running so it doesn't compete for the loopback device.
+      const passthroughSources = ['airplay', 'upnp', 'bluetooth', 'tidal', 'qobuz'];
+
+      if (newSource === 'spotify') {
         // Clear cached state — the Spotify Web Player sends its own BROADCAST_STATE
         cachedPlaybackState = null;
 
@@ -318,6 +347,30 @@ async function handleEvent(type, payload, excludeWs) {
           }
           // Clear cached state — MPD client sends BROADCAST_STATE once playing
           cachedPlaybackState = null;
+
+        } else if (passthroughSources.includes(newSource)) {
+          // Passthrough sources (AirPlay, UPnP, Bluetooth, Tidal, Qobuz):
+          // set a waiting-for-connection playback state so the UI shows something.
+          const sourceLabels = {
+            airplay:   { name: 'AirPlay', status: 'Waiting for AirPlay connection…' },
+            upnp:      { name: 'UPnP / DLNA', status: 'Waiting for UPnP renderer…' },
+            bluetooth: { name: 'Bluetooth A2DP', status: 'Waiting for Bluetooth connection…' },
+            tidal:     { name: 'Tidal', status: 'Tidal connect active' },
+            qobuz:     { name: 'Qobuz', status: 'Qobuz connect active' },
+          };
+          const info = sourceLabels[newSource] || { name: newSource, status: 'Waiting…' };
+          cachedPlaybackState = {
+            paused: true,
+            position: 0,
+            duration: 0,
+            track_window: {
+              current_track: {
+                name: info.name,
+                artists: [{ name: info.status }],
+                album: { name: 'Resonance HiFi', images: [] },
+              },
+            },
+          };
         }
       }
 

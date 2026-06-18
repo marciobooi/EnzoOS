@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Sliders, Music, Download, LogOut, Radio, Waves, Smartphone, ShieldCheck } from 'lucide-react';
+import { Sliders, Music, Download, LogOut, Radio, Waves, Smartphone, Airplay, Network, Bluetooth, Music2 } from 'lucide-react';
 import { api } from '../api';
 import { S } from '../styles/stone';
 
@@ -184,11 +184,121 @@ export default function DefinitionsMenu({
         </div>
       </button>
 
-      {/* 4. THEME SETTINGS CARD */}
+      {/* 4. AIRPLAY CARD */}
+      <button
+        onClick={() => onSetSource('airplay')}
+        className={`w-[180px] shrink-0 p-5 rounded-2xl text-left flex flex-col justify-between transition-all duration-300 relative group overflow-hidden cursor-pointer menu-card-enter ${
+          source === 'airplay' ? 'active-card scale-[1.02]' : 'menu-card hover:scale-[1.01]'
+        }`}
+        style={{ animationDelay: '90ms' }}
+      >
+        <span className="text-[0.6rem] font-light tracking-[0.25em] uppercase" style={{ color: S.label }}>apple airplay</span>
+        <div className="my-auto flex justify-center py-2">
+          <Airplay strokeWidth={1} className="h-16 w-16 transition-all duration-300"
+            style={{ color: source === 'airplay' ? S.accent : S.track }} />
+        </div>
+        <div className="flex items-baseline justify-between w-full">
+          <span className="text-lg font-black tracking-tight leading-none"
+            style={{ color: source === 'airplay' ? S.strong : S.muted }}>AirPlay</span>
+          {source === 'airplay' && (
+            <span className="text-sm font-normal tracking-wide" style={{ color: S.accent }}>active</span>
+          )}
+        </div>
+      </button>
+
+      {/* 5. UPNP / DLNA CARD */}
+      <button
+        onClick={() => onSetSource('upnp')}
+        className={`w-[180px] shrink-0 p-5 rounded-2xl text-left flex flex-col justify-between transition-all duration-300 relative group overflow-hidden cursor-pointer menu-card-enter ${
+          source === 'upnp' ? 'active-card scale-[1.02]' : 'menu-card hover:scale-[1.01]'
+        }`}
+        style={{ animationDelay: '120ms' }}
+      >
+        <span className="text-[0.6rem] font-light tracking-[0.25em] uppercase" style={{ color: S.label }}>upnp / dlna</span>
+        <div className="my-auto flex justify-center py-2">
+          <Network strokeWidth={1} className="h-16 w-16 transition-all duration-300"
+            style={{ color: source === 'upnp' ? S.accent : S.track }} />
+        </div>
+        <div className="flex items-baseline justify-between w-full">
+          <span className="text-lg font-black tracking-tight leading-none"
+            style={{ color: source === 'upnp' ? S.strong : S.muted }}>UPnP</span>
+          {source === 'upnp' && (
+            <span className="text-sm font-normal tracking-wide" style={{ color: S.accent }}>active</span>
+          )}
+        </div>
+      </button>
+
+      {/* 6. BLUETOOTH A2DP CARD */}
+      <button
+        onClick={() => onSetSource('bluetooth')}
+        className={`w-[180px] shrink-0 p-5 rounded-2xl text-left flex flex-col justify-between transition-all duration-300 relative group overflow-hidden cursor-pointer menu-card-enter ${
+          source === 'bluetooth' ? 'active-card scale-[1.02]' : 'menu-card hover:scale-[1.01]'
+        }`}
+        style={{ animationDelay: '150ms' }}
+      >
+        <span className="text-[0.6rem] font-light tracking-[0.25em] uppercase" style={{ color: S.label }}>bluetooth a2dp</span>
+        <div className="my-auto flex justify-center py-2">
+          <Bluetooth strokeWidth={1} className="h-16 w-16 transition-all duration-300"
+            style={{ color: source === 'bluetooth' ? S.accent : S.track }} />
+        </div>
+        <div className="flex items-baseline justify-between w-full">
+          <span className="text-lg font-black tracking-tight leading-none"
+            style={{ color: source === 'bluetooth' ? S.strong : S.muted }}>Bluetooth</span>
+          {source === 'bluetooth' && (
+            <span className="text-sm font-normal tracking-wide" style={{ color: S.accent }}>active</span>
+          )}
+        </div>
+      </button>
+
+      {/* 7. TIDAL CARD */}
+      <button
+        onClick={() => onSetSource('tidal')}
+        className={`w-[180px] shrink-0 p-5 rounded-2xl text-left flex flex-col justify-between transition-all duration-300 relative group overflow-hidden cursor-pointer menu-card-enter ${
+          source === 'tidal' ? 'active-card scale-[1.02]' : 'menu-card hover:scale-[1.01]'
+        }`}
+        style={{ animationDelay: '180ms' }}
+      >
+        <span className="text-[0.6rem] font-light tracking-[0.25em] uppercase" style={{ color: S.label }}>hifi streaming</span>
+        <div className="my-auto flex justify-center py-2">
+          <Music2 strokeWidth={1} className="h-16 w-16 transition-all duration-300"
+            style={{ color: source === 'tidal' ? S.accent : S.track }} />
+        </div>
+        <div className="flex items-baseline justify-between w-full">
+          <span className="text-lg font-black tracking-tight leading-none"
+            style={{ color: source === 'tidal' ? S.strong : S.muted }}>Tidal</span>
+          {source === 'tidal' && (
+            <span className="text-sm font-normal tracking-wide" style={{ color: S.accent }}>active</span>
+          )}
+        </div>
+      </button>
+
+      {/* 8. QOBUZ CARD */}
+      <button
+        onClick={() => onSetSource('qobuz')}
+        className={`w-[180px] shrink-0 p-5 rounded-2xl text-left flex flex-col justify-between transition-all duration-300 relative group overflow-hidden cursor-pointer menu-card-enter ${
+          source === 'qobuz' ? 'active-card scale-[1.02]' : 'menu-card hover:scale-[1.01]'
+        }`}
+        style={{ animationDelay: '210ms' }}
+      >
+        <span className="text-[0.6rem] font-light tracking-[0.25em] uppercase" style={{ color: S.label }}>lossless streaming</span>
+        <div className="my-auto flex justify-center py-2">
+          <Music strokeWidth={1} className="h-16 w-16 transition-all duration-300"
+            style={{ color: source === 'qobuz' ? S.accent : S.track }} />
+        </div>
+        <div className="flex items-baseline justify-between w-full">
+          <span className="text-lg font-black tracking-tight leading-none"
+            style={{ color: source === 'qobuz' ? S.strong : S.muted }}>Qobuz</span>
+          {source === 'qobuz' && (
+            <span className="text-sm font-normal tracking-wide" style={{ color: S.accent }}>active</span>
+          )}
+        </div>
+      </button>
+
+      {/* THEME SETTINGS CARD */}
       <button
         onClick={handleCycleTheme}
         className="w-[180px] shrink-0 p-5 rounded-2xl text-left flex flex-col justify-between transition-all duration-300 relative group overflow-hidden cursor-pointer menu-card menu-card-enter hover:scale-[1.01]"
-        style={{ animationDelay: '90ms' }}
+        style={{ animationDelay: '240ms' }}
       >
         <span className="text-[0.6rem] font-light tracking-[0.25em] uppercase" style={{ color: S.label }}>appearance</span>
         <div className="my-auto flex justify-center py-2">
