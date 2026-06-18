@@ -744,10 +744,11 @@ async function hotReloadCamilla(yamlString) {
         ws.close();
         try {
           const msg = JSON.parse(data.toString());
-          const ok = msg.SetConfig === 'Ok';
+          // v1: { SetConfig: 'Ok' }  v2: { SetConfig: { result: 'Ok' } }
+          const ok = msg.SetConfig === 'Ok' || msg.SetConfig?.result === 'Ok';
           console.log(ok
             ? '[CamillaDSP] Hot-reload applied — no audio gap.'
-            : '[CamillaDSP] Hot-reload response:', msg);
+            : '[CamillaDSP] Hot-reload response (unexpected):', msg);
           resolve(ok);
         } catch { resolve(false); }
       });
