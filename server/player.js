@@ -253,7 +253,7 @@ router.delete('/radios', async (req, res) => {
   }
 });
 
-// GET /api/player/signal-path → live audio chain telemetry
+// GET /api/player/signal-path → live audio chain telemetry + DAC info
 router.get('/signal-path', async (req, res) => {
   try {
     const [camillaStatus, mpdFmt, activeSource] = await Promise.all([
@@ -261,6 +261,7 @@ router.get('/signal-path', async (req, res) => {
       getMpdAudioFormat(),
       getSetting('active_source').catch(() => 'unknown'),
     ]);
+    const dac = detectDac();
     const pathMap = {
       local:     'MPD → PipeWire → CamillaDSP → DAC',
       radio:     'MPD → PipeWire → CamillaDSP → DAC',
@@ -276,6 +277,13 @@ router.get('/signal-path', async (req, res) => {
       camilla: camillaStatus,
       mpd:     mpdFmt,
       path:    pathMap[activeSource] || 'Source → PipeWire → CamillaDSP → DAC',
+      dac: {
+        name:           dac.cardName,
+        device:         dac.device,
+        format:         dac.format,
+        supportedRates: dac.supportedRates,
+        maxRate:        Math.max(...dac.supportedRates),
+      },
     });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -294,118 +302,160 @@ router.post('/pure-direct', async (req, res) => {
   }
 });
 
+// Standard audiophile sample rates — only these are valid PipeWire clock candidates.
+// Rates outside this set (e.g. 32000, 22050) are legacy and not used for hi-res playback.
+const STANDARD_RATES = [44100, 48000, 88200, 96000, 176400, 192000, 352800, 384000];
+
 // --- CamillaDSP DAC & Audio Hardware Capabilities Detection ---
+// Returns device, format, samplerate (default processing rate), supportedRates (all),
+// and cardName (for display). supportedRates drives PipeWire clock.allowed-rates so
+// PipeWire only switches to rates the DAC actually supports — no ALSA open failures.
 function detectDac() {
   let detected = {
     device: "hw:0,0",
-    samplerate: 44100,
+    samplerate: 48000,
     format: "S16_LE",
-    channels: 2
+    channels: 2,
+    supportedRates: [44100, 48000],
+    cardName: 'Built-in Audio',
   };
 
   try {
     const asoundDir = '/proc/asound';
-    if (!fs.existsSync(asoundDir)) {
-      return detected;
-    }
+    if (!fs.existsSync(asoundDir)) return detected;
 
-    const files = fs.readdirSync(asoundDir);
-    let cards = [];
-
-    for (const file of files) {
-      if (file.startsWith('card') && !isNaN(file.substring(4))) {
-        const cardPath = path.join(asoundDir, file);
+    const cards = fs.readdirSync(asoundDir)
+      .filter(f => f.startsWith('card') && !isNaN(f.substring(4)))
+      .map(f => {
+        const cardPath = path.join(asoundDir, f);
         try {
-          const stat = fs.statSync(cardPath);
-          if (stat.isDirectory()) {
-            const cardIndex = parseInt(file.substring(4), 10);
-            let id = '';
-            try {
-              id = fs.readFileSync(path.join(cardPath, 'id'), 'utf8').trim();
-            } catch (e) {}
-            cards.push({ index: cardIndex, id, path: cardPath });
-          }
-        } catch (e) {}
-      }
-    }
+          if (!fs.statSync(cardPath).isDirectory()) return null;
+        } catch { return null; }
+        const index = parseInt(f.substring(4), 10);
+        let id = '', longname = '';
+        try { id = fs.readFileSync(path.join(cardPath, 'id'), 'utf8').trim(); } catch {}
+        try { longname = fs.readFileSync(path.join(cardPath, 'longname'), 'utf8').trim(); } catch {}
+        return { index, id, longname, path: cardPath };
+      })
+      .filter(Boolean);
 
-    let usbDac = null;
     for (const card of cards) {
       if (card.id.toLowerCase() === 'loopback') continue;
 
-      let streamFiles = [];
-      try {
-        streamFiles = fs.readdirSync(card.path).filter(f => f.startsWith('stream'));
-      } catch (e) {}
+      const streamFiles = (() => {
+        try { return fs.readdirSync(card.path).filter(f => f.startsWith('stream')); } catch { return []; }
+      })();
+      if (streamFiles.length === 0) continue;
 
-      if (streamFiles.length > 0) {
-        const streamPath = path.join(card.path, streamFiles[0]);
-        let streamContent = '';
-        try {
-          streamContent = fs.readFileSync(streamPath, 'utf8');
-        } catch (e) {}
+      let streamContent = '';
+      try { streamContent = fs.readFileSync(path.join(card.path, streamFiles[0]), 'utf8'); } catch {}
+      if (!streamContent) continue;
 
-        if (streamContent) {
-          const rateMatches = streamContent.match(/Sample rates:\s*([^\r\n]+)/i);
-          const formatMatches = streamContent.match(/Format:\s*([^\r\n]+)/ig);
+      // Parse all supported rates and filter to standard audiophile set
+      const rateMatch = streamContent.match(/Sample rates:\s*([^\r\n]+)/i);
+      const allRates = rateMatch
+        ? rateMatch[1].split(',').map(r => parseInt(r.trim(), 10)).filter(r => !isNaN(r))
+        : [];
+      const supportedRates = STANDARD_RATES.filter(r => allRates.includes(r));
+      // If nothing matches (e.g. some USB DACs list ranges), fall back to all parsed rates
+      const finalRates = supportedRates.length > 0 ? supportedRates
+        : allRates.filter(r => r >= 44100).sort((a, b) => a - b);
 
-          let rates = [];
-          if (rateMatches) {
-            rates = rateMatches[1].split(',').map(r => parseInt(r.trim(), 10)).filter(r => !isNaN(r));
-          }
+      // Parse formats — pick best available quality
+      const formatMatches = streamContent.match(/Format:\s*([^\r\n]+)/ig) || [];
+      const formats = formatMatches.map(f => { const m = f.match(/Format:\s*(\S+)/i); return m?.[1] || ''; }).filter(Boolean);
+      let camillaFormat = 'S16_LE';
+      if (formats.some(f => f.includes('S32_LE')))   camillaFormat = 'S32_LE';
+      else if (formats.some(f => f.includes('S24_3LE'))) camillaFormat = 'S24_3_LE';
+      else if (formats.some(f => f.includes('S24_LE')))  camillaFormat = 'S24_3_LE';
+      else if (formats.some(f => f.includes('S16_LE')))  camillaFormat = 'S16_LE';
 
-          let formats = [];
-          if (formatMatches) {
-            formats = formatMatches.map(f => {
-              const m = f.match(/Format:\s*(\S+)/i);
-              return m ? m[1] : '';
-            }).filter(Boolean);
-          }
+      // Default processing rate: prefer 48000 (most common), fall back to first supported
+      const defaultRate = finalRates.includes(48000) ? 48000
+        : finalRates.includes(44100) ? 44100
+        : (finalRates[0] || 48000);
 
-          let rate = 44100;
-          if (rates.includes(44100)) {
-            rate = 44100;
-          } else if (rates.includes(48000)) {
-            rate = 48000;
-          } else if (rates.length > 0) {
-            rate = rates[0];
-          }
+      const device = card.id ? `hw:CARD=${card.id},DEV=0` : `hw:${card.index},0`;
+      const cardName = card.longname || card.id || `Card ${card.index}`;
 
-          let camillaFormat = "S16_LE";
-          if (formats.some(f => f.includes("S32_LE"))) {
-            camillaFormat = "S32_LE";
-          } else if (formats.some(f => f.includes("S24_3LE"))) {
-            camillaFormat = "S24_3_LE";
-          } else if (formats.some(f => f.includes("S24_LE"))) {
-            camillaFormat = "S24_3_LE";
-          } else if (formats.some(f => f.includes("S16_LE"))) {
-            camillaFormat = "S16_LE";
-          }
-
-          usbDac = {
-            device: card.id ? `hw:CARD=${card.id},DEV=0` : `hw:${card.index},0`,
-            samplerate: rate,
-            format: camillaFormat,
-            channels: 2
-          };
-          break;
-        }
-      }
+      console.log(`[DAC] Detected: ${cardName} | ${device} | ${camillaFormat} | rates: [${finalRates.join(', ')}]`);
+      return { device, samplerate: defaultRate, format: camillaFormat, channels: 2, supportedRates: finalRates, cardName };
     }
 
-    if (usbDac) {
-      return usbDac;
-    }
-
+    // No stream-capable card found — use first non-Loopback card with safe defaults
     const mainCard = cards.find(c => c.id.toLowerCase() !== 'loopback');
     if (mainCard) {
-      detected.device = mainCard.id ? `hw:CARD=${mainCard.id},DEV=0` : `hw:${mainCard.index},0`;
+      detected.device   = mainCard.id ? `hw:CARD=${mainCard.id},DEV=0` : `hw:${mainCard.index},0`;
+      detected.cardName = mainCard.longname || mainCard.id || `Card ${mainCard.index}`;
     }
   } catch (err) {
-    console.error('[CamillaDSP] DAC detection error:', err);
+    console.error('[DAC] Detection error:', err);
   }
 
   return detected;
+}
+
+/**
+ * Write PipeWire clock.allowed-rates from the detected DAC's supported rates.
+ * This ensures PipeWire only switches to rates the DAC can actually handle —
+ * prevents CamillaDSP ALSA open failures on rate-switch events.
+ * Written via sudo tee; PipeWire is restarted only if the config changed.
+ */
+export async function updatePipeWireClock(dacInfo) {
+  const rates = dacInfo?.supportedRates;
+  if (!rates || rates.length === 0) return;
+
+  const defaultRate = rates.includes(48000) ? 48000 : rates[0];
+  const rateList    = rates.join(' ');
+  const confPath    = '/etc/pipewire/pipewire.conf.d/52-resonance-bitperfect.conf';
+
+  const content = `# Resonance HiFi — native sample-rate selection
+# Generated from detected DAC: ${dacInfo.cardName} (${dacInfo.device})
+# Supported rates: [ ${rateList} ]
+# PipeWire switches its graph clock to the source native rate when it appears
+# in this list, eliminating inter-domain resampling. CamillaDSP follows via
+# the MPD rate watcher. Only rates the DAC actually supports are included.
+context.properties = {
+    default.clock.rate          = ${defaultRate}
+    default.clock.allowed-rates = [ ${rateList} ]
+    default.clock.quantum       = 1024
+    default.clock.min-quantum   = 32
+    default.clock.max-quantum   = 8192
+}
+`;
+
+  // Read current config — skip write if nothing changed
+  let current = '';
+  try { current = fs.readFileSync(confPath, 'utf8'); } catch {}
+  if (current.trim() === content.trim()) {
+    console.log(`[PipeWire] Clock config unchanged (${rateList}) — skipping update.`);
+    return;
+  }
+
+  const tempPath = path.join(__dirname, '../pipewire-clock.conf.tmp');
+  try {
+    fs.writeFileSync(tempPath, content, 'utf8');
+    await execPromise(`sudo /usr/bin/tee ${confPath} < ${tempPath} > /dev/null`);
+    console.log(`[PipeWire] Updated clock.allowed-rates: [ ${rateList} ]`);
+  } catch (err) {
+    console.warn('[PipeWire] Failed to write clock config (check sudoers):', err.message);
+    return;
+  } finally {
+    try { fs.unlinkSync(tempPath); } catch {}
+  }
+
+  // Restart PipeWire user session to apply new clock config
+  try {
+    const env = {
+      ...process.env,
+      XDG_RUNTIME_DIR: '/run/user/1000',
+      DBUS_SESSION_BUS_ADDRESS: 'unix:path=/run/user/1000/bus',
+    };
+    await execPromise('systemctl --user restart pipewire pipewire-pulse wireplumber', { env });
+    console.log('[PipeWire] Restarted — new clock config active.');
+  } catch (err) {
+    console.warn('[PipeWire] Restart failed (will apply on next session start):', err.message);
+  }
 }
 
 // --- 1. ADVANCED ANALOG & DIGITAL PROFILE DATABASE (5 BANDS + GAIN + ANALOG)
@@ -810,6 +860,14 @@ export async function updateCamillaConfigFromSettings({ skipAlsa = false, sample
   // Scan for DAC capability automatically
   const dacInfo = detectDac();
   console.log('[CamillaDSP] Detected audio device capabilities:', dacInfo);
+
+  // Sync PipeWire clock.allowed-rates to exactly the rates this DAC supports.
+  // Fire-and-forget — never blocks the config generation path.
+  if (!skipAlsa) {
+    updatePipeWireClock(dacInfo).catch(err =>
+      console.warn('[PipeWire] Clock update failed (non-fatal):', err.message)
+    );
+  }
 
   // Apply adjustments if sub-woofer is enabled
   if (answers && answers.q1_setup === "2 Speakers + 1 Subwoofer") {
