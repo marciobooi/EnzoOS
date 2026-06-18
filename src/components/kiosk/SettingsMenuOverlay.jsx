@@ -42,23 +42,41 @@ export default function SettingsMenuOverlay() {
 
   return (
     <div
-      className={`absolute inset-0 bg-[#060c1a] border border-white/10 rounded-3xl shadow-2xl z-50 transform transition-all duration-300 ease-in-out flex flex-col p-5 font-sans ${
+      className={`absolute inset-0 rounded-3xl z-50 transform transition-all duration-300 ease-in-out flex flex-col p-5 font-sans ${
         isMenuOpen ? 'opacity-100 scale-100 pointer-events-auto' : 'opacity-0 scale-95 pointer-events-none'
       }`}
+      style={{
+        background: '#cbccc7',
+        border: '1px solid #c5c4c0',
+        boxShadow: '8px 8px 20px #b0b1ac, -8px -8px 20px #e6e7e2',
+      }}
     >
       {/* Header & Close Button */}
       <div className="flex justify-between items-center mb-3 select-none shrink-0">
-        <h4 className="text-[11px] font-extrabold uppercase tracking-[0.2em] text-zinc-400">System Configuration Control Panel</h4>
+        <h4 className="text-[11px] font-extrabold uppercase tracking-[0.2em]"
+          style={{ color: '#9a9896' }}>
+          System Configuration Control Panel
+        </h4>
         <button
           onClick={() => setIsMenuOpen(false)}
-          className="text-zinc-300 hover:text-white transition-colors cursor-pointer text-[10px] font-extrabold font-sans px-3.5 py-1 rounded-lg bg-white/10 hover:bg-white/15 border border-white/15 shadow-sm active:scale-95"
+          className="cursor-pointer text-[10px] font-extrabold font-sans px-3.5 py-1 rounded-lg transition-all active:scale-95"
+          style={{
+            color: '#3a3836',
+            background: '#d2d3ce',
+            border: '1px solid #c5c4c0',
+            boxShadow: '2px 2px 5px #b8b9b4, -2px -2px 5px #ecede8',
+          }}
+          onMouseEnter={e => e.currentTarget.style.boxShadow = '1px 1px 3px #b8b9b4, -1px -1px 3px #ecede8'}
+          onMouseLeave={e => e.currentTarget.style.boxShadow = '2px 2px 5px #b8b9b4, -2px -2px 5px #ecede8'}
+          onMouseDown={e => e.currentTarget.style.boxShadow = 'inset 2px 2px 4px #b0b1ac, inset -2px -2px 4px #d8d9d4'}
+          onMouseUp={e => e.currentTarget.style.boxShadow = '2px 2px 5px #b8b9b4, -2px -2px 5px #ecede8'}
         >
           CLOSE [X]
         </button>
       </div>
 
       {/* Horizontally Scrollable Content */}
-      <div className="flex-grow overflow-x-auto overflow-y-hidden custom-scrollbar">
+      <div className="flex-grow overflow-x-auto overflow-y-hidden stone-scrollbar">
         <DefinitionsMenu key={animKey}
           token={token}
           handleLogout={handleLogout}

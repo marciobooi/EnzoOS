@@ -58,6 +58,14 @@ body {
   scrollbar-color: var(--theme-color-glow) transparent;
 }
 
+/* Stone-palette scrollbar — used by SettingsMenuOverlay */
+.stone-scrollbar::-webkit-scrollbar        { width: 4px; height: 4px; }
+.stone-scrollbar::-webkit-scrollbar-track  { background: transparent; }
+.stone-scrollbar::-webkit-scrollbar-thumb  { background: #c0c1bc; border-radius: 9999px; transition: background 0.2s; }
+.stone-scrollbar::-webkit-scrollbar-thumb:hover { background: #9a9896; }
+.stone-scrollbar::-webkit-scrollbar-corner { background: transparent; }
+.stone-scrollbar { scrollbar-width: thin; scrollbar-color: #c0c1bc transparent; }
+
 
 
 /* Scrolling Marquee */
