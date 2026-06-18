@@ -114,7 +114,7 @@ export default function RemoteAccessOverlay() {
         </div>
 
         {/* Col 3 — URL + instructions */}
-        <div className="flex flex-col gap-4 rounded-2xl p-4 overflow-y-auto stone-scrollbar"
+        <div className="flex flex-col gap-4 rounded-2xl p-4 pb-8 overflow-y-auto stone-scrollbar"
           style={{ background: S.surface, border: `1px solid ${S.border}` }}>
 
           <div className="shrink-0">
