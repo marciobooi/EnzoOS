@@ -14,9 +14,7 @@ export const SCREEN_THEMES = [
   { id: 'dot-matrix',  name: 'Retro Dot-Matrix', desc: 'Phosphor LED grid matrix simulation'    },
   { id: 'dreamplayer', name: 'Dreamplayer',       desc: 'Neo Glass Retrofuture — square buttons' },
   { id: 'glassplayer', name: 'Glassplayer',       desc: 'Liquid Glass Retrofuture'               },
-  { id: 'minimalist',  name: 'Minimalist',        desc: 'Dynamic 2-column album color console'   },
-  { id: 'neon-glow',   name: 'Cyberpunk Neon',    desc: 'Vibrant neon tube display mode',    disabled: true },
-  { id: 'vfd-chamber', name: 'VFD Vacuum Tube',   desc: 'Vacuum fluorescent display styling', disabled: true },
+  { id: 'minimalist',  name: 'Minimalist',        desc: 'Dynamic 2-column album color console'   }
 ];
 
 export default function ThemeSettingsControl({
