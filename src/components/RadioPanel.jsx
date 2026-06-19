@@ -360,7 +360,7 @@ function FrequencyBandWide({ stations, onPlay, favoriteStations = [] }) {
   useEffect(() => { setNeedleIdx(null); setPlayedIdx(null); }, [stations]);
 
   return (
-    <div className="w-[90vw] mx-4">
+    <div className="w-[85vw] mx-4">
       <div className="relative">
         {tooltipPct !== null && displayStation && (
           <div className="absolute pointer-events-none" style={{ left: `${tooltipPct}%`, bottom: 'calc(100% + 8px)', transform: 'translateX(-50%)', zIndex: 20 }}>
@@ -406,7 +406,7 @@ function FrequencyBandWide({ stations, onPlay, favoriteStations = [] }) {
 
 function EmptyBandWide() {
   return (
-    <div className="w-[90vw] mx-4">
+    <div className="w-[85vw] mx-4">
       <div className="flex justify-between px-0.5 mb-1">
         {['88', '92', '96', '100', '104', '108'].map(l => (
           <span key={l} className="font-mono" style={{ fontSize: 8, color: S.border, letterSpacing: '0.04em' }}>{l} MHz</span>
