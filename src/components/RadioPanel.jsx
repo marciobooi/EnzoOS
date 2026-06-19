@@ -377,7 +377,7 @@ function FrequencyBandWide({ stations, onPlay, favoriteStations = [] }) {
           ))}
         </div>
         <div ref={bandRef} className="relative rounded-xl overflow-hidden cursor-pointer select-none touch-none"
-          style={{ height: 96, background: S.surfaceLo, border: `1px solid ${S.border}`, boxShadow: `inset 0 2px 10px rgba(42,40,38,0.10), inset 0 -1px 4px rgba(42,40,38,0.05), ${cardShadow}` }}
+          style={{ height: 50, background: S.surfaceLo, border: `1px solid ${S.border}`, boxShadow: `inset 0 2px 10px rgba(42,40,38,0.10), inset 0 -1px 4px rgba(42,40,38,0.05), ${cardShadow}` }}
           onPointerDown={handlePointerDown} onPointerMove={handlePointerMove} onPointerUp={handlePointerUp} onPointerCancel={handlePointerUp}>
           <div className="absolute inset-0 pointer-events-none" style={{ backgroundImage: `repeating-linear-gradient(0deg, transparent, transparent 3px, rgba(42,40,38,0.03) 3px, rgba(42,40,38,0.03) 4px)`, zIndex: 3 }} />
           <div className="absolute inset-x-0 pointer-events-none" style={{ top: '50%', height: 1, background: `linear-gradient(90deg, transparent, ${S.borderHi} 10%, ${S.border} 50%, ${S.borderHi} 90%, transparent)`, transform: 'translateY(-50%)', zIndex: 1 }} />
@@ -413,7 +413,7 @@ function EmptyBandWide() {
         ))}
       </div>
       <div className="relative rounded-xl overflow-hidden flex items-center justify-center"
-        style={{ height: 96, background: S.surfaceLo, border: `1px solid ${S.border}`, boxShadow: cardShadow }}>
+        style={{ height: 50, background: S.surfaceLo, border: `1px solid ${S.border}`, boxShadow: cardShadow }}>
         {/* Subtle center groove only */}
         <div className="absolute inset-x-0 pointer-events-none"
           style={{ top: '50%', height: 1, background: `linear-gradient(90deg, transparent, ${S.border} 20%, ${S.border} 80%, transparent)`, transform: 'translateY(-50%)' }} />
