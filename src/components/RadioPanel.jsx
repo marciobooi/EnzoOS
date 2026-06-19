@@ -452,7 +452,7 @@ export default function RadioPanel({
       style={{ background: S.bg, border: `1px solid ${S.borderHi}` }}>
 
       {/* ── Header — mirrors ThemeSettingsControl / EqualizerControl ── */}
-      <div className="flex items-center justify-between mb-3 shrink-0"
+      <div className="flex items-center justify-between mb-1 shrink-0"
         style={{ borderBottom: `1px solid ${S.border}` }}>
         <div className="flex items-center gap-2">
           <div className="w-6 h-6 rounded-full flex items-center justify-center shrink-0"
@@ -537,7 +537,7 @@ export default function RadioPanel({
       </div>
 
       {/* ── Row 2: frequency band — full width ── */}
-      <div className="flex flex-col flex-grow min-h-0 rounded-xl p-4"
+      <div className="flex flex-col flex-grow min-h-0 rounded-xl p-1"
         style={{ background: S.surface, border: `1px solid ${S.border}` }}>
         <span className="text-sm font-light tracking-[0.25em] uppercase mb-3 shrink-0" style={{ color: S.label }}>
           frequency band
