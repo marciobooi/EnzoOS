@@ -470,93 +470,86 @@ export default function RadioPanel({
         </button>
       </div>
 
-      {/* ── Two-column grid — left: selector + stations | right: tuner band ── */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-stretch flex-grow overflow-hidden">
+      {/* ── Row 1: country picker (left) + fav stations horizontal scroll (right) ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 shrink-0 mb-3">
 
-        {/* Left column — country picker + saved stations */}
-        <div className="lg:col-span-4 flex flex-col gap-3 overflow-y-auto stone-scrollbar min-h-0">
-
-          {/* Country picker */}
-          <div>
-            <span className="text-sm font-light tracking-[0.25em] uppercase block mb-2" style={{ color: S.label }}>
-              select country
-            </span>
-            <div className="flex gap-2 items-center">
-              <CountryPicker value={radioCountry} onChange={setRadioCountry} />
-              {isSearching && (
-                <span className="flex items-end gap-0.5 h-3 shrink-0">
-                  {[0.6, 1, 0.7].map((h, i) => (
-                    <span key={i} className="w-0.5 rounded-full animate-pulse"
-                      style={{ height: `${Math.round(h * 12)}px`, background: S.accent, animationDelay: `${i * 120}ms` }} />
-                  ))}
-                </span>
-              )}
-            </div>
+        {/* Country picker */}
+        <div className="lg:col-span-5 flex flex-col gap-2">
+          <span className="text-sm font-light tracking-[0.25em] uppercase" style={{ color: S.label }}>
+            select country
+          </span>
+          <div className="flex gap-2 items-center">
+            <CountryPicker value={radioCountry} onChange={setRadioCountry} />
+            {isSearching && (
+              <span className="flex items-end gap-0.5 h-3 shrink-0">
+                {[0.6, 1, 0.7].map((h, i) => (
+                  <span key={i} className="w-0.5 rounded-full animate-pulse"
+                    style={{ height: `${Math.round(h * 12)}px`, background: S.accent, animationDelay: `${i * 120}ms` }} />
+                ))}
+              </span>
+            )}
           </div>
+        </div>
 
-          {/* Saved stations */}
-          {favoriteStations.length > 0 && (
-            <div className="flex flex-col gap-2 flex-grow min-h-0 rounded-xl p-3"
-              style={{ background: S.surface, border: `1px solid ${S.border}` }}>
-              <div className="flex justify-between items-center shrink-0">
-                <span className="text-sm font-light tracking-[0.25em] uppercase" style={{ color: S.label }}>
-                  saved stations
-                </span>
-                <span className="text-sm font-light tabular-nums" style={{ color: S.label }}>
-                  {favoriteStations.length}
-                </span>
-              </div>
-              <div className="overflow-y-auto stone-scrollbar flex flex-col gap-1.5 flex-grow min-h-0">
+        {/* Saved stations — horizontal scroll */}
+        <div className="lg:col-span-7 flex flex-col gap-2">
+          <div className="flex justify-between items-center">
+            <span className="text-sm font-light tracking-[0.25em] uppercase" style={{ color: S.label }}>
+              saved stations
+            </span>
+            {favoriteStations.length > 0 && (
+              <span className="text-sm font-light tabular-nums" style={{ color: S.label }}>
+                {favoriteStations.length}
+              </span>
+            )}
+          </div>
+          <div className="rounded-xl p-2 overflow-x-auto stone-scrollbar"
+            style={{ background: S.surface, border: `1px solid ${S.border}` }}>
+            {favoriteStations.length > 0 ? (
+              <div className="flex gap-2" style={{ minWidth: 'max-content' }}>
                 {favoriteStations.map((station, idx) => (
                   <button
                     key={`${station.url}-${idx}`}
-                    className="flex items-center gap-2 p-2 rounded-xl text-left transition-all cursor-pointer active:scale-[0.99] shrink-0"
-                    style={{ background: S.surfaceLo, border: `1px solid ${S.border}`, boxShadow: cardShadow }}
+                    className="flex items-center gap-2 px-3 py-2 rounded-xl text-left transition-all cursor-pointer active:scale-[0.99] shrink-0"
+                    style={{ background: S.surfaceLo, border: `1px solid ${S.border}`, boxShadow: cardShadow, maxWidth: 160 }}
                     onClick={() => { onPlayRadio(station.url, station.name, station.favicon); onClose(); }}
                   >
-                    <StationAvatar station={station} size={28} />
-                    <p className="text-sm font-medium truncate flex-1 leading-tight" style={{ color: S.strong }}>
+                    <StationAvatar station={station} size={24} />
+                    <p className="text-sm font-medium truncate leading-tight" style={{ color: S.strong, maxWidth: 100 }}>
                       {station.name}
                     </p>
                   </button>
                 ))}
               </div>
-            </div>
-          )}
-
-          {favoriteStations.length === 0 && (
-            <div className="flex-grow rounded-xl flex items-center justify-center"
-              style={{ background: S.surface, border: `1px solid ${S.border}` }}>
-              <p className="text-sm font-light text-center px-4" style={{ color: S.label }}>
-                No saved stations yet.<br />Select a country and pick one from the dial.
+            ) : (
+              <p className="text-sm font-light py-1 px-1" style={{ color: S.label }}>
+                No saved stations yet
               </p>
-            </div>
-          )}
-        </div>
-
-        {/* Right column — tuner band, full width */}
-        <div className="lg:col-span-8 flex flex-col justify-between rounded-xl p-4"
-          style={{ background: S.surface, border: `1px solid ${S.border}` }}>
-
-          <span className="text-sm font-light tracking-[0.25em] uppercase block mb-3 shrink-0" style={{ color: S.label }}>
-            frequency band
-            {stationsList.length > 0 && (
-              <span className="normal-case tracking-normal ml-2 text-sm font-light" style={{ color: S.label }}>
-                — drag needle to tune · {stationsList.length} stations
-              </span>
             )}
-          </span>
-
-          <div className="flex-grow flex flex-col justify-center">
-            {stationsList.length > 0
-              ? <FrequencyBandWide
-                  stations={stationsList}
-                  onPlay={(station) => { onPlayRadio(station.url, station.name, station.favicon); onClose(); }}
-                  favoriteStations={favoriteStations}
-                />
-              : <EmptyBandWide />
-            }
           </div>
+        </div>
+      </div>
+
+      {/* ── Row 2: frequency band — full width ── */}
+      <div className="flex flex-col flex-grow min-h-0 rounded-xl p-4"
+        style={{ background: S.surface, border: `1px solid ${S.border}` }}>
+        <span className="text-sm font-light tracking-[0.25em] uppercase mb-3 shrink-0" style={{ color: S.label }}>
+          frequency band
+          {stationsList.length > 0 && (
+            <span className="normal-case tracking-normal ml-2 text-sm font-light" style={{ color: S.label }}>
+              — drag needle to tune · {stationsList.length} stations
+            </span>
+          )}
+        </span>
+        <div className="flex-grow flex flex-col justify-center">
+          {stationsList.length > 0
+            ? <FrequencyBandWide
+                stations={stationsList}
+                onPlay={(station) => { onPlayRadio(station.url, station.name, station.favicon); onClose(); }}
+                favoriteStations={favoriteStations}
+              />
+            : <EmptyBandWide />
+          }
         </div>
       </div>
     </div>
