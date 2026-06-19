@@ -4,22 +4,54 @@ import { S, cardShadow } from '../styles/stone';
 
 
 
-// Always-rolling text ticker — classic LED display style, continuous scroll.
-// Text is duplicated so the loop is seamless. Duration scales with text length
-// so long titles move at the same reading pace as short ones.
-function AutoScroll({ children, outerClass = '', innerClass = '', speed = 80, minDuration = 6 }) {
-  const text = typeof children === 'string' ? children : '';
-  // Rough pixel width estimate: let ResizeObserver refine via ref if needed.
-  // 80 px/s → comfortable kiosk reading speed. Duration = text_chars × avg_px / speed.
-  // We use char count × 18px as a proxy (Doto monospace is ~18px per char at base size).
-  const duration = Math.max(minDuration, (text.length * 18) / speed);
+// Conditional text ticker — scrolls only when text is wider than its container.
+// A hidden measurement span (position:absolute, visibility:hidden) always renders
+// the full single-copy text so scrollWidth is accurate regardless of scroll state.
+// ResizeObserver re-checks on every container resize so it responds to layout changes.
+function AutoScroll({ children, outerClass = '', innerClass = '', speed = 70, minDuration = 6 }) {
+  const containerRef = useRef(null);
+  const measureRef   = useRef(null);
+  const [scrolling, setScrolling] = useState(false);
+  const [duration,  setDuration]  = useState(10);
+
+  useEffect(() => {
+    const container = containerRef.current;
+    const measure   = measureRef.current;
+    if (!container || !measure) return;
+
+    const check = () => {
+      const overflows = measure.scrollWidth > container.clientWidth + 2;
+      setScrolling(overflows);
+      if (overflows) {
+        const excess = measure.scrollWidth - container.clientWidth;
+        setDuration(Math.max(minDuration, excess / speed));
+      }
+    };
+
+    check();
+    const ro = new ResizeObserver(check);
+    ro.observe(container);
+    return () => ro.disconnect();
+  }, [children, speed, minDuration]);
 
   return (
-    <div className={`overflow-hidden ${outerClass}`}>
+    <div ref={containerRef} className={`overflow-hidden relative ${outerClass}`}>
+      {/* Hidden single-copy span — used only for width measurement */}
+      <span ref={measureRef} aria-hidden="true" className={innerClass}
+        style={{ position: 'absolute', visibility: 'hidden',
+                 whiteSpace: 'nowrap', pointerEvents: 'none' }}>
+        {children}
+      </span>
+      {/* Visible content — static ellipsis or scrolling duplicate */}
       <span className={innerClass}
-        style={{ display: 'inline-block', whiteSpace: 'nowrap',
-                 animation: `marquee ${duration}s linear infinite` }}>
-        {children}&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{children}
+        style={scrolling
+          ? { display: 'inline-block', whiteSpace: 'nowrap',
+              animation: `marquee ${duration + minDuration}s linear infinite` }
+          : { display: 'block', whiteSpace: 'nowrap',
+              overflow: 'hidden', textOverflow: 'ellipsis' }}>
+        {scrolling
+          ? <>{children}&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{children}</>
+          : children}
       </span>
     </div>
   );
