@@ -884,12 +884,27 @@ export default function Kiosk() {
     if (!spotify) {
       try {
         const isPaused = playbackState ? playbackState.paused : true;
+        if (source === 'radio') {
+          if (isPaused) {
+            const radioUrl = playbackState?.track_window?.current_track?.url;
+            if (radioUrl) {
+              // MPD still has the URL in its queue — just resume
+              await api.localPlay();
+              setPlaybackState(prev => prev ? { ...prev, paused: false } : prev);
+            } else {
+              // No station in queue yet — open radio search so user can pick one
+              setIsRadioSearchOpen(true);
+            }
+          } else {
+            await api.localPause();
+            setPlaybackState(prev => prev ? { ...prev, paused: true } : prev);
+          }
+          return;
+        }
         if (isPaused) {
           await api.localPlay();
           // Always fetch fresh MPD state after play — never spread the current
-          // playbackState, which may be stale from a previous source (e.g. a
-          // radio track that was still in the closure when the user switched to
-          // local and immediately pressed play).
+          // playbackState, which may be stale from a previous source.
           setTimeout(syncLocalState, 350);
         } else {
           await api.localPause();
