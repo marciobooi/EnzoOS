@@ -406,13 +406,13 @@ function FrequencyBandWide({ stations, onPlay, favoriteStations = [] }) {
 
 function EmptyBandWide() {
   return (
-    <div className="w-full">
+    <div className="w-full mx-4">
       <div className="flex justify-between px-0.5 mb-1">
         {['88', '92', '96', '100', '104', '108'].map(l => (
           <span key={l} className="font-mono" style={{ fontSize: 8, color: S.border, letterSpacing: '0.04em' }}>{l} MHz</span>
         ))}
       </div>
-      <div className="relative rounded-xl overflow-hidden flex items-center justify-center px-2"
+      <div className="relative rounded-xl overflow-hidden flex items-center justify-center"
         style={{ height: 60, background: S.surfaceLo, border: `1px solid ${S.border}`, boxShadow: cardShadow }}>
         {/* Subtle center groove only */}
         <div className="absolute inset-x-0 pointer-events-none"
