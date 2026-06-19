@@ -290,7 +290,7 @@ div[data-theme="ruby"] *::selection {
   border-radius: 20px;
   background: #d6d7d2;
   border-color: #c8c9c4;
-  box-shadow: 0 0 0 1px var(--theme-color-glow), 0 4px 16px rgba(42,40,38,0.12);
+  box-shadow: 0 4px 16px rgba(42,40,38,0.12);
 }
 .album-art--radio::after {
   display: none;
