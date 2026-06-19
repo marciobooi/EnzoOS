@@ -26,6 +26,30 @@ echo -e "${BLUE}================================================================
 echo -e "${GREEN}          Resonance HiFi - Ubuntu Kiosk Installer Script           ${NC}"
 echo -e "${BLUE}====================================================================${NC}"
 
+# ── APT lock helpers ──────────────────────────────────────────────────────────
+# Ubuntu 24.04 runs unattended-upgrades and apt-daily timers that hold the
+# apt lock and cause "E: Could not get lock" failures mid-install.
+# Kill them up-front and apply a 300 s wait-for-lock on every apt_install call.
+stop_apt_daemons() {
+  systemctl stop unattended-upgrades       2>/dev/null || true
+  systemctl stop apt-daily.service         2>/dev/null || true
+  systemctl stop apt-daily-upgrade.service 2>/dev/null || true
+  # Kill any background apt/dpkg processes still holding the lock
+  for pid in $(pgrep -x apt-get || true) $(pgrep -x dpkg || true) $(pgrep -x unattended-upgrade || true); do
+    kill -9 "$pid" 2>/dev/null || true
+  done
+  # Remove stale lock files left by killed processes
+  rm -f /var/lib/dpkg/lock-frontend /var/lib/dpkg/lock /var/lib/apt/lists/lock 2>/dev/null || true
+  dpkg --configure -a 2>/dev/null || true
+}
+
+# Wrapper: always passes DPkg::Lock::Timeout so concurrent lock holders
+# are waited on (up to 5 min) rather than failing immediately.
+apt_install() {
+  apt-get -o DPkg::Lock::Timeout=300 "$@"
+}
+# ─────────────────────────────────────────────────────────────────────────────
+
 # 1. Verify Root Privileges (Must be run as root/sudo)
 if [ "$EUID" -ne 0 ]; then
   echo -e "${RED}Error: This installer must be run with root privileges (sudo).${NC}"
@@ -67,8 +91,9 @@ SPOTIFY_CLIENT_SECRET="aa85b6d1cf624bf2ae3c9fe3769f691b"
 
 # 4. System Updates & Prerequisites
 echo -e "\n${GREEN}[2/7] Updating system package repositories...${NC}"
-apt-get update
-apt-get install -y ca-certificates curl gnupg git build-essential
+stop_apt_daemons
+apt_install update
+apt_install install -y ca-certificates curl gnupg git build-essential
 
 # 5. Clone or Update repository
 if [ ! -d "$PROJECT_DIR" ]; then
@@ -89,8 +114,8 @@ if ! command -v node &> /dev/null; then
   mkdir -p /etc/apt/keyrings
   curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg
   echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_20.x nodistro main" | tee /etc/apt/sources.list.d/nodesource.list
-  apt-get update
-  apt-get install -y nodejs
+  apt_install update
+  apt_install install -y nodejs
 else
   echo -e "${YELLOW}Node.js $(node -v) already installed.${NC}"
 fi
@@ -105,7 +130,7 @@ systemctl --global stop pulseaudio.socket pulseaudio.service 2>/dev/null || true
 systemctl --global disable pulseaudio.socket pulseaudio.service 2>/dev/null || true
 pkill -x pulseaudio 2>/dev/null || true
 # Purge all PulseAudio packages and their config files
-apt-get remove --purge -y \
+apt_install remove --purge -y \
   pulseaudio \
   pulseaudio-utils \
   pulseaudio-module-bluetooth \
@@ -113,7 +138,7 @@ apt-get remove --purge -y \
   pulseaudio-module-gsettings \
   gstreamer1.0-pulseaudio \
   libpulse0 2>/dev/null || true
-apt-get autoremove -y 2>/dev/null || true
+apt_install autoremove -y 2>/dev/null || true
 # Remove the ALSA override file PulseAudio leaves behind even after purge
 rm -f /etc/alsa/conf.d/99-pulse.conf
 rm -f /usr/share/alsa/alsa.conf.d/99-pulse.conf
@@ -121,7 +146,7 @@ echo -e "${GREEN}PulseAudio removed.${NC}"
 
 # Install GUI, Kiosk Display Stack, Audio, SSH, Librespot, and MPD
 echo -e "\n${GREEN}[5/7] Installing display server, window manager, browser, audio, SSH, MPD, and dependencies...${NC}"
-apt-get install -y \
+apt_install install -y \
   xserver-xorg \
   xinit \
   x11-xserver-utils \
@@ -633,7 +658,7 @@ echo -e "\n${GREEN}[6b/7] Installing streaming source services (AirPlay, UPnP, B
 # built from source.
 
 echo -e "${YELLOW}Installing shairport-sync/NQPTP build dependencies...${NC}"
-apt-get install -y \
+apt_install install -y \
   autoconf automake libtool \
   libpopt-dev libconfig-dev libasound2-dev libavahi-client-dev \
   libssl-dev libsoxr-dev libglib2.0-dev xxd libpipewire-0.3-dev \
@@ -644,7 +669,7 @@ apt-get install -y \
 
 # Remove apt shairport-sync if present (old AirPlay 1 package)
 systemctl stop shairport-sync 2>/dev/null || true
-apt-get remove -y shairport-sync 2>/dev/null || true
+apt_install remove -y shairport-sync 2>/dev/null || true
 
 # ── Step 1: NQPTP (required by shairport-sync AirPlay 2) ────────────────────
 _INSTALLED_NQPTP_VERSION=""
@@ -734,7 +759,7 @@ echo -e "${GREEN}shairport-sync ${SHAIRPORT_VERSION} (AirPlay 2) configured (dem
 # Build order: npupnp → libupnpp → upmpdcli
 # All three use meson/ninja build system.
 echo -e "${YELLOW}Installing upmpdcli build dependencies...${NC}"
-apt-get install -y meson ninja-build libmpdclient-dev libmicrohttpd-dev libjsoncpp-dev 2>/dev/null || true
+apt_install install -y meson ninja-build libmpdclient-dev libmicrohttpd-dev libjsoncpp-dev 2>/dev/null || true
 
 if command -v upmpdcli &>/dev/null; then
   echo -e "${YELLOW}upmpdcli already installed — skipping build.${NC}"
@@ -806,7 +831,7 @@ echo -e "${GREEN}upmpdcli installed and configured (demand-activated).${NC}"
 # PipeWire + WirePlumber provide native Bluetooth A2DP support including LDAC/AAC/aptX.
 # bluealsa is NOT needed and conflicts with PipeWire's BT stack.
 echo -e "${YELLOW}Installing Bluetooth packages (bluez — PipeWire handles A2DP natively)...${NC}"
-apt-get install -y \
+apt_install install -y \
   bluez \
   bluez-tools 2>/dev/null || true
 
@@ -818,7 +843,7 @@ systemctl start bluetooth 2>/dev/null || true
 systemctl disable --now bluealsa 2>/dev/null || true
 systemctl disable --now bluealsa-aplay 2>/dev/null || true
 # Remove bluealsa packages if present
-apt-get remove -y bluealsa bluealsa-utils 2>/dev/null || true
+apt_install remove -y bluealsa bluealsa-utils 2>/dev/null || true
 
 echo -e "${GREEN}Bluetooth configured: PipeWire handles A2DP sink natively via WirePlumber.${NC}"
 
