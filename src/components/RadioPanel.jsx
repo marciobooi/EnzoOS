@@ -51,7 +51,7 @@ function StationAvatar({ station, size = 38 }) {
 }
 
 // ── Country picker — Stone flag grid ───────────────────────────────────────
-function CountryPicker({ value, onChange }) {
+function CountryPicker({ value, onChange, fullHeight = false }) {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
   const selected = COUNTRIES.find(c => c.name === value);
@@ -64,10 +64,10 @@ function CountryPicker({ value, onChange }) {
   }, [open]);
 
   return (
-    <div className="relative flex-grow" ref={ref}>
+    <div className={`relative flex-grow ${fullHeight ? 'h-full' : ''}`} ref={ref}>
       <button
         onClick={() => setOpen(v => !v)}
-        className="w-full flex items-center gap-2 rounded-xl px-3 py-2 cursor-pointer transition-all focus:outline-none"
+        className={`w-full flex items-center gap-2 rounded-xl px-3 py-2 cursor-pointer transition-all focus:outline-none ${fullHeight ? 'h-full' : ''}`}
         style={{
           background: S.surface,
           border: `1px solid ${open ? S.accent : S.border}`,
@@ -452,7 +452,7 @@ export default function RadioPanel({
       style={{ background: S.bg, border: `1px solid ${S.borderHi}` }}>
 
       {/* ── Header — mirrors ThemeSettingsControl / EqualizerControl ── */}
-      <div className="flex items-center justify-between pb-3 mb-3 shrink-0"
+      <div className="flex items-center justify-between mb-3 shrink-0"
         style={{ borderBottom: `1px solid ${S.border}` }}>
         <div className="flex items-center gap-2">
           <div className="w-6 h-6 rounded-full flex items-center justify-center shrink-0"
@@ -496,8 +496,8 @@ export default function RadioPanel({
         <div className="grid grid-cols-12 gap-3 items-stretch">
 
           {/* Country picker */}
-          <div className="col-span-5 flex gap-2 items-center">
-            <CountryPicker value={radioCountry} onChange={setRadioCountry} />
+          <div className="col-span-5 flex gap-2 items-stretch">
+            <CountryPicker value={radioCountry} onChange={setRadioCountry} fullHeight />
             {isSearching && (
               <span className="flex items-end gap-0.5 h-3 shrink-0">
                 {[0.6, 1, 0.7].map((h, i) => (
