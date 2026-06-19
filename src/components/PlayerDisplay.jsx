@@ -849,39 +849,37 @@ const PlayerDisplay = React.memo(function PlayerDisplay({
           </button>
 
           {showVolumePopup && (
-            <div className="volume-popup absolute right-14 bottom-0 bg-[#0d1527] border border-white/10 rounded-2xl p-4 flex items-center gap-3 shadow-2xl z-[150] w-64 animate-volume-in">
+            <div className="volume-popup absolute right-14 bottom-0 rounded-2xl p-4 flex items-center gap-3 z-[150] w-64 animate-volume-in"
+              style={{ background: '#d6d7d2', border: '1px solid #bbbcb8', boxShadow: '0 4px 16px rgba(42,40,38,0.14)' }}>
               <button
                 onClick={handleToggleMute}
-                className="text-zinc-400 hover:text-white transition-colors flex-shrink-0 cursor-pointer"
+                className="flex-shrink-0 cursor-pointer transition-colors"
+                style={{ color: '#6a6866' }}
                 type="button"
                 aria-label="Toggle Mute"
               >
                 {isMuted || volume === 0 ? (
-                  <VolumeX className="h-5 w-5 text-rose-500" />
+                  <VolumeX className="h-5 w-5" style={{ color: '#7a3535' }} />
                 ) : (
                   <Volume2 className="h-5 w-5" />
                 )}
               </button>
               <input
-                type="range"
-                min="0"
-                max="100"
+                type="range" min="0" max="100"
                 value={isMuted ? 0 : volume}
                 onChange={handleVolumeChange}
-                className="flex-grow h-1.5 bg-zinc-800 rounded-lg appearance-none cursor-pointer accent-[var(--theme-color)] transition-all focus:outline-none"
+                className="stone-range flex-grow"
                 style={{
                   background: `linear-gradient(to right, var(--theme-color) 0%, var(--theme-color) ${
                     isMuted ? 0 : volume
-                  }%, rgba(255, 255, 255, 0.06) ${
-                    isMuted ? 0 : volume
-                  }%, rgba(255, 255, 255, 0.06) 100%)`
+                  }%, #c5c4c0 ${isMuted ? 0 : volume}%, #c5c4c0 100%)`
                 }}
               />
               <div className="text-right shrink-0 min-w-[44px]">
-                <div className="text-[10px] text-zinc-300 font-mono font-bold leading-tight">
-                  {isMuted ? '−∞' : toVolumeDb(volume)}<span className="text-[8px] text-zinc-500"> dB</span>
+                <div className="text-[10px] font-mono font-bold leading-tight" style={{ color: '#1a1918' }}>
+                  {isMuted ? '−∞' : toVolumeDb(volume)}<span className="text-[8px]" style={{ color: '#9a9896' }}> dB</span>
                 </div>
-                <div className="text-[8px] text-zinc-600 font-mono leading-tight">{isMuted ? 'MUTE' : `${volume}%`}</div>
+                <div className="text-[8px] font-mono leading-tight" style={{ color: '#9a9896' }}>{isMuted ? 'MUTE' : `${volume}%`}</div>
               </div>
             </div>
           )}
