@@ -542,14 +542,7 @@ export default function RadioPanel({
       {/* ── Row 2: frequency band — full width ── */}
       <div className="flex flex-col flex-grow min-h-0 rounded-xl p-1"
         style={{ background: S.surface, border: `1px solid ${S.border}` }}>
-        <span className="text-xs font-light tracking-[0.25em] uppercase mb-1 shrink-0" style={{ color: S.label }}>
-          frequency band
-          {stationsList.length > 0 && (
-            <span className="normal-case tracking-normal ml-2 text-sm font-light" style={{ color: S.label }}>
-              — drag needle to tune · {stationsList.length} stations
-            </span>
-          )}
-        </span>
+
         <div className="flex-grow flex flex-col justify-center">
           {stationsList.length > 0
             ? <FrequencyBandWide
@@ -558,8 +551,16 @@ export default function RadioPanel({
                 favoriteStations={favoriteStations}
               />
             : <EmptyBandWide />
+            
           }
         </div>
+               
+          {stationsList.length > 0 && (
+            <span className="text-xs font-light  normal-case tracking-normal ml-2 text-sm font-light" style={{ color: S.label }}>
+              — drag needle to tune · {stationsList.length} stations
+            </span>
+          )}
+       
       </div>
     </div>
   );
