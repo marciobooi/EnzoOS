@@ -360,7 +360,7 @@ function FrequencyBandWide({ stations, onPlay, favoriteStations = [] }) {
   useEffect(() => { setNeedleIdx(null); setPlayedIdx(null); }, [stations]);
 
   return (
-    <div className="w-full mx-4">
+    <div className="w-[90vw] mx-4">
       <div className="relative">
         {tooltipPct !== null && displayStation && (
           <div className="absolute pointer-events-none" style={{ left: `${tooltipPct}%`, bottom: 'calc(100% + 8px)', transform: 'translateX(-50%)', zIndex: 20 }}>
