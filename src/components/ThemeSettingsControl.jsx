@@ -3,7 +3,7 @@ import { Palette, Sun, Monitor, Check } from 'lucide-react';
 import { S, cardShadow, swatchRing } from '../styles/stone';
 
 export const THEME_COLORS = [
-  { name: 'amber',    value: '#c8841c', label: 'Vintage Amber' },
+  { name: 'amber',    value: '#2a2826', label: 'Stone Charcoal' },
   { name: 'emerald',  value: '#1a9e6a', label: 'Classic Green' },
   { name: 'cyan',     value: '#0e9ab8', label: 'Lab Blue'      },
   { name: 'amethyst', value: '#8a4edc', label: 'Laser Purple'  },
