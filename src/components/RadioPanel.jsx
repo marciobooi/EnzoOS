@@ -451,8 +451,8 @@ export default function RadioPanel({
   }, [radioCountry, isOpen]);
 
   return (
-    <div className="rounded-2xl p-5 h-full flex flex-col justify-between font-sans overflow-hidden"
-      style={{ background: S.bg, border: `1px solid ${S.borderHi}` }}>
+    <div className="rounded-2xl h-full flex flex-col justify-between font-sans overflow-hidden"
+      style={{ background: S.bg }}>
 
       {/* ── Header — mirrors ThemeSettingsControl / EqualizerControl ── */}
       <div className="flex items-center justify-between mb-1 shrink-0"
