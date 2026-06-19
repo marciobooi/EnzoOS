@@ -412,7 +412,7 @@ function EmptyBandWide() {
           <span key={l} className="font-mono" style={{ fontSize: 8, color: S.border, letterSpacing: '0.04em' }}>{l} MHz</span>
         ))}
       </div>
-      <div className="relative rounded-xl overflow-hidden flex items-center justify-center"
+      <div className="relative rounded-xl overflow-hidden flex items-center justify-center px-2"
         style={{ height: 60, background: S.surfaceLo, border: `1px solid ${S.border}`, boxShadow: cardShadow }}>
         {/* Subtle center groove only */}
         <div className="absolute inset-x-0 pointer-events-none"
