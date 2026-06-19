@@ -556,8 +556,8 @@ export default function RadioPanel({
         </div>
                
           {stationsList.length > 0 && (
-            <span className="text-xs font-light  normal-case tracking-normal ml-2 text-sm font-light" style={{ color: S.label }}>
-              — drag needle to tune · {stationsList.length} stations
+            <span className="text-xs font-light text-center center normal-case tracking-normal ml-2 text-sm font-light" style={{ color: S.label }}>
+              Drag needle to tune / select station · {stationsList.length} stations
             </span>
           )}
        
