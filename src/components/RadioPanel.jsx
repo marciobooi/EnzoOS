@@ -409,23 +409,23 @@ function EmptyBandWide() {
     <div className="w-full">
       <div className="flex justify-between px-0.5 mb-1">
         {['88', '92', '96', '100', '104', '108'].map(l => (
-          <span key={l} className="font-mono" style={{ fontSize: 8, color: S.label, letterSpacing: '0.04em' }}>{l} MHz</span>
+          <span key={l} className="font-mono" style={{ fontSize: 8, color: S.border, letterSpacing: '0.04em' }}>{l} MHz</span>
         ))}
       </div>
-      <div className="relative rounded-xl overflow-hidden" style={{ height: 96, background: S.surfaceLo, border: `1px solid ${S.border}`, opacity: 0.5, boxShadow: cardShadow }}>
-        <div className="absolute inset-x-0" style={{ top: '50%', height: 1, background: S.border, transform: 'translateY(-50%)' }} />
-        {Array.from({ length: 20 }).map((_, i) => (
-          <div key={i} className="absolute" style={{ left: `${(i / 19) * 100}%`, top: '50%', transform: 'translate(-50%, -50%)', width: 1, height: i % 4 === 0 ? 30 : 15, background: S.track, borderRadius: 1 }} />
-        ))}
+      <div className="relative rounded-xl overflow-hidden flex items-center justify-center"
+        style={{ height: 96, background: S.surfaceLo, border: `1px solid ${S.border}`, boxShadow: cardShadow }}>
+        {/* Subtle center groove only */}
+        <div className="absolute inset-x-0 pointer-events-none"
+          style={{ top: '50%', height: 1, background: `linear-gradient(90deg, transparent, ${S.border} 20%, ${S.border} 80%, transparent)`, transform: 'translateY(-50%)' }} />
+        <p className="text-sm font-light tracking-wide relative z-10" style={{ color: S.label }}>
+          Select a country to scan stations
+        </p>
       </div>
       <div className="flex justify-between mt-1 px-0.5">
         {Array.from({ length: 21 }).map((_, i) => (
-          <div key={i} style={{ width: i % 5 === 0 ? 1.5 : 1, height: i % 5 === 0 ? 6 : 3, background: i % 5 === 0 ? S.track : S.border, borderRadius: 1 }} />
+          <div key={i} style={{ width: i % 5 === 0 ? 1.5 : 1, height: i % 5 === 0 ? 6 : 3, background: S.border, borderRadius: 1 }} />
         ))}
       </div>
-      <p className="text-sm font-light text-center mt-3" style={{ color: S.label }}>
-        Select a country above to scan stations
-      </p>
     </div>
   );
 }
