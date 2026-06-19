@@ -29,6 +29,7 @@ export default function RadioSearchOverlay() {
       style={{ background: S.bg, border: `1px solid ${S.borderHi}` }}
     >
       <RadioPanel
+        isOpen={isRadioSearchOpen}
         onToggleSource={() => handleToggleSource('radio')}
         onClose={() => setIsRadioSearchOpen(false)}
         radioCountry={radioCountry}

@@ -442,10 +442,13 @@ export default function RadioPanel({
   onPlayRadio,
   favoriteStations = [],
   onToggleFavoriteRadio,
+  isOpen = false,
 }) {
+  // Only scan when the overlay is actually visible — prevents firing for every
+  // stored radioCountry value while the overlay is closed (causes 502 storms).
   useEffect(() => {
-    if (radioCountry) handleRadioByCountry(radioCountry);
-  }, [radioCountry]);
+    if (isOpen && radioCountry) handleRadioByCountry(radioCountry);
+  }, [radioCountry, isOpen]);
 
   return (
     <div className="rounded-2xl p-5 h-full flex flex-col justify-between font-sans overflow-hidden"
