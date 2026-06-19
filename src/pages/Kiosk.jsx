@@ -312,6 +312,43 @@ export default function Kiosk() {
     return () => clearInterval(pollIntervalId);
   }, [token, spotify]);
 
+  // Poll MPD ICY metadata for radio source — some stations send StreamTitle
+  // in "Artist - Song" format. Falls back silently when no ICY data present.
+  useEffect(() => {
+    if (source !== 'radio') return;
+
+    const syncRadioIcy = async () => {
+      try {
+        const status = await api.localGetStatus();
+        if (!status?.name) return;
+        // Parse ICY "Artist - Song" — split on first " - "
+        const sep = status.name.indexOf(' - ');
+        const icyTitle  = sep > 0 ? status.name.slice(sep + 3) : status.name;
+        const icyArtist = sep > 0 ? status.name.slice(0, sep)  : null;
+        setPlaybackState(prev => {
+          if (!prev) return prev;
+          const cur = prev.track_window?.current_track;
+          if (cur?.name === icyTitle) return prev; // no change
+          return {
+            ...prev,
+            track_window: {
+              ...prev.track_window,
+              current_track: {
+                ...cur,
+                name:    icyTitle,
+                artists: icyArtist ? [{ name: icyArtist }] : (cur?.artists || [{ name: 'Live Stream' }]),
+              },
+            },
+          };
+        });
+      } catch {}
+    };
+
+    syncRadioIcy();
+    const id = setInterval(() => { if (!standbyRef.current) syncRadioIcy(); }, 10000);
+    return () => clearInterval(id);
+  }, [source]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Poll MPD state for local source so track info and paused state stay current
   // on both kiosk and remote. Torn down when source changes away from local.
   useEffect(() => {
