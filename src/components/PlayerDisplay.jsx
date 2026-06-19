@@ -497,16 +497,17 @@ const PlayerDisplay = React.memo(function PlayerDisplay({
           {/* Topline Readout & Audio Router */}
           <div className="track-details">
             <div className="hifi-topline">
-              <button 
+              <button
                 onClick={onToggleSource}
-                className={`status-pill cursor-pointer transition-colors border ${
-                  source === 'spotify' 
-                    ? 'text-emerald-400 border-emerald-500/20 bg-emerald-500/5' 
-                    : 'text-amber-500 border-amber-500/20 bg-amber-500/5'
-                }`}
+                className="status-pill cursor-pointer transition-colors border font-sans"
                 title="Click to Switch Plugin Source"
+                style={source === 'spotify'
+                  ? { color: '#1a9e6a', borderColor: 'rgba(26,158,106,0.25)', background: 'rgba(26,158,106,0.07)' }
+                  : { color: 'var(--theme-color)', borderColor: 'var(--theme-color-glow)', background: 'var(--theme-color-dim)' }
+                }
               >
-                <span className={`status-dot ${source === 'spotify' ? 'bg-emerald-400' : 'bg-amber-500'}`}></span>
+                <span className="status-dot"
+                  style={{ background: source === 'spotify' ? '#1a9e6a' : 'var(--theme-color)' }} />
                 PLUGIN: {source?.toUpperCase() || ''}
               </button>
            
@@ -572,15 +573,15 @@ const PlayerDisplay = React.memo(function PlayerDisplay({
                         : 'MPD → PipeWire → CamillaDSP → DAC'
                       ));
 
-                  const codecColor = idle
-                    ? 'bg-zinc-800/40 text-zinc-500 border-zinc-700/30'
-                    : source === 'spotify' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
-                    : source === 'radio'   ? 'bg-amber-500/10 text-amber-400 border-amber-500/20'
-                    : 'bg-cyan-500/10 text-cyan-400 border-cyan-500/20';
+                  // Codec badge: idle uses Stone muted; all active sources use current theme color
+                  const codecColor = idle ? 'border-[#c8c9c4]' : '';
+                  const codecStyle = idle
+                    ? { background: '#d0d1cc', color: '#9a9896', borderColor: '#c8c9c4' }
+                    : { background: 'var(--theme-color-dim)', color: 'var(--theme-color)', borderColor: 'var(--theme-color-glow)' };
 
                   return (
-                    <div className="flex items-center gap-1.5 mt-1 text-[8px] font-mono text-zinc-400 tracking-wider flex-wrap">
-                      <span className={`px-1 rounded-[3px] font-extrabold text-[7px] border ${codecColor}`}>
+                    <div className="flex items-center gap-1.5 mt-1 text-[8px] font-mono tracking-wider flex-wrap" style={{ color: '#9a9896' }}>
+                      <span className={`px-1 rounded-[3px] font-extrabold text-[7px] border ${codecColor}`} style={codecStyle}>
                         {codecLabel}
                       </span>
                       <span>{rateLabel}</span>
@@ -609,8 +610,8 @@ const PlayerDisplay = React.memo(function PlayerDisplay({
                   <>
                     {/* Left Channel Mechanical VU */}
                     <div className="vu-channel-box">
-                      <div className="vu-title"> 
-                      <span className="text-zinc-400">LINE LEVEL L</span>
+                      <div className="vu-title">
+                        <span style={{ color: 'var(--color-faded)' }}>LINE LEVEL L</span>
                       </div>
                       <div className="vu-dial-area">
                         <div className="vu-dot-grid" />
@@ -630,8 +631,8 @@ const PlayerDisplay = React.memo(function PlayerDisplay({
 
                     {/* Right Channel Mechanical VU */}
                     <div className="vu-channel-box">
-                      <div className="vu-title"> 
-<span className="text-zinc-400">LINE LEVEL R</span>
+                      <div className="vu-title">
+                        <span style={{ color: 'var(--color-faded)' }}>LINE LEVEL R</span>
                       </div>
                         
                       <div className="vu-dial-area">
@@ -742,7 +743,7 @@ const PlayerDisplay = React.memo(function PlayerDisplay({
             {source === 'radio' && onToggleRadioSearch && (
               <button
                 onClick={onToggleRadioSearch}
-                className="icon-button search text-amber-500 border-amber-500/50"
+                className="icon-button search theme-text theme-border-glow"
                 type="button"
                 aria-label="Search Stations"
                 title="Search Stations"
