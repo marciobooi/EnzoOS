@@ -109,19 +109,24 @@ body {
 
 
 
-/* Scrolling Marquee */
+/* Scrolling Marquee — original (kept for compatibility) */
 @keyframes marquee {
   0% { transform: translateX(0%); }
   100% { transform: translateX(-50%); }
 }
-
 .marquee-content {
   display: inline-block;
   white-space: nowrap;
   animation: marquee 15s linear infinite;
 }
-.marquee-content:hover {
-  animation-play-state: paused;
+.marquee-content:hover { animation-play-state: paused; }
+
+/* Text ticker — pause at start → scroll → pause at end → snap back.
+   Duration is set dynamically via the animation-duration style prop. */
+@keyframes text-ticker {
+  0%, 12%   { transform: translateX(0); }
+  72%, 88%  { transform: translateX(-50%); }
+  89%, 100% { transform: translateX(0); }
 }
 
 /* Custom 2026 Dot Matrix Player Styles */

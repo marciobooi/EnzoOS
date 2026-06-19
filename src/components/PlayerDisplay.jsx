@@ -4,6 +4,27 @@ import { S, cardShadow } from '../styles/stone';
 
 
 
+// Always-rolling text ticker — classic LED display style, continuous scroll.
+// Text is duplicated so the loop is seamless. Duration scales with text length
+// so long titles move at the same reading pace as short ones.
+function AutoScroll({ children, outerClass = '', innerClass = '', speed = 80, minDuration = 6 }) {
+  const text = typeof children === 'string' ? children : '';
+  // Rough pixel width estimate: let ResizeObserver refine via ref if needed.
+  // 80 px/s → comfortable kiosk reading speed. Duration = text_chars × avg_px / speed.
+  // We use char count × 18px as a proxy (Doto monospace is ~18px per char at base size).
+  const duration = Math.max(minDuration, (text.length * 18) / speed);
+
+  return (
+    <div className={`overflow-hidden ${outerClass}`}>
+      <span className={innerClass}
+        style={{ display: 'inline-block', whiteSpace: 'nowrap',
+                 animation: `marquee ${duration}s linear infinite` }}>
+        {children}&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{children}
+      </span>
+    </div>
+  );
+}
+
 // Map 0–100 slider value to a dB string for display (matches server toDb())
 function toVolumeDb(vol) {
   if (vol <= 0) return '−∞';
@@ -531,9 +552,9 @@ const PlayerDisplay = React.memo(function PlayerDisplay({
 
             {/* Title Container & Live Volume Popup */}
             <div className="title-container mt-1">
-              <h1 className="track-title truncate w-[75%]" title={sanitizeTrackName(trackName)}>
+              <AutoScroll outerClass="w-[75%]" innerClass="track-title" speed={120} minDuration={8}>
                 {sanitizeTrackName(trackName)}
-              </h1>
+              </AutoScroll>
               <div className={`volume-feedback ${showVolumeFeedback ? 'visible' : ''}`} aria-live="polite">
                 {isMuted ? 'MUTE' : volume}
               </div>
@@ -542,8 +563,8 @@ const PlayerDisplay = React.memo(function PlayerDisplay({
             {/* Metadata & Mini Visualizer */}
             <div className="metadata-row mt-1.5">
               <div className="truncate w-[60%] flex flex-col gap-0.5">
-                <div className="track-artist truncate">{trackArtist}</div>
-                <div className="track-album truncate">{trackAlbumName}</div>
+                <AutoScroll innerClass="track-artist" speed={70}>{trackArtist}</AutoScroll>
+                <AutoScroll innerClass="track-album" speed={70}>{trackAlbumName}</AutoScroll>
                 
                 {/* Audiophile HUD Telemetry & Signal Path — live data from /api/player/signal-path */}
                 {(() => {
