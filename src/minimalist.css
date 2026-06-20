@@ -59,12 +59,12 @@ div[data-active-theme="minimalist"] .music-player {
 
 
 
-background-image: linear-gradient(
-  to left,
-  #333333,
-  #333333 50%,
-  #eeeeee 75%,
-  #333333 75%
+background: linear-gradient(
+  to left, 
+  rgba(51, 51, 51, 0) 0%,     /* Fully transparent on the right */
+  rgba(51, 51, 51, 0.4) 50%,  /* Mid-tone transition layer */
+  rgba(51, 51, 51, 0.85) 85%, /* Rich dark tone near the left */
+  rgba(51, 51, 51, 1) 100%    /* Solid color at the exact left edge */
 );
 
 
