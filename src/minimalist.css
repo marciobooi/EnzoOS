@@ -42,9 +42,10 @@ div[data-active-theme="minimalist"] .music-player {
     var(--deep) 68%),
    var(--album-art-url);
   background-blend-mode: normal;
-  background-position: right center;
-  background-repeat: no-repeat;
-  background-size: 56% !important;
+  background-position: center center, right center;
+  background-repeat: no-repeat, no-repeat;
+  /* Separate sizes: gradient covers 100%, album art covers 56% on the right */
+  background-size: 100% 100%, 56% auto;
   border: none;
   border-radius: 0;
 }
@@ -145,15 +146,31 @@ div[data-active-theme="minimalist"] .track-details {
   flex-direction: column !important;
   gap: 0.5rem !important;
 }
+/* Make the AutoScroll wrapper fill the full title area (volume-feedback is hidden) */
+div[data-active-theme="minimalist"] .title-container > div:first-child {
+  width: 100% !important;
+  /* overflow: clip is stricter than overflow: hidden and properly clips
+     CSS transform animations (marquee) without establishing a scroll container */
+  overflow: clip !important;
+  /* Force compositing layer so overflow: clip clips transformed children */
+  transform: translateZ(0);
+}
+
 div[data-active-theme="minimalist"] .track-title {
   font-size: 3.2rem !important;
   font-weight: 950 !important;
   color: #fff !important;
   letter-spacing: -0.04em !important;
   line-height: 1.05 !important;
-  text-wrap: balance !important;
-      width: 100% !important;
+  /* Do NOT force width: 100% on the span — it breaks the inline-block
+     marquee measurement. Width is handled by the AutoScroll wrapper above. */
 }
+/* AutoScroll wrappers for artist/album also need overflow: clip */
+div[data-active-theme="minimalist"] .metadata-row > div:first-child > div {
+  overflow: clip !important;
+  transform: translateZ(0);
+}
+
 div[data-active-theme="minimalist"] .track-artist {
   font-size: 1.25rem !important;
   font-weight: 500 !important;
