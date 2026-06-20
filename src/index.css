@@ -421,13 +421,17 @@ div[data-theme="ruby"] *::selection {
 }
 
 .hifi-visualizer {
-  display: flex;
-  align-items: stretch;
-  gap: 15px;
-  width: 216px;
-  align-self: stretch; /* fill the cross-axis (height) of .metadata-row via flex alignment */
-  min-height: 0;       /* allow shrinking below content in constrained layouts */
-  padding: 6px;
+  align-self: stretch;
+    align-items: stretch;
+    gap: 15px;
+    width: 216px;
+    min-height: 0;
+    padding: 6px;
+    display: flex;
+    position: absolute;
+    top: 22%;
+    left: 72%;
+    height: 7rem;  
 }
 
 .vu-channel-box {
