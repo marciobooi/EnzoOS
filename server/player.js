@@ -406,33 +406,36 @@ function detectDac() {
  * Written via sudo tee; PipeWire is restarted only if the config changed.
  */
 export async function updatePipeWireClock(dacInfo) {
-  const rates = dacInfo?.supportedRates;
-  if (!rates || rates.length === 0) return;
-
-  const defaultRate = rates.includes(48000) ? 48000 : rates[0];
-  const rateList    = rates.join(' ');
-  const confPath    = '/etc/pipewire/pipewire.conf.d/52-resonance-bitperfect.conf';
-
-  const content = `# Resonance HiFi — native sample-rate selection
-# Generated from detected DAC: ${dacInfo.cardName} (${dacInfo.device})
-# Supported rates: [ ${rateList} ]
-# PipeWire switches its graph clock to the source native rate when it appears
-# in this list, eliminating inter-domain resampling. CamillaDSP follows via
-# the MPD rate watcher. Only rates the DAC actually supports are included.
+  // IMPORTANT: clock.allowed-rates is intentionally NOT used here.
+  // The ALSA loopback bridge (hw:Loopback,0,0 ↔ loop_dsnoop) requires a
+  // FIXED sample rate shared by both PipeWire and CamillaDSP. If PipeWire
+  // switches clock rates (e.g. to 44100 Hz for AAC radio), hw:Loopback,0,0
+  // is opened at the new rate while loop_dsnoop is configured for 48000 Hz
+  // → rate mismatch → PCM Slave Active stays off → silence.
+  //
+  // PipeWire resamples all content to 48000 Hz before writing to the loopback.
+  // True bit-perfect requires the CamillaDSP ALSA plugin (Phase 2).
+  //
+  // Also: restarting PipeWire drops MPD's connection ("Failed to open audio
+  // output") and requires manual MPD restart. Never restart PipeWire from here.
+  const confPath = '/etc/pipewire/pipewire.conf.d/52-resonance-bitperfect.conf';
+  const content = `# Resonance HiFi — PipeWire fixed clock at 48000 Hz
+# Generated from detected DAC: ${dacInfo?.cardName || 'unknown'} (${dacInfo?.device || 'unknown'})
+# clock.allowed-rates is intentionally absent: the ALSA loopback bridge
+# requires a fixed rate shared by PipeWire and CamillaDSP. Rate switching
+# causes the loopback to stop delivering audio (PCM Slave Active = off).
 context.properties = {
-    default.clock.rate          = ${defaultRate}
-    default.clock.allowed-rates = [ ${rateList} ]
+    default.clock.rate          = 48000
     default.clock.quantum       = 1024
     default.clock.min-quantum   = 32
     default.clock.max-quantum   = 8192
 }
 `;
 
-  // Read current config — skip write if nothing changed
   let current = '';
   try { current = fs.readFileSync(confPath, 'utf8'); } catch {}
   if (current.trim() === content.trim()) {
-    console.log(`[PipeWire] Clock config unchanged (${rateList}) — skipping update.`);
+    console.log('[PipeWire] Clock config unchanged (48000 Hz fixed) — skipping update.');
     return;
   }
 
@@ -440,25 +443,13 @@ context.properties = {
   try {
     fs.writeFileSync(tempPath, content, 'utf8');
     await execPromise(`sudo /usr/bin/tee ${confPath} < ${tempPath} > /dev/null`);
-    console.log(`[PipeWire] Updated clock.allowed-rates: [ ${rateList} ]`);
+    console.log('[PipeWire] Updated clock config (48000 Hz fixed, no allowed-rates).');
+    // NOTE: NOT restarting PipeWire — doing so drops MPD's audio connection.
+    // The new config takes effect on the next PipeWire session start (reboot).
   } catch (err) {
     console.warn('[PipeWire] Failed to write clock config (check sudoers):', err.message);
-    return;
   } finally {
     try { fs.unlinkSync(tempPath); } catch {}
-  }
-
-  // Restart PipeWire user session to apply new clock config
-  try {
-    const env = {
-      ...process.env,
-      XDG_RUNTIME_DIR: '/run/user/1000',
-      DBUS_SESSION_BUS_ADDRESS: 'unix:path=/run/user/1000/bus',
-    };
-    await execPromise('systemctl --user restart pipewire pipewire-pulse wireplumber', { env });
-    console.log('[PipeWire] Restarted — new clock config active.');
-  } catch (err) {
-    console.warn('[PipeWire] Restart failed (will apply on next session start):', err.message);
   }
 }
 

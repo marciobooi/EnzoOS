@@ -264,18 +264,17 @@ context.modules = [
 ]
 PWLBEOF
 
-# ── PipeWire bit-perfect: native clock rate switching ────────────────────────
-# clock.allowed-rates lets PipeWire switch its graph clock to match the dominant
-# source's native rate (44.1 kHz FLAC, 48 kHz stream, 96 kHz hi-res, etc.).
-# No resampling occurs when source rate is in this list — bit-perfect path.
-# The Resonance MPD rate watcher reconfigures CamillaDSP to match automatically.
+# ── PipeWire clock: fixed at 48000 Hz ────────────────────────────────────────
+# clock.allowed-rates is intentionally NOT used: the ALSA loopback bridge
+# (hw:Loopback,0,0 ↔ loop_dsnoop at 48000 Hz) requires a fixed shared rate.
+# If PipeWire switches clock (e.g. to 44100 Hz), the loopback fails to connect
+# → PCM Slave Active stays off → silence. PipeWire resamples all content to
+# 48000 Hz inside its graph before writing to the loopback bridge.
 cat <<'BPEOF' > /etc/pipewire/pipewire.conf.d/52-resonance-bitperfect.conf
-# Resonance HiFi — native sample-rate selection (bit-perfect path)
-# PipeWire switches its processing clock to the source's native rate when it
-# appears in this list, eliminating inter-domain resampling for hi-res audio.
+# Resonance HiFi — PipeWire fixed clock at 48000 Hz
+# clock.allowed-rates absent: ALSA loopback bridge requires fixed rate.
 context.properties = {
     default.clock.rate          = 48000
-    default.clock.allowed-rates = [ 44100 48000 88200 96000 176400 192000 ]
     default.clock.quantum       = 1024
     default.clock.min-quantum   = 32
     default.clock.max-quantum   = 8192
