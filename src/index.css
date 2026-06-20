@@ -429,9 +429,9 @@ div[data-theme="ruby"] *::selection {
     padding: 6px;
     display: flex;
     position: absolute;
-    top: 22%;
-    left: 72%;
-    height: 7rem;  
+      top: 27%;
+    left: 71%;
+    height: 6.5rem;  
 }
 
 .vu-channel-box {

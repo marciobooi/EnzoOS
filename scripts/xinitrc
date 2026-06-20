@@ -107,7 +107,7 @@ while true; do
   "$CHROMIUM_BIN" \
     --kiosk \
     --app=http://localhost:5000/kiosk \
-    --window-size=800,480 \
+    --window-size=1480,320 \
     --autoplay-policy=no-user-gesture-required \
     --touch-events=enabled \
     --user-data-dir="$HOME/snap/chromium/common/kiosk-profile" \
