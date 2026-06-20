@@ -457,55 +457,85 @@ const PlayerDisplay = React.memo(function PlayerDisplay({
   const [extractedRgb, setExtractedRgb] = useState('5, 10, 20');
 
   useEffect(() => {
+    const el = document.documentElement;
+
     if (activeTheme !== 'minimalist') {
       setExtractedRgb('5, 10, 20');
-      document.documentElement.style.removeProperty('--extracted-rgb');
+      el.style.removeProperty('--extracted-rgb');
+      el.style.removeProperty('--deep');
+      el.style.removeProperty('--album-art-url');
       return;
     }
-    if (!albumImage) {
-      setExtractedRgb('5, 10, 20');
-      document.documentElement.style.setProperty('--extracted-rgb', '5, 10, 20');
+
+    // Always set the album art URL so the CSS background-image layer works
+    const artUrl = albumImage && !albumImage.includes('unsplash.com') ? albumImage : null;
+    if (artUrl) {
+      el.style.setProperty('--album-art-url', `url('${artUrl}')`);
+    } else {
+      el.style.removeProperty('--album-art-url');
+    }
+
+    if (!artUrl) {
+      const fallback = '5, 10, 20';
+      setExtractedRgb(fallback);
+      el.style.setProperty('--extracted-rgb', fallback);
+      el.style.setProperty('--deep', 'rgb(5, 10, 20)');
       return;
     }
+
     const img = new Image();
     img.crossOrigin = 'Anonymous';
-    img.src = albumImage;
+    img.src = artUrl;
+
     img.onload = () => {
       try {
+        // Sample a 4×4 area near the centre-left for dominant hue
         const canvas = document.createElement('canvas');
-        canvas.width = 1;
-        canvas.height = 1;
+        canvas.width = 4; canvas.height = 4;
         const ctx = canvas.getContext('2d');
-        if (ctx) {
-          ctx.drawImage(img, 0, 0, 1, 1);
-          const data = ctx.getImageData(0, 0, 1, 1).data;
-          const r = data[0];
-          const g = data[1];
-          const b = data[2];
-          
-          // Darken the dominant color slightly (factor 0.18) to keep contrast high for white text
-          const factor = 0.18;
-          const dr = Math.round(r * factor);
-          const dg = Math.round(g * factor);
-          const db = Math.round(b * factor);
-          
-          const val = `${dr}, ${dg}, ${db}`;
-          setExtractedRgb(val);
-          document.documentElement.style.setProperty('--extracted-rgb', val);
+        if (!ctx) throw new Error('no ctx');
+        ctx.drawImage(img, 0, 0, 4, 4);
+        const pixels = ctx.getImageData(0, 0, 4, 4).data;
+
+        // Average R/G/B across sampled pixels
+        let rSum = 0, gSum = 0, bSum = 0, count = 0;
+        for (let i = 0; i < pixels.length; i += 4) {
+          rSum += pixels[i]; gSum += pixels[i + 1]; bSum += pixels[i + 2]; count++;
         }
+        const r = Math.round(rSum / count);
+        const g = Math.round(gSum / count);
+        const b = Math.round(bSum / count);
+
+        // --extracted-rgb: full vivid colour (rgba opacity handles blending in CSS)
+        const rgb = `${r}, ${g}, ${b}`;
+        // --deep: very dark version (12% brightness) for the solid left edge of the gradient
+        const dr = Math.round(r * 0.12);
+        const dg = Math.round(g * 0.12);
+        const db = Math.round(b * 0.12);
+
+        setExtractedRgb(rgb);
+        el.style.setProperty('--extracted-rgb', rgb);
+        el.style.setProperty('--deep', `rgb(${dr}, ${dg}, ${db})`);
       } catch (err) {
-        console.warn('Failed to extract dominant color:', err);
-        setExtractedRgb('5, 10, 20');
-        document.documentElement.style.setProperty('--extracted-rgb', '5, 10, 20');
+        // CORS taint or other error — fall back to dark neutral
+        const fallback = '5, 10, 20';
+        setExtractedRgb(fallback);
+        el.style.setProperty('--extracted-rgb', fallback);
+        el.style.setProperty('--deep', 'rgb(5, 10, 20)');
       }
     };
+
     img.onerror = () => {
-      setExtractedRgb('5, 10, 20');
-      document.documentElement.style.setProperty('--extracted-rgb', '5, 10, 20');
+      const fallback = '5, 10, 20';
+      setExtractedRgb(fallback);
+      el.style.setProperty('--extracted-rgb', fallback);
+      el.style.setProperty('--deep', 'rgb(5, 10, 20)');
     };
 
     return () => {
-      document.documentElement.style.removeProperty('--extracted-rgb');
+      el.style.removeProperty('--extracted-rgb');
+      el.style.removeProperty('--deep');
+      el.style.removeProperty('--album-art-url');
     };
   }, [albumImage, activeTheme]);
 
