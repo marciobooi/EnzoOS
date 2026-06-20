@@ -1,11 +1,13 @@
 /* ==============================================================================
-   Minimalist Theme - 2-Column Audio Console (Widescreen Poster Fade)
+   Minimalist Theme — Full-bleed album art + gradient overlay
+   Layout: album art covers the full player as background-image (cover).
+   A ::before pseudo-element carries the gradient mask from deep/colour (left)
+   to transparent (right) so the art bleeds through on the right side.
+   Text and play button live in .details-column on top (z-index 2).
    ============================================================================= */
 
 div[data-active-theme="minimalist"] {
-  /* Ink vars are computed dynamically via JS luminance check so text stays
-     readable regardless of whether the album art is light or dark.
-     Fallbacks here are dark-background defaults. */
+  /* Ink vars set dynamically by JS luminance check (fallbacks = dark bg) */
   --ink:         rgba(255, 255, 255, 0.94);
   --ink-2:       rgba(255, 255, 255, 0.72);
   --ink-3:       rgba(255, 255, 255, 0.38);
@@ -13,180 +15,145 @@ div[data-active-theme="minimalist"] {
   --ink-btn-txt: #050a14;
   --deep:        rgb(5, 10, 20);
 
-  font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif !important;
+  font-family: 'Inter', system-ui, sans-serif !important;
   color: var(--ink) !important;
   background: var(--deep) !important;
 }
 
-/* Hide ambient orbs and backgrounds */
-div[data-active-theme="minimalist"]::before,
-div[data-active-theme="minimalist"]::after,
+/* ── Suppress ambient / dot-matrix elements ─────────────────────────────── */
 div[data-active-theme="minimalist"] .ambient-orb,
 div[data-active-theme="minimalist"] .dot-matrix-grid,
 div[data-active-theme="minimalist"] .crt-scanlines {
   display: none !important;
 }
 
-/* Music Player Container */
+/* ── Player container ───────────────────────────────────────────────────── */
 div[data-active-theme="minimalist"] .music-player-container {
   padding: 0 !important;
   border-radius: 24px !important;
   border: 1px solid rgba(255, 255, 255, 0.08) !important;
   box-shadow: 0 24px 60px rgba(0, 0, 0, 0.6) !important;
   background: var(--deep) !important;
-  overflow: hidden;
-  transform: scale(var(--scale-kiosk, 1)) !important;
-  transform-origin: center center !important;
-}
-
-div[data-active-theme="minimalist"] .music-player {
-
-
-  background-color: var(--deep);
-  border: none;
-  border-radius: 0;
-
-
-
-/* background-image: linear-gradient(to left,
-   rgba(var(--extracted-rgb), 0.4) 10%,
-    rgba(var(--extracted-rgb), 0.2) 32%,
-    rgba(var(--extracted-rgb), 0.88) 52%,
-    var(--deep) 68%),
-    var(--album-art-url); */
-    background-size: 100% 100%, 56% auto;
-    background-position: center center, right center;
-
-
-
-background: linear-gradient(
-  to left, 
-  rgba(51, 51, 51, 0) 0%,   /* Clear on the far right */
-  rgba(51, 51, 51, 0) 35%,  /* Stays completely clear until 35% */
-  rgba(51, 51, 51, 0.4) 45%, /* The fade smoothly begins here */
-  rgba(51, 51, 51, 0.75) 75% /* Reaches your 75% max opacity target */
-);
-
-
-}
-
-/* 2-Column Grid Layout with Integrated Smooth Multi-Stop Gradient Background */
-div[data-active-theme="minimalist"] .music-player {
-  display: grid !important;
-  grid-template-columns: 1fr 750px !important;
-  gap: 0 !important;
-  padding: 0 !important;
-  -webkit-backdrop-filter: none !important;
-  height: 100% !important;
-  width: 100% !important;
-  isolation: isolate;
-}
-
-div[data-active-theme="minimalist"] .music-player {
-  background-color: transparent;
-      box-shadow: none;
-}
-
-
-
-
-
-/* Remove the blurred pseudo-element since the layout background handles it now */
-div[data-active-theme="minimalist"] .music-player:before {
-  display: none !important;
-}
-
-/* Column 1: Details Column (Moved to Left via grid order) */
-div[data-active-theme="minimalist"] .details-column {
-  grid-column: 1 !important;
-  order: 1 !important;
-  justify-content: center !important;
-  align-items: flex-start !important;
-  z-index: 10;
-  padding: .8rem;
-  background: transparent !important; 
-}
-
-/* Column 2: Album Artwork Container */
-div[data-active-theme="minimalist"] .album-column {
-  grid-column: 2 !important;
-  order: 2 !important;
-  width: 100% !important;
-  height: 100% !important;
-  position: relative !important;
-  z-index: 2;
-  display: block !important;
-}
-
-/* Disable any overlay modifiers on the crisp album side */
-div[data-active-theme="minimalist"] .album-art::after {
-  display: none !important;
-}
-div[data-active-theme="minimalist"] .album-column::before,
-div[data-active-theme="minimalist"] .album-column::after {
-  display: none !important;
-}
-
-div[data-active-theme="minimalist"] .album-art {
-  width: 100% !important;
-  height: 100% !important;
-  border-radius: 0 !important;
-  border: none !important;
-  box-shadow: none !important;
-  background: none !important;
-  backdrop-filter: none !important;
-  padding: 0 !important;
-  transform: none !important;
   overflow: hidden !important;
 }
 
-div[data-active-theme="minimalist"] .album-art img {
+/* ── Music player: full-bleed album art background ──────────────────────── */
+div[data-active-theme="minimalist"] .music-player {
+  /* Album art as full-cover background */
+  background-image: var(--album-art-url, none) !important;
+  background-size: cover !important;
+  background-position: center right !important;
+  background-color: var(--deep) !important;
+  background-repeat: no-repeat !important;
+
+  /* Reset grid — content flows in a simple flex row */
+  display: flex !important;
+  align-items: stretch !important;
+  gap: 0 !important;
+  padding: 0 !important;
+  border: none !important;
   border-radius: 0 !important;
-  width: 100% !important;
+  box-shadow: none !important;
+  position: relative !important;
+  overflow: hidden !important;
+}
+
+/* ── Gradient overlay via ::before ─────────────────────────────────────── */
+/* Covers the full player. Goes left→right: deep solid → vibrant extracted
+   colour → transparent (album art shows through on the right).            */
+div[data-active-theme="minimalist"] .music-player::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background: linear-gradient(
+    to right,
+    var(--deep)                            0%,
+    rgba(var(--extracted-rgb, 5 10 20), 0.98)  22%,
+    rgba(var(--extracted-rgb, 5 10 20), 0.88)  38%,
+    rgba(var(--extracted-rgb, 5 10 20), 0.55)  52%,
+    rgba(var(--extracted-rgb, 5 10 20), 0.18)  64%,
+    transparent                            76%
+  );
+}
+
+/* ── Details column — text lives here, over the overlay ────────────────── */
+div[data-active-theme="minimalist"] .details-column {
+  position: relative !important;
+  z-index: 2 !important;
+  /* Take ~55 % of the player width — album art bleeds through the rest */
+  width: 55% !important;
+  flex-shrink: 0 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: center !important;
+  align-items: flex-start !important;
+  padding: 2rem 2.5rem !important;
+  background: transparent !important;
   height: 100% !important;
-  object-fit: cover !important;
-  filter: none !important;
-  opacity: 1 !important;
+}
+
+/* ── Hide the explicit album-column (art is in the background) ──────────── */
+div[data-active-theme="minimalist"] .album-column,
+div[data-active-theme="minimalist"] .controls-column {
   display: none !important;
 }
 
-/* Hide unneeded components in minimalist mode */
+/* ── Hide player chrome not needed in minimalist ────────────────────────── */
 div[data-active-theme="minimalist"] .status-pill,
-div[data-active-theme="minimalist"] .system-readout,
 div[data-active-theme="minimalist"] .hifi-topline,
 div[data-active-theme="minimalist"] .hifi-visualizer,
 div[data-active-theme="minimalist"] .volume-feedback,
-div[data-active-theme="minimalist"] .progress-area {
+div[data-active-theme="minimalist"] .progress-area,
+div[data-active-theme="minimalist"] .metadata-row > div:first-child > div.flex {
   display: none !important;
 }
 
-/* Typography styling */
+/* ── Track details layout ───────────────────────────────────────────────── */
 div[data-active-theme="minimalist"] .track-details {
   display: flex !important;
   flex-direction: column !important;
-  gap: 0.5rem !important;
+  gap: 0.4rem !important;
+  width: 100% !important;
 }
-/* Make the AutoScroll wrapper fill the full title area (volume-feedback is hidden) */
+
+/* ── Title AutoScroll wrapper ───────────────────────────────────────────── */
+div[data-active-theme="minimalist"] .title-container {
+  display: block !important;
+  width: 100% !important;
+}
 div[data-active-theme="minimalist"] .title-container > div:first-child {
   width: 100% !important;
   overflow: clip !important;
   transform: translateZ(0);
 }
 
+/* ── Typography ─────────────────────────────────────────────────────────── */
 div[data-active-theme="minimalist"] .track-title {
-  /* Syne 800 — geometric bold display face, replaces the dot-matrix Doto font */
   font-family: 'Syne', 'Inter', system-ui, sans-serif !important;
-  font-size: 3.2rem !important;
+  font-size: 3.4rem !important;
   font-weight: 800 !important;
   color: var(--ink) !important;
   letter-spacing: -0.04em !important;
-  line-height: 1.05 !important;
+  line-height: 1.0 !important;
 }
 
-/* AutoScroll wrappers for artist/album also need overflow: clip */
+div[data-active-theme="minimalist"] .metadata-row {
+  display: block !important;
+  width: 100% !important;
+}
+
+div[data-active-theme="minimalist"] .metadata-row > div:first-child {
+  width: 100% !important;
+  overflow: hidden !important;
+}
+
+/* Artist / album AutoScroll wrappers need overflow: clip for marquee */
 div[data-active-theme="minimalist"] .metadata-row > div:first-child > div {
   overflow: clip !important;
   transform: translateZ(0);
+  width: 100% !important;
 }
 
 div[data-active-theme="minimalist"] .track-artist {
@@ -199,47 +166,44 @@ div[data-active-theme="minimalist"] .track-artist {
 }
 
 div[data-active-theme="minimalist"] .track-album {
-  font-size: 0.9rem !important;
+  font-size: 0.88rem !important;
   font-weight: 400 !important;
   color: var(--ink-3) !important;
   letter-spacing: 0.02em !important;
 }
 
-/* Play/Pause Controls layout */
+/* ── Play button ────────────────────────────────────────────────────────── */
 div[data-active-theme="minimalist"] .music-controls {
-  margin-top: 1.5rem !important;
+  margin-top: 1.8rem !important;
   display: flex !important;
   align-items: center !important;
   justify-content: flex-start !important;
 }
+
 div[data-active-theme="minimalist"] .music-controls > button:not(.play) {
   display: none !important;
 }
+
 div[data-active-theme="minimalist"] .icon-button.play {
-  width: 62px !important;
-  height: 62px !important;
+  width: 64px !important;
+  height: 64px !important;
   border-radius: 50% !important;
   background: var(--ink-btn-bg) !important;
   color: var(--ink-btn-txt) !important;
   border: none !important;
-  box-shadow: 0 10px 24px rgba(var(--extracted-rgb, 255 255 255), 0.25) !important;
+  box-shadow: 0 10px 24px rgba(var(--extracted-rgb, 255 255 255), 0.28) !important;
   display: grid !important;
   place-items: center !important;
   transition: transform 0.2s ease, box-shadow 0.2s ease !important;
 }
 div[data-active-theme="minimalist"] .icon-button.play:hover {
-  transform: scale(1.05) !important;
-  box-shadow: 0 12px 28px rgba(var(--extracted-rgb, 255 255 255), 0.4) !important;
+  transform: scale(1.06) !important;
+  box-shadow: 0 14px 30px rgba(var(--extracted-rgb, 255 255 255), 0.42) !important;
 }
 div[data-active-theme="minimalist"] .icon-button.play:active {
-  transform: scale(0.95) !important;
+  transform: scale(0.94) !important;
 }
 div[data-active-theme="minimalist"] .icon-button.play::before,
 div[data-active-theme="minimalist"] .icon-button.play::after {
-  display: none !important;
-}
-
-/* Hide Column 3 (System Sidebar Column) */
-div[data-active-theme="minimalist"] .controls-column {
   display: none !important;
 }
