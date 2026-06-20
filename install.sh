@@ -190,8 +190,9 @@ cat <<'ASOUNDEOF' > /etc/asound.conf
 # Keep ALSA loopback dsnoop so CamillaDSP can still capture audio.
 # PipeWire loopback module (51-resonance-loopback.conf) bridges
 # ResonanceInput.monitor → hw:Loopback,0,0, feeding this dsnoop.
-# Rate is intentionally not fixed — PipeWire clock.allowed-rates drives
-# native sample-rate selection; CamillaDSP follows via the MPD rate watcher.
+# Rate fixed at 48000 to match CamillaDSP and PipeWire default clock.
+# The ALSA loopback kernel module supports only one rate per substream —
+# CamillaDSP and PipeWire must agree or PCM Slave Active stays off (silence).
 pcm.loop_dsnoop {
     type dsnoop
     ipc_key 2048
@@ -199,6 +200,7 @@ pcm.loop_dsnoop {
     slave {
         pcm "hw:Loopback,1,0"
         channels 2
+        rate 48000
         format S16_LE
         period_size 1024
     }

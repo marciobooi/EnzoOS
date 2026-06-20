@@ -591,14 +591,10 @@ export const loadStateFromDB = async () => {
       console.error('[EventService] Failed to restore CamillaDSP config:', err.message);
     }
 
-    // Start MPD rate watcher — auto-reconfigures CamillaDSP when song sample rate changes
-    try {
-      const { startMpdRateWatcher } = await import('./player.js');
-      startMpdRateWatcher();
-      console.log('[EventService] MPD rate watcher started.');
-    } catch (err) {
-      console.warn('[EventService] Failed to start MPD rate watcher:', err.message);
-    }
+    // NOTE: MPD rate watcher disabled — the ALSA loopback bridge (loop_dsnoop)
+    // operates at a fixed 48000 Hz. CamillaDSP and PipeWire must use the same
+    // rate or the loopback breaks (PCM Slave Active stays off → silence).
+    // Rate-following requires a direct CamillaDSP ALSA plugin (Phase 2 work).
 
     // Start audio level monitor
     const { startAudioLevelMonitor } = await import('./websocket.js');

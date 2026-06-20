@@ -772,15 +772,21 @@ async function ensureAsoundConf() {
   // No forced rate: PipeWire switches clock to match source (44100/48000/96000/etc).
   // CamillaDSP captures at whatever rate PipeWire writes, enabling native bit-perfect
   // when combined with PipeWire clock.allowed-rates configuration.
+  // The ALSA loopback kernel module supports only ONE rate per substream.
+  // PipeWire and CamillaDSP must agree on the same rate or the loopback
+  // bridge breaks (PCM Slave Active stays off → silence).
+  // Fixed at 48000 Hz — PipeWire default clock. All sources resample to
+  // 48000 inside PipeWire before writing to the loopback.
   const expectedContent = `# Resonance HiFi — ALSA config for PipeWire architecture
 # pcm.!default is provided by /usr/share/alsa/alsa.conf.d/99-pipewire-default.conf
 # (routes all default ALSA output to PipeWire automatically)
 
-# Keep ALSA loopback dsnoop so CamillaDSP can still capture audio.
+# CamillaDSP captures from the ALSA loopback via dsnoop.
 # PipeWire loopback module (51-resonance-loopback.conf) bridges
 # ResonanceInput.monitor → hw:Loopback,0,0, feeding this dsnoop.
-# Rate is intentionally not fixed — PipeWire clock.allowed-rates drives
-# native sample-rate selection and CamillaDSP follows via rate watcher.
+# Rate is fixed at 48000 to match CamillaDSP and PipeWire default clock.
+# The ALSA loopback kernel module only supports one rate per substream —
+# CamillaDSP and PipeWire must agree or PCM Slave Active stays off (silence).
 pcm.loop_dsnoop {
     type dsnoop
     ipc_key 2048
@@ -788,6 +794,7 @@ pcm.loop_dsnoop {
     slave {
         pcm "hw:Loopback,1,0"
         channels 2
+        rate 48000
         format S16_LE
         period_size 1024
     }
@@ -815,9 +822,17 @@ pcm.loop_dsnoop {
     console.warn('[ALSA] Failed to write /etc/asound.conf (non-root context or missing sudoers permission):', err.message);
   }
 
-  // With PipeWire, volume is managed at the PipeWire graph level by CamillaDSP.
-  // MPD runs with mixer_type none (PipeWire output), so mpc volume is not applicable.
-  // ALSA PCM volume does not affect the PipeWire → loopback → CamillaDSP chain.
+  // Set hardware PCM Playback Volume to max (0 dB).
+  // CamillaDSP plays directly to hw:CARD=Intel,DEV=0 via ALSA; the hardware
+  // PCM volume IS in the signal path and must be at 255/255 so CamillaDSP
+  // owns the entire gain stage via SetVolume.
+  try {
+    await execPromise("amixer -c 0 cset name='PCM Playback Volume' 255,255");
+    console.log('[ALSA] Hardware PCM volume set to max (0 dB).');
+  } catch (err) {
+    // Non-fatal — some hardware doesn't expose this control
+    console.warn('[ALSA] Could not set PCM Playback Volume (non-fatal):', err.message);
+  }
 }
 
 // POST /api/player/dsp-calibration -> Save user DSP calibration answers & generate configuration
