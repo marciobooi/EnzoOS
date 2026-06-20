@@ -487,55 +487,67 @@ const PlayerDisplay = React.memo(function PlayerDisplay({
     img.crossOrigin = 'Anonymous';
     img.src = artUrl;
 
+    const applyColors = (r, g, b) => {
+      // --extracted-rgb: full vivid colour (rgba opacity handles blending in CSS)
+      const rgb = `${r}, ${g}, ${b}`;
+      // --deep: very dark tint (12% brightness) for the solid left gradient edge
+      const dr = Math.round(r * 0.12);
+      const dg = Math.round(g * 0.12);
+      const db = Math.round(b * 0.12);
+      setExtractedRgb(rgb);
+      el.style.setProperty('--extracted-rgb', rgb);
+      el.style.setProperty('--deep', `rgb(${dr}, ${dg}, ${db})`);
+
+      // Perceived luminance of the dominant colour (W3C formula).
+      // The gradient at 52% is ~88% of this colour — if it's light, white
+      // text becomes illegible. Switch ink to dark text when luminance > 0.45.
+      const lum = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+      const isLight = lum > 0.45;
+      if (isLight) {
+        el.style.setProperty('--ink',         'rgba(12, 8, 5, 0.92)');
+        el.style.setProperty('--ink-2',       'rgba(12, 8, 5, 0.65)');
+        el.style.setProperty('--ink-3',       'rgba(12, 8, 5, 0.38)');
+        el.style.setProperty('--ink-btn-bg',  'rgb(15, 12, 8)');
+        el.style.setProperty('--ink-btn-txt', '#ffffff');
+      } else {
+        el.style.setProperty('--ink',         'rgba(255, 255, 255, 0.94)');
+        el.style.setProperty('--ink-2',       'rgba(255, 255, 255, 0.72)');
+        el.style.setProperty('--ink-3',       'rgba(255, 255, 255, 0.38)');
+        el.style.setProperty('--ink-btn-bg',  '#ffffff');
+        el.style.setProperty('--ink-btn-txt', '#050a14');
+      }
+    };
+
     img.onload = () => {
       try {
-        // Sample a 4×4 area near the centre-left for dominant hue
+        // Sample a 4×4 area for dominant hue average
         const canvas = document.createElement('canvas');
         canvas.width = 4; canvas.height = 4;
         const ctx = canvas.getContext('2d');
         if (!ctx) throw new Error('no ctx');
         ctx.drawImage(img, 0, 0, 4, 4);
         const pixels = ctx.getImageData(0, 0, 4, 4).data;
-
-        // Average R/G/B across sampled pixels
         let rSum = 0, gSum = 0, bSum = 0, count = 0;
         for (let i = 0; i < pixels.length; i += 4) {
           rSum += pixels[i]; gSum += pixels[i + 1]; bSum += pixels[i + 2]; count++;
         }
-        const r = Math.round(rSum / count);
-        const g = Math.round(gSum / count);
-        const b = Math.round(bSum / count);
-
-        // --extracted-rgb: full vivid colour (rgba opacity handles blending in CSS)
-        const rgb = `${r}, ${g}, ${b}`;
-        // --deep: very dark version (12% brightness) for the solid left edge of the gradient
-        const dr = Math.round(r * 0.12);
-        const dg = Math.round(g * 0.12);
-        const db = Math.round(b * 0.12);
-
-        setExtractedRgb(rgb);
-        el.style.setProperty('--extracted-rgb', rgb);
-        el.style.setProperty('--deep', `rgb(${dr}, ${dg}, ${db})`);
-      } catch (err) {
-        // CORS taint or other error — fall back to dark neutral
-        const fallback = '5, 10, 20';
-        setExtractedRgb(fallback);
-        el.style.setProperty('--extracted-rgb', fallback);
-        el.style.setProperty('--deep', 'rgb(5, 10, 20)');
+        applyColors(Math.round(rSum / count), Math.round(gSum / count), Math.round(bSum / count));
+      } catch {
+        applyColors(5, 10, 20);
       }
     };
 
-    img.onerror = () => {
-      const fallback = '5, 10, 20';
-      setExtractedRgb(fallback);
-      el.style.setProperty('--extracted-rgb', fallback);
-      el.style.setProperty('--deep', 'rgb(5, 10, 20)');
-    };
+    img.onerror = () => applyColors(5, 10, 20);
 
     return () => {
       el.style.removeProperty('--extracted-rgb');
       el.style.removeProperty('--deep');
       el.style.removeProperty('--album-art-url');
+      el.style.removeProperty('--ink');
+      el.style.removeProperty('--ink-2');
+      el.style.removeProperty('--ink-3');
+      el.style.removeProperty('--ink-btn-bg');
+      el.style.removeProperty('--ink-btn-txt');
     };
   }, [albumImage, activeTheme]);
 

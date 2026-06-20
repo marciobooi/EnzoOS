@@ -3,10 +3,15 @@
    ============================================================================= */
 
 div[data-active-theme="minimalist"] {
-  --white: 255 255 255;
-  --ink: rgb(var(--white) / 0.94);
-  --ink-2: rgb(var(--white) / 0.72);
-  --deep: rgb(var(--extracted-rgb, 5 10 20)) !important;
+  /* Ink vars are computed dynamically via JS luminance check so text stays
+     readable regardless of whether the album art is light or dark.
+     Fallbacks here are dark-background defaults. */
+  --ink:         rgba(255, 255, 255, 0.94);
+  --ink-2:       rgba(255, 255, 255, 0.72);
+  --ink-3:       rgba(255, 255, 255, 0.38);
+  --ink-btn-bg:  #ffffff;
+  --ink-btn-txt: #050a14;
+  --deep:        rgb(5, 10, 20);
 
   font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif !important;
   color: var(--ink) !important;
@@ -149,22 +154,20 @@ div[data-active-theme="minimalist"] .track-details {
 /* Make the AutoScroll wrapper fill the full title area (volume-feedback is hidden) */
 div[data-active-theme="minimalist"] .title-container > div:first-child {
   width: 100% !important;
-  /* overflow: clip is stricter than overflow: hidden and properly clips
-     CSS transform animations (marquee) without establishing a scroll container */
   overflow: clip !important;
-  /* Force compositing layer so overflow: clip clips transformed children */
   transform: translateZ(0);
 }
 
 div[data-active-theme="minimalist"] .track-title {
+  /* Syne 800 — geometric bold display face, replaces the dot-matrix Doto font */
+  font-family: 'Syne', 'Inter', system-ui, sans-serif !important;
   font-size: 3.2rem !important;
-  font-weight: 950 !important;
-  color: #fff !important;
+  font-weight: 800 !important;
+  color: var(--ink) !important;
   letter-spacing: -0.04em !important;
   line-height: 1.05 !important;
-  /* Do NOT force width: 100% on the span — it breaks the inline-block
-     marquee measurement. Width is handled by the AutoScroll wrapper above. */
 }
+
 /* AutoScroll wrappers for artist/album also need overflow: clip */
 div[data-active-theme="minimalist"] .metadata-row > div:first-child > div {
   overflow: clip !important;
@@ -172,15 +175,19 @@ div[data-active-theme="minimalist"] .metadata-row > div:first-child > div {
 }
 
 div[data-active-theme="minimalist"] .track-artist {
-  font-size: 1.25rem !important;
-  font-weight: 500 !important;
+  font-family: 'Syne', 'Inter', system-ui, sans-serif !important;
+  font-size: 1.1rem !important;
+  font-weight: 600 !important;
   color: var(--ink-2) !important;
-  letter-spacing: normal !important;
+  letter-spacing: 0.01em !important;
   text-transform: none !important;
 }
+
 div[data-active-theme="minimalist"] .track-album {
-  font-size: 0.95rem !important;
-  color: rgba(255, 255, 255, 0.4) !important;
+  font-size: 0.9rem !important;
+  font-weight: 400 !important;
+  color: var(--ink-3) !important;
+  letter-spacing: 0.02em !important;
 }
 
 /* Play/Pause Controls layout */
@@ -197,17 +204,17 @@ div[data-active-theme="minimalist"] .icon-button.play {
   width: 62px !important;
   height: 62px !important;
   border-radius: 50% !important;
-  background: #fff !important;
-  color: #050a14 !important;
+  background: var(--ink-btn-bg) !important;
+  color: var(--ink-btn-txt) !important;
   border: none !important;
-  box-shadow: 0 10px 24px rgba(255, 255, 255, 0.25) !important;
+  box-shadow: 0 10px 24px rgba(var(--extracted-rgb, 255 255 255), 0.25) !important;
   display: grid !important;
   place-items: center !important;
   transition: transform 0.2s ease, box-shadow 0.2s ease !important;
 }
 div[data-active-theme="minimalist"] .icon-button.play:hover {
   transform: scale(1.05) !important;
-  box-shadow: 0 12px 28px rgba(255, 255, 255, 0.35) !important;
+  box-shadow: 0 12px 28px rgba(var(--extracted-rgb, 255 255 255), 0.4) !important;
 }
 div[data-active-theme="minimalist"] .icon-button.play:active {
   transform: scale(0.95) !important;
