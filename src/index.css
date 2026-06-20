@@ -402,8 +402,9 @@ div[data-theme="ruby"] *::selection {
   display: flex;
   align-items: stretch;
   justify-content: space-between;
-  flex: 1;
+  flex: 1 1 0;   /* grow to fill, allow shrink, start from 0 so flex:1 children resolve cleanly */
   min-height: 0;
+  overflow: hidden; /* needed for flex:1 percentage heights to resolve in all browsers */
 }
 
 .track-artist {
@@ -424,7 +425,8 @@ div[data-theme="ruby"] *::selection {
   align-items: stretch;
   gap: 15px;
   width: 216px;
-  height: 100%;
+  align-self: stretch; /* fill the cross-axis (height) of .metadata-row via flex alignment */
+  min-height: 0;       /* allow shrinking below content in constrained layouts */
   padding: 6px;
 }
 

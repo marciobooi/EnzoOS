@@ -589,7 +589,7 @@ const PlayerDisplay = React.memo(function PlayerDisplay({
 
             {/* Metadata & Mini Visualizer */}
             <div className="metadata-row mt-1.5">
-              <div className="truncate w-[60%] flex flex-col gap-0.5">
+              <div className="w-[60%] flex flex-col gap-0.5 overflow-hidden min-h-0 justify-center">
                 <AutoScroll innerClass="track-artist" speed={70}>{trackArtist}</AutoScroll>
                 <AutoScroll innerClass="track-album" speed={70}>{trackAlbumName}</AutoScroll>
                 
