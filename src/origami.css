@@ -1,0 +1,367 @@
+/* ==============================================================================
+   Origami — Kindle-Inspired Paper & Ink Premium Theme
+
+   Design philosophy: E-ink paper warmth + origami geometric precision.
+   Warm parchment surfaces, deep graphite ink, literary serif typography,
+   precision fold-line geometry. No glows, no neon — quiet luxury.
+   ============================================================================= */
+
+div[data-active-theme="origami"] {
+  /* ── Paper surface palette ────────────────────────────────────────────── */
+  --paper:        #F5F0E8;
+  --paper-warm:   #EDE8DF;
+  --paper-cool:   #FAF8F4;
+  --paper-deep:   #E3DDD3;
+
+  /* ── Ink hierarchy ────────────────────────────────────────────────────── */
+  --ink:          #1C1A17;
+  --ink-2:        #3D3A35;
+  --ink-3:        #6B6560;
+  --ink-4:        #9A9590;
+
+  /* ── Gold accent (gilt edge, wax seal) ───────────────────────────────── */
+  --ori-gold:       #8B6914;
+  --ori-gold-glow:  rgba(139, 105, 20, 0.22);
+  --ori-gold-dim:   rgba(139, 105, 20, 0.07);
+
+  /* ── Fold-line borders (origami crease) ──────────────────────────────── */
+  --crease:       #D4CCBF;
+  --crease-hi:    #B8B0A2;
+  --crease-soft:  #E6E0D6;
+
+  /* ── Override global theme vars for compatibility ─────────────────────── */
+  --theme-color:      #8B6914;
+  --theme-color-glow: rgba(139, 105, 20, 0.25);
+  --theme-color-dim:  rgba(139, 105, 20, 0.07);
+  --color-active:     #1C1A17;
+  --color-faded:      #9A9590;
+
+  font-family: 'Inter', system-ui, sans-serif !important;
+  color: var(--ink) !important;
+
+  /* Warm paper background — subtle corner shading like a physical page */
+  background:
+    radial-gradient(ellipse 60% 50% at 100% 0%,   rgba(212, 204, 191, 0.30) 0%, transparent 55%),
+    radial-gradient(ellipse 55% 45% at 0%   100%, rgba(228, 221, 210, 0.22) 0%, transparent 55%),
+    radial-gradient(ellipse 80% 80% at 50%  50%,  rgba(245, 240, 232, 0.10) 0%, transparent 80%),
+    linear-gradient(158deg, #FAF8F4 0%, #F5F0E8 45%, #EEE8DD 100%) !important;
+}
+
+/* ── Suppress LED / glass effects from other themes ──────────────────────── */
+div[data-active-theme="origami"] .ambient-orb,
+div[data-active-theme="origami"] .dot-matrix-grid,
+div[data-active-theme="origami"] .crt-scanlines {
+  display: none !important;
+}
+
+/* ── Subtle paper grain + geometric grid overlay ─────────────────────────── */
+/* ::before — fine origami grid (fold-lines) */
+div[data-active-theme="origami"]::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    linear-gradient(rgba(28, 26, 23, 0.022) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(28, 26, 23, 0.016) 1px, transparent 1px);
+  background-size: 72px 72px;
+  mask-image: radial-gradient(ellipse 90% 90% at 50% 50%, rgba(0,0,0,0.18) 0%, transparent 80%);
+  z-index: 0;
+}
+
+/* ── Outer player shell — premium bound hardcover feel ───────────────────── */
+div[data-active-theme="origami"] .music-player-container {
+  background: var(--paper) !important;
+  border: 1px solid var(--crease) !important;
+  border-radius: 3px !important;
+  box-shadow:
+    0 1px 2px  rgba(28, 26, 23, 0.04),
+    0 4px 16px rgba(28, 26, 23, 0.07),
+    0 16px 48px rgba(28, 26, 23, 0.06),
+    0 32px 80px rgba(28, 26, 23, 0.04) !important;
+  overflow: hidden !important;
+}
+
+/* Spine shadow — the left edge of the book */
+div[data-active-theme="origami"] .music-player-container::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: 6px;
+  background: linear-gradient(90deg, rgba(28,26,23,0.10) 0%, transparent 100%);
+  z-index: 10;
+  pointer-events: none;
+}
+
+/* ── Main player grid ──────────────────────────────────────────────────── */
+div[data-active-theme="origami"] .music-player {
+  background: var(--paper) !important;
+  border: none !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  position: relative;
+  z-index: 2;
+}
+
+/* ── Album Art — illuminated manuscript panel ─────────────────────────── */
+div[data-active-theme="origami"] .album-art {
+  border-radius: 2px !important;
+  border: 1px solid var(--crease) !important;
+  box-shadow:
+    3px 3px 0px rgba(28, 26, 23, 0.06),
+    6px 6px 16px rgba(28, 26, 23, 0.10),
+    inset 0 0 0 1px rgba(250, 248, 244, 0.9) !important;
+  overflow: hidden !important;
+}
+
+div[data-active-theme="origami"] .album-art img {
+  filter: sepia(6%) contrast(0.97) brightness(1.01) !important;
+}
+
+div[data-active-theme="origami"] .album-art--radio {
+  border-radius: 2px !important;
+  border: 1px solid var(--crease) !important;
+  box-shadow:
+    3px 3px 0px rgba(28, 26, 23, 0.06),
+    6px 6px 16px rgba(28, 26, 23, 0.10) !important;
+  background: var(--paper-warm) !important;
+}
+
+/* ── Status pill badges ────────────────────────────────────────────────── */
+div[data-active-theme="origami"] .status-pill {
+  font-family: 'Inter', system-ui, sans-serif !important;
+  font-size: 6.5px !important;
+  letter-spacing: 0.2em !important;
+  background: transparent !important;
+  border: 1px solid var(--crease) !important;
+  color: var(--ink-4) !important;
+  border-radius: 2px !important;
+  box-shadow: none !important;
+}
+
+div[data-active-theme="origami"] .status-dot {
+  background: var(--ori-gold) !important;
+  box-shadow: none !important;
+}
+
+/* ── Track title — literary serif, set in italic ─────────────────────── */
+div[data-active-theme="origami"] .track-title {
+  font-family: 'Cormorant Garamond', 'Georgia', 'Times New Roman', serif !important;
+  font-size: 2.9rem !important;
+  font-weight: 600 !important;
+  font-style: italic !important;
+  color: var(--ink) !important;
+  letter-spacing: -0.025em !important;
+  line-height: 1.05 !important;
+  text-shadow: none !important;
+}
+
+/* ── Artist — small caps, precise tracking ───────────────────────────── */
+div[data-active-theme="origami"] .track-artist {
+  font-family: 'Cormorant Garamond', Georgia, serif !important;
+  font-size: 0.82rem !important;
+  font-weight: 500 !important;
+  color: var(--ink-2) !important;
+  letter-spacing: 0.20em !important;
+  text-transform: uppercase !important;
+  font-style: normal !important;
+  text-shadow: none !important;
+}
+
+/* ── Album name — light print ───────────────────────────────────────── */
+div[data-active-theme="origami"] .track-album {
+  font-family: 'Inter', system-ui, sans-serif !important;
+  font-size: 0.72rem !important;
+  font-weight: 300 !important;
+  color: var(--ink-4) !important;
+  letter-spacing: 0.05em !important;
+  text-shadow: none !important;
+}
+
+/* ── Volume feedback popup ──────────────────────────────────────────── */
+div[data-active-theme="origami"] .volume-feedback {
+  font-family: 'Cormorant Garamond', Georgia, serif !important;
+  font-style: italic !important;
+  font-weight: 600 !important;
+  font-size: 1.6rem !important;
+  color: var(--ori-gold) !important;
+  background: var(--paper-cool) !important;
+  border: 1px solid var(--crease) !important;
+  box-shadow:
+    0 2px 8px rgba(28, 26, 23, 0.10),
+    0 0 0 1px rgba(250, 248, 244, 0.8) !important;
+  border-radius: 2px !important;
+}
+
+/* ── Playback controls — clean geometric buttons ────────────────────── */
+div[data-active-theme="origami"] .icon-button {
+  background: transparent !important;
+  border: 1px solid var(--crease) !important;
+  color: var(--ink-3) !important;
+  border-radius: 2px !important;
+  box-shadow: 0 1px 3px rgba(28, 26, 23, 0.05) !important;
+  transition: background 0.18s ease, border-color 0.18s ease, color 0.18s ease, box-shadow 0.18s ease !important;
+}
+
+div[data-active-theme="origami"] .icon-button:hover {
+  background: var(--paper-warm) !important;
+  border-color: var(--crease-hi) !important;
+  color: var(--ink-2) !important;
+  box-shadow: 0 2px 8px rgba(28, 26, 23, 0.09) !important;
+}
+
+div[data-active-theme="origami"] .icon-button:active {
+  background: var(--paper-deep) !important;
+  box-shadow: none !important;
+}
+
+div[data-active-theme="origami"] .icon-button.active {
+  background: var(--ori-gold-dim) !important;
+  border-color: var(--ori-gold) !important;
+  color: var(--ori-gold) !important;
+  box-shadow: none !important;
+}
+
+/* Play / Pause — the centrepiece (ink-solid square) */
+div[data-active-theme="origami"] .icon-button.play {
+  background: var(--ink) !important;
+  border: 1px solid var(--ink) !important;
+  color: var(--paper) !important;
+  border-radius: 2px !important;
+  box-shadow:
+    3px 3px 0px rgba(28, 26, 23, 0.18),
+    0 4px 14px rgba(28, 26, 23, 0.18) !important;
+  transition: all 0.16s ease !important;
+}
+
+div[data-active-theme="origami"] .icon-button.play:hover {
+  background: var(--ink-2) !important;
+  border-color: var(--ink-2) !important;
+  box-shadow:
+    4px 4px 0px rgba(28, 26, 23, 0.22),
+    0 6px 20px rgba(28, 26, 23, 0.22) !important;
+  transform: translate(-1px, -1px) !important;
+}
+
+div[data-active-theme="origami"] .icon-button.play:active {
+  transform: translate(0, 0) !important;
+  box-shadow:
+    1px 1px 0px rgba(28, 26, 23, 0.18),
+    0 2px 6px rgba(28, 26, 23, 0.12) !important;
+}
+
+div[data-active-theme="origami"] .icon-button.play::before,
+div[data-active-theme="origami"] .icon-button.play::after {
+  display: none !important;
+}
+
+/* ── VU Meters — warm analogue dials on parchment ──────────────────── */
+div[data-active-theme="origami"] .vu-channel-box {
+  background: var(--paper-cool) !important;
+  border: 1px solid var(--crease) !important;
+  border-radius: 2px !important;
+  box-shadow: inset 0 1px 4px rgba(28, 26, 23, 0.05) !important;
+}
+
+div[data-active-theme="origami"] .vu-dot-grid {
+  background-image: radial-gradient(var(--ori-gold-dim) 22%, transparent 22%) !important;
+  opacity: 0.55 !important;
+}
+
+div[data-active-theme="origami"] .vu-glow-overlay {
+  display: none !important;
+}
+
+div[data-active-theme="origami"] .vu-needle {
+  background: linear-gradient(to top, var(--ori-gold), #A37820) !important;
+  box-shadow: none !important;
+  border-radius: 1px !important;
+}
+
+div[data-active-theme="origami"] .vu-scale-marks span {
+  color: var(--ink-4) !important;
+  font-family: 'Inter', monospace !important;
+  font-size: 0.5rem !important;
+  letter-spacing: 0em !important;
+}
+
+div[data-active-theme="origami"] .vu-title span {
+  color: var(--ink-4) !important;
+  font-family: 'Inter', system-ui, sans-serif !important;
+  font-size: 0.52rem !important;
+  letter-spacing: 0.22em !important;
+}
+
+div[data-active-theme="origami"] .vu-readout-line {
+  border-top: 1px solid var(--crease-soft) !important;
+}
+
+div[data-active-theme="origami"] .vu-readout-line span {
+  color: var(--ori-gold) !important;
+  font-family: 'Inter', monospace !important;
+  font-size: 0.58rem !important;
+  font-weight: 400 !important;
+  letter-spacing: 0.06em !important;
+}
+
+/* ── Controls column (right panel) ─────────────────────────────────── */
+div[data-active-theme="origami"] .controls-column {
+  border-left: 1px solid var(--crease-soft) !important;
+  background: var(--paper-warm) !important;
+}
+
+/* ── Progress / seek bar — reading-location indicator ──────────────── */
+div[data-active-theme="origami"] .progress-area .stone-range {
+  background: var(--crease) !important;
+}
+div[data-active-theme="origami"] .progress-area .stone-range::-webkit-slider-thumb {
+  background: var(--paper) !important;
+  border-color: var(--ink) !important;
+  box-shadow: 0 1px 4px rgba(28,26,23,0.18) !important;
+}
+div[data-active-theme="origami"] .progress-area .stone-range::-moz-range-thumb {
+  background: var(--paper) !important;
+  border-color: var(--ink) !important;
+}
+
+/* ── Telemetry / signal path text ──────────────────────────────────── */
+div[data-active-theme="origami"] .music-player .font-mono {
+  color: var(--ink-4) !important;
+}
+
+/* ── Selection styling ──────────────────────────────────────────────── */
+div[data-active-theme="origami"] *::selection {
+  background-color: rgba(139, 105, 20, 0.18);
+  color: var(--ori-gold);
+}
+
+/* ── Scrollbar — warm crease tone ──────────────────────────────────── */
+div[data-active-theme="origami"] *::-webkit-scrollbar-thumb {
+  background: var(--crease-hi) !important;
+}
+div[data-active-theme="origami"] * {
+  scrollbar-color: var(--crease-hi) transparent !important;
+}
+
+/* ── Subtle paper corner folds (pure CSS origami decoration) ────────── */
+@keyframes origami-breathe {
+  0%, 100% { opacity: 0.35; }
+  50%       { opacity: 0.50; }
+}
+
+div[data-active-theme="origami"] .music-player-container::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: 0;
+  height: 0;
+  border-style: solid;
+  border-width: 0 0 28px 28px;
+  border-color: transparent transparent var(--crease) transparent;
+  z-index: 20;
+  pointer-events: none;
+  opacity: 0.7;
+}
