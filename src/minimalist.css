@@ -69,12 +69,13 @@ div[data-active-theme="minimalist"] .music-player::before {
   pointer-events: none;
   background: linear-gradient(
     to right,
-    var(--deep)                            0%,
-    rgba(var(--extracted-rgb, 5 10 20), 0.98)  22%,
-    rgba(var(--extracted-rgb, 5 10 20), 0.88)  38%,
-    rgba(var(--extracted-rgb, 5 10 20), 0.55)  52%,
-    rgba(var(--extracted-rgb, 5 10 20), 0.18)  64%,
-    transparent                            76%
+    var(--deep)                                  0%,
+    rgba(var(--extracted-rgb, 5 10 20), 0.98)   14%,
+    rgba(var(--extracted-rgb, 5 10 20), 0.95)   28%,
+    rgba(var(--extracted-rgb, 5 10 20), 0.90)   40%,
+    rgba(var(--extracted-rgb, 5 10 20), 0.50)   55%,
+    rgba(var(--extracted-rgb, 5 10 20), 0.12)   68%,
+    transparent                                  78%
   );
 }
 
