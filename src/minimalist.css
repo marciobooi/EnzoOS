@@ -49,13 +49,13 @@ div[data-active-theme="minimalist"] .music-player {
 
 
 background-image: linear-gradient(to left,
-    transparent 0%,
-    rgba(var(--extracted-rgb), 0.4) 32%,
+   rgba(var(--extracted-rgb), 0.4) 10%,
+    rgba(var(--extracted-rgb), 0.2) 32%,
     rgba(var(--extracted-rgb), 0.88) 52%,
     var(--deep) 68%),
-var(--album-art-url);
-background-size: 100% 100%, 56% auto;
-background-position: center center, right center;
+    var(--album-art-url);
+    background-size: 100% 100%, 56% auto;
+    background-position: center center, right center;
 
 }
 
