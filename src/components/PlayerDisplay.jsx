@@ -5,9 +5,9 @@ import { S, cardShadow } from '../styles/stone';
 
 
 // Conditional text ticker — scrolls only when text is wider than its container.
-// A hidden measurement span (position:absolute, visibility:hidden) always renders
-// the full single-copy text so scrollWidth is accurate regardless of scroll state.
-// ResizeObserver re-checks on every container resize so it responds to layout changes.
+// A hidden absolute-positioned measurement span gives accurate scrollWidth
+// without affecting layout. No ResizeObserver — the kiosk has a fixed width
+// so we only recheck when the text content itself changes.
 function AutoScroll({ children, outerClass = '', innerClass = '', speed = 70, minDuration = 6 }) {
   const containerRef = useRef(null);
   const measureRef   = useRef(null);
@@ -18,31 +18,26 @@ function AutoScroll({ children, outerClass = '', innerClass = '', speed = 70, mi
     const container = containerRef.current;
     const measure   = measureRef.current;
     if (!container || !measure) return;
-
-    const check = () => {
-      const overflows = measure.scrollWidth > container.clientWidth + 2;
-      setScrolling(overflows);
-      if (overflows) {
-        const excess = measure.scrollWidth - container.clientWidth;
-        setDuration(Math.max(minDuration, excess / speed));
-      }
-    };
-
-    check();
-    const ro = new ResizeObserver(check);
-    ro.observe(container);
-    return () => ro.disconnect();
+    // Single synchronous read — no ResizeObserver so no feedback loop.
+    const overflows = measure.scrollWidth > container.clientWidth + 2;
+    setScrolling(overflows);
+    if (overflows) {
+      const excess = measure.scrollWidth - container.clientWidth;
+      setDuration(Math.max(minDuration, excess / speed));
+    } else {
+      setScrolling(false);
+    }
   }, [children, speed, minDuration]);
 
   return (
     <div ref={containerRef} className={`overflow-hidden relative ${outerClass}`}>
-      {/* Hidden single-copy span — used only for width measurement */}
+      {/* Hidden single-copy — accurate width measurement, never affects layout */}
       <span ref={measureRef} aria-hidden="true" className={innerClass}
         style={{ position: 'absolute', visibility: 'hidden',
                  whiteSpace: 'nowrap', pointerEvents: 'none' }}>
         {children}
       </span>
-      {/* Visible content — static ellipsis or scrolling duplicate */}
+      {/* Visible — ellipsis when fits, ticker when overflows */}
       <span className={innerClass}
         style={scrolling
           ? { display: 'inline-block', whiteSpace: 'nowrap',
