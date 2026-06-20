@@ -564,7 +564,21 @@ CONFIG_TXT="/boot/firmware/config.txt"
 if [ -f "$CONFIG_TXT" ]; then
   # Remove any previous Resonance display block before rewriting
   sed -i '/# Resonance HiFi display start/,/# Resonance HiFi display end/d' "$CONFIG_TXT"
-  cat >> "$CONFIG_TXT" <<'DISPLAYEOF'
+
+  # Detect Pi model — Pi 5 uses vc4-kms-v3d by default and doesn't need hdmi_drive
+  PI_MODEL=$(grep -s "Raspberry Pi" /proc/device-tree/model 2>/dev/null || true)
+  if echo "$PI_MODEL" | grep -q "Pi 5"; then
+    # Pi 5: KMS driver, hdmi_group/mode still work, no hdmi_drive needed
+    cat >> "$CONFIG_TXT" <<'DISPLAYEOF'
+# Resonance HiFi display start — Waveshare 11.9" HDMI LCD (1480×320 landscape)
+hdmi_group=2
+hdmi_mode=87
+hdmi_cvt 1480 320 60 6 0 0 0
+# Resonance HiFi display end
+DISPLAYEOF
+  else
+    # Pi 4 and earlier: legacy firmware driver, hdmi_drive=2 forces HDMI mode
+    cat >> "$CONFIG_TXT" <<'DISPLAYEOF'
 # Resonance HiFi display start — Waveshare 11.9" HDMI LCD (1480×320 landscape)
 hdmi_group=2
 hdmi_mode=87
@@ -572,7 +586,8 @@ hdmi_cvt 1480 320 60 6 0 0 0
 hdmi_drive=2
 # Resonance HiFi display end
 DISPLAYEOF
-  echo -e "${GREEN}  HDMI config written to $CONFIG_TXT${NC}"
+  fi
+  echo -e "${GREEN}  HDMI config written to $CONFIG_TXT (Pi model: ${PI_MODEL:-unknown})${NC}"
 else
   echo -e "${YELLOW}  /boot/firmware/config.txt not found — skipping HDMI config (QEMU/non-Pi).${NC}"
 fi
