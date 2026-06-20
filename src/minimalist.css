@@ -82,7 +82,7 @@ div[data-active-theme="minimalist"] .details-column {
   justify-content: center !important;
   align-items: flex-start !important;
   z-index: 10;
-  padding: 3rem 4.5rem !important;
+  padding: .8rem;
   background: transparent !important; 
 }
 
