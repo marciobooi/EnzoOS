@@ -40,19 +40,23 @@ div[data-active-theme="minimalist"] .music-player-container {
 }
 
 div[data-active-theme="minimalist"] .music-player {
-  /* Gradient only — album art shows through the right column as a real <img>.
-     Direction: left→right, deep solid behind text → transparent at album art.
-     The vibrant extracted colour peaks at ~45% (centre-left) then fades out. */
-  background-image: linear-gradient(to right,
-    var(--deep)                          0%,
-    rgba(var(--extracted-rgb), 0.95)    30%,
-    rgba(var(--extracted-rgb), 0.70)    46%,
-    rgba(var(--extracted-rgb), 0.20)    60%,
-    transparent                         72%);
-  background-size: 100% 100%;
+
+
   background-color: var(--deep);
   border: none;
   border-radius: 0;
+
+
+
+background-image: linear-gradient(to left,
+    transparent 0%,
+    rgba(var(--extracted-rgb), 0.4) 32%,
+    rgba(var(--extracted-rgb), 0.88) 52%,
+    var(--deep) 68%),
+var(--album-art-url);
+background-size: 100% 100%, 56% auto;
+background-position: center center, right center;
+
 }
 
 /* 2-Column Grid Layout with Integrated Smooth Multi-Stop Gradient Background */
