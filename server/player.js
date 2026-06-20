@@ -768,16 +768,29 @@ async function ensureAsoundConf() {
   // bridge breaks (PCM Slave Active stays off → silence).
   // Fixed at 48000 Hz — PipeWire default clock. All sources resample to
   // 48000 inside PipeWire before writing to the loopback.
-  const expectedContent = `# Resonance HiFi — ALSA config for PipeWire architecture
-# pcm.!default is provided by /usr/share/alsa/alsa.conf.d/99-pipewire-default.conf
-# (routes all default ALSA output to PipeWire automatically)
+  // camilla_input: ALSA dmix for MPD/ALSA sources → hw:Loopback,0,0
+  // loop_dsnoop:   ALSA dsnoop for CamillaDSP capture ← hw:Loopback,1,0
+  // Both at 48000 Hz to match CamillaDSP's processing rate.
+  // MPD uses type "alsa" device "camilla_input" — bypasses the PipeWire
+  // loopback bridge which was not reliably connecting to hw:Loopback,0,0.
+  const expectedContent = `# Resonance HiFi — ALSA config
+# camilla_input: ALSA dmix — MPD/ALSA sources write directly to loopback
+# loop_dsnoop:   ALSA dsnoop — CamillaDSP reads from loopback
+# Both fixed at 48000 Hz (ALSA loopback module requires a single shared rate).
 
-# CamillaDSP captures from the ALSA loopback via dsnoop.
-# PipeWire loopback module (51-resonance-loopback.conf) bridges
-# ResonanceInput.monitor → hw:Loopback,0,0, feeding this dsnoop.
-# Rate is fixed at 48000 to match CamillaDSP and PipeWire default clock.
-# The ALSA loopback kernel module only supports one rate per substream —
-# CamillaDSP and PipeWire must agree or PCM Slave Active stays off (silence).
+pcm.camilla_input {
+    type dmix
+    ipc_key 1111
+    ipc_perm 0666
+    slave {
+        pcm "hw:Loopback,0,0"
+        channels 2
+        rate 48000
+        format S16_LE
+        period_size 1024
+    }
+}
+
 pcm.loop_dsnoop {
     type dsnoop
     ipc_key 2048

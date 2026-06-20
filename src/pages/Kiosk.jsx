@@ -519,6 +519,7 @@ export default function Kiosk() {
         break;
       case 'spotify':
         if (token) {
+          // 404 = no active player (nothing to pause) — safe to ignore
           fetch('https://api.spotify.com/v1/me/player/pause', {
             method: 'PUT',
             headers: { 'Authorization': `Bearer ${token}` },

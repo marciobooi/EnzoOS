@@ -181,18 +181,26 @@ fi
 # pcm.!default is handled by /usr/share/alsa/alsa.conf.d/99-pipewire-default.conf
 # (installed with pipewire-alsa), which routes all ALSA default output to PipeWire.
 # We only keep loop_dsnoop so CamillaDSP can capture via ALSA dsnoop on the loopback.
-echo -e "${YELLOW}Creating ALSA configuration (/etc/asound.conf) for PipeWire architecture...${NC}"
+echo -e "${YELLOW}Creating ALSA configuration (/etc/asound.conf)...${NC}"
 cat <<'ASOUNDEOF' > /etc/asound.conf
-# Resonance HiFi — ALSA config for PipeWire architecture
-# pcm.!default is provided by /usr/share/alsa/alsa.conf.d/99-pipewire-default.conf
-# (routes all default ALSA output to PipeWire automatically)
+# Resonance HiFi — ALSA config
+# camilla_input: ALSA dmix — MPD/ALSA sources write to loopback write-side
+# loop_dsnoop:   ALSA dsnoop — CamillaDSP reads from loopback read-side
+# Both at 48000 Hz (ALSA loopback requires a single shared rate per substream).
 
-# Keep ALSA loopback dsnoop so CamillaDSP can still capture audio.
-# PipeWire loopback module (51-resonance-loopback.conf) bridges
-# ResonanceInput.monitor → hw:Loopback,0,0, feeding this dsnoop.
-# Rate fixed at 48000 to match CamillaDSP and PipeWire default clock.
-# The ALSA loopback kernel module supports only one rate per substream —
-# CamillaDSP and PipeWire must agree or PCM Slave Active stays off (silence).
+pcm.camilla_input {
+    type dmix
+    ipc_key 1111
+    ipc_perm 0666
+    slave {
+        pcm "hw:Loopback,0,0"
+        channels 2
+        rate 48000
+        format S16_LE
+        period_size 1024
+    }
+}
+
 pcm.loop_dsnoop {
     type dsnoop
     ipc_key 2048
@@ -320,10 +328,11 @@ sudo -u $TARGET_USER XDG_RUNTIME_DIR=/run/user/$TARGET_UID \
 
 echo -e "${GREEN}PipeWire configured: all sources → ResonanceInput → loopback → CamillaDSP.${NC}"
 
-# Write complete MPD configuration (always overwrite to prevent partial configs).
-# MPD runs as TARGET_USER (not system user 'mpd') so it can access the PipeWire user socket.
-# Uses native PipeWire output — volume is managed by CamillaDSP, not MPD mixer.
-echo -e "${YELLOW}Writing complete MPD configuration (/etc/mpd.conf) for PipeWire...${NC}"
+# Write complete MPD configuration.
+# MPD uses ALSA camilla_input (dmix → hw:Loopback,0,0) to write directly to
+# the loopback — bypasses the PipeWire loopback bridge which does not reliably
+# connect to hw:Loopback,0,0. Volume managed by CamillaDSP via SetVolume.
+echo -e "${YELLOW}Writing complete MPD configuration (/etc/mpd.conf)...${NC}"
 cat <<'MPDEOF' > /etc/mpd.conf
 music_directory         "/var/lib/mpd/music"
 playlist_directory      "/var/lib/mpd/playlists"
@@ -335,8 +344,10 @@ bind_to_address         "any"
 port                    "6600"
 
 audio_output {
-    type            "pipewire"
-    name            "Resonance MPD"
+    type            "alsa"
+    name            "CamillaDSP Input"
+    device          "camilla_input"
+    mixer_type      "none"
 }
 MPDEOF
 
