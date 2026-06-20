@@ -1,0 +1,643 @@
+/* ==============================================================================
+   Sterling — Brushed-Silver Hi-Fi Instrument · Reference-DAC Design
+
+   Inspired by flagship audiophile DAC/streamer faceplates (the dCS / Gryphon /
+   Eversolo school): a machined aluminium chassis with an inset monochrome
+   display whose text glows like backlit OLED, and one tactile machined knob.
+
+   Design pillars:
+   1. Pure monochrome — NO colour. Silver, graphite, luminous white only.
+   2. Material honesty — real brushed-metal texture, beveled inset display.
+   3. Luminous typography — ultra-thin hero text with soft phosphor bloom.
+   4. Engraved labels — small semibold caps pressed into the metal.
+   5. One hero object — the machined volume knob (play control).
+   ============================================================================= */
+
+div[data-active-theme="sterling"] {
+  /* ── Brushed aluminium chassis ───────────────────────────────────────── */
+  --chassis:        #C2C5C7;
+  --chassis-hi:     #E4E6E7;
+  --chassis-mid:    #B2B5B7;
+  --chassis-lo:     #989B9D;
+  --chassis-groove: #888B8D;
+
+  /* ── Inset display panel (dark silver, text glows on it) ─────────────── */
+  --display-top:    #6B7176;
+  --display-mid:    #7C8388;
+  --display-bot:    #8A9196;
+  --display-edge:   #565B60;
+
+  /* ── Luminous display text (backlit white) ──────────────────────────── */
+  --lum:            #FDFEFF;
+  --lum-2:          rgba(255, 255, 255, 0.82);
+  --lum-3:          rgba(255, 255, 255, 0.56);
+  --lum-4:          rgba(255, 255, 255, 0.34);
+  --lum-glow:       rgba(255, 255, 255, 0.42);
+  --lum-glow-soft:  rgba(214, 230, 240, 0.30);
+
+  /* ── Engraved metal text (dark, pressed-in) ─────────────────────────── */
+  --engrave:        #5A5F64;
+  --engrave-2:      #6E7378;
+  --engrave-hi:     rgba(255, 255, 255, 0.65);
+
+  /* ── Global var overrides — monochrome ──────────────────────────────── */
+  --theme-color:      #FDFEFF;
+  --theme-color-glow: rgba(255, 255, 255, 0.40);
+  --theme-color-dim:  rgba(255, 255, 255, 0.10);
+  --color-active:     #FFFFFF;
+  --color-faded:      rgba(255, 255, 255, 0.40);
+
+  font-family: 'Inter', system-ui, -apple-system, sans-serif !important;
+  color: var(--lum) !important;
+
+  /* ── Page = brushed-silver faceplate with raking-light highlight ────── */
+  background:
+    radial-gradient(ellipse 90% 60% at 50% -10%, rgba(255,255,255,0.55) 0%, transparent 45%),
+    radial-gradient(ellipse 70% 50% at 50% 110%, rgba(120,124,127,0.40) 0%, transparent 50%),
+    linear-gradient(180deg, #CED1D3 0%, #C0C3C5 42%, #AEB1B3 100%) !important;
+}
+
+/* ── Kill LED / glow / glass carry-overs ─────────────────────────────────── */
+div[data-active-theme="sterling"] .ambient-orb,
+div[data-active-theme="sterling"] .dot-matrix-grid,
+div[data-active-theme="sterling"] .crt-scanlines {
+  display: none !important;
+}
+
+/* ── Brushed-metal texture overlay on the whole faceplate ───────────────── */
+div[data-active-theme="sterling"]::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  /* Horizontal machining streaks (high-y / low-x turbulence) */
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='500' height='500'%3E%3Cfilter id='b'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.008 0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23b)'/%3E%3C/svg%3E");
+  background-size: 500px 100%;
+  mix-blend-mode: overlay;
+  opacity: 0.12;
+  z-index: 0;
+}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   CHASSIS SHELL — the machined faceplate housing
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+
+div[data-active-theme="sterling"] .music-player-container {
+  background: linear-gradient(180deg, var(--chassis-hi) 0%, var(--chassis) 50%, var(--chassis-mid) 100%) !important;
+  /* Beveled metal edge: bright top, dark bottom */
+  border-top: 1px solid rgba(255,255,255,0.85) !important;
+  border-left: 1px solid rgba(255,255,255,0.45) !important;
+  border-right: 1px solid rgba(0,0,0,0.14) !important;
+  border-bottom: 1px solid rgba(0,0,0,0.22) !important;
+  border-radius: 10px !important;
+  box-shadow:
+    inset 0 1px 0   rgba(255,255,255,0.9),
+    inset 0 -1px 2px rgba(0,0,0,0.18),
+    0 2px 6px   rgba(40,44,48,0.18),
+    0 14px 36px rgba(40,44,48,0.22),
+    0 36px 72px rgba(40,44,48,0.16) !important;
+  overflow: hidden !important;
+  position: relative;
+  z-index: 2;
+  padding: 14px !important;
+}
+
+/* Brushed texture on the chassis itself */
+div[data-active-theme="sterling"] .music-player-container::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='500' height='400'%3E%3Cfilter id='c'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.006 0.95' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23c)'/%3E%3C/svg%3E");
+  background-size: 100% 100%;
+  mix-blend-mode: soft-light;
+  opacity: 0.5;
+  z-index: 1;
+}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   DISPLAY PANEL — inset monochrome screen (album + details columns)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+
+div[data-active-theme="sterling"] .music-player {
+  background:
+    radial-gradient(ellipse 120% 90% at 35% 30%, rgba(255,255,255,0.10) 0%, transparent 55%),
+    linear-gradient(180deg, var(--display-top) 0%, var(--display-mid) 48%, var(--display-bot) 100%) !important;
+  border-radius: 6px !important;
+  /* Inset bevel — display sunk into the metal */
+  border-top: 1px solid var(--display-edge) !important;
+  border-bottom: 1px solid rgba(255,255,255,0.18) !important;
+  box-shadow:
+    inset 0 2px 10px rgba(0,0,0,0.45),
+    inset 0 -1px 0   rgba(255,255,255,0.12),
+    0 1px 0          rgba(255,255,255,0.7) !important;
+  position: relative;
+  z-index: 2;
+  overflow: hidden;
+}
+
+/* Fine horizontal scan-texture on the display (subtle OLED grain) */
+div[data-active-theme="sterling"] .music-player::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image: repeating-linear-gradient(
+    180deg,
+    transparent 0px,
+    transparent 2px,
+    rgba(0,0,0,0.025) 2px,
+    rgba(0,0,0,0.025) 3px
+  );
+  z-index: 1;
+  opacity: 0.6;
+}
+
+/* ── Album column — framed plate inside the display ─────────────────────── */
+div[data-active-theme="sterling"] .album-column {
+  background: transparent !important;
+  position: relative;
+  z-index: 3;
+}
+
+div[data-active-theme="sterling"] .album-art {
+  border-radius: 4px !important;
+  border: 1px solid var(--display-edge) !important;
+  /* Machined bezel around the plate */
+  box-shadow:
+    inset 0 0 0 3px rgba(0,0,0,0.22),
+    inset 0 0 0 4px rgba(255,255,255,0.10),
+    0 1px 0 rgba(255,255,255,0.25),
+    0 6px 18px rgba(0,0,0,0.4) !important;
+  overflow: hidden !important;
+}
+
+/* Monochrome plate — desaturated, like a measurement readout */
+div[data-active-theme="sterling"] .album-art img {
+  filter: grayscale(100%) contrast(1.06) brightness(1.04) !important;
+  transition: filter 0.9s ease !important;
+}
+
+div[data-active-theme="sterling"] .album-art--radio {
+  border-radius: 4px !important;
+  border: 1px solid var(--display-edge) !important;
+  box-shadow:
+    inset 0 0 0 3px rgba(0,0,0,0.22),
+    0 6px 18px rgba(0,0,0,0.4) !important;
+  background: linear-gradient(180deg, var(--display-top), var(--display-bot)) !important;
+}
+
+div[data-active-theme="sterling"] .album-art--radio .radio-logo-placeholder,
+div[data-active-theme="sterling"] .album-art--radio svg {
+  color: var(--lum-2) !important;
+}
+
+/* ── Details column — main readout area ─────────────────────────────────── */
+div[data-active-theme="sterling"] .details-column {
+  background: transparent !important;
+  position: relative;
+  z-index: 3;
+}
+
+/* ── Status pills — engraved instrument labels (FILTER / CLOCK style) ────── */
+div[data-active-theme="sterling"] .status-pill {
+  font-family: 'Inter', system-ui, sans-serif !important;
+  font-size: 6px !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.28em !important;
+  background: rgba(0,0,0,0.10) !important;
+  border: 1px solid rgba(0,0,0,0.18) !important;
+  color: var(--lum-3) !important;
+  border-radius: 2px !important;
+  box-shadow: inset 0 1px 1px rgba(0,0,0,0.2), 0 1px 0 rgba(255,255,255,0.18) !important;
+  padding: 2px 6px !important;
+  text-shadow: 0 0 4px var(--lum-glow-soft) !important;
+}
+
+div[data-active-theme="sterling"] .status-dot {
+  background: var(--lum) !important;
+  box-shadow: 0 0 5px var(--lum-glow) !important;
+  width: 4px !important;
+  height: 4px !important;
+}
+
+/* ── Source-readout label above title (like "Coaxial" input designator) ──── */
+div[data-active-theme="sterling"] .title-container {
+  position: relative;
+  padding-bottom: 0.35rem !important;
+  margin-bottom: 0.3rem !important;
+  border-bottom: 1px solid rgba(0,0,0,0.14) !important;
+  box-shadow: 0 1px 0 rgba(255,255,255,0.16) !important;
+}
+
+div[data-active-theme="sterling"] .title-container::before {
+  content: 'SOURCE \00B7 NOW PLAYING';
+  display: block;
+  font-family: 'Inter', system-ui, sans-serif;
+  font-size: 0.5rem;
+  font-weight: 600;
+  letter-spacing: 0.34em;
+  color: var(--lum-4);
+  text-transform: uppercase;
+  margin-bottom: 0.2rem;
+  text-shadow: 0 0 6px var(--lum-glow-soft);
+  user-select: none;
+}
+
+/* ── Track title — luminous ultra-thin hero (the "Coaxial" treatment) ────── */
+div[data-active-theme="sterling"] .track-title {
+  font-family: 'Inter', system-ui, -apple-system, sans-serif !important;
+  font-size: 3.9rem !important;
+  font-weight: 200 !important;
+  font-style: normal !important;
+  color: var(--lum) !important;
+  letter-spacing: -0.01em !important;
+  line-height: 1.0 !important;
+  /* Backlit phosphor bloom */
+  text-shadow:
+    0 0 1px  rgba(255,255,255,0.9),
+    0 0 12px var(--lum-glow),
+    0 0 30px var(--lum-glow-soft) !important;
+}
+
+/* ── Metadata row spacing ───────────────────────────────────────────────── */
+div[data-active-theme="sterling"] .metadata-row {
+  margin-top: 0.45rem !important;
+}
+
+/* ── Artist — light luminous caps ───────────────────────────────────────── */
+div[data-active-theme="sterling"] .track-artist {
+  font-family: 'Inter', system-ui, sans-serif !important;
+  font-size: 0.92rem !important;
+  font-weight: 300 !important;
+  color: var(--lum-2) !important;
+  letter-spacing: 0.2em !important;
+  text-transform: uppercase !important;
+  font-style: normal !important;
+  text-shadow: 0 0 8px var(--lum-glow-soft) !important;
+}
+
+/* ── Album — fine readout value ─────────────────────────────────────────── */
+div[data-active-theme="sterling"] .track-album {
+  font-family: 'Inter', system-ui, sans-serif !important;
+  font-size: 0.78rem !important;
+  font-weight: 300 !important;
+  font-style: normal !important;
+  color: var(--lum-4) !important;
+  letter-spacing: 0.08em !important;
+  text-shadow: 0 0 6px var(--lum-glow-soft) !important;
+}
+
+/* ── Telemetry HUD — instrument sampling readout ────────────────────────── */
+div[data-active-theme="sterling"] .metadata-row [class*="text-[8px]"],
+div[data-active-theme="sterling"] .metadata-row [class*="text-[7px]"],
+div[data-active-theme="sterling"] .metadata-row [class*="text-[7.5px]"],
+div[data-active-theme="sterling"] .metadata-row .font-mono {
+  color: var(--lum-3) !important;
+  text-shadow: 0 0 5px var(--lum-glow-soft) !important;
+}
+
+div[data-active-theme="sterling"] .metadata-row [class*="border"][class*="rounded"] {
+  border-color: rgba(255,255,255,0.22) !important;
+  background: rgba(255,255,255,0.06) !important;
+  color: var(--lum-2) !important;
+  border-radius: 2px !important;
+}
+
+/* ── Volume readout popup — the big luminous "36" ───────────────────────── */
+div[data-active-theme="sterling"] .volume-feedback {
+  font-family: 'Inter', system-ui, sans-serif !important;
+  font-style: normal !important;
+  font-weight: 200 !important;
+  font-size: 2.6rem !important;
+  color: var(--lum) !important;
+  background: rgba(0,0,0,0.20) !important;
+  border: 1px solid rgba(0,0,0,0.25) !important;
+  box-shadow:
+    inset 0 1px 4px rgba(0,0,0,0.3),
+    0 1px 0 rgba(255,255,255,0.2) !important;
+  border-radius: 4px !important;
+  text-shadow:
+    0 0 12px var(--lum-glow),
+    0 0 28px var(--lum-glow-soft) !important;
+}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   TRANSPORT CONTROLS — luminous outline keys on the display
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+
+div[data-active-theme="sterling"] .music-controls {
+  gap: 0.45rem !important;
+  position: relative;
+  z-index: 3;
+}
+
+div[data-active-theme="sterling"] .music-controls .icon-button {
+  background: rgba(255,255,255,0.05) !important;
+  border: 1px solid rgba(255,255,255,0.18) !important;
+  color: var(--lum-2) !important;
+  border-radius: 5px !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.12) !important;
+  text-shadow: 0 0 6px var(--lum-glow-soft) !important;
+  transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease, transform 0.14s ease !important;
+}
+
+div[data-active-theme="sterling"] .music-controls .icon-button:hover {
+  background: rgba(255,255,255,0.14) !important;
+  border-color: rgba(255,255,255,0.4) !important;
+  color: var(--lum) !important;
+}
+
+div[data-active-theme="sterling"] .music-controls .icon-button:active {
+  transform: scale(0.94) !important;
+  background: rgba(0,0,0,0.12) !important;
+}
+
+div[data-active-theme="sterling"] .music-controls .icon-button.active {
+  background: rgba(255,255,255,0.2) !important;
+  border-color: rgba(255,255,255,0.5) !important;
+  color: var(--lum) !important;
+  box-shadow: inset 0 0 8px rgba(255,255,255,0.25) !important;
+}
+
+/* ── Play / Pause — the machined volume knob (signature object) ──────────── */
+div[data-active-theme="sterling"] .icon-button.play {
+  border-radius: 50% !important;
+  /* Brushed aluminium dome */
+  background:
+    radial-gradient(circle at 50% 32%,
+      #F4F5F6 0%,
+      #DBDEDF 26%,
+      #BFC2C4 52%,
+      #A6A9AB 74%,
+      #C4C7C9 100%) !important;
+  border: 1px solid #939698 !important;
+  color: var(--engrave) !important;
+  /* Concentric machined rings + protruding dome shadow */
+  box-shadow:
+    inset 0 0 0 5px rgba(255,255,255,0.16),
+    inset 0 0 0 6px rgba(0,0,0,0.10),
+    inset 0 2px 3px rgba(255,255,255,0.9),
+    inset 0 -3px 6px rgba(0,0,0,0.22),
+    0 2px 3px rgba(0,0,0,0.25),
+    0 6px 16px rgba(0,0,0,0.4) !important;
+  text-shadow: 0 1px 0 rgba(255,255,255,0.7) !important;
+  transition: transform 0.14s ease, box-shadow 0.16s ease !important;
+}
+
+/* Radial brushed texture inside the knob */
+div[data-active-theme="sterling"] .icon-button.play::before {
+  content: '' !important;
+  display: block !important;
+  position: absolute;
+  inset: 14%;
+  border-radius: 50%;
+  background:
+    conic-gradient(from 0deg,
+      rgba(255,255,255,0.0) 0deg,
+      rgba(255,255,255,0.22) 14deg,
+      rgba(0,0,0,0.10) 30deg,
+      rgba(255,255,255,0.0) 50deg,
+      rgba(255,255,255,0.20) 72deg,
+      rgba(0,0,0,0.08) 96deg,
+      rgba(255,255,255,0.0) 130deg,
+      rgba(255,255,255,0.22) 168deg,
+      rgba(0,0,0,0.10) 200deg,
+      rgba(255,255,255,0.0) 240deg,
+      rgba(255,255,255,0.18) 290deg,
+      rgba(0,0,0,0.08) 330deg,
+      rgba(255,255,255,0.0) 360deg);
+  box-shadow: inset 0 1px 2px rgba(0,0,0,0.25), inset 0 -1px 1px rgba(255,255,255,0.6);
+  pointer-events: none;
+  z-index: 0;
+}
+
+div[data-active-theme="sterling"] .icon-button.play svg {
+  position: relative;
+  z-index: 1;
+  color: var(--engrave) !important;
+  filter: drop-shadow(0 1px 0 rgba(255,255,255,0.7));
+}
+
+div[data-active-theme="sterling"] .icon-button.play:hover {
+  transform: scale(1.04) !important;
+  box-shadow:
+    inset 0 0 0 5px rgba(255,255,255,0.18),
+    inset 0 0 0 6px rgba(0,0,0,0.10),
+    inset 0 2px 3px rgba(255,255,255,0.95),
+    inset 0 -3px 6px rgba(0,0,0,0.24),
+    0 3px 5px rgba(0,0,0,0.28),
+    0 10px 24px rgba(0,0,0,0.45) !important;
+}
+
+div[data-active-theme="sterling"] .icon-button.play:active {
+  transform: scale(0.97) !important;
+  box-shadow:
+    inset 0 0 0 5px rgba(255,255,255,0.14),
+    inset 0 2px 4px rgba(0,0,0,0.25),
+    0 1px 3px rgba(0,0,0,0.3) !important;
+}
+
+div[data-active-theme="sterling"] .icon-button.play::after {
+  display: none !important;
+}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   VU METERS — luminous needle instruments on the display
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+
+div[data-active-theme="sterling"] .vu-channel-box {
+  background:
+    radial-gradient(ellipse 100% 80% at 50% 20%, rgba(255,255,255,0.06) 0%, transparent 60%),
+    linear-gradient(180deg, rgba(0,0,0,0.18) 0%, rgba(0,0,0,0.10) 100%) !important;
+  border: 1px solid rgba(0,0,0,0.22) !important;
+  border-radius: 4px !important;
+  box-shadow:
+    inset 0 2px 6px rgba(0,0,0,0.35),
+    inset 0 -1px 0 rgba(255,255,255,0.12),
+    0 1px 0 rgba(255,255,255,0.18) !important;
+}
+
+div[data-active-theme="sterling"] .vu-dot-grid {
+  background-image: radial-gradient(rgba(255,255,255,0.07) 22%, transparent 22%) !important;
+  background-size: 5px 5px !important;
+  opacity: 0.7 !important;
+}
+
+div[data-active-theme="sterling"] .vu-glow-overlay {
+  display: none !important;
+}
+
+/* Luminous white needle with glow */
+div[data-active-theme="sterling"] .vu-needle {
+  background: linear-gradient(to top, rgba(255,255,255,0.5), var(--lum)) !important;
+  box-shadow: 0 0 6px var(--lum-glow), 0 0 12px var(--lum-glow-soft) !important;
+  width: 1.5px !important;
+  transition: transform 0.10s cubic-bezier(0.18, 0.89, 0.32, 1.12) !important;
+}
+
+div[data-active-theme="sterling"] .vu-scale-marks span {
+  color: var(--lum-4) !important;
+  font-family: 'Inter', system-ui, sans-serif !important;
+  font-size: 0.46rem !important;
+  text-shadow: 0 0 4px var(--lum-glow-soft) !important;
+}
+
+div[data-active-theme="sterling"] .vu-title span {
+  color: var(--lum-3) !important;
+  font-family: 'Inter', system-ui, sans-serif !important;
+  font-size: 0.48rem !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.24em !important;
+}
+
+div[data-active-theme="sterling"] .vu-readout-line {
+  border-top: 1px solid rgba(255,255,255,0.12) !important;
+}
+
+div[data-active-theme="sterling"] .vu-readout-line span {
+  color: var(--lum) !important;
+  font-family: 'Inter', monospace !important;
+  font-size: 0.55rem !important;
+  font-weight: 400 !important;
+  letter-spacing: 0.04em !important;
+  text-shadow: 0 0 8px var(--lum-glow) !important;
+}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   CONTROLS COLUMN — right brushed-metal faceplate strip (engraved keys)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+
+div[data-active-theme="sterling"] .controls-column {
+  background: linear-gradient(180deg, var(--chassis-hi) 0%, var(--chassis) 55%, var(--chassis-mid) 100%) !important;
+  border-left: 1px solid rgba(0,0,0,0.18) !important;
+  border-radius: 6px !important;
+  box-shadow:
+    inset 1px 0 0 rgba(255,255,255,0.7),
+    inset 0 1px 0 rgba(255,255,255,0.6),
+    inset 0 -1px 2px rgba(0,0,0,0.12) !important;
+  position: relative;
+  z-index: 3;
+  overflow: hidden;
+}
+
+/* Brushed texture on the metal strip */
+div[data-active-theme="sterling"] .controls-column::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='400'%3E%3Cfilter id='d'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.01 0.95' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23d)'/%3E%3C/svg%3E");
+  background-size: 100% 100%;
+  mix-blend-mode: soft-light;
+  opacity: 0.45;
+  z-index: 0;
+}
+
+/* Engraved metal keys on the faceplate strip */
+div[data-active-theme="sterling"] .controls-column .icon-button {
+  position: relative;
+  z-index: 1;
+  background: linear-gradient(180deg, rgba(255,255,255,0.4), rgba(0,0,0,0.04)) !important;
+  border: 1px solid rgba(0,0,0,0.16) !important;
+  color: var(--engrave) !important;
+  border-radius: 6px !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.85),
+    inset 0 -1px 2px rgba(0,0,0,0.12),
+    0 1px 2px rgba(0,0,0,0.14) !important;
+  text-shadow: 0 1px 0 rgba(255,255,255,0.7) !important;
+  transition: all 0.16s ease !important;
+}
+
+div[data-active-theme="sterling"] .controls-column .icon-button:hover {
+  background: linear-gradient(180deg, rgba(255,255,255,0.6), rgba(255,255,255,0.1)) !important;
+  border-color: rgba(0,0,0,0.24) !important;
+  color: var(--ink, #3a3e42) !important;
+}
+
+div[data-active-theme="sterling"] .controls-column .icon-button:active {
+  background: linear-gradient(180deg, rgba(0,0,0,0.06), rgba(0,0,0,0.02)) !important;
+  box-shadow: inset 0 2px 4px rgba(0,0,0,0.2) !important;
+  transform: translateY(0.5px) !important;
+}
+
+div[data-active-theme="sterling"] .controls-column .icon-button svg {
+  filter: drop-shadow(0 1px 0 rgba(255,255,255,0.7));
+}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   PROGRESS BAR — luminous transport position strip
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+
+div[data-active-theme="sterling"] .progress-area {
+  position: relative;
+  z-index: 3;
+}
+
+div[data-active-theme="sterling"] .progress-area .stone-range {
+  background: rgba(0,0,0,0.22) !important;
+  height: 2px !important;
+  box-shadow: inset 0 1px 1px rgba(0,0,0,0.3) !important;
+}
+
+div[data-active-theme="sterling"] .progress-area .stone-range::-webkit-slider-thumb {
+  width: 12px !important;
+  height: 12px !important;
+  border-radius: 50% !important;
+  background: radial-gradient(circle at 50% 35%, #F2F3F4, #BFC2C4 70%, #A4A7A9) !important;
+  border: 1px solid #909395 !important;
+  box-shadow: 0 0 6px var(--lum-glow), 0 1px 2px rgba(0,0,0,0.3) !important;
+}
+
+div[data-active-theme="sterling"] .progress-area .stone-range::-moz-range-thumb {
+  width: 12px !important;
+  height: 12px !important;
+  border-radius: 50% !important;
+  background: radial-gradient(circle at 50% 35%, #F2F3F4, #A4A7A9) !important;
+  border: 1px solid #909395 !important;
+}
+
+div[data-active-theme="sterling"] .progress-area span,
+div[data-active-theme="sterling"] .progress-area div {
+  font-family: 'Inter', monospace !important;
+  font-size: 0.6rem !important;
+  font-weight: 400 !important;
+  color: var(--lum-2) !important;
+  letter-spacing: 0.06em !important;
+  text-shadow: 0 0 6px var(--lum-glow-soft) !important;
+}
+
+div[data-active-theme="sterling"] .progress-fill-dots {
+  background-image: radial-gradient(rgba(255,255,255,0.3) 30%, transparent 30%) !important;
+}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   FINISHING
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+
+div[data-active-theme="sterling"] *::selection {
+  background-color: rgba(255, 255, 255, 0.25);
+  color: var(--lum);
+}
+
+div[data-active-theme="sterling"] *::-webkit-scrollbar-thumb {
+  background: var(--chassis-groove) !important;
+}
+div[data-active-theme="sterling"] * {
+  scrollbar-color: var(--chassis-groove) transparent !important;
+}
+
+/* Subtle display warm-up flicker when playback starts */
+@keyframes sterling-warmup {
+  0%   { filter: brightness(0.96); }
+  50%  { filter: brightness(1.02); }
+  100% { filter: brightness(1.0); }
+}
+
+div[data-active-theme="sterling"] .music-player.is-playing {
+  animation: sterling-warmup 6s ease-in-out infinite !important;
+}
