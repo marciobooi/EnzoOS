@@ -19,3 +19,9 @@ div[data-active-theme="minimalist"] {
   color: var(--ink) !important;
   background: var(--deep) !important;
 }
+
+/* resets */
+
+section.album-column.cursor-pointer, .details-column, .controls-column {
+  display: none !important;
+}
