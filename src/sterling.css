@@ -484,6 +484,7 @@ div[data-active-theme="sterling"] .vu-readout-line span {
    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
 
 div[data-active-theme="sterling"] .controls-column {
+  padding: 0;
   background: linear-gradient(180deg, var(--chassis-hi) 0%, var(--chassis) 55%, var(--chassis-mid) 100%) !important;
   border-left: 1px solid rgba(0,0,0,0.16) !important;
   border-radius: 6px !important;
@@ -494,6 +495,10 @@ div[data-active-theme="sterling"] .controls-column {
   position: relative;
   z-index: 3;
   overflow: hidden;
+  display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-content: center;
 }
 
 /* Warm brushed texture on the faceplate strip */
