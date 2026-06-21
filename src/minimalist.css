@@ -25,3 +25,11 @@ div[data-active-theme="minimalist"] {
 section.album-column.cursor-pointer, .details-column, .controls-column {
   display: none !important;
 }
+
+.music-player {
+  all: unset;
+  background-image: var(--album-art-url, none) !important;
+  background-size: cover !important;
+  background-position: center !important;
+
+}
