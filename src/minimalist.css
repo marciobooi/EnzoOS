@@ -31,21 +31,20 @@ button.icon-button.menu {display: block !important;}
 
 /* ── Music player: full-bleed album art background ──────────────────────── */
 div[data-active-theme="minimalist"] .music-player {
-  all: unset !important;
   /* Album art as full-cover background */
-  background-image: var(--album-art-url, none) !important;
-
-background-position: right center !important;
+  background-image: var(--album-art-url) !important;
+  background-position: right center !important;
   background-color: var(--deep) !important;
   background-repeat: no-repeat !important;
+  background-size: contain !important;
 
-
-
-
-        background-size: contain !important;
+  /* Image mask with fade (Right side fully visible, fades out to the left) */
+  -webkit-mask-image: linear-gradient(to left, rgba(0,0,0,1) 0%, rgba(0,0,0,1) 40%, rgba(0,0,0,0) 100%) !important;
+  mask-image: linear-gradient(to left, rgba(0,0,0,1) 0%, rgba(0,0,0,1) 40%, rgba(0,0,0,0) 100%) !important;
   
-
-
+  /* Required for mask scaling */
+  -webkit-mask-size: cover !important;
+  mask-size: cover !important;
 }
 
 
