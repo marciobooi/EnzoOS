@@ -193,11 +193,25 @@ div[data-active-theme="origami"] .album-art {
   overflow: hidden !important;
 }
 
+div[data-active-theme="origami"] .album-art:after {
+    content: "";
+    all:unset;
+    /* pointer-events: none; */
+    /* opacity: .6; */
+    /* background-image: radial-gradient(circle, #2a282624 2px, #0000 3px); */
+    /* background-size: 12px 12px; */
+    /* position: absolute; */
+    /* inset: 0; */
+
+}
+
 /* Photographic plate toning — sepia + slight desaturation */
 div[data-active-theme="origami"] .album-art img {
   filter: sepia(22%) contrast(0.94) brightness(1.04) saturate(0.88) !important;
   transition: filter 1.0s ease !important;
 }
+
+
 
 div[data-active-theme="origami"] .album-art--radio {
   border-radius: 1px !important;
