@@ -28,7 +28,7 @@ section.album-column.cursor-pointer, .details-column, .controls-column {
 
 .music-player {
   all: unset;
-  background-image: var(--album-art-url, none) !important;
+  background-image: var(--album-art-url) !important;
   background-size: cover !important;
   background-position: center !important;
 
