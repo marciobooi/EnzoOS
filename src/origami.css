@@ -288,15 +288,15 @@ div[data-active-theme="origami"] .track-title {
   font-style: italic !important;
   color: var(--ink) !important;
   letter-spacing: -0.030em !important;
-  line-height: 0.96 !important;
+  line-height: 1.2 !important;
   text-shadow: none !important;
 }
 
 /* ── Artist name — chapter sub-heading ──────────────────────────────────── */
 div[data-active-theme="origami"] .track-details .metadata-row {
-  margin-top: 0.55rem !important;
+  /* margin-top: 0.55rem !important; */
   /* Thin rule above artist — like a book section separator */
-  padding-top: 0.4rem !important;
+  /* padding-top: 0.4rem !important; */
 }
 
 div[data-active-theme="origami"] .track-artist {
@@ -435,7 +435,7 @@ div[data-active-theme="origami"] .icon-button.play::after {
    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
 
 div[data-active-theme="origami"] .vu-channel-box {
-  background: var(--paper-cool) !important;
+  background: var(--paper) !important;
   border: 1px solid var(--crease) !important;
   border-radius: 1px !important;
   /* Instrument glass inset effect */
