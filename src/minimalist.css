@@ -26,7 +26,7 @@ section.album-column.cursor-pointer, .details-column, .controls-column {
   display: none !important;
 }
 
-.music-player {
+div[data-active-theme="minimalist"] .music-player {
   all: unset;
   background-image: var(--album-art-url) !important;
   background-size: cover !important;
