@@ -23,8 +23,8 @@ function Header({ subtitle, onClose }) {
           </p>
         </div>
       </div>
-      <button onClick={onClose}
-        className="w-9 h-9 rounded-full flex items-center justify-center active:scale-90 transition-all cursor-pointer shrink-0"
+      <button onClick={onClose} aria-label="Close"
+        className="w-10 h-10 rounded-full flex items-center justify-center active:scale-90 transition-all cursor-pointer shrink-0"
         style={{ background: C.containerLow, border: `0.5px solid ${C.outline}` }}>
         <X className="h-4 w-4" style={{ color: C.text3 }} />
       </button>

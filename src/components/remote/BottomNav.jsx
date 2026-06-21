@@ -57,7 +57,7 @@ export default function BottomNav({ navH }) {
               <Icon className="h-5 w-5"
                 strokeWidth={active ? 2 : 1.5}
                 style={{ color: active ? C.champagne : C.text3, transition: 'color 0.2s ease' }} />
-              <span className="text-[9px] font-semibold uppercase tracking-widest"
+              <span className="text-[10px] font-semibold uppercase tracking-[0.12em]"
                 style={{ color: active ? C.champagne : C.text3, fontFamily: C.fontLabel, transition: 'color 0.2s ease' }}>
                 {label}
               </span>

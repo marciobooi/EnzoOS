@@ -205,8 +205,8 @@ export default function SourceTab() {
           <form onSubmit={doSearch} className="flex gap-2 mb-3">
             <input value={query} onChange={e => setQuery(e.target.value)} placeholder="Search tracks…" autoFocus
               className="flex-1 rounded-xl px-4 py-3.5 text-[16px] focus:outline-none" style={inputStyle} />
-            <button type="submit" disabled={searching}
-              className="px-4 rounded-xl active:scale-95 cursor-pointer flex items-center justify-center" style={{ background: C.champagne }}>
+            <button type="submit" disabled={searching} aria-label="Search"
+              className="px-4 min-w-[44px] rounded-xl active:scale-95 cursor-pointer flex items-center justify-center" style={{ background: C.champagne }}>
               <Search className="h-5 w-5" style={{ color: '#1a1c1c' }} />
             </button>
           </form>
@@ -247,8 +247,8 @@ function Sheet({ C, kicker, title, onBack, children }) {
       }}>
       <div className="flex items-center gap-3 px-5 pt-4 pb-4 shrink-0"
         style={{ background: C.bg, borderBottom: `0.5px solid ${C.outline}` }}>
-        <button onClick={onBack}
-          className="w-9 h-9 rounded-full flex items-center justify-center active:scale-90 transition-all cursor-pointer shrink-0"
+        <button onClick={onBack} aria-label="Back to sources"
+          className="w-10 h-10 rounded-full flex items-center justify-center active:scale-90 transition-all cursor-pointer shrink-0"
           style={{ background: C.containerLow, border: `0.5px solid ${C.outline}` }}>
           <ChevronLeft className="h-5 w-5" style={{ color: C.text3 }} />
         </button>

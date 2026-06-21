@@ -27,7 +27,8 @@ export default function MiniPlayer() {
         </div>
         <button
           onClick={e => { e.stopPropagation(); handlePlayPause(); }}
-          className="w-9 h-9 rounded-full flex items-center justify-center shrink-0 active:scale-90 transition-all cursor-pointer"
+          aria-label={isPlaying ? 'Pause' : 'Play'}
+          className="w-10 h-10 rounded-full flex items-center justify-center shrink-0 active:scale-90 transition-all cursor-pointer"
           style={{ background: C.champagne }}>
           {isPlaying
             ? <Pause className="h-4 w-4" style={{ fill: '#1a1c1c', color: '#1a1c1c' }} />

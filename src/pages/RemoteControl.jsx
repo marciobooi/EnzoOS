@@ -557,7 +557,7 @@ export default function RemoteControl() {
           <TopBar darkMode={darkMode} setDarkMode={setDarkMode} />
 
           <div className="flex-1 overflow-y-auto overscroll-none"
-            style={{ paddingBottom: NAV_H + (activeTab !== 'player' ? 72 : 8) }}>
+            style={{ paddingBottom: `calc(${NAV_H + (activeTab !== 'player' ? 72 : 8)}px + env(safe-area-inset-bottom))` }}>
             <div key={activeTab} className={`animate-tab-${tabDirection}`}>
               {activeTab === 'player'   && <PlayerTab />}
               {activeTab === 'library'  && <LibraryTab />}
@@ -568,7 +568,7 @@ export default function RemoteControl() {
           </div>
 
           {activeTab !== 'player' && (
-            <div className="absolute left-0 right-0" style={{ bottom: NAV_H }}>
+            <div className="absolute left-0 right-0" style={{ bottom: `calc(${NAV_H}px + env(safe-area-inset-bottom))` }}>
               <MiniPlayer />
             </div>
           )}
@@ -604,8 +604,8 @@ export default function RemoteControl() {
                   style={{ color: C.champagne, fontFamily: C.fontLabel }}>Kiosk</p>
                 <p className="text-[22px] font-medium" style={{ color: C.text1, letterSpacing: '-0.01em' }}>Theme &amp; Appearance</p>
               </div>
-              <button onClick={() => setIsThemeSettingsOpen(false)}
-                className="w-9 h-9 rounded-full flex items-center justify-center active:scale-90 transition-all cursor-pointer"
+              <button onClick={() => setIsThemeSettingsOpen(false)} aria-label="Close"
+                className="w-10 h-10 rounded-full flex items-center justify-center active:scale-90 transition-all cursor-pointer"
                 style={{ background: C.containerLow, border: `0.5px solid ${C.outline}` }}>
                 <X className="h-4 w-4" style={{ color: C.text3 }} />
               </button>

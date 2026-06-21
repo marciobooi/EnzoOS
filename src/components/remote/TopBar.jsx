@@ -21,16 +21,18 @@ export default function TopBar({ darkMode, setDarkMode }) {
       </div>
       <div className="flex items-center gap-2">
         <button onClick={() => setDarkMode(d => !d)}
-          className="w-8 h-8 rounded-full flex items-center justify-center active:scale-90 transition-all cursor-pointer"
+          aria-label={darkMode ? 'Switch to light mode' : 'Switch to dark mode'}
+          className="w-10 h-10 rounded-full flex items-center justify-center active:scale-90 transition-all cursor-pointer"
           style={btn}>
           {darkMode
-            ? <Sun className="h-3.5 w-3.5" style={{ color: C.champagne }} />
-            : <Moon className="h-3.5 w-3.5" style={{ color: C.primary }} />}
+            ? <Sun className="h-4 w-4" style={{ color: C.champagne }} />
+            : <Moon className="h-4 w-4" style={{ color: C.primary }} />}
         </button>
         <button onClick={() => handleToggleStandby(!standby)}
-          className="w-8 h-8 rounded-full flex items-center justify-center active:scale-90 transition-all cursor-pointer"
+          aria-label={standby ? 'Wake kiosk' : 'Set kiosk to standby'}
+          className="w-10 h-10 rounded-full flex items-center justify-center active:scale-90 transition-all cursor-pointer"
           style={{ ...btn, color: standby ? C.error : C.text4 }}>
-          <Power className="h-3.5 w-3.5" />
+          <Power className="h-4 w-4" />
         </button>
       </div>
     </div>
