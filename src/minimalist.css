@@ -26,10 +26,25 @@ section.album-column.cursor-pointer, .details-column, .controls-column {
   display: none !important;
 }
 
-div[data-active-theme="minimalist"] .music-player {
+button.icon-button.menu {display: block !important;}
+
+div[data-active-theme="minimalist"] .music-player-container {
+  padding: 0 !important;
+  border-radius: 24px !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.6) !important;
+  background: var(--deep) !important;
+  overflow: hidden !important;
+    background-image: var(--album-art-url) !important;
+}
+
+/* div[data-active-theme="minimalist"] .music-player {
   all: unset;
-  background-image: var(--album-art-url) !important;
+
   background-size: cover !important;
   background-position: center !important;
 
-}
+} */
+
+
+
