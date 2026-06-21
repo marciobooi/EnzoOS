@@ -1,4 +1,5 @@
 import React, { useContext, useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Music, Radio, Airplay, Network, Bluetooth, Music2, Search, ChevronLeft } from 'lucide-react';
 import { Tk, SpotifyIcon } from './shared';
 import { api } from '../../api';
@@ -232,12 +233,18 @@ export default function SourceTab() {
 }
 
 // Full-screen remote sheet — solid background (no dim), header with a back
-// button that returns to the Source view. Defined at module scope so the text
-// inputs inside keep focus across re-renders.
+// button that returns to the Source view. Portaled to <body> so it escapes the
+// tab-slide transform (a transformed ancestor would otherwise trap the fixed
+// element inside the content area, leaving the nav/mini-player visible).
+// Module-scoped so the text inputs inside keep focus across re-renders.
 function Sheet({ C, kicker, title, onBack, children }) {
-  return (
-    <div className="remote-root remote-sheet-in fixed inset-0 z-[90] flex flex-col"
-      style={{ background: C.bg, fontFamily: C.font, paddingTop: 'env(safe-area-inset-top)' }}>
+  return createPortal(
+    <div className="remote-root remote-sheet-in fixed inset-0 z-[9999] flex flex-col"
+      style={{
+        '--rc-outline': C.outline, '--rc-champagne': C.champagne,
+        '--rc-container': C.container, '--rc-bg-white': C.bgWhite,
+        background: C.bg, fontFamily: C.font, paddingTop: 'env(safe-area-inset-top)',
+      }}>
       <div className="flex items-center gap-3 px-5 pt-4 pb-4 shrink-0"
         style={{ background: C.bg, borderBottom: `0.5px solid ${C.outline}` }}>
         <button onClick={onBack}
@@ -253,6 +260,7 @@ function Sheet({ C, kicker, title, onBack, children }) {
         </div>
       </div>
       <div className="flex-1 overflow-y-auto p-5">{children}</div>
-    </div>
+    </div>,
+    document.body,
   );
 }
