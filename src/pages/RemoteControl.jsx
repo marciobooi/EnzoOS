@@ -202,7 +202,9 @@ export default function RemoteControl() {
 
   // ── derived ───────────────────────────────────────────────────────────────
   const currentTrack    = playbackState?.track_window?.current_track;
-  const isPlaying       = playbackState ? !playbackState.paused : false;
+  // Only "playing" when there is a real track — an idle Spotify sync can leave a
+  // paused:false state with an empty track object, which wrongly showed Pause.
+  const isPlaying       = playbackState && currentTrack?.name ? !playbackState.paused : false;
   const trackName       = currentTrack?.name || 'Nothing playing';
   const trackArtist     = currentTrack?.artists?.map(a => a.name).join(', ') || '';
   const albumImage      = currentTrack?.album?.images?.[0]?.url;

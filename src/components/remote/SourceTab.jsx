@@ -6,9 +6,17 @@ import { toast } from '../../lib/toast';
 
 export default function SourceTab() {
   const {
-    C, card, btnInset,
+    C, card, btnInset, darkMode,
     source, handleToggleSource, setActiveTab,
   } = useContext(Tk);
+
+  // Clean, on-theme modal surface — flat white sheet, soft elevation, not the
+  // puffy neumorphic card. Matches the rest of the remote's light aesthetic.
+  const sheet = {
+    background: C.bgWhite,
+    border: `0.5px solid ${C.outline}`,
+    boxShadow: darkMode ? '0 24px 64px rgba(0,0,0,0.7)' : '0 24px 64px rgba(0,0,0,0.22)',
+  };
 
   const [connected, setConnected] = useState({ tidal: false, qobuz: false });
 
@@ -165,8 +173,12 @@ export default function SourceTab() {
       {qobuzModal && (
         <Overlay onClose={() => !busy && setQobuzModal(false)}>
           <form onClick={e => e.stopPropagation()} onSubmit={submitQobuz}
-            className="w-full max-w-sm rounded-2xl p-5 flex flex-col gap-3" style={{ ...card, background: C.containerLow || C.bg }}>
-            <h3 className="text-[18px] font-medium" style={{ color: C.text1 }}>Connect Qobuz</h3>
+            className="remote-sheet-in w-full max-w-sm rounded-2xl p-5 flex flex-col gap-3" style={sheet}>
+            <div className="mb-1">
+              <p className="text-[11px] font-semibold uppercase tracking-widest mb-0.5"
+                style={{ color: C.champagne, fontFamily: C.fontLabel }}>Hi-Res Source</p>
+              <h3 className="text-[20px] font-medium" style={{ color: C.text1, letterSpacing: '-0.01em' }}>Connect Qobuz</h3>
+            </div>
             <input type="text" value={username} onChange={e => setUsername(e.target.value)} placeholder="Email / username"
               autoCapitalize="none" autoComplete="username" className="w-full rounded-xl px-4 py-3 text-[16px] focus:outline-none" style={inputStyle} />
             <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="Password"
@@ -185,9 +197,13 @@ export default function SourceTab() {
       {/* Tidal device flow */}
       {tidalAuth && (
         <Overlay onClose={() => { clearInterval(pollRef.current); setTidalAuth(null); }}>
-          <div onClick={e => e.stopPropagation()} className="w-full max-w-sm rounded-2xl p-6 flex flex-col gap-4 items-center text-center"
-            style={{ ...card, background: C.containerLow || C.bg }}>
-            <h3 className="text-[18px] font-medium" style={{ color: C.text1 }}>Connect Tidal</h3>
+          <div onClick={e => e.stopPropagation()} className="remote-sheet-in w-full max-w-sm rounded-2xl p-6 flex flex-col gap-4 items-center text-center"
+            style={sheet}>
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-widest mb-0.5"
+                style={{ color: C.champagne, fontFamily: C.fontLabel }}>Hi-Res Source</p>
+              <h3 className="text-[20px] font-medium" style={{ color: C.text1, letterSpacing: '-0.01em' }}>Connect Tidal</h3>
+            </div>
             <p className="text-[13px]" style={{ color: C.text3 }}>
               On any device open<br /><span style={{ color: C.champagne }}>{tidalAuth.verificationUri}</span><br />and enter this code:
             </p>
@@ -200,10 +216,10 @@ export default function SourceTab() {
       {/* Search + play */}
       {searchFor && (
         <Overlay onClose={() => setSearchFor(null)}>
-          <div onClick={e => e.stopPropagation()} className="w-full max-w-md rounded-2xl p-4 flex flex-col gap-3 max-h-[80vh]"
-            style={{ ...card, background: C.containerLow || C.bg }}>
+          <div onClick={e => e.stopPropagation()} className="remote-sheet-in w-full max-w-md rounded-2xl p-4 flex flex-col gap-3 max-h-[80vh]"
+            style={sheet}>
             <div className="flex items-center justify-between">
-              <h3 className="text-[16px] font-medium" style={{ color: C.text1 }}>{searchFor === 'tidal' ? 'Tidal' : 'Qobuz'} Search</h3>
+              <h3 className="text-[17px] font-medium" style={{ color: C.text1, letterSpacing: '-0.01em' }}>{searchFor === 'tidal' ? 'Tidal' : 'Qobuz'} Search</h3>
               <button onClick={() => setSearchFor(null)} className="p-1 cursor-pointer"><X className="h-5 w-5" style={{ color: C.text3 }} /></button>
             </div>
             <form onSubmit={doSearch} className="flex gap-2">
@@ -239,8 +255,8 @@ export default function SourceTab() {
 
 function Overlay({ children, onClose }) {
   return (
-    <div className="fixed inset-0 z-[70] flex items-center justify-center px-6"
-      style={{ background: 'rgba(0,0,0,0.55)' }} onClick={onClose}>
+    <div className="remote-scrim fixed inset-0 z-[70] flex items-center justify-center px-6"
+      onClick={onClose}>
       {children}
     </div>
   );
