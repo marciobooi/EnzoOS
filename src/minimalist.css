@@ -34,10 +34,18 @@ div[data-active-theme="minimalist"] .music-player {
   all: unset !important;
   /* Album art as full-cover background */
   background-image: var(--album-art-url, none) !important;
-  background-size: cover !important;
-  background-position: center right !important;
+
+background-position: right center !important;
   background-color: var(--deep) !important;
   background-repeat: no-repeat !important;
+
+
+
+
+        background-size: contain !important;
+  
+
+
 }
 
 
