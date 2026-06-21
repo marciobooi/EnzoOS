@@ -26,17 +26,14 @@ section.album-column.cursor-pointer, .details-column, .controls-column {
   display: none !important;
 }
 
-button.icon-button.menu {display: block !important;}
-
-
 div[data-active-theme="minimalist"] .music-player {
-  position: relative !important; /* Required to anchor the background */
+  position: relative !important;
   background-color: var(--deep) !important;
-  overflow: hidden !important; /* Keeps the blur from spilling outside the player */
+  overflow: hidden !important;
   z-index: 1 !important;
 }
 
-/* The isolated background layer */
+/* Clear album art layer on the right */
 div[data-active-theme="minimalist"] .music-player::before {
   content: "" !important;
   position: absolute !important;
@@ -44,26 +41,35 @@ div[data-active-theme="minimalist"] .music-player::before {
   left: 0 !important;
   right: 0 !important;
   bottom: 0 !important;
-  z-index: -1 !important; /* Puts the image behind your text/buttons */
+  z-index: -1 !important;
 
-  /* Album art setup */
+  /* Image aligned to the right edge */
   background-image: var(--album-art-url) !important;
   background-position: right center !important;
   background-repeat: no-repeat !important;
   background-size: contain !important;
+  opacity: 1 !important;
 
-  /* 1. THE BLUR EFFECT */
-  filter: blur(20px) !important; 
-  
-  /* 2. THE MIX EFFECT (Blends the image colors into var(--deep)) */
-  mix-blend-mode: screen !important; /* Try 'screen', 'lighten', or 'overlay' */
-  opacity: 0.7 !important; /* Lowers intensity so text stays readable */
-
-  /* 3. THE FADE MASK */
-  -webkit-mask-image: linear-gradient(to left, rgba(0,0,0,1) 0%, rgba(0,0,0,1) 30%, rgba(0,0,0,0) 100%) !important;
-  mask-image: linear-gradient(to left, rgba(0,0,0,1) 0%, rgba(0,0,0,1) 30%, rgba(0,0,0,0) 100%) !important;
+  /* Flipped Mask: Transparent on the left (0%), starts staying solid at 25%, 100% solid to the right edge */
+  -webkit-mask-image: linear-gradient(to right, rgba(0,0,0,0) 0%, rgba(0,0,0,0) 25%, rgba(0,0,0,1) 100%) !important;
+  mask-image: linear-gradient(to right, rgba(0,0,0,0) 0%, rgba(0,0,0,0) 25%, rgba(0,0,0,1) 100%) !important;
 }
 
+/* Blur processing layer over the left fading zone */
+div[data-active-theme="minimalist"] .music-player::after {
+  content: "" !important;
+  position: absolute !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  z-index: -1 !important;
+  pointer-events: none !important;
 
+  -webkit-backdrop-filter: blur(20px) !important;
+  backdrop-filter: blur(20px) !important;
 
-
+  /* Flipped Blur Mask: Blurs only the left side where the image transitions out */
+  -webkit-mask-image: linear-gradient(to right, rgba(0,0,0,1) 0%, rgba(0,0,0,0) 30%, rgba(0,0,0,0) 100%) !important;
+  mask-image: linear-gradient(to right, rgba(0,0,0,1) 0%, rgba(0,0,0,0) 30%, rgba(0,0,0,0) 100%) !important;
+}
