@@ -197,6 +197,11 @@ div[data-active-theme="sterling"] .album-art {
   overflow: hidden !important;
 }
 
+div[data-active-theme="sterling"] .album-art:after {
+all:unset;
+
+}
+
 /* Warm monochrome — sepia-tinged grayscale on the dark display */
 div[data-active-theme="sterling"] .album-art img {
   filter: grayscale(100%) sepia(12%) contrast(1.08) brightness(0.96) !important;
