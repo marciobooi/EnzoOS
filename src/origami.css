@@ -501,9 +501,11 @@ div[data-active-theme="origami"] .vu-readout-line span {
    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
 
 div[data-active-theme="origami"] .controls-column {
-
-  position: relative;
+    position: relative;
+    width: 45px !important;
+    padding-left: 32px;
 }
+
 
 /* div[data-active-theme="origami"] .controls-column::before {
   content: '';
