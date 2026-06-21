@@ -245,18 +245,6 @@ async function handleEvent(type, payload, excludeWs) {
     case 'BROADCAST_STATE': {
       cachedPlaybackState = payload;
 
-      // Keep volume/muted in sync — persist to DB debounced so slider drags
-      // don't cause a write on every tick
-      if (payload && payload.volume !== undefined) {
-        cachedVolume = payload.volume;
-        cachedMuted  = payload.is_muted ?? false;
-        clearTimeout(volumeSaveTimer);
-        volumeSaveTimer = setTimeout(() => {
-          setSetting('volume', String(cachedVolume));
-          setSetting('muted',  cachedMuted ? 'true' : 'false');
-        }, 1500);
-      }
-
       // Auto-wake only if standby has been active for > 15 s to avoid the Spotify
       // polling race (kiosk sends BROADCAST_STATE right after entering standby)
       if (cachedStandbyState && payload && !payload.paused) {
@@ -264,7 +252,9 @@ async function handleEvent(type, payload, excludeWs) {
           await applyStandby(false);
         }
       }
-      broadcast({ type: 'PLAYBACK_STATE', payload }, excludeWs);
+      // Relay with server-authoritative volume so stale polling from any client
+      // never overwrites the volume the user actually set via /api/player/volume.
+      broadcast({ type: 'PLAYBACK_STATE', payload: { ...payload, volume: cachedVolume, is_muted: cachedMuted } }, excludeWs);
       break;
     }
 

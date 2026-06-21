@@ -121,6 +121,10 @@ export default function Kiosk() {
   const lastNonZeroVolume = useRef(50);
   const spotifyVolPinned = useRef(false);
   const standbyRef = useRef(false);
+  const volumeRef = useRef(volume);
+  useEffect(() => { volumeRef.current = volume; }, [volume]);
+  const isMutedRef = useRef(isMuted);
+  useEffect(() => { isMutedRef.current = isMuted; }, [isMuted]);
   const [favoriteStations, setFavoriteStations] = useState([]);
 
   const [otaProgress, setOtaProgress] = useState([]);
@@ -1023,9 +1027,9 @@ export default function Kiosk() {
           duration: state.item?.duration_ms || 0,
           shuffle_state: state.shuffle_state,
           repeat_state: state.repeat_state,
-          // CamillaDSP owns volume — do not surface Spotify's device volume here.
-          volume,
-          is_muted: isMuted,
+          // CamillaDSP owns volume — use refs so stale interval closures read current value.
+          volume: volumeRef.current,
+          is_muted: isMutedRef.current,
           track_window: {
             current_track: {
               uri: state.item?.uri,
