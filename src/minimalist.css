@@ -1,16 +1,13 @@
 /* ==============================================================================
-   Minimalist Theme — Album art anchored right, extracted colour fills left.
+   Minimalist Theme — Album art right-anchored via background-image.
 
-   Layout:
-   ┌─────────────────────────────────┬──────────────────────────┐
-   │  details-column (z:2, 55%)      │  album-column (abs right)│
-   │  text + play on extracted color │  art fades in from left  │
-   └─────────────────────────────────┴──────────────────────────┘
+   The album art is rendered as background-image on .music-player (cover,
+   right-anchored) so there is NO element boundary and NO visible seam.
+   A ::before gradient overlay holds the extracted colour SOLID from 0→50%,
+   then blends to transparent from 50→72%. The art only shows on the right ~28%.
 
-   The album-column is positioned absolute-right (47% wide).
-   A CSS mask-image gradient makes its LEFT edge fade transparent,
-   revealing the solid extracted colour underneath — exactly the
-   Plex / Apple Music / podcast-card effect.
+   .album-column is rendered as an invisible (opacity:0) overlay on the right
+   47% so onClick={onToggleMenu} still fires when the user taps the art area.
    ============================================================================= */
 
 div[data-active-theme="minimalist"] {
@@ -43,14 +40,13 @@ div[data-active-theme="minimalist"] .music-player-container {
   overflow: hidden !important;
 }
 
-/* ── Music player: flex row, solid extracted-colour background ──────────── */
+/* ── Music player — art as background-image, right-anchored ────────────── */
 div[data-active-theme="minimalist"] .music-player {
-  /* Use the dynamically extracted palette colour as the solid background */
-  background-image: none !important;
+  background-image: var(--album-art-url, none) !important;
+  background-size: cover !important;
+  background-position: center right !important;
   background-color: rgb(var(--extracted-rgb, 5 10 20)) !important;
-  background-size: unset !important;
-  background-position: unset !important;
-  background-repeat: unset !important;
+  background-repeat: no-repeat !important;
 
   display: flex !important;
   align-items: stretch !important;
@@ -63,29 +59,30 @@ div[data-active-theme="minimalist"] .music-player {
   overflow: hidden !important;
 }
 
-/* ── Dark vignette on the left edge — adds depth to the text area ────────
-   (This overlay sits BELOW the album art mask at z:0 so it only darkens
-   the left colour zone, not the art.)                                      */
+/* ── Gradient overlay: holds solid colour left→centre, quick blend to art ─
+   Solid from 0% to 50%, then fades to transparent by 72%.
+   The art image only bleeds through from ~70% onwards (right 28-30%).
+   Using rgb() (not rgba) for the solid zone guarantees pixel-perfect cover. */
 div[data-active-theme="minimalist"] .music-player::before {
   content: '';
   position: absolute;
   inset: 0;
-  z-index: 0;
+  z-index: 1;
   pointer-events: none;
   background: linear-gradient(
     to right,
-    rgba(0, 0, 0, 0.50) 0%,
-    rgba(0, 0, 0, 0.22) 28%,
-    transparent         52%
+    rgb(var(--extracted-rgb, 5 10 20))         0%,
+    rgb(var(--extracted-rgb, 5 10 20))        50%,
+    rgba(var(--extracted-rgb, 5 10 20), 0.90) 55%,
+    rgba(var(--extracted-rgb, 5 10 20), 0.65) 60%,
+    rgba(var(--extracted-rgb, 5 10 20), 0.28) 66%,
+    rgba(var(--extracted-rgb, 5 10 20), 0.00) 72%
   );
 }
 
-/* ── Album column — absolute, right 47%, full height ─────────────────────
-   The album art fills this column. A ::before overlay with pointer-events:none
-   creates the gradient fade from the extracted colour → transparent, so the
-   solid colour zone bleeds seamlessly into the image (Plex / Apple Music
-   hero-card treatment). Using an overlay (not mask-image) preserves the full
-   clickable area so onClick={onToggleMenu} still fires across the whole column. */
+/* ── Album column — invisible click-receiver on right 47% ────────────────
+   opacity:0 makes it invisible (art shows through from background-image),
+   but the element is still in the DOM and receives clicks → onToggleMenu.  */
 div[data-active-theme="minimalist"] .album-column {
   display: flex !important;
   position: absolute !important;
@@ -93,81 +90,22 @@ div[data-active-theme="minimalist"] .album-column {
   top: 0 !important;
   bottom: 0 !important;
   width: 47% !important;
-  z-index: 1 !important;
-  align-items: stretch !important;
+  z-index: 2 !important;
+  opacity: 0 !important;
   cursor: pointer !important;
+  align-items: center !important;
+  justify-content: center !important;
 }
 
-/* Gradient colour → transparent overlay on the left edge of the art.
-   Transition is tight (done by ~38%) so the right 62% shows the image at
-   full clarity — like the Plex banner where art bleeds in clearly.         */
-div[data-active-theme="minimalist"] .album-column::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  z-index: 2;
-  pointer-events: none;
-  background: linear-gradient(
-    to right,
-    rgb(var(--extracted-rgb, 5 10 20))         0%,
-    rgba(var(--extracted-rgb, 5 10 20), 0.92)  8%,
-    rgba(var(--extracted-rgb, 5 10 20), 0.70) 18%,
-    rgba(var(--extracted-rgb, 5 10 20), 0.35) 28%,
-    rgba(var(--extracted-rgb, 5 10 20), 0.08) 38%,
-    rgba(var(--extracted-rgb, 5 10 20), 0.00) 45%
-  );
-}
-
-/* ── Album art — fills the full column, no circular vinyl form ────────── */
-div[data-active-theme="minimalist"] .album-art {
-  width: 100% !important;
-  height: 100% !important;
-  min-width: 0 !important;
-  min-height: 0 !important;
-  flex: 1 1 100% !important;
-  border-radius: 0 !important;
-  border: none !important;
-  box-shadow: none !important;
-  background: transparent !important;
-  overflow: hidden !important;
-  position: relative !important;
-  z-index: 1 !important;
-}
-
-div[data-active-theme="minimalist"] .album-art::after {
+/* ── Controls column — hidden ───────────────────────────────────────────── */
+div[data-active-theme="minimalist"] .controls-column {
   display: none !important;
 }
 
-div[data-active-theme="minimalist"] .album-art img {
-  position: absolute !important;
-  inset: 0 !important;
-  width: 100% !important;
-  height: 100% !important;
-  object-fit: cover !important;
-  object-position: center right !important;
-  filter: none !important;
-}
-
-/* Radio art — square logo in column */
-div[data-active-theme="minimalist"] .album-art--radio {
-  border-radius: 0 !important;
-  background: rgba(var(--extracted-rgb, 5 10 20), 0.4) !important;
-  display: flex !important;
-  align-items: center !important;
-  justify-content: flex-end !important;
-  padding-right: 2rem !important;
-}
-
-div[data-active-theme="minimalist"] .album-art--radio .radio-logo-wrap img {
-  max-width: 140px !important;
-  max-height: 140px !important;
-  border-radius: 8px !important;
-}
-
-/* ── Details column — sits in flex flow on the left (z above ::before) ─── */
+/* ── Details column — content lives here at z:3, left 55% ──────────────── */
 div[data-active-theme="minimalist"] .details-column {
   position: relative !important;
-  z-index: 2 !important;
+  z-index: 3 !important;
   width: 55% !important;
   flex-shrink: 0 !important;
   display: flex !important;
@@ -179,12 +117,7 @@ div[data-active-theme="minimalist"] .details-column {
   height: 100% !important;
 }
 
-/* ── Controls column — hidden in minimalist ─────────────────────────────── */
-div[data-active-theme="minimalist"] .controls-column {
-  display: none !important;
-}
-
-/* ── Hide HUD chrome not needed here ───────────────────────────────────── */
+/* ── Hide HUD chrome ─────────────────────────────────────────────────────── */
 div[data-active-theme="minimalist"] .status-pill,
 div[data-active-theme="minimalist"] .hifi-topline,
 div[data-active-theme="minimalist"] .hifi-visualizer,
