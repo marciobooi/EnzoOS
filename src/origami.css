@@ -342,6 +342,9 @@ div[data-active-theme="origami"] .metadata-row [class*="border"][class*="rounded
 
 div[data-active-theme="origami"] .volume-popup {
   background: var(--paper) !important;
+      border-radius: 0 !important;
+    width: 20rem;
+    height: 3.3rem;
 }
 
 /* ── Volume popup — Kindle-style reading notification ──────────────────── */
