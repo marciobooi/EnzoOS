@@ -349,84 +349,40 @@ div[data-active-theme="sterling"] .music-controls .icon-button.active {
   box-shadow: inset 0 0 8px rgba(255,255,255,0.25) !important;
 }
 
-/* ── Play / Pause — the machined volume knob (signature object) ──────────── */
+/* ── Play / Pause — fully-lit LED button on the display ─────────────────── */
+/* Same flat key language as the transport buttons, but saturated white —
+   like the primary indicator LED on a DAC panel, fully illuminated.        */
 div[data-active-theme="sterling"] .icon-button.play {
-  border-radius: 50% !important;
-  /* Brushed aluminium dome */
-  background:
-    radial-gradient(circle at 50% 32%,
-      #F4F5F6 0%,
-      #DBDEDF 26%,
-      #BFC2C4 52%,
-      #A6A9AB 74%,
-      #C4C7C9 100%) !important;
-  border: 1px solid #939698 !important;
-  color: var(--engrave) !important;
-  /* Concentric machined rings + protruding dome shadow */
+  border-radius: 5px !important;
+  background: rgba(255,255,255,0.90) !important;
+  border: 1px solid rgba(255,255,255,0.55) !important;
+  color: var(--display-top) !important;
   box-shadow:
-    inset 0 0 0 5px rgba(255,255,255,0.16),
-    inset 0 0 0 6px rgba(0,0,0,0.10),
-    inset 0 2px 3px rgba(255,255,255,0.9),
-    inset 0 -3px 6px rgba(0,0,0,0.22),
-    0 2px 3px rgba(0,0,0,0.25),
-    0 6px 16px rgba(0,0,0,0.4) !important;
-  text-shadow: 0 1px 0 rgba(255,255,255,0.7) !important;
-  transition: transform 0.14s ease, box-shadow 0.16s ease !important;
-}
-
-/* Radial brushed texture inside the knob */
-div[data-active-theme="sterling"] .icon-button.play::before {
-  content: '' !important;
-  display: block !important;
-  position: absolute;
-  inset: 14%;
-  border-radius: 50%;
-  background:
-    conic-gradient(from 0deg,
-      rgba(255,255,255,0.0) 0deg,
-      rgba(255,255,255,0.22) 14deg,
-      rgba(0,0,0,0.10) 30deg,
-      rgba(255,255,255,0.0) 50deg,
-      rgba(255,255,255,0.20) 72deg,
-      rgba(0,0,0,0.08) 96deg,
-      rgba(255,255,255,0.0) 130deg,
-      rgba(255,255,255,0.22) 168deg,
-      rgba(0,0,0,0.10) 200deg,
-      rgba(255,255,255,0.0) 240deg,
-      rgba(255,255,255,0.18) 290deg,
-      rgba(0,0,0,0.08) 330deg,
-      rgba(255,255,255,0.0) 360deg);
-  box-shadow: inset 0 1px 2px rgba(0,0,0,0.25), inset 0 -1px 1px rgba(255,255,255,0.6);
-  pointer-events: none;
-  z-index: 0;
-}
-
-div[data-active-theme="sterling"] .icon-button.play svg {
-  position: relative;
-  z-index: 1;
-  color: var(--engrave) !important;
-  filter: drop-shadow(0 1px 0 rgba(255,255,255,0.7));
+    inset 0 1px 0 rgba(255,255,255,1.0),
+    0 0 10px rgba(255,255,255,0.45),
+    0 0 22px rgba(255,255,255,0.20) !important;
+  text-shadow: none !important;
+  transition: background 0.16s ease, box-shadow 0.16s ease, transform 0.14s ease !important;
 }
 
 div[data-active-theme="sterling"] .icon-button.play:hover {
-  transform: scale(1.04) !important;
+  background: rgba(255,255,255,1.0) !important;
   box-shadow:
-    inset 0 0 0 5px rgba(255,255,255,0.18),
-    inset 0 0 0 6px rgba(0,0,0,0.10),
-    inset 0 2px 3px rgba(255,255,255,0.95),
-    inset 0 -3px 6px rgba(0,0,0,0.24),
-    0 3px 5px rgba(0,0,0,0.28),
-    0 10px 24px rgba(0,0,0,0.45) !important;
+    inset 0 1px 0 rgba(255,255,255,1.0),
+    0 0 16px rgba(255,255,255,0.60),
+    0 0 36px rgba(255,255,255,0.28) !important;
+  transform: scale(1.04) !important;
 }
 
 div[data-active-theme="sterling"] .icon-button.play:active {
-  transform: scale(0.97) !important;
+  transform: scale(0.96) !important;
+  background: rgba(255,255,255,0.75) !important;
   box-shadow:
-    inset 0 0 0 5px rgba(255,255,255,0.14),
-    inset 0 2px 4px rgba(0,0,0,0.25),
-    0 1px 3px rgba(0,0,0,0.3) !important;
+    inset 0 2px 4px rgba(0,0,0,0.12),
+    0 0 6px rgba(255,255,255,0.30) !important;
 }
 
+div[data-active-theme="sterling"] .icon-button.play::before,
 div[data-active-theme="sterling"] .icon-button.play::after {
   display: none !important;
 }
