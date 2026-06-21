@@ -5,7 +5,7 @@ import {
 } from 'lucide-react';
 import { toast } from '../../lib/toast';
 import { Tk, Row, Section, SpotifyIcon } from './shared';
-import EqualizerControl from '../EqualizerControl';
+import RemoteEqualizer from './RemoteEqualizer';
 
 export default function SettingsTab() {
   const [confirmPending, setConfirmPending] = useState(null);
@@ -73,17 +73,14 @@ export default function SettingsTab() {
           icon={<Sliders className="h-4 w-4" style={{ color: C.champagne }} />}
           onPress={() => setShowEq(v => !v)} chevron={false} value={showEq ? '▲' : '▼'} />
         {showEq && (
-          <div style={{ minHeight: 380 }}>
-            <EqualizerControl
-              currentPreset={eqPreset} onPresetChange={handleEqPresetChange}
-              bands={eqBands} onBandChange={handleBandChange}
-              saturation={eqSaturation} onSaturationChange={handleSaturationChange}
-              noiseFloor={eqNoiseFloor} onNoiseFloorChange={handleNoiseFloorChange}
-              preAmp={eqPreAmp} onPreAmpChange={handlePreAmpChange}
-              dspActive={dspActive} onDeactivateDsp={handleDeactivateDsp}
-              light={!darkMode}
-            />
-          </div>
+          <RemoteEqualizer
+            currentPreset={eqPreset} onPresetChange={handleEqPresetChange}
+            bands={eqBands} onBandChange={handleBandChange}
+            saturation={eqSaturation} onSaturationChange={handleSaturationChange}
+            noiseFloor={eqNoiseFloor} onNoiseFloorChange={handleNoiseFloorChange}
+            preAmp={eqPreAmp} onPreAmpChange={handlePreAmpChange}
+            dspActive={dspActive} onDeactivateDsp={handleDeactivateDsp}
+          />
         )}
         <Row label="Room Calibration"
           icon={<Cpu className="h-4 w-4" style={{ color: '#f59e0b' }} />}

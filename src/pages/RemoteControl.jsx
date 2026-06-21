@@ -5,7 +5,8 @@ import { api } from '../api';
 import { useResonanceWS } from '../websocket';
 import { EQ_PRESETS } from '../components/EqualizerControl';
 import DspWizard from '../components/DspWizard';
-import ThemeSettingsControl from '../components/ThemeSettingsControl';
+import RemoteThemeSettings from '../components/remote/RemoteThemeSettings';
+import '../remote.css';
 
 import { Tk } from '../components/remote/shared';
 import TopBar    from '../components/remote/TopBar';
@@ -77,6 +78,13 @@ export default function RemoteControl() {
   } : {
     background: '#f9f9f9',
     boxShadow: 'inset 3px 3px 6px rgba(0,0,0,0.05), inset -3px -3px 6px rgba(255,255,255,0.9)',
+  };
+
+  // CSS variables consumed by remote.css — keeps scrollbars, sliders and scrims
+  // on the remote palette so the kiosk skin variables can never bleed in.
+  const rcVars = {
+    '--rc-bg': C.bg, '--rc-bg-white': C.bgWhite, '--rc-container': C.container,
+    '--rc-container-low': C.containerLow, '--rc-champagne': C.champagne, '--rc-outline': C.outline,
   };
 
   // ── auth ──────────────────────────────────────────────────────────────────
@@ -489,7 +497,7 @@ export default function RemoteControl() {
   // DISABLED
   // ══════════════════════════════════════════════════════════════════════════
   if (!remoteAccessEnabled) return (
-    <div style={{ fontFamily: C.font, background: C.bg }} className="fixed inset-0 flex flex-col items-center justify-center gap-6 p-8 touch-manipulation select-none">
+    <div style={{ ...rcVars, fontFamily: C.font, background: C.bg }} className="remote-root fixed inset-0 flex flex-col items-center justify-center gap-6 p-8 touch-manipulation select-none">
       <div className="w-20 h-20 rounded-3xl flex items-center justify-center" style={{ background: C.containerLow, border: `0.5px solid ${C.outline}` }}>
         <Smartphone className="h-8 w-8" style={{ color: C.error }} />
       </div>
@@ -505,7 +513,7 @@ export default function RemoteControl() {
   // ══════════════════════════════════════════════════════════════════════════
   if (!isAuthenticated) return (
     <>
-      <div style={{ fontFamily: C.font, background: C.bg }} className="fixed inset-0 flex flex-col items-center justify-center px-6 touch-manipulation select-none overflow-hidden">
+      <div style={{ ...rcVars, fontFamily: C.font, background: C.bg }} className="remote-root fixed inset-0 flex flex-col items-center justify-center px-6 touch-manipulation select-none overflow-hidden">
         <div className="absolute top-[-80px] left-1/2 -translate-x-1/2 w-[320px] h-[320px] rounded-full pointer-events-none"
           style={{ background: `radial-gradient(ellipse, ${C.champagne} 0%, transparent 70%)`, opacity: darkMode ? 0.06 : 0.11 }} />
         <div className="w-full max-w-xs z-10 flex flex-col gap-8">
@@ -541,8 +549,8 @@ export default function RemoteControl() {
   return (
     <Tk.Provider value={ctxValue}>
       <>
-        <div style={{ fontFamily: C.font, background: C.bg, paddingTop: 'env(safe-area-inset-top)' }}
-          className="fixed inset-0 flex flex-col overflow-hidden touch-manipulation select-none">
+        <div style={{ ...rcVars, fontFamily: C.font, background: C.bg, paddingTop: 'env(safe-area-inset-top)' }}
+          className="remote-root fixed inset-0 flex flex-col overflow-hidden touch-manipulation select-none">
 
           <TopBar darkMode={darkMode} setDarkMode={setDarkMode} />
 
@@ -568,7 +576,7 @@ export default function RemoteControl() {
 
         {/* ── Overlays ── */}
         {isDspWizardOpen && (
-          <div className="fixed inset-0 z-[9999] flex flex-col" style={{ background: darkMode ? '#0a0f1e' : '#f9f9f9' }}>
+          <div className="remote-root fixed inset-0 z-[9999] flex flex-col" style={{ ...rcVars, background: darkMode ? '#0a0f1e' : '#f9f9f9' }}>
             <DspWizard
               onClose={() => { setIsDspWizardOpen(false); api.getDspCalibration().then(c => setDspActive(c && c[0] === 'dsp')).catch(() => {}); }}
               onCalibrationComplete={active => setDspActive(active)}
@@ -585,13 +593,14 @@ export default function RemoteControl() {
         )}
 
         {isThemeSettingsOpen && (
-          <div className="fixed inset-0 z-[9999] flex flex-col p-5 overflow-auto"
-            style={{ background: darkMode ? '#0a0f1e' : '#f9f9f9', fontFamily: C.font }}>
-            <div className="flex justify-between items-center mb-5 shrink-0">
+          <div className="remote-root fixed inset-0 z-[9999] flex flex-col overflow-y-auto"
+            style={{ ...rcVars, background: C.bg, fontFamily: C.font, paddingTop: 'env(safe-area-inset-top)' }}>
+            <div className="flex justify-between items-center px-5 pt-4 pb-4 sticky top-0 z-10 shrink-0"
+              style={{ background: C.bg, borderBottom: `0.5px solid ${C.outline}` }}>
               <div>
                 <p className="text-[11px] font-semibold uppercase tracking-widest mb-0.5"
                   style={{ color: C.champagne, fontFamily: C.fontLabel }}>Kiosk</p>
-                <p className="text-[22px] font-medium" style={{ color: C.text1, letterSpacing: '-0.01em' }}>Theme</p>
+                <p className="text-[22px] font-medium" style={{ color: C.text1, letterSpacing: '-0.01em' }}>Theme &amp; Appearance</p>
               </div>
               <button onClick={() => setIsThemeSettingsOpen(false)}
                 className="w-9 h-9 rounded-full flex items-center justify-center active:scale-90 transition-all cursor-pointer"
@@ -599,8 +608,8 @@ export default function RemoteControl() {
                 <X className="h-4 w-4" style={{ color: C.text3 }} />
               </button>
             </div>
-            <div className="flex-grow min-h-0">
-              <ThemeSettingsControl
+            <div className="p-5">
+              <RemoteThemeSettings
                 activeTheme={activeTheme} onThemeChange={handleActiveThemeChange}
                 themeColor={theme} onColorChange={handleThemeColorChange}
                 brightness={brightness} onBrightnessChange={handleBrightnessChange}
