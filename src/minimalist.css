@@ -20,56 +20,191 @@ div[data-active-theme="minimalist"] {
   background: var(--deep) !important;
 }
 
-/* resets */
-
-section.album-column.cursor-pointer, .details-column, .controls-column {
+/* ── Suppress ambient / dot-matrix elements ─────────────────────────────── */
+div[data-active-theme="minimalist"] .ambient-orb,
+div[data-active-theme="minimalist"] .dot-matrix-grid,
+div[data-active-theme="minimalist"] .crt-scanlines {
   display: none !important;
 }
 
-div[data-active-theme="minimalist"] .music-player {
-  position: relative !important;
-  background-color: var(--deep) !important;
+/* ── Player container ───────────────────────────────────────────────────── */
+div[data-active-theme="minimalist"] .music-player-container {
+  padding: 0 !important;
+  border-radius: 24px !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.6) !important;
+  background: var(--deep) !important;
   overflow: hidden !important;
-  z-index: 1 !important;
 }
 
-/* Clear album art layer on the right */
-div[data-active-theme="minimalist"] .music-player::before {
-  content: "" !important;
-  position: absolute !important;
-  top: 0 !important;
-  left: 0 !important;
-  right: 0 !important;
-  bottom: 0 !important;
-  z-index: -1 !important;
-
-  /* Image aligned to the right edge */
-  background-image: var(--album-art-url) !important;
-  background-position: right center !important;
+/* ── Music player: full-bleed album art background ──────────────────────── */
+div[data-active-theme="minimalist"] .music-player {
+  /* Album art as full-cover background */
+  background-image: var(--album-art-url, none) !important;
+  background-size: cover !important;
+  background-position: center right !important;
+  background-color: var(--deep) !important;
   background-repeat: no-repeat !important;
-  background-size: contain !important;
-  opacity: 1 !important;
 
-  /* Flipped Mask: Transparent on the left (0%), starts staying solid at 25%, 100% solid to the right edge */
-  -webkit-mask-image: linear-gradient(to right, rgba(0,0,0,0) 0%, rgba(0,0,0,0) 25%, rgba(0,0,0,1) 100%) !important;
-  mask-image: linear-gradient(to right, rgba(0,0,0,0) 0%, rgba(0,0,0,0) 25%, rgba(0,0,0,1) 100%) !important;
+  /* Reset grid — content flows in a simple flex row */
+  display: flex !important;
+  align-items: stretch !important;
+  gap: 0 !important;
+  padding: 0 !important;
+  border: none !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  position: relative !important;
+  overflow: hidden !important;
 }
 
-/* Blur processing layer over the left fading zone */
-div[data-active-theme="minimalist"] .music-player::after {
-  content: "" !important;
-  position: absolute !important;
-  top: 0 !important;
-  left: 0 !important;
-  right: 0 !important;
-  bottom: 0 !important;
-  z-index: -1 !important;
-  pointer-events: none !important;
+/* ── Gradient overlay via ::before ─────────────────────────────────────── */
+/* Covers the full player. Goes left→right: deep solid → vibrant extracted
+   colour → transparent (album art shows through on the right).            */
+div[data-active-theme="minimalist"] .music-player::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background: linear-gradient(
+    to right,
+    var(--deep)                                  0%,
+    rgba(var(--extracted-rgb, 5 10 20), 0.98)   14%,
+    rgba(var(--extracted-rgb, 5 10 20), 0.95)   28%,
+    rgba(var(--extracted-rgb, 5 10 20), 0.90)   40%,
+    rgba(var(--extracted-rgb, 5 10 20), 0.50)   55%,
+    rgba(var(--extracted-rgb, 5 10 20), 0.12)   68%,
+    transparent                                  78%
+  );
+}
 
-  -webkit-backdrop-filter: blur(20px) !important;
-  backdrop-filter: blur(20px) !important;
+/* ── Details column — text lives here, over the overlay ────────────────── */
+div[data-active-theme="minimalist"] .details-column {
+  position: relative !important;
+  z-index: 2 !important;
+  /* Take ~55 % of the player width — album art bleeds through the rest */
+  width: 55% !important;
+  flex-shrink: 0 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: center !important;
+  align-items: flex-start !important;
+  padding: 2rem 2.5rem !important;
+  background: transparent !important;
+  height: 100% !important;
+}
 
-  /* Flipped Blur Mask: Blurs only the left side where the image transitions out */
-  -webkit-mask-image: linear-gradient(to right, rgba(0,0,0,1) 0%, rgba(0,0,0,0) 30%, rgba(0,0,0,0) 100%) !important;
-  mask-image: linear-gradient(to right, rgba(0,0,0,1) 0%, rgba(0,0,0,0) 30%, rgba(0,0,0,0) 100%) !important;
+/* ── Hide the explicit album-column (art is in the background) ──────────── */
+div[data-active-theme="minimalist"] .album-column,
+div[data-active-theme="minimalist"] .controls-column {
+  display: none !important;
+}
+
+/* ── Hide player chrome not needed in minimalist ────────────────────────── */
+div[data-active-theme="minimalist"] .status-pill,
+div[data-active-theme="minimalist"] .hifi-topline,
+div[data-active-theme="minimalist"] .hifi-visualizer,
+div[data-active-theme="minimalist"] .volume-feedback,
+div[data-active-theme="minimalist"] .progress-area,
+div[data-active-theme="minimalist"] .metadata-row > div:first-child > div.flex {
+  display: none !important;
+}
+
+/* ── Track details layout ───────────────────────────────────────────────── */
+div[data-active-theme="minimalist"] .track-details {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 0.4rem !important;
+  width: 100% !important;
+}
+
+/* ── Title AutoScroll wrapper ───────────────────────────────────────────── */
+div[data-active-theme="minimalist"] .title-container {
+  display: block !important;
+  width: 100% !important;
+}
+div[data-active-theme="minimalist"] .title-container > div:first-child {
+  width: 100% !important;
+  overflow: clip !important;
+  transform: translateZ(0);
+}
+
+/* ── Typography ─────────────────────────────────────────────────────────── */
+div[data-active-theme="minimalist"] .track-title {
+  font-family: 'Syne', 'Inter', system-ui, sans-serif !important;
+  font-size: 3.4rem !important;
+  font-weight: 800 !important;
+  color: var(--ink) !important;
+  letter-spacing: -0.04em !important;
+  line-height: 1.0 !important;
+}
+
+div[data-active-theme="minimalist"] .metadata-row {
+  display: block !important;
+  width: 100% !important;
+}
+
+div[data-active-theme="minimalist"] .metadata-row > div:first-child {
+  width: 100% !important;
+  overflow: hidden !important;
+}
+
+/* Artist / album AutoScroll wrappers need overflow: clip for marquee */
+div[data-active-theme="minimalist"] .metadata-row > div:first-child > div {
+  overflow: clip !important;
+  transform: translateZ(0);
+  width: 100% !important;
+}
+
+div[data-active-theme="minimalist"] .track-artist {
+  font-family: 'Syne', 'Inter', system-ui, sans-serif !important;
+  font-size: 1.1rem !important;
+  font-weight: 600 !important;
+  color: var(--ink-2) !important;
+  letter-spacing: 0.01em !important;
+  text-transform: none !important;
+}
+
+div[data-active-theme="minimalist"] .track-album {
+  font-size: 0.88rem !important;
+  font-weight: 400 !important;
+  color: var(--ink-3) !important;
+  letter-spacing: 0.02em !important;
+}
+
+/* ── Play button ────────────────────────────────────────────────────────── */
+div[data-active-theme="minimalist"] .music-controls {
+  margin-top: 1.8rem !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+}
+
+div[data-active-theme="minimalist"] .music-controls > button:not(.play) {
+  display: none !important;
+}
+
+div[data-active-theme="minimalist"] .icon-button.play {
+  width: 64px !important;
+  height: 64px !important;
+  border-radius: 50% !important;
+  background: var(--ink-btn-bg) !important;
+  color: var(--ink-btn-txt) !important;
+  border: none !important;
+  box-shadow: 0 10px 24px rgba(var(--extracted-rgb, 255 255 255), 0.28) !important;
+  display: grid !important;
+  place-items: center !important;
+  transition: transform 0.2s ease, box-shadow 0.2s ease !important;
+}
+div[data-active-theme="minimalist"] .icon-button.play:hover {
+  transform: scale(1.06) !important;
+  box-shadow: 0 14px 30px rgba(var(--extracted-rgb, 255 255 255), 0.42) !important;
+}
+div[data-active-theme="minimalist"] .icon-button.play:active {
+  transform: scale(0.94) !important;
+}
+div[data-active-theme="minimalist"] .icon-button.play::before,
+div[data-active-theme="minimalist"] .icon-button.play::after {
+  display: none !important;
 }
