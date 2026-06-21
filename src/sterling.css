@@ -232,19 +232,6 @@ div[data-active-theme="sterling"] .title-container {
   box-shadow: 0 1px 0 rgba(255,255,255,0.16) !important;
 }
 
-div[data-active-theme="sterling"] .title-container::before {
-  content: 'SOURCE \00B7 NOW PLAYING';
-  display: block;
-  font-family: 'Inter', system-ui, sans-serif;
-  font-size: 0.5rem;
-  font-weight: 600;
-  letter-spacing: 0.34em;
-  color: var(--lum-4);
-  text-transform: uppercase;
-  margin-bottom: 0.2rem;
-  text-shadow: 0 0 6px var(--lum-glow-soft);
-  user-select: none;
-}
 
 /* ── Track title — luminous ultra-thin hero (the "Coaxial" treatment) ────── */
 div[data-active-theme="sterling"] .track-title {
