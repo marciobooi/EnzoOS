@@ -401,6 +401,8 @@ div[data-active-theme="sterling"] .icon-button.play {
     0 0 18px rgba(248,246,242,0.14) !important;
   text-shadow: none !important;
   transition: background 0.16s ease, box-shadow 0.16s ease, transform 0.12s ease !important;
+  width: 3.5rem;
+    height: 3.5rem;
 }
 
 div[data-active-theme="sterling"] .icon-button.play:hover {
@@ -410,6 +412,7 @@ div[data-active-theme="sterling"] .icon-button.play:hover {
     0 0 14px rgba(248,246,242,0.50),
     0 0 28px rgba(248,246,242,0.22) !important;
   transform: scale(1.04) !important;
+  color: var(--display-mid) !important;
 }
 
 div[data-active-theme="sterling"] .icon-button.play:active {
@@ -418,6 +421,7 @@ div[data-active-theme="sterling"] .icon-button.play:active {
   box-shadow:
     inset 0 2px 4px rgba(0,0,0,0.14),
     0 0 5px rgba(248,246,242,0.22) !important;
+    color: var(--display-mid) !important;
 }
 
 div[data-active-theme="sterling"] .icon-button.play::before,
