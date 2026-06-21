@@ -28,18 +28,10 @@ section.album-column.cursor-pointer, .details-column, .controls-column {
 
 button.icon-button.menu {display: block !important;}
 
-div[data-active-theme="minimalist"] .music-player-container {
-  padding: 0 !important;
-  background-color:  var(--deep) !important; 
-  background-image: var(--album-art-url) !important;
-  /* Centers the album art and makes it cover the whole area nicely */
-  background-size: cover !important;
-  background-position: center !important;
-}
-
 
 /* ── Music player: full-bleed album art background ──────────────────────── */
 div[data-active-theme="minimalist"] .music-player {
+  all: unset !important;
   /* Album art as full-cover background */
   background-image: var(--album-art-url, none) !important;
   background-size: cover !important;
@@ -47,16 +39,7 @@ div[data-active-theme="minimalist"] .music-player {
   background-color: var(--deep) !important;
   background-repeat: no-repeat !important;
 
-  /* Reset grid — content flows in a simple flex row */
-  display: flex !important;
-  align-items: stretch !important;
-  gap: 0 !important;
-  padding: 0 !important;
-  border: none !important;
-  border-radius: 0 !important;
-  box-shadow: none !important;
-  position: relative !important;
-  overflow: hidden !important;
+ 
 }
 
 
