@@ -155,7 +155,7 @@ export default function PlayerTab() {
           <button onClick={handleRepeat} disabled={spotify ? !token : true} aria-label="Repeat"
             className="w-11 h-11 rounded-full flex items-center justify-center cursor-pointer disabled:opacity-20 active:scale-90 transition-all"
             style={{ ...btn, color: repeatState !== 'off' ? C.champagne : C.text4 }}>
-            <Repeat className="h-4 w-4" />
+            <Repeat className="h-[18px] w-[18px]" />
           </button>
         ) : <div className="w-11" />}
 
@@ -201,7 +201,7 @@ export default function PlayerTab() {
           <button onClick={handleShuffle} disabled={spotify ? !token : true} aria-label="Shuffle"
             className="w-11 h-11 rounded-full flex items-center justify-center cursor-pointer disabled:opacity-20 active:scale-90 transition-all"
             style={{ ...btn, color: shuffleState ? C.champagne : C.text4 }}>
-            <Shuffle className="h-4 w-4" />
+            <Shuffle className="h-[18px] w-[18px]" />
           </button>
         ) : <div className="w-11" />}
       </div>
@@ -211,7 +211,7 @@ export default function PlayerTab() {
         <button onClick={handleMuteToggle} aria-label={isMuted ? 'Unmute' : 'Mute'}
           style={{ color: isMuted ? C.champagne : C.text3 }}
           className="w-11 h-11 flex items-center justify-center rounded-full active:scale-90 transition-all cursor-pointer shrink-0">
-          <VolumeX className="h-4 w-4" />
+          <VolumeX className="h-[18px] w-[18px]" />
         </button>
         <div className="relative flex-1 h-1 rounded-full" style={{ background: C.container }}>
           <div className="absolute inset-y-0 left-0 rounded-full"
@@ -224,7 +224,7 @@ export default function PlayerTab() {
         <button style={{ color: C.text3 }} aria-label="Maximum volume"
           className="w-11 h-11 flex items-center justify-center rounded-full active:scale-90 transition-all cursor-pointer shrink-0"
           onClick={() => handleVolumeChange({ target: { value: 100 } })}>
-          <Volume2 className="h-4 w-4" />
+          <Volume2 className="h-[18px] w-[18px]" />
         </button>
       </div>
 

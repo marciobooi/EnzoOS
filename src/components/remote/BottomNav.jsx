@@ -54,10 +54,10 @@ export default function BottomNav({ navH }) {
             <button key={id} onClick={() => setActiveTab(id)}
               className="flex flex-col items-center gap-1 py-1 flex-1 cursor-pointer active:scale-90"
               style={{ transition: 'transform 0.1s ease' }}>
-              <Icon className="h-5 w-5"
-                strokeWidth={active ? 2 : 1.5}
+              <Icon className="h-[22px] w-[22px]"
+                strokeWidth={active ? 2.2 : 1.7}
                 style={{ color: active ? C.champagne : C.text3, transition: 'color 0.2s ease' }} />
-              <span className="text-[10px] font-semibold uppercase tracking-[0.12em]"
+              <span className="text-[11px] font-semibold uppercase tracking-[0.08em]"
                 style={{ color: active ? C.champagne : C.text3, fontFamily: C.fontLabel, transition: 'color 0.2s ease' }}>
                 {label}
               </span>
