@@ -43,7 +43,7 @@ div[data-active-theme="minimalist"] .music-player-container {
 /* ── Music player — art as background-image, right-anchored ────────────── */
 div[data-active-theme="minimalist"] .music-player {
   background-image: var(--album-art-url, none) !important;
-  background-size: cover !important;
+  background-size: 34% !important;
   background-position: center right !important;
   background-color: rgb(var(--extracted-rgb, 5 10 20)) !important;
   background-repeat: no-repeat !important;
