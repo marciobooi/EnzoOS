@@ -320,9 +320,11 @@ export default function RemoteControl() {
       setPlaybackState({ paused: !s.is_playing, position: s.progress_ms, duration: s.item?.duration_ms || 0, shuffle_state: s.shuffle_state, repeat_state: s.repeat_state, volume, is_muted: isMuted, track_window: { current_track: { uri: s.item?.uri, name: s.item?.name, album: { name: s.item?.album?.name, images: s.item?.album?.images || [] }, artists: s.item?.artists || [] } } });
       setTrackPosition(s.progress_ms); setTrackDuration(s.item?.duration_ms || 0);
       setShuffleState(s.shuffle_state); setRepeatState(s.repeat_state);
-      // Pin the Spotify Connect device to unity once so it does not pre-attenuate
-      // ahead of CamillaDSP (the cause of compounding/too-quiet output after reboot).
-      if (!spotifyVolPinned.current && s.device?.id && s.device.volume_percent !== undefined && s.device.volume_percent !== 100) {
+      // Pin ONLY the local "Resonance Connect" output to unity once, so it does not
+      // pre-attenuate ahead of CamillaDSP (the cause of compounding / too-quiet
+      // output after reboot). Never touch the volume of a device the user has cast
+      // playback to elsewhere (e.g. their phone) — CamillaDSP isn't in that path.
+      if (!spotifyVolPinned.current && s.device?.name === 'Resonance Connect' && s.device.volume_percent !== undefined && s.device.volume_percent !== 100) {
         spotifyVolPinned.current = true;
         api.setVolume(token, 100).catch(() => { spotifyVolPinned.current = false; });
       }

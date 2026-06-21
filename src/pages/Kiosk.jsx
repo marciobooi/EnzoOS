@@ -1043,9 +1043,10 @@ export default function Kiosk() {
         setTrackDuration(state.item?.duration_ms || 0);
         setShuffleState(state.shuffle_state);
         setRepeatState(state.repeat_state);
-        // Pin the Spotify Connect device to unity once so it does not pre-attenuate
-        // ahead of the CamillaDSP master (prevents compounding / very quiet output).
-        if (!spotifyVolPinned.current && state.device?.id && state.device.volume_percent !== undefined && state.device.volume_percent !== 100) {
+        // Pin ONLY the local "Resonance Connect" output to unity once so it does not
+        // pre-attenuate ahead of the CamillaDSP master (prevents compounding / very
+        // quiet output). Never touch a device the user cast playback to elsewhere.
+        if (!spotifyVolPinned.current && state.device?.name === 'Resonance Connect' && state.device.volume_percent !== undefined && state.device.volume_percent !== 100) {
           spotifyVolPinned.current = true;
           api.setVolume(token, 100).catch(() => { spotifyVolPinned.current = false; });
         }
