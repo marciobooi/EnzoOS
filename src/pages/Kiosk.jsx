@@ -329,10 +329,18 @@ export default function Kiosk() {
       try {
         const status = await api.localGetStatus();
         if (!status?.name) return;
-        // Parse ICY "Artist - Song" — split on first " - "
-        const sep = status.name.indexOf(' - ');
-        const icyTitle  = sep > 0 ? status.name.slice(sep + 3) : status.name;
-        const icyArtist = sep > 0 ? status.name.slice(0, sep)  : null;
+        // The server now strips URLs/XML and parses the artist out of Dalet
+        // metadata. Prefer that; otherwise stations send "Artist - Song" in the
+        // title — split on the first " - ".
+        let icyTitle, icyArtist;
+        if (status.artist) {
+          icyTitle  = status.name;
+          icyArtist = status.artist;
+        } else {
+          const sep = status.name.indexOf(' - ');
+          icyTitle  = sep > 0 ? status.name.slice(sep + 3) : status.name;
+          icyArtist = sep > 0 ? status.name.slice(0, sep)  : null;
+        }
         setPlaybackState(prev => {
           if (!prev) return prev;
           const cur = prev.track_window?.current_track;

@@ -238,6 +238,25 @@ router.post('/radios', async (req, res) => {
   }
 });
 
+// Sanitise MPD ICY/stream %title% metadata before exposing it as a track name.
+// Three cases seen in the wild:
+//   1. The raw stream URL (HLS/AAC streams with no ICY title) -> suppress.
+//   2. Dalet RadioInfo XML (Rádio Comercial and other PT/ES stations) ->
+//      pull <DB_SONG_NAME> / <DB_LEAD_ARTIST_NAME> out of the blob.
+//   3. Any other angle-bracket markup -> strip tags as a last resort.
+// Returns { name, artist } so callers get clean, separated fields.
+export function sanitizeStreamTitle(raw) {
+  const name = (raw || '').trim();
+  if (!name) return { name: '', artist: '' };
+  if (name.startsWith('http://') || name.startsWith('https://')) return { name: '', artist: '' };
+  if (!name.includes('<')) return { name, artist: '' };
+  const song   = name.match(/<DB_SONG_NAME>([^<]+)<\/DB_SONG_NAME>/)?.[1]?.trim();
+  const artist = name.match(/<DB_LEAD_ARTIST_NAME>([^<]+)<\/DB_LEAD_ARTIST_NAME>/)?.[1]?.trim();
+  if (song) return { name: song, artist: artist || '' };
+  const stripped = name.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+  return { name: stripped, artist: '' };
+}
+
 // GET /api/player/status -> Current MPD playback state (for local source polling)
 router.get('/status', async (req, res) => {
   try {
@@ -252,15 +271,16 @@ router.get('/status', async (req, res) => {
     const timeMatch = statusText.match(/(\d+):(\d+)\/(\d+):(\d+)/);
     const toMs = (m, s) => (Number(m) * 60 + Number(s)) * 1000;
     const isUrl = (s) => s && (s.startsWith('http://') || s.startsWith('https://'));
-    // MPD uses the stream URL as %title% for HLS/AAC streams with no ICY metadata.
-    // Never surface a raw URL as a track name — use empty string instead.
-    const displayName = isUrl(title) ? '' : (title || '');
+    // MPD sets %title% to the stream URL (HLS/AAC with no ICY) or to raw Dalet
+    // RadioInfo XML (PT/ES automation). Sanitise so no client ever shows a URL
+    // or angle-bracket soup as a track name. Returns a parsed { name, artist }.
+    const clean = sanitizeStreamTitle(title);
     res.json({
       paused: !isPlaying,
       position: timeMatch ? toMs(timeMatch[1], timeMatch[2]) : 0,
       duration: timeMatch ? toMs(timeMatch[3], timeMatch[4]) : 0,
-      name:   displayName,
-      artist: isUrl(artist) ? '' : (artist || ''),
+      name:   clean.name,
+      artist: clean.artist || (isUrl(artist) ? '' : (artist || '')),
       album:  album  || '',
       file:   file   || '',
     });
