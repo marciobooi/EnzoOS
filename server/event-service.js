@@ -290,9 +290,16 @@ async function handleEvent(type, payload, excludeWs) {
       // ── Stop services belonging to the PREVIOUS source ───────────────────
       try {
         const { exec } = await import('child_process');
-        // Always stop MPD (covers local + radio)
-        if (['local', 'radio', 'spotify', 'airplay', 'upnp'].includes(previousSource)) {
-          exec('mpc stop');
+        const { promisify } = await import('util');
+        const execP = promisify(exec);
+        // Stop MPD when leaving any MPD-driven source. Tidal/Qobuz now stream
+        // their resolved URL through MPD too, so they must stop it on the way out
+        // to avoid audio bleeding into the next source.
+        // AWAITED (not fire-and-forget): callers that start their own MPD playback
+        // right after SET_SOURCE (radio, Tidal, Qobuz) rely on the stop having
+        // finished first, otherwise a late `mpc stop` would kill the new track.
+        if (['local', 'radio', 'spotify', 'airplay', 'upnp', 'tidal', 'qobuz'].includes(previousSource)) {
+          await execP('mpc stop').catch(() => {});
         }
         // Stop shairport-sync when leaving AirPlay
         if (previousSource === 'airplay') {
