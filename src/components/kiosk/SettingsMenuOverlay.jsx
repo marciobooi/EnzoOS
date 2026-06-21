@@ -89,20 +89,16 @@ export default function SettingsMenuOverlay() {
             // Direct-play sources: switch and close the menu immediately.
             // Streaming receiver sources (AirPlay, UPnP, BT, Tidal, Qobuz): keep the
             // menu open — the user still needs to connect from another device.
-            // Also call the proper service-start REST endpoint for the three daemon-based
-            // sources; SET_SOURCE alone does not start shairport-sync/upmpdcli/bluealsa.
-            const serviceStart = {
-              airplay:   '/api/player/airplay/start',
-              upnp:      '/api/player/upnp/start',
-              bluetooth: '/api/player/bluetooth/start',
-            };
+            // The server's SET_SOURCE handler now starts the daemon
+            // (shairport-sync/upmpdcli/bluealsa) and wakes standby, so a single
+            // handleToggleSource covers both the kiosk and the phone remote — no
+            // separate REST /start call (which caused a stop/start churn).
+            const receiverSources = ['airplay', 'upnp', 'bluetooth', 'tidal', 'qobuz'];
             handleToggleSource(src);
-            if (serviceStart[src]) {
-              fetch(serviceStart[src], { method: 'POST' }).catch(() => {});
-              // menu stays open — user connects from phone/app while card shows "active"
-            } else {
+            if (!receiverSources.includes(src)) {
               setIsMenuOpen(false);
             }
+            // else: menu stays open — user connects from phone/app while card shows "active"
           }}
           updateStatus={updateStatus}
           setUpdateStatus={setUpdateStatus}

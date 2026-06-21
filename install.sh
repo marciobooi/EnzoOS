@@ -903,6 +903,38 @@ systemctl enable bt-agent 2>/dev/null || true
 systemctl start bt-agent 2>/dev/null || true
 echo -e "${GREEN}Bluetooth A2DP configured (demand-activated via kiosk).${NC}"
 
+# ── [6c/7] Tidal / Qobuz hi-res streaming ───────────────────────────────────
+# These need NO extra daemon: the server (server/streaming.js) resolves a track
+# to its time-limited CDN stream URL via the service API and hands it to MPD
+# (mpc add <url>), which already feeds the ALSA loopback → CamillaDSP → DAC chain
+# used by web radio. So all we must guarantee is that MPD can decode FLAC/AAC
+# over HTTPS — i.e. the curl input plugin + FLAC/ffmpeg decoders are present.
+echo -e "\n${GREEN}[6c/7] Verifying MPD hi-res streaming support (Tidal/Qobuz)...${NC}"
+# libavcodec/avformat/flac provide MPD's decoders; ca-certificates lets Node's
+# fetch reach the Tidal/Qobuz HTTPS APIs (installed earlier, re-asserted here).
+apt_install install -y \
+  ca-certificates \
+  libflac12t64 libavcodec60 libavformat60 2>/dev/null \
+  || apt_install install -y ca-certificates 2>/dev/null || true
+
+if mpd --version 2>/dev/null | grep -qiE "curl"; then
+  echo -e "${GREEN}MPD curl input plugin present — Tidal/Qobuz streams will play.${NC}"
+else
+  echo -e "${YELLOW}Note: verify MPD has the curl input plugin (web radio must work first).${NC}"
+fi
+
+# Optional: override the public Tidal device-flow client via the project .env.
+# (Leave unset to use the built-in community TV client id.)
+if [ -f "$PROJECT_DIR/.env" ] && ! grep -q "TIDAL_CLIENT_ID" "$PROJECT_DIR/.env"; then
+  {
+    echo ''
+    echo '# Optional Tidal device-flow client override (uses a built-in default if unset)'
+    echo '#TIDAL_CLIENT_ID='
+    echo '#TIDAL_CLIENT_SECRET='
+  } >> "$PROJECT_DIR/.env"
+fi
+echo -e "${GREEN}Tidal/Qobuz hi-res streaming enabled (plays through MPD → CamillaDSP).${NC}"
+
 # 9. Install Node modules, build code and startup PM2
 echo -e "\n${GREEN}[7/7] Building application & setting up PM2 server daemon...${NC}"
 

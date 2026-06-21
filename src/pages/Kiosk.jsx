@@ -118,6 +118,8 @@ export default function Kiosk() {
 
   const lastVolumeChangeTime = useRef(0);
   const volumeApiTimeout = useRef(null);
+  const lastNonZeroVolume = useRef(50);
+  const spotifyVolPinned = useRef(false);
   const standbyRef = useRef(false);
   const [favoriteStations, setFavoriteStations] = useState([]);
 
@@ -127,6 +129,8 @@ export default function Kiosk() {
   const [errorMessage, setErrorMessage] = useState('');
   const [source, setSource] = useState('spotify'); // 'spotify' | 'local' | 'radio'
   const spotify = source === 'spotify';
+  // Re-pin the Spotify device to unity next time it becomes active.
+  useEffect(() => { if (!spotify) spotifyVolPinned.current = false; }, [spotify]);
 
   const [radioCountry, setRadioCountry] = useState('');
   const [stationsList, setStationsList] = useState([]);
@@ -1019,8 +1023,9 @@ export default function Kiosk() {
           duration: state.item?.duration_ms || 0,
           shuffle_state: state.shuffle_state,
           repeat_state: state.repeat_state,
-          volume: state.device?.volume_percent !== undefined ? state.device.volume_percent : volume,
-          is_muted: state.device?.volume_percent !== undefined ? (state.device.volume_percent === 0) : isMuted,
+          // CamillaDSP owns volume — do not surface Spotify's device volume here.
+          volume,
+          is_muted: isMuted,
           track_window: {
             current_track: {
               uri: state.item?.uri,
@@ -1038,11 +1043,12 @@ export default function Kiosk() {
         setTrackDuration(state.item?.duration_ms || 0);
         setShuffleState(state.shuffle_state);
         setRepeatState(state.repeat_state);
-        if (state.device && state.device.volume_percent !== undefined) {
-          if (Date.now() - lastVolumeChangeTime.current >= 2500) {
-            setVolume(state.device.volume_percent);
-            setIsMuted(state.device.volume_percent === 0);
-          }
+        // Pin ONLY the local "Resonance Connect" output to unity once so it does not
+        // pre-attenuate ahead of the CamillaDSP master (prevents compounding / very
+        // quiet output). Never touch a device the user cast playback to elsewhere.
+        if (!spotifyVolPinned.current && state.device?.name === 'Resonance Connect' && state.device.volume_percent !== undefined && state.device.volume_percent !== 100) {
+          spotifyVolPinned.current = true;
+          api.setVolume(token, 100).catch(() => { spotifyVolPinned.current = false; });
         }
 
         // Broadcast current state to other connected clients via WebSocket
@@ -1075,22 +1081,22 @@ export default function Kiosk() {
     }
   };
 
-  // Volume control
+  // Volume control — CamillaDSP master owns the volume stage for EVERY source.
+  // A single persisted level then restores correctly on reboot/wake regardless of
+  // source, and Spotify no longer double-attenuates ahead of CamillaDSP.
   const handleVolumeChange = async (e) => {
     const vol = parseInt(e.target.value, 10);
     setVolume(vol);
     setIsMuted(vol === 0);
     lastVolumeChangeTime.current = Date.now();
+    if (vol > 0) lastNonZeroVolume.current = vol;
 
-    // Broadcast volume update immediately over WS for instant remote response
-    if (ws.current && ws.current.readyState === WebSocket.OPEN) {
+    // Only broadcast a playback payload when a track is present — a trackless
+    // {volume} payload would blank the "now playing" card on other clients.
+    if (playbackState?.track_window?.current_track && ws.current && ws.current.readyState === WebSocket.OPEN) {
       ws.current.send(JSON.stringify({
         type: 'BROADCAST_STATE',
-        payload: {
-          ...playbackState,
-          volume: vol,
-          is_muted: vol === 0
-        }
+        payload: { ...playbackState, volume: vol, is_muted: vol === 0 }
       }));
     }
 
@@ -1099,19 +1105,10 @@ export default function Kiosk() {
     }
 
     volumeApiTimeout.current = setTimeout(async () => {
-      if (!spotify) {
-        try {
-          await api.localSetVolume(vol);
-        } catch (err) {
-          console.error('Local volume error:', err);
-        }
-        return;
-      }
-      if (!token) return;
       try {
-        await api.setVolume(token, vol);
+        await api.localSetVolume(vol);
       } catch (err) {
-        console.warn('Spotify volume adjustment warning (no active device or session):', err);
+        console.error('Volume error:', err);
       }
     }, 180);
   };
@@ -1120,29 +1117,21 @@ export default function Kiosk() {
     const newMuteState = !isMuted;
     setIsMuted(newMuteState);
     lastVolumeChangeTime.current = Date.now();
-    const targetVolume = newMuteState ? 0 : volume;
+    const targetVolume = newMuteState ? 0 : (lastNonZeroVolume.current || 30);
+    if (!newMuteState) setVolume(targetVolume);
 
-    // Broadcast mute update immediately over WS
-    sendUpdate('BROADCAST_STATE', {
-      ...playbackState,
-      volume: targetVolume,
-      is_muted: newMuteState
-    });
-
-    if (!spotify) {
-      try {
-        await api.localSetVolume(targetVolume);
-      } catch (err) {
-        console.error('Local mute error:', err);
-      }
-      return;
+    if (playbackState?.track_window?.current_track) {
+      sendUpdate('BROADCAST_STATE', {
+        ...playbackState,
+        volume: targetVolume,
+        is_muted: newMuteState
+      });
     }
 
-    if (!token) return;
     try {
-      await api.setVolume(token, targetVolume);
+      await api.localSetVolume(targetVolume);
     } catch (err) {
-      console.warn('Spotify volume mute warning:', err);
+      console.error('Mute error:', err);
     }
   };
 

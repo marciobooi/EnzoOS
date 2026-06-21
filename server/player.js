@@ -6,7 +6,11 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import YAML from 'yaml';
 import { getFavoriteRadios, addFavoriteRadio, deleteFavoriteRadioByUrl, setSetting, getSetting } from './db.js';
-import { emit, getStandbyState, getCachedVolumeDb } from './event-service.js';
+import { emit, getStandbyState, getCachedVolumeDb, setVolumeState } from './event-service.js';
+import {
+  qobuzLogin, qobuzSearch, qobuzTrackUrl, qobuzConnected, clearQobuz,
+  tidalDeviceAuth, tidalPollToken, tidalSearch, tidalTrackUrl, tidalConnected, clearTidal,
+} from './streaming.js';
 
 // ── Streaming source helpers ──────────────────────────────────────────────────
 async function systemctlAction(action, service) {
@@ -98,6 +102,8 @@ router.post('/volume', async (req, res) => {
   }
   try {
     await setCamillaVolume(toDb(vol));
+    // Persist the master level so it survives reboot/restart/wake for every source.
+    setVolumeState(vol, vol <= 0);
     res.json({ success: true });
   } catch (err) {
     console.error('[Volume] Failed:', err);
@@ -131,13 +137,33 @@ export async function setCamillaVolume(dB) {
 }
 
 // POST /api/player/seek -> Seek local track
+// Accepts either a percentage ("50%") or an absolute number of seconds (50).
+// IMPORTANT: `mpc seek 50` means 50 SECONDS, while `mpc seek 50%` means halfway.
+// The clients send a percentage, so a bare parseInt() silently turned "50%" into
+// a 50-second seek — making it impossible to seek any track past ~1:40. We now
+// detect the percentage form explicitly and pass it through to mpc verbatim.
 router.post('/seek', async (req, res) => {
-  const pos = parseInt(req.body.position, 10);
-  if (!Number.isFinite(pos) || pos < 0) {
-    return res.status(400).json({ error: 'Invalid position: must be a non-negative integer' });
+  const raw = req.body.position;
+  let arg;
+
+  if (typeof raw === 'string' && /^\s*\d{1,3}\s*%\s*$/.test(raw)) {
+    const pct = parseInt(raw, 10);
+    if (!Number.isFinite(pct) || pct < 0 || pct > 100) {
+      return res.status(400).json({ error: 'Invalid percentage: must be 0–100' });
+    }
+    arg = `${pct}%`;
+  } else {
+    const secs = parseInt(raw, 10);
+    if (!Number.isFinite(secs) || secs < 0) {
+      return res.status(400).json({ error: 'Invalid position: percentage like "50%" or non-negative seconds' });
+    }
+    arg = String(secs);
   }
+
   try {
-    await execPromise(`mpc seek ${pos}`);
+    // execFile with an argv array — never interpolated into a shell, so the
+    // validated `arg` cannot be used for command injection.
+    await execFilePromise('mpc', ['seek', arg]);
     res.json({ success: true });
   } catch (err) {
     console.error('[Local Player] Seek failed:', err);
@@ -1379,93 +1405,155 @@ router.get('/bluetooth/status', async (req, res) => {
   res.json({ active });
 });
 
-// ── Tidal (tidal-hifi / placeholder) ─────────────────────────────────────────
+// Play a resolved hi-res stream URL through MPD — reuses the exact path web radio
+// uses (MPD → ALSA loopback → CamillaDSP → DAC), so EQ/DSP/volume all apply.
+async function playStreamUrl(url, meta, source) {
+  if (getStandbyState()) await emit('SET_STANDBY', { enabled: false });
 
-// POST /api/player/tidal/connect — store credentials and activate source
-router.post('/tidal/connect', async (req, res) => {
-  const { username, password } = req.body;
-  if (!username || !password) {
-    return res.status(400).json({ error: 'username and password are required' });
-  }
+  // Switch source FIRST: this stops the previous source's MPD/services (and pauses
+  // Spotify). It must happen before we start our own MPD playback, otherwise the
+  // SET_SOURCE teardown's `mpc stop` would kill the track we just queued.
+  await emit('SET_SOURCE', { spotify: false, source });
+
+  // Now stream the resolved hi-res URL through MPD → loopback → CamillaDSP → DAC.
+  await execPromise('mpc clear');
+  await execFilePromise('mpc', ['add', url]);
+  await execPromise('mpc play');
+
+  // Finally push the real now-playing card (overrides the "waiting" placeholder
+  // the SET_SOURCE handler sets for passthrough sources).
+  await emit('PLAYBACK_STATE', {
+    paused: false,
+    position: 0,
+    duration: meta.duration || 0,
+    track_window: {
+      current_track: {
+        name: meta.title || 'Unknown',
+        artists: [{ name: meta.artist || '' }],
+        album: { name: meta.album || '', images: meta.cover ? [{ url: meta.cover }] : [] },
+      },
+    },
+  });
+}
+
+// ── Tidal (OAuth2 device flow → MPD playback) ─────────────────────────────────
+
+// POST /api/player/tidal/device-auth — begin the device-code login flow
+router.post('/tidal/device-auth', async (req, res) => {
   try {
-    // Persist credentials (stored in DB, never logged)
-    await setSetting('tidal_username', username);
-    // Store password as-is (Pi is a single-user device; add encryption if needed)
-    await setSetting('tidal_password', password);
-    await emit('SET_SOURCE', { spotify: false, source: 'tidal' });
-    res.json({ success: true });
+    const info = await tidalDeviceAuth();
+    res.json({ success: true, ...info });
   } catch (err) {
-    console.error('[Tidal] Connect failed:', err);
-    res.status(500).json({ success: false, error: err.message });
+    console.error('[Tidal] Device auth failed:', err.message);
+    res.status(502).json({ error: err.message });
   }
 });
 
-// POST /api/player/tidal/play — activate Tidal source
-router.post('/tidal/play', async (req, res) => {
+// POST /api/player/tidal/poll {deviceCode} — poll until the user authorises
+router.post('/tidal/poll', async (req, res) => {
+  const { deviceCode } = req.body || {};
+  if (!deviceCode) return res.status(400).json({ error: 'deviceCode required' });
   try {
-    if (getStandbyState()) await emit('SET_STANDBY', { enabled: false });
-    await emit('SET_SOURCE', { spotify: false, source: 'tidal' });
-    res.json({ success: true });
+    const result = await tidalPollToken(deviceCode);
+    if (result.connected) await emit('SET_SOURCE', { spotify: false, source: 'tidal' });
+    res.json({ success: true, ...result });
   } catch (err) {
-    console.error('[Tidal] Play failed:', err);
-    res.status(500).json({ success: false, error: err.message });
+    res.status(401).json({ error: err.message });
   }
 });
 
-// GET /api/player/tidal/status — check if credentials are stored
+// GET /api/player/tidal/search?q=
+router.get('/tidal/search', async (req, res) => {
+  const q = (req.query.q || '').trim();
+  if (!q) return res.json([]);
+  try {
+    res.json(await tidalSearch(q, Math.min(parseInt(req.query.limit, 10) || 25, 50)));
+  } catch (err) {
+    res.status(502).json({ error: err.message });
+  }
+});
+
+// POST /api/player/tidal/play-track {id, ...meta}
+router.post('/tidal/play-track', async (req, res) => {
+  const { id } = req.body || {};
+  if (!id) return res.status(400).json({ error: 'track id required' });
+  try {
+    const { url } = await tidalTrackUrl(id, req.body.quality || 'LOSSLESS');
+    await playStreamUrl(url, req.body, 'tidal');
+    res.json({ success: true });
+  } catch (err) {
+    console.error('[Tidal] Play track failed:', err.message);
+    res.status(502).json({ error: err.message });
+  }
+});
+
+// GET /api/player/tidal/status
 router.get('/tidal/status', async (req, res) => {
-  const username = await getSetting('tidal_username').catch(() => null);
-  res.json({ connected: !!username, username: username || null });
+  res.json({ connected: await tidalConnected() });
 });
 
 // DELETE /api/player/tidal/disconnect
 router.delete('/tidal/disconnect', async (req, res) => {
   try {
-    await setSetting('tidal_username', '');
-    await setSetting('tidal_password', '');
+    await setSetting('tidal_session', '');
+    clearTidal();
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
 });
 
-// ── Qobuz ─────────────────────────────────────────────────────────────────────
+// ── Qobuz (username/password → MPD playback) ──────────────────────────────────
 
-// POST /api/player/qobuz/auth — store Qobuz credentials
+// POST /api/player/qobuz/auth — store + validate credentials
 router.post('/qobuz/auth', async (req, res) => {
-  const { username, password, app_id, app_secret } = req.body;
+  const { username, password, app_id, app_secret } = req.body || {};
   if (!username || !password) {
     return res.status(400).json({ error: 'username and password are required' });
   }
   try {
-    await setSetting('qobuz_username', username);
-    await setSetting('qobuz_password', password);
     if (app_id)     await setSetting('qobuz_app_id', app_id);
     if (app_secret) await setSetting('qobuz_app_secret', app_secret);
+    await setSetting('qobuz_username', username);
+    await setSetting('qobuz_password', password);
+    // Validate immediately so the user gets real feedback (not a dead source).
+    await qobuzLogin(username, password);
     await emit('SET_SOURCE', { spotify: false, source: 'qobuz' });
     res.json({ success: true });
   } catch (err) {
-    console.error('[Qobuz] Auth failed:', err);
-    res.status(500).json({ success: false, error: err.message });
+    console.error('[Qobuz] Auth failed:', err.message);
+    res.status(401).json({ error: err.message });
   }
 });
 
-// POST /api/player/qobuz/play — activate Qobuz source
-router.post('/qobuz/play', async (req, res) => {
+// GET /api/player/qobuz/search?q=
+router.get('/qobuz/search', async (req, res) => {
+  const q = (req.query.q || '').trim();
+  if (!q) return res.json([]);
   try {
-    if (getStandbyState()) await emit('SET_STANDBY', { enabled: false });
-    await emit('SET_SOURCE', { spotify: false, source: 'qobuz' });
+    res.json(await qobuzSearch(q, Math.min(parseInt(req.query.limit, 10) || 25, 50)));
+  } catch (err) {
+    res.status(502).json({ error: err.message });
+  }
+});
+
+// POST /api/player/qobuz/play-track {id, ...meta}
+router.post('/qobuz/play-track', async (req, res) => {
+  const { id } = req.body || {};
+  if (!id) return res.status(400).json({ error: 'track id required' });
+  try {
+    const { url } = await qobuzTrackUrl(id, req.body.formatId || 27);
+    await playStreamUrl(url, req.body, 'qobuz');
     res.json({ success: true });
   } catch (err) {
-    console.error('[Qobuz] Play failed:', err);
-    res.status(500).json({ success: false, error: err.message });
+    console.error('[Qobuz] Play track failed:', err.message);
+    res.status(502).json({ error: err.message });
   }
 });
 
 // GET /api/player/qobuz/status
 router.get('/qobuz/status', async (req, res) => {
-  const username = await getSetting('qobuz_username').catch(() => null);
-  res.json({ connected: !!username, username: username || null });
+  res.json({ connected: await qobuzConnected() });
 });
 
 // DELETE /api/player/qobuz/disconnect
@@ -1473,8 +1561,8 @@ router.delete('/qobuz/disconnect', async (req, res) => {
   try {
     await setSetting('qobuz_username', '');
     await setSetting('qobuz_password', '');
-    await setSetting('qobuz_app_id', '');
-    await setSetting('qobuz_app_secret', '');
+    await setSetting('qobuz_token', '');
+    clearQobuz();
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
