@@ -339,6 +339,11 @@ div[data-active-theme="origami"] .metadata-row [class*="border"][class*="rounded
   border-radius: 1px !important;
 }
 
+
+div[data-active-theme="origami"] .volume-popup {
+  background: var(--paper) !important;
+}
+
 /* ── Volume popup — Kindle-style reading notification ──────────────────── */
 div[data-active-theme="origami"] .volume-feedback {
   font-family: 'Cormorant Garamond', Georgia, serif !important;
