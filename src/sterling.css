@@ -320,9 +320,10 @@ div[data-active-theme="sterling"] .metadata-row [class*="border"][class*="rounde
 
 
 div[data-active-theme="sterling"] .volume-popup {
-z-index: 4 !important;
-position: absolute !important;
-border-radius: 0 !important;
+  z-index: 4 !important;
+  position: absolute !important;
+  border-radius: 0 !important;
+  width: 20rem !important;
 }
 
 /* ── Volume readout — the big luminous "36" number on the RD160 ──────────── */
@@ -501,7 +502,6 @@ div[data-active-theme="sterling"] .controls-column {
     inset 0 -1px 2px rgba(0,0,0,0.10) !important;
   position: relative;
   z-index: 3;
-  overflow: hidden;
   display: flex;
     flex-direction: column;
     justify-content: center;
