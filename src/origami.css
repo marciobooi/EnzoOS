@@ -164,7 +164,7 @@ div[data-active-theme="origami"] .music-player {
    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
 
 div[data-active-theme="origami"] .album-column {
-  background: var(--paper-mat) !important;
+  /* background: var(--paper-mat) !important; */
   /* Generous mat padding — how a real museum print is mounted */
   padding: 14px 14px 14px 16px !important;
   border-right: 1px solid var(--crease-soft) !important;
@@ -177,7 +177,7 @@ div[data-active-theme="origami"] .album-column::before {
   position: absolute;
   inset: 0;
   pointer-events: none;
-  box-shadow: inset 6px 0 16px rgba(13,12,9,0.06);
+  /* box-shadow: inset 6px 0 16px rgba(13,12,9,0.06); */
   z-index: 3;
 }
 
