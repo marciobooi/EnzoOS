@@ -155,6 +155,7 @@ div[data-active-theme="origami"] .music-player {
   position: relative;
   z-index: 2;
   overflow: hidden;
+      grid-template-columns: 241px minmax(0, 1fr) 53px;
 }
 
 /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
