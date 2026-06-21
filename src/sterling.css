@@ -1,0 +1,615 @@
+/* ==============================================================================
+   Sterling — HiFi Rose RD160 Edition
+
+   Reference device: HiFi Rose RD160 — a warm champagne machined-aluminium
+   chassis housing a dark matte AMOLED display behind a diffusing faceplate.
+   The faceplate softens the high-contrast white-on-dark graphics into an
+   e-paper-grade premium feel: no harsh glare, crisp geometry, warm precision.
+
+   Design pillars:
+   1. Warm chassis  — champagne/titanium aluminium, NOT cold brushed steel.
+   2. Dark display  — deep warm charcoal behind the faceplate veil.
+   3. E-paper type  — Cormorant Garamond italic for the hero track identity
+                      (the "Coaxial" treatment), Inter for precision labels.
+   4. Crisp geometry — thin hairline rules, dot-grid, geometric instrument lines.
+   5. VU precision  — 1980s Japanese hi-fi VU needles: crisp, no neon bloom.
+   ============================================================================= */
+
+div[data-active-theme="sterling"] {
+
+  /* ── Warm champagne chassis ───────────────────────────────────────────── */
+  --chassis:        #ABA89F;
+  --chassis-hi:     #C4C1B9;
+  --chassis-mid:    #9A978F;
+  --chassis-lo:     #88857E;
+  --chassis-groove: #727069;
+
+  /* ── Dark-warm matte display panel (matte AMOLED behind faceplate) ───── */
+  --display-top:    #28261F;
+  --display-mid:    #2E2C26;
+  --display-bot:    #343230;
+  --display-edge:   #1A1915;
+
+  /* ── Warm-white luminous text (E-paper crisp, not OLED neon) ─────────── */
+  --lum:            #F8F6F2;
+  --lum-2:          rgba(248, 246, 242, 0.78);
+  --lum-3:          rgba(248, 246, 242, 0.52);
+  --lum-4:          rgba(248, 246, 242, 0.32);
+  --lum-glow:       rgba(248, 246, 242, 0.22);
+  --lum-glow-soft:  rgba(220, 214, 200, 0.16);
+
+  /* ── Chassis chrome/engrave tones ───────────────────────────────────── */
+  --chrome:         rgba(255, 255, 255, 0.62);
+  --chrome-2:       rgba(255, 255, 255, 0.28);
+  --engrave:        rgba(35, 32, 26, 0.55);
+  --engrave-hi:     rgba(255, 255, 255, 0.70);
+
+  /* ── Hairline geometry (connecting lines, rules) ──────────────────────── */
+  --rule:           rgba(248, 246, 242, 0.14);
+  --rule-hi:        rgba(248, 246, 242, 0.28);
+
+  /* ── Global var overrides ─────────────────────────────────────────────── */
+  --theme-color:      #F8F6F2;
+  --theme-color-glow: rgba(248, 246, 242, 0.30);
+  --theme-color-dim:  rgba(248, 246, 242, 0.10);
+  --color-active:     #F8F6F2;
+  --color-faded:      rgba(248, 246, 242, 0.38);
+
+  font-family: 'Inter', system-ui, -apple-system, sans-serif !important;
+  color: var(--lum) !important;
+
+  /* ── Page = warm champagne faceplate with raking highlight ───────────── */
+  background:
+    radial-gradient(ellipse 80% 50% at 50% -5%, rgba(255,255,255,0.45) 0%, transparent 50%),
+    radial-gradient(ellipse 60% 40% at 50% 115%, rgba(100, 96, 88, 0.35) 0%, transparent 50%),
+    linear-gradient(180deg, #C2BFB7 0%, #B0ADA5 38%, #9E9B93 100%) !important;
+}
+
+/* ── Kill LED / glow / glass carry-overs ─────────────────────────────────── */
+div[data-active-theme="sterling"] .ambient-orb,
+div[data-active-theme="sterling"] .dot-matrix-grid,
+div[data-active-theme="sterling"] .crt-scanlines {
+  display: none !important;
+}
+
+/* ── Horizontal brushed-metal texture on faceplate ───────────────────────── */
+div[data-active-theme="sterling"]::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='500' height='500'%3E%3Cfilter id='b'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.006 0.92' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23b)'/%3E%3C/svg%3E");
+  background-size: 500px 100%;
+  mix-blend-mode: overlay;
+  opacity: 0.10;
+  z-index: 0;
+}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   CHASSIS SHELL — warm champagne aluminium housing
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+
+div[data-active-theme="sterling"] .music-player-container {
+  background: linear-gradient(180deg, var(--chassis-hi) 0%, var(--chassis) 52%, var(--chassis-mid) 100%) !important;
+  border-top: 1px solid rgba(255,255,255,0.80) !important;
+  border-left: 1px solid rgba(255,255,255,0.42) !important;
+  border-right: 1px solid rgba(0,0,0,0.12) !important;
+  border-bottom: 1px solid rgba(0,0,0,0.20) !important;
+  border-radius: 10px !important;
+  box-shadow:
+    inset 0 1px 0   rgba(255,255,255,0.85),
+    inset 0 -1px 2px rgba(0,0,0,0.14),
+    0 2px 6px   rgba(30, 28, 22, 0.20),
+    0 16px 40px rgba(30, 28, 22, 0.24),
+    0 38px 76px rgba(30, 28, 22, 0.18) !important;
+  overflow: hidden !important;
+  position: relative;
+  z-index: 2;
+  padding: 14px !important;
+}
+
+/* Warm brushed texture on chassis */
+div[data-active-theme="sterling"] .music-player-container::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='500' height='400'%3E%3Cfilter id='c'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.005 0.93' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23c)'/%3E%3C/svg%3E");
+  background-size: 100% 100%;
+  mix-blend-mode: soft-light;
+  opacity: 0.45;
+  z-index: 1;
+}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   DISPLAY PANEL — dark-warm matte screen inset into the chassis
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+
+div[data-active-theme="sterling"] .music-player {
+  background:
+    radial-gradient(ellipse 110% 70% at 30% 25%, rgba(255,255,255,0.035) 0%, transparent 55%),
+    linear-gradient(175deg, var(--display-top) 0%, var(--display-mid) 50%, var(--display-bot) 100%) !important;
+  border-radius: 6px !important;
+  border-top: 1px solid var(--display-edge) !important;
+  border-bottom: 1px solid rgba(255,255,255,0.10) !important;
+  box-shadow:
+    inset 0 2px 12px rgba(0,0,0,0.55),
+    inset 0 -1px 0   rgba(255,255,255,0.08),
+    0 1px 0          rgba(255,255,255,0.60) !important;
+  position: relative;
+  z-index: 2;
+  overflow: hidden;
+}
+
+/* Subtle dot-grid — geometric precision of the RD160 display */
+div[data-active-theme="sterling"] .music-player::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image: radial-gradient(
+    circle,
+    rgba(248,246,242,0.04) 1px,
+    transparent 1px
+  );
+  background-size: 14px 14px;
+  z-index: 0;
+  opacity: 1;
+}
+
+/* Hairline horizontal geometry lines — vintage instrument feel */
+div[data-active-theme="sterling"] .music-player::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image: repeating-linear-gradient(
+    180deg,
+    transparent 0px,
+    transparent 27px,
+    rgba(248,246,242,0.04) 27px,
+    rgba(248,246,242,0.04) 28px
+  );
+  z-index: 1;
+  opacity: 1;
+}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   ALBUM COLUMN — measurement plate in the display
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+
+div[data-active-theme="sterling"] .album-column {
+  background: transparent !important;
+  position: relative;
+  z-index: 3;
+}
+
+div[data-active-theme="sterling"] .album-art {
+  border-radius: 3px !important;
+  border: 1px solid rgba(248,246,242,0.10) !important;
+  box-shadow:
+    inset 0 0 0 2px rgba(0,0,0,0.30),
+    inset 0 0 0 3px rgba(248,246,242,0.06),
+    0 1px 0 rgba(255,255,255,0.14),
+    0 6px 20px rgba(0,0,0,0.50) !important;
+  overflow: hidden !important;
+}
+
+/* Warm monochrome — sepia-tinged grayscale on the dark display */
+div[data-active-theme="sterling"] .album-art img {
+  filter: grayscale(100%) sepia(12%) contrast(1.08) brightness(0.96) !important;
+  transition: filter 0.9s ease !important;
+}
+
+div[data-active-theme="sterling"] .album-art--radio {
+  border-radius: 3px !important;
+  border: 1px solid rgba(248,246,242,0.10) !important;
+  box-shadow:
+    inset 0 0 0 2px rgba(0,0,0,0.30),
+    0 6px 20px rgba(0,0,0,0.50) !important;
+  background: linear-gradient(180deg, var(--display-top), var(--display-bot)) !important;
+}
+
+div[data-active-theme="sterling"] .album-art--radio .radio-logo-placeholder,
+div[data-active-theme="sterling"] .album-art--radio svg {
+  color: var(--lum-2) !important;
+}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   DETAILS COLUMN — primary readout area of the display
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+
+div[data-active-theme="sterling"] .details-column {
+  background: transparent !important;
+  position: relative;
+  z-index: 3;
+}
+
+/* ── Status pills — instrument-grade engraved label chips ────────────────── */
+div[data-active-theme="sterling"] .status-pill {
+  font-family: 'Inter', system-ui, sans-serif !important;
+  font-size: 6px !important;
+  font-weight: 500 !important;
+  letter-spacing: 0.26em !important;
+  background: rgba(248,246,242,0.06) !important;
+  border: 1px solid rgba(248,246,242,0.14) !important;
+  color: var(--lum-3) !important;
+  border-radius: 2px !important;
+  box-shadow: inset 0 1px 1px rgba(0,0,0,0.25) !important;
+  padding: 2px 6px !important;
+  text-shadow: none !important;
+}
+
+div[data-active-theme="sterling"] .status-dot {
+  background: var(--lum) !important;
+  box-shadow: 0 0 4px var(--lum-glow) !important;
+  width: 4px !important;
+  height: 4px !important;
+}
+
+/* ── Title container — gold hairline rule below (RD160 grid separator) ───── */
+div[data-active-theme="sterling"] .title-container {
+  position: relative;
+  padding-bottom: 0.35rem !important;
+  margin-bottom: 0.3rem !important;
+  border-bottom: 0.5px solid var(--rule-hi) !important;
+  box-shadow: 0 1px 0 rgba(0,0,0,0.20) !important;
+}
+
+/* ── Track title — Cormorant Garamond italic ("Coaxial" treatment) ────────── */
+/* Large editorial serif italic: the source/track identity hero, E-paper crisp */
+div[data-active-theme="sterling"] .track-title {
+  font-family: 'Cormorant Garamond', 'Cormorant', Georgia, 'Times New Roman', serif !important;
+  font-size: 3.7rem !important;
+  font-weight: 400 !important;
+  font-style: italic !important;
+  color: var(--lum) !important;
+  letter-spacing: -0.01em !important;
+  line-height: 1.0 !important;
+  /* E-paper crispness — no phosphor bloom, just a faint warm halo */
+  text-shadow:
+    0 0 1px rgba(248,246,242,0.55),
+    0 1px 3px rgba(0,0,0,0.40) !important;
+}
+
+/* ── Metadata row ────────────────────────────────────────────────────────── */
+div[data-active-theme="sterling"] .metadata-row {
+  margin-top: 0.45rem !important;
+}
+
+/* ── Artist — precision label, tracking, light caps (like "From · Sampling") */
+div[data-active-theme="sterling"] .track-artist {
+  font-family: 'Inter', system-ui, sans-serif !important;
+  font-size: 0.72rem !important;
+  font-weight: 200 !important;
+  color: var(--lum-2) !important;
+  letter-spacing: 0.28em !important;
+  text-transform: uppercase !important;
+  font-style: normal !important;
+  text-shadow: none !important;
+}
+
+/* ── Album — fine instrument readout value ───────────────────────────────── */
+div[data-active-theme="sterling"] .track-album {
+  font-family: 'Inter', system-ui, sans-serif !important;
+  font-size: 0.68rem !important;
+  font-weight: 300 !important;
+  font-style: normal !important;
+  color: var(--lum-3) !important;
+  letter-spacing: 0.10em !important;
+  text-shadow: none !important;
+}
+
+/* ── Telemetry readout (bitrate / codec tags) ────────────────────────────── */
+div[data-active-theme="sterling"] .metadata-row [class*="text-[8px]"],
+div[data-active-theme="sterling"] .metadata-row [class*="text-[7px]"],
+div[data-active-theme="sterling"] .metadata-row [class*="text-[7.5px]"],
+div[data-active-theme="sterling"] .metadata-row .font-mono {
+  color: var(--lum-3) !important;
+  text-shadow: none !important;
+}
+
+div[data-active-theme="sterling"] .metadata-row [class*="border"][class*="rounded"] {
+  border-color: rgba(248,246,242,0.18) !important;
+  background: rgba(248,246,242,0.05) !important;
+  color: var(--lum-2) !important;
+  border-radius: 2px !important;
+}
+
+/* ── Volume readout — the big luminous "36" number on the RD160 ──────────── */
+div[data-active-theme="sterling"] .volume-feedback {
+  font-family: 'Inter', system-ui, sans-serif !important;
+  font-style: normal !important;
+  font-weight: 100 !important;
+  font-size: 2.6rem !important;
+  color: var(--lum) !important;
+  background: rgba(0,0,0,0.22) !important;
+  border: 0.5px solid rgba(248,246,242,0.12) !important;
+  box-shadow:
+    inset 0 1px 4px rgba(0,0,0,0.40),
+    inset 0 -1px 0 rgba(248,246,242,0.06),
+    0 1px 0 rgba(255,255,255,0.10) !important;
+  border-radius: 3px !important;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.50) !important;
+  letter-spacing: -0.02em !important;
+}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   TRANSPORT CONTROLS — precision keys on the dark display
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+
+div[data-active-theme="sterling"] .music-controls {
+  gap: 0.45rem !important;
+  position: relative;
+  z-index: 3;
+}
+
+div[data-active-theme="sterling"] .music-controls .icon-button {
+  background: rgba(248,246,242,0.04) !important;
+  border: 0.5px solid rgba(248,246,242,0.16) !important;
+  color: var(--lum-2) !important;
+  border-radius: 4px !important;
+  box-shadow:
+    inset 0 1px 0 rgba(248,246,242,0.08),
+    inset 0 -1px 2px rgba(0,0,0,0.20) !important;
+  text-shadow: none !important;
+  transition: background 0.18s ease, border-color 0.18s ease, color 0.18s ease, transform 0.12s ease !important;
+}
+
+div[data-active-theme="sterling"] .music-controls .icon-button:hover {
+  background: rgba(248,246,242,0.10) !important;
+  border-color: rgba(248,246,242,0.32) !important;
+  color: var(--lum) !important;
+}
+
+div[data-active-theme="sterling"] .music-controls .icon-button:active {
+  transform: scale(0.94) !important;
+  background: rgba(0,0,0,0.20) !important;
+}
+
+div[data-active-theme="sterling"] .music-controls .icon-button.active {
+  background: rgba(248,246,242,0.14) !important;
+  border-color: rgba(248,246,242,0.38) !important;
+  color: var(--lum) !important;
+  box-shadow:
+    inset 0 0 6px rgba(248,246,242,0.12),
+    inset 0 1px 0 rgba(248,246,242,0.20) !important;
+}
+
+/* ── Play/Pause — primary indicator: fully-lit warm-white LED key ──────────
+   Matches the RD160's power/action indicator aesthetic: clean bright fill,
+   no neon bloom, just a precise warm-white lit surface.                     */
+div[data-active-theme="sterling"] .icon-button.play {
+  border-radius: 4px !important;
+  background: rgba(248,246,242,0.88) !important;
+  border: 0.5px solid rgba(248,246,242,0.50) !important;
+  color: var(--display-mid) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,1.0),
+    inset 0 -1px 2px rgba(0,0,0,0.08),
+    0 0 8px  rgba(248,246,242,0.35),
+    0 0 18px rgba(248,246,242,0.14) !important;
+  text-shadow: none !important;
+  transition: background 0.16s ease, box-shadow 0.16s ease, transform 0.12s ease !important;
+}
+
+div[data-active-theme="sterling"] .icon-button.play:hover {
+  background: rgba(248,246,242,1.0) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,1.0),
+    0 0 14px rgba(248,246,242,0.50),
+    0 0 28px rgba(248,246,242,0.22) !important;
+  transform: scale(1.04) !important;
+}
+
+div[data-active-theme="sterling"] .icon-button.play:active {
+  transform: scale(0.96) !important;
+  background: rgba(248,246,242,0.72) !important;
+  box-shadow:
+    inset 0 2px 4px rgba(0,0,0,0.14),
+    0 0 5px rgba(248,246,242,0.22) !important;
+}
+
+div[data-active-theme="sterling"] .icon-button.play::before,
+div[data-active-theme="sterling"] .icon-button.play::after {
+  display: none !important;
+}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   VU METERS — 1980s Japanese hi-fi precision, crisp white-on-dark
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+
+div[data-active-theme="sterling"] .vu-channel-box {
+  background:
+    linear-gradient(180deg, rgba(0,0,0,0.22) 0%, rgba(0,0,0,0.12) 100%) !important;
+  border: 0.5px solid rgba(248,246,242,0.10) !important;
+  border-radius: 3px !important;
+  box-shadow:
+    inset 0 2px 8px rgba(0,0,0,0.45),
+    inset 0 -1px 0 rgba(248,246,242,0.06),
+    0 1px 0 rgba(255,255,255,0.10) !important;
+}
+
+div[data-active-theme="sterling"] .vu-dot-grid {
+  background-image: radial-gradient(rgba(248,246,242,0.06) 20%, transparent 20%) !important;
+  background-size: 5px 5px !important;
+  opacity: 0.8 !important;
+}
+
+div[data-active-theme="sterling"] .vu-glow-overlay {
+  display: none !important;
+}
+
+/* Crisp warm-white needle — precision instrument, no bloom */
+div[data-active-theme="sterling"] .vu-needle {
+  background: linear-gradient(to top, rgba(248,246,242,0.45), var(--lum)) !important;
+  box-shadow: 0 0 3px var(--lum-glow) !important;
+  width: 1.5px !important;
+  transition: transform 0.08s cubic-bezier(0.18, 0.89, 0.32, 1.12) !important;
+}
+
+div[data-active-theme="sterling"] .vu-scale-marks span {
+  color: var(--lum-4) !important;
+  font-family: 'Inter', system-ui, sans-serif !important;
+  font-size: 0.44rem !important;
+  font-weight: 300 !important;
+  text-shadow: none !important;
+}
+
+div[data-active-theme="sterling"] .vu-title span {
+  color: var(--lum-3) !important;
+  font-family: 'Inter', system-ui, sans-serif !important;
+  font-size: 0.46rem !important;
+  font-weight: 500 !important;
+  letter-spacing: 0.26em !important;
+}
+
+div[data-active-theme="sterling"] .vu-readout-line {
+  border-top: 0.5px solid var(--rule) !important;
+}
+
+div[data-active-theme="sterling"] .vu-readout-line span {
+  color: var(--lum-2) !important;
+  font-family: 'Inter', monospace !important;
+  font-size: 0.54rem !important;
+  font-weight: 300 !important;
+  letter-spacing: 0.04em !important;
+  text-shadow: none !important;
+}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   CONTROLS COLUMN — warm champagne faceplate strip (engraved metal keys)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+
+div[data-active-theme="sterling"] .controls-column {
+  background: linear-gradient(180deg, var(--chassis-hi) 0%, var(--chassis) 55%, var(--chassis-mid) 100%) !important;
+  border-left: 1px solid rgba(0,0,0,0.16) !important;
+  border-radius: 6px !important;
+  box-shadow:
+    inset 1px 0 0 rgba(255,255,255,0.65),
+    inset 0 1px 0 rgba(255,255,255,0.58),
+    inset 0 -1px 2px rgba(0,0,0,0.10) !important;
+  position: relative;
+  z-index: 3;
+  overflow: hidden;
+}
+
+/* Warm brushed texture on the faceplate strip */
+div[data-active-theme="sterling"] .controls-column::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='400'%3E%3Cfilter id='d'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.008 0.92' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23d)'/%3E%3C/svg%3E");
+  background-size: 100% 100%;
+  mix-blend-mode: soft-light;
+  opacity: 0.42;
+  z-index: 0;
+}
+
+/* Warm engraved keys on the champagne faceplate strip */
+div[data-active-theme="sterling"] .controls-column .icon-button {
+  position: relative;
+  z-index: 1;
+  background: linear-gradient(180deg, rgba(255,255,255,0.38), rgba(0,0,0,0.04)) !important;
+  border: 1px solid rgba(0,0,0,0.14) !important;
+  color: var(--engrave) !important;
+  border-radius: 5px !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.82),
+    inset 0 -1px 2px rgba(0,0,0,0.10),
+    0 1px 2px rgba(0,0,0,0.12) !important;
+  text-shadow: 0 1px 0 rgba(255,255,255,0.68) !important;
+  transition: all 0.16s ease !important;
+}
+
+div[data-active-theme="sterling"] .controls-column .icon-button:hover {
+  background: linear-gradient(180deg, rgba(255,255,255,0.55), rgba(255,255,255,0.10)) !important;
+  border-color: rgba(0,0,0,0.20) !important;
+}
+
+div[data-active-theme="sterling"] .controls-column .icon-button:active {
+  background: linear-gradient(180deg, rgba(0,0,0,0.06), rgba(0,0,0,0.02)) !important;
+  box-shadow: inset 0 2px 4px rgba(0,0,0,0.18) !important;
+  transform: translateY(0.5px) !important;
+}
+
+div[data-active-theme="sterling"] .controls-column .icon-button svg {
+  filter: drop-shadow(0 1px 0 rgba(255,255,255,0.65));
+}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   PROGRESS BAR — precision transport position strip
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+
+div[data-active-theme="sterling"] .progress-area {
+  position: relative;
+  z-index: 3;
+}
+
+div[data-active-theme="sterling"] .progress-area .stone-range {
+  background: rgba(0,0,0,0.28) !important;
+  height: 1.5px !important;
+  box-shadow: inset 0 1px 1px rgba(0,0,0,0.35) !important;
+}
+
+div[data-active-theme="sterling"] .progress-area .stone-range::-webkit-slider-thumb {
+  width: 10px !important;
+  height: 10px !important;
+  border-radius: 50% !important;
+  background: radial-gradient(circle at 50% 32%, #ECEAE6, #B8B5B0 70%, #A0A09A) !important;
+  border: 1px solid #8A8A84 !important;
+  box-shadow: 0 0 4px rgba(248,246,242,0.22), 0 1px 2px rgba(0,0,0,0.32) !important;
+}
+
+div[data-active-theme="sterling"] .progress-area .stone-range::-moz-range-thumb {
+  width: 10px !important;
+  height: 10px !important;
+  border-radius: 50% !important;
+  background: radial-gradient(circle at 50% 32%, #ECEAE6, #A0A09A) !important;
+  border: 1px solid #8A8A84 !important;
+}
+
+div[data-active-theme="sterling"] .progress-area span,
+div[data-active-theme="sterling"] .progress-area div {
+  font-family: 'Inter', monospace !important;
+  font-size: 0.58rem !important;
+  font-weight: 300 !important;
+  color: var(--lum-3) !important;
+  letter-spacing: 0.06em !important;
+  text-shadow: none !important;
+}
+
+div[data-active-theme="sterling"] .progress-fill-dots {
+  background-image: radial-gradient(rgba(248,246,242,0.22) 30%, transparent 30%) !important;
+}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   FINISHING
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+
+div[data-active-theme="sterling"] *::selection {
+  background-color: rgba(248, 246, 242, 0.22);
+  color: var(--lum);
+}
+
+div[data-active-theme="sterling"] *::-webkit-scrollbar-thumb {
+  background: var(--chassis-groove) !important;
+}
+div[data-active-theme="sterling"] * {
+  scrollbar-color: var(--chassis-groove) transparent !important;
+}
+
+/* Subtle display warm-up on playback start */
+@keyframes sterling-warmup {
+  0%   { filter: brightness(0.97); }
+  40%  { filter: brightness(1.01); }
+  100% { filter: brightness(1.0); }
+}
+
+div[data-active-theme="sterling"] .music-player.is-playing {
+  animation: sterling-warmup 5s ease-in-out !important;
+}

@@ -14,7 +14,9 @@ export const SCREEN_THEMES = [
   { id: 'dot-matrix',  name: 'Retro Dot-Matrix', desc: 'Phosphor LED grid matrix simulation'    },
   { id: 'dreamplayer', name: 'Dreamplayer',       desc: 'Neo Glass Retrofuture' },
   { id: 'glassplayer', name: 'Glassplayer',       desc: 'Liquid Glass Retrofuture'               },
-  { id: 'minimalist',  name: 'Minimalist',        desc: 'Dynamic 2-column album color'   }
+  { id: 'minimalist',  name: 'Minimalist',        desc: 'Dynamic 2-column album color'   },
+  { id: 'origami',     name: 'Origami',           desc: 'Kindle paper & ink luxury'              },
+  { id: 'sterling',    name: 'Sterling',          desc: 'Brushed-silver hi-fi instrument'        },
 ];
 
 export default function ThemeSettingsControl({

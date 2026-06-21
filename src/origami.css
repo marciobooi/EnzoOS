@@ -1,0 +1,579 @@
+/* ==============================================================================
+   Origami v3 — Kindle E-Ink Paper & Ink · Premium Editorial Design
+
+   Kindle principles applied:
+   1. Content supremacy — title floats on paper, nothing competes
+   2. E-ink warmth — Paperwhite Signature warm-mode tone (#F0ECE4), not cream yellow
+   3. Ink economy — warm near-black used precisely, zero unnecessary chrome
+   4. Invisible UI — controls materialise when needed, recede when not
+   5. Typography as hierarchy — chapter mark → title → artist → colophon
+   6. Book anatomy — spine shadow, museum mat, gutter rule, page-curl corner
+   ============================================================================= */
+
+div[data-active-theme="origami"] {
+  /* ── Paper — Paperwhite Signature warm-light accuracy ───────────────── */
+  --paper:        #F0ECE4;          /* exact Paperwhite warm-mode background */
+  --paper-warm:   #E6E0D4;          /* slightly deeper page */
+  --paper-cool:   #F7F5F1;          /* clean mat white */
+  --paper-mat:    #FDFCF9;          /* museum mat: near-white, warm cast */
+  --paper-deep:   #D9D2C4;          /* page-curl shadow */
+
+  /* ── Ink — warm near-black (Bookerly text colour) ───────────────────── */
+  --ink:          #0D0C09;          /* warmest near-black, not cold */
+  --ink-2:        #28251F;          /* secondary text */
+  --ink-3:        #565148;          /* tertiary */
+  --ink-4:        #8A8479;          /* muted annotation */
+  --ink-5:        #B2ADA4;          /* ghost / barely-there */
+
+  /* ── Gilt gold — aged burnished, not bright ─────────────────────────── */
+  --ori-gold:       #6E5310;
+  --ori-gold-mid:   #98720E;
+  --ori-gold-bright: #C09424;
+  --ori-gold-glow:  rgba(110, 83, 16, 0.18);
+  --ori-gold-dim:   rgba(110, 83, 16, 0.07);
+
+  /* ── Fold / crease tones ─────────────────────────────────────────────── */
+  --crease:         #C6BDB0;
+  --crease-hi:      #A49A8C;
+  --crease-soft:    #DCD6CC;
+  --crease-rule:    rgba(110, 83, 16, 0.20);   /* gold hairline */
+  --crease-double:  rgba(110, 83, 16, 0.12);   /* secondary rule */
+
+  /* ── Global var overrides ────────────────────────────────────────────── */
+  --theme-color:      #6E5310;
+  --theme-color-glow: rgba(110, 83, 16, 0.20);
+  --theme-color-dim:  rgba(110, 83, 16, 0.07);
+  --color-active:     #0D0C09;
+  --color-faded:      #8A8479;
+
+  font-family: 'Inter', system-ui, sans-serif !important;
+  color: var(--ink) !important;
+
+  /* ── Page background: Kindle warm-mode + deep corner vignette ────────── */
+  background:
+    radial-gradient(ellipse 55% 55% at 100%  0%, rgba(160,148,128,0.42) 0%, transparent 50%),
+    radial-gradient(ellipse 50% 50% at   0%100%, rgba(172,158,136,0.35) 0%, transparent 50%),
+    radial-gradient(ellipse 45% 45% at  95% 95%, rgba(150,138,118,0.30) 0%, transparent 44%),
+    radial-gradient(ellipse 40% 40% at   5%  5%, rgba(164,150,130,0.26) 0%, transparent 42%),
+    linear-gradient(162deg, #F6F2EA 0%, #F0ECE4 45%, #E8E0D2 100%) !important;
+}
+
+/* ── Suppress all LED / glow / glass effects ─────────────────────────────── */
+div[data-active-theme="origami"] .ambient-orb,
+div[data-active-theme="origami"] .dot-matrix-grid,
+div[data-active-theme="origami"] .crt-scanlines {
+  display: none !important;
+}
+
+/* ── Paper grain (fractal noise, very delicate — like 90gsm offset paper) ── */
+div[data-active-theme="origami"]::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='280' height='280'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.76' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)' opacity='1'/%3E%3C/svg%3E");
+  background-size: 240px 240px;
+  mix-blend-mode: multiply;
+  opacity: 0.042;
+  z-index: 0;
+}
+
+/* ── Origami fold-line grid (barely-there crease pattern) ───────────────── */
+div[data-active-theme="origami"]::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    linear-gradient(rgba(13,12,9,0.024) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(13,12,9,0.018) 1px, transparent 1px);
+  background-size: 68px 68px;
+  mask-image: radial-gradient(ellipse 80% 80% at 50% 50%,
+    rgba(0,0,0,0.20) 0%, rgba(0,0,0,0.08) 55%, transparent 80%);
+  z-index: 1;
+}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   PLAYER SHELL — hardcover book anatomy
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+
+div[data-active-theme="origami"] .music-player-container {
+  background: var(--paper) !important;
+  /* Double-border: outer frame (like a book cover border rule) */
+  border: 1px solid var(--crease) !important;
+  outline: 3px solid var(--crease-soft) !important;
+  outline-offset: -4px !important;
+  border-radius: 2px !important;
+  /* Multi-layer lift shadows — hardcover on a mahogany desk */
+  box-shadow:
+    0 1px 0    rgba(13,12,9,0.14),
+    0 2px 4px  rgba(13,12,9,0.09),
+    0 8px 20px rgba(13,12,9,0.09),
+    0 22px 52px rgba(13,12,9,0.08),
+    0 52px 88px rgba(13,12,9,0.05) !important;
+  overflow: visible !important;
+  position: relative;
+  z-index: 2;
+}
+
+/* Spine shadow — left binding edge */
+div[data-active-theme="origami"] .music-player-container::before {
+  content: '';
+  position: absolute;
+  top: 0; left: -1px; bottom: 0;
+  width: 10px;
+  background: linear-gradient(90deg,
+    rgba(13,12,9,0.18) 0%,
+    rgba(13,12,9,0.06) 55%,
+    transparent 100%);
+  border-radius: 2px 0 0 2px;
+  z-index: 20;
+  pointer-events: none;
+}
+
+/* Page-curl — bottom right corner (origami fold) */
+div[data-active-theme="origami"] .music-player-container::after {
+  content: '';
+  position: absolute;
+  bottom: -1px; right: -1px;
+  width: 0; height: 0;
+  border-style: solid;
+  border-width: 0 0 40px 40px;
+  border-color: transparent transparent var(--paper-deep) transparent;
+  filter: drop-shadow(-2px -2px 4px rgba(13,12,9,0.14));
+  z-index: 25;
+  pointer-events: none;
+}
+
+/* ── Main player grid ────────────────────────────────────────────────────── */
+div[data-active-theme="origami"] .music-player {
+  background: transparent !important;
+  border: none !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  position: relative;
+  z-index: 2;
+  overflow: hidden;
+}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   ALBUM ART — museum-quality photographic plate
+   Mat board → outer border → art
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+
+div[data-active-theme="origami"] .album-column {
+  background: var(--paper-mat) !important;
+  /* Generous mat padding — how a real museum print is mounted */
+  padding: 14px 14px 14px 16px !important;
+  border-right: 1px solid var(--crease-soft) !important;
+  position: relative;
+}
+
+/* Inner depth shadow on the mat */
+div[data-active-theme="origami"] .album-column::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  box-shadow: inset 6px 0 16px rgba(13,12,9,0.06);
+  z-index: 3;
+}
+
+div[data-active-theme="origami"] .album-art {
+  border-radius: 1px !important;
+  /* White mat reveal — inner glow + ruled border → art */
+  box-shadow:
+    inset 0 0 0 7px  var(--paper-mat),
+    inset 0 0 0 8px  var(--crease-soft),
+    inset 0 0 0 9px  rgba(13,12,9,0.06),
+    5px 5px 0        rgba(13,12,9,0.08),
+    10px 10px 22px   rgba(13,12,9,0.13) !important;
+  border: 1px solid var(--crease) !important;
+  overflow: hidden !important;
+}
+
+/* Photographic plate toning — sepia + slight desaturation */
+div[data-active-theme="origami"] .album-art img {
+  filter: sepia(22%) contrast(0.94) brightness(1.04) saturate(0.88) !important;
+  transition: filter 1.0s ease !important;
+}
+
+div[data-active-theme="origami"] .album-art--radio {
+  border-radius: 1px !important;
+  border: 1px solid var(--crease) !important;
+  box-shadow:
+    inset 0 0 0 7px  var(--paper-mat),
+    inset 0 0 0 8px  var(--crease-soft),
+    5px 5px 0        rgba(13,12,9,0.08),
+    10px 10px 22px   rgba(13,12,9,0.13) !important;
+  background: var(--paper-mat) !important;
+}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   DETAILS COLUMN — text page of the book
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+
+div[data-active-theme="origami"] .details-column {
+  background: var(--paper) !important;
+  position: relative;
+}
+
+/* Book gutter rule — hairline gold between mat and text page */
+div[data-active-theme="origami"] .details-column::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 10%; bottom: 10%;
+  width: 1px;
+  background: linear-gradient(to bottom,
+    transparent 0%,
+    var(--crease-rule) 18%,
+    var(--crease-rule) 82%,
+    transparent 100%);
+  pointer-events: none;
+  z-index: 4;
+}
+
+/* ── Status pills — margin annotation style ─────────────────────────────── */
+div[data-active-theme="origami"] .status-pill {
+  font-family: 'Inter', system-ui, sans-serif !important;
+  font-size: 5.5px !important;
+  letter-spacing: 0.32em !important;
+  background: transparent !important;
+  border: 1px solid var(--crease) !important;
+  color: var(--ink-5) !important;
+  border-radius: 1px !important;
+  box-shadow: none !important;
+  padding: 2px 5px !important;
+  opacity: 0.85;
+}
+
+div[data-active-theme="origami"] .status-dot {
+  background: var(--ori-gold-mid) !important;
+  box-shadow: none !important;
+  width: 3.5px !important;
+  height: 3.5px !important;
+}
+
+/* ── Chapter mark + title + hairline rule: the chapter opening ───────────── */
+div[data-active-theme="origami"] .title-container {
+  padding-bottom: 0.45rem !important;
+  margin-bottom: 0.35rem !important;
+  /* Gold hairline under the title — chapter-break rule */
+  border-bottom: 0.5px solid var(--crease-rule) !important;
+  position: relative;
+}
+
+
+/* ── Track title — the chapter heading ───────────────────────────────────── */
+div[data-active-theme="origami"] .track-title {
+  font-family: 'Cormorant Garamond', 'Georgia', 'Times New Roman', serif !important;
+  font-size: 4.0rem !important;
+  font-weight: 700 !important;
+  font-style: italic !important;
+  color: var(--ink) !important;
+  letter-spacing: -0.030em !important;
+  line-height: 0.96 !important;
+  text-shadow: none !important;
+}
+
+/* ── Artist name — chapter sub-heading ──────────────────────────────────── */
+div[data-active-theme="origami"] .track-details .metadata-row {
+  margin-top: 0.55rem !important;
+  /* Thin rule above artist — like a book section separator */
+  padding-top: 0.4rem !important;
+}
+
+div[data-active-theme="origami"] .track-artist {
+  font-family: 'Cormorant Garamond', Georgia, serif !important;
+  font-size: 0.95rem !important;
+  font-weight: 500 !important;
+  color: var(--ink-2) !important;
+  letter-spacing: 0.24em !important;
+  text-transform: uppercase !important;
+  font-style: normal !important;
+  text-shadow: none !important;
+}
+
+/* ── Album name — colophon italic ───────────────────────────────────────── */
+div[data-active-theme="origami"] .track-album {
+  font-family: 'Cormorant Garamond', Georgia, serif !important;
+  font-size: 0.84rem !important;
+  font-weight: 300 !important;
+  font-style: italic !important;
+  color: var(--ink-4) !important;
+  letter-spacing: 0.04em !important;
+  text-shadow: none !important;
+}
+
+/* ── Telemetry — margin notes (nearly invisible by default) ─────────────── */
+div[data-active-theme="origami"] .metadata-row [class*="text-[8px]"],
+div[data-active-theme="origami"] .metadata-row [class*="text-[7px]"],
+div[data-active-theme="origami"] .metadata-row [class*="text-[7.5px]"],
+div[data-active-theme="origami"] .metadata-row .font-mono {
+  color: var(--ink-5) !important;
+  opacity: 0.80 !important;
+}
+
+div[data-active-theme="origami"] .metadata-row [class*="border"][class*="rounded"] {
+  border-color: var(--crease) !important;
+  background: transparent !important;
+  color: var(--ink-5) !important;
+  font-size: 6px !important;
+  border-radius: 1px !important;
+}
+
+/* ── Volume popup — Kindle-style reading notification ──────────────────── */
+div[data-active-theme="origami"] .volume-feedback {
+  font-family: 'Cormorant Garamond', Georgia, serif !important;
+  font-style: italic !important;
+  font-weight: 700 !important;
+  font-size: 2.2rem !important;
+  color: var(--ori-gold) !important;
+  background: var(--paper-mat) !important;
+  border: 1px solid var(--crease) !important;
+  box-shadow:
+    3px 3px 0   rgba(13,12,9,0.10),
+    0 6px 16px  rgba(13,12,9,0.10) !important;
+  border-radius: 1px !important;
+}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   PLAYBACK CONTROLS — invisible until addressed
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+
+div[data-active-theme="origami"] .music-controls {
+  gap: 0.35rem !important;
+}
+
+/* Ghost state: colour only, no border */
+div[data-active-theme="origami"] .icon-button {
+  background: transparent !important;
+  border: 1px solid transparent !important;
+  color: var(--ink-4) !important;
+  border-radius: 1px !important;
+  box-shadow: none !important;
+  transition:
+    background 0.20s ease,
+    border-color 0.22s ease,
+    color 0.18s ease,
+    transform 0.14s ease !important;
+}
+
+div[data-active-theme="origami"] .icon-button:hover {
+  background: var(--paper-warm) !important;
+  border-color: var(--crease) !important;
+  color: var(--ink-2) !important;
+  box-shadow: 1px 1px 0 rgba(13,12,9,0.08) !important;
+}
+
+div[data-active-theme="origami"] .icon-button:active {
+  background: var(--paper-deep) !important;
+  transform: scale(0.94) !important;
+  box-shadow: none !important;
+}
+
+div[data-active-theme="origami"] .icon-button.active {
+  background: var(--ori-gold-dim) !important;
+  border-color: rgba(110,83,16,0.30) !important;
+  color: var(--ori-gold-mid) !important;
+}
+
+/* ── Play / Pause — letterpress ink stamp ────────────────────────────────── */
+div[data-active-theme="origami"] .icon-button.play {
+  background: var(--ink) !important;
+  border: 1px solid rgba(13,12,9,0.7) !important;
+  color: var(--paper-cool) !important;
+  border-radius: 1px !important;
+  /* Three-layer letterpress shadow: sharp contact, soft lift, ambient */
+  box-shadow:
+    2px  2px 0   var(--ink-2),
+    4px  4px 0   rgba(13,12,9,0.14),
+    0 8px 20px   rgba(13,12,9,0.22) !important;
+  transition: all 0.14s ease !important;
+}
+
+div[data-active-theme="origami"] .icon-button.play:hover {
+  background: #1A180F !important;
+  box-shadow:
+    3px  3px 0   var(--ink-2),
+    6px  6px 0   rgba(13,12,9,0.14),
+    0 12px 28px  rgba(13,12,9,0.26) !important;
+  transform: translate(-1px, -1px) !important;
+}
+
+div[data-active-theme="origami"] .icon-button.play:active {
+  transform: translate(2px, 2px) !important;
+  box-shadow:
+    0px 0px 0   var(--ink-2),
+    0 2px 8px   rgba(13,12,9,0.14) !important;
+}
+
+div[data-active-theme="origami"] .icon-button.play::before,
+div[data-active-theme="origami"] .icon-button.play::after {
+  display: none !important;
+}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   VU METERS — precision scientific instrument (HiFi measurement lab)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+
+div[data-active-theme="origami"] .vu-channel-box {
+  background: var(--paper-cool) !important;
+  border: 1px solid var(--crease) !important;
+  border-radius: 1px !important;
+  /* Instrument glass inset effect */
+  box-shadow:
+    inset 0 1px 0   rgba(253,252,249,0.95),
+    inset 0 -1px 0  rgba(13,12,9,0.06),
+    inset 1px 0 0   rgba(253,252,249,0.6),
+    0 1px 4px       rgba(13,12,9,0.07) !important;
+}
+
+div[data-active-theme="origami"] .vu-dot-grid {
+  background-image: radial-gradient(rgba(110,83,16,0.055) 24%, transparent 24%) !important;
+  background-size: 5px 5px !important;
+  opacity: 0.75 !important;
+}
+
+div[data-active-theme="origami"] .vu-glow-overlay {
+  display: none !important;
+}
+
+/* Gold needle — tapered like a real VU movement arm */
+div[data-active-theme="origami"] .vu-needle {
+  background: linear-gradient(
+    to top,
+    var(--ori-gold)        0%,
+    var(--ori-gold-mid)    45%,
+    var(--ori-gold-bright) 82%,
+    rgba(220,185,80,0.85)  100%
+  ) !important;
+  box-shadow: none !important;
+  width: 1.5px !important;
+}
+
+div[data-active-theme="origami"] .vu-scale-marks span {
+  color: var(--ink-5) !important;
+  font-family: 'Inter', system-ui, sans-serif !important;
+  font-size: 0.46rem !important;
+  opacity: 0.65 !important;
+}
+
+div[data-active-theme="origami"] .vu-title span {
+  color: var(--ink-5) !important;
+  font-family: 'Inter', system-ui, sans-serif !important;
+  font-size: 0.48rem !important;
+  letter-spacing: 0.26em !important;
+  opacity: 0.72 !important;
+}
+
+div[data-active-theme="origami"] .vu-readout-line {
+  border-top: 0.5px solid var(--crease-soft) !important;
+}
+
+div[data-active-theme="origami"] .vu-readout-line span {
+  color: var(--ori-gold-mid) !important;
+  font-family: 'Inter', monospace !important;
+  font-size: 0.54rem !important;
+  font-weight: 500 !important;
+  letter-spacing: 0.03em !important;
+}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   CONTROLS COLUMN — inside cover / endpaper
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+
+div[data-active-theme="origami"] .controls-column {
+  background: var(--paper-warm) !important;
+  border-left: 0.5px solid var(--crease-soft) !important;
+  position: relative;
+}
+
+div[data-active-theme="origami"] .controls-column::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 14px;
+  background: linear-gradient(90deg,
+    rgba(13,12,9,0.08) 0%,
+    rgba(13,12,9,0.02) 60%,
+    transparent 100%);
+  pointer-events: none;
+  z-index: 5;
+}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   PROGRESS BAR — Kindle reading-location strip
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+
+div[data-active-theme="origami"] .progress-area {
+  opacity: 0.88;
+}
+
+div[data-active-theme="origami"] .progress-area .stone-range {
+  background: var(--crease-soft) !important;
+  height: 1.5px !important;
+}
+
+div[data-active-theme="origami"] .progress-area .stone-range::-webkit-slider-thumb {
+  width: 11px !important;
+  height: 11px !important;
+  background: var(--paper-mat) !important;
+  border: 1.5px solid var(--ink-2) !important;
+  box-shadow: 1px 1px 0 rgba(13,12,9,0.18) !important;
+  border-radius: 1px !important;
+}
+
+div[data-active-theme="origami"] .progress-area .stone-range::-moz-range-thumb {
+  width: 11px !important;
+  height: 11px !important;
+  background: var(--paper-mat) !important;
+  border: 1.5px solid var(--ink-2) !important;
+  border-radius: 1px !important;
+}
+
+/* Time labels — Kindle "Location" style */
+div[data-active-theme="origami"] .progress-area span,
+div[data-active-theme="origami"] .progress-area div {
+  font-family: 'Inter', monospace !important;
+  font-size: 0.60rem !important;
+  color: var(--ink-4) !important;
+  letter-spacing: 0.06em !important;
+}
+
+div[data-active-theme="origami"] .progress-fill-dots {
+  background-image: radial-gradient(var(--ori-gold-dim) 30%, transparent 30%) !important;
+}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   FINISHING DETAILS
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+
+div[data-active-theme="origami"] *::selection {
+  background-color: rgba(110, 83, 16, 0.16);
+  color: var(--ori-gold);
+}
+
+div[data-active-theme="origami"] *::-webkit-scrollbar-thumb {
+  background: var(--crease-hi) !important;
+  border-radius: 0 !important;
+}
+div[data-active-theme="origami"] * {
+  scrollbar-color: var(--crease-hi) transparent !important;
+}
+
+/* VU needle — precision mechanical transition */
+div[data-active-theme="origami"] .vu-needle {
+  transition: transform 0.10s cubic-bezier(0.18, 0.89, 0.32, 1.12) !important;
+}
+
+/* Breathing in playing state — paper responding to sound */
+@keyframes origami-breathe {
+  0%, 100% { opacity: 0.98; }
+  50%       { opacity: 1.00; }
+}
+
+div[data-active-theme="origami"] .music-player.is-playing {
+  animation: origami-breathe 10s ease-in-out infinite !important;
+}
