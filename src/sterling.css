@@ -319,9 +319,10 @@ div[data-active-theme="sterling"] .metadata-row [class*="border"][class*="rounde
 }
 
 
-div[data-active-theme="origami"] .volume-popup {
+div[data-active-theme="sterling"] .volume-popup {
 z-index: 4 !important;
 position: absolute !important;
+border-radius: 0 !important;
 }
 
 /* ── Volume readout — the big luminous "36" number on the RD160 ──────────── */
