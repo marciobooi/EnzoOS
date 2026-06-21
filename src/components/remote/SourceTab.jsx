@@ -1,22 +1,14 @@
 import React, { useContext, useEffect, useRef, useState } from 'react';
-import { Music, Radio, Airplay, Network, Bluetooth, Music2, Search, X } from 'lucide-react';
+import { Music, Radio, Airplay, Network, Bluetooth, Music2, Search, ChevronLeft } from 'lucide-react';
 import { Tk, SpotifyIcon } from './shared';
 import { api } from '../../api';
 import { toast } from '../../lib/toast';
 
 export default function SourceTab() {
   const {
-    C, card, btnInset, darkMode,
+    C, card, btnInset,
     source, handleToggleSource, setActiveTab,
   } = useContext(Tk);
-
-  // Clean, on-theme modal surface — flat white sheet, soft elevation, not the
-  // puffy neumorphic card. Matches the rest of the remote's light aesthetic.
-  const sheet = {
-    background: C.bgWhite,
-    border: `0.5px solid ${C.outline}`,
-    boxShadow: darkMode ? '0 24px 64px rgba(0,0,0,0.7)' : '0 24px 64px rgba(0,0,0,0.22)',
-  };
 
   const [connected, setConnected] = useState({ tidal: false, qobuz: false });
 
@@ -171,93 +163,96 @@ export default function SourceTab() {
 
       {/* Qobuz credentials */}
       {qobuzModal && (
-        <Overlay onClose={() => !busy && setQobuzModal(false)}>
-          <form onClick={e => e.stopPropagation()} onSubmit={submitQobuz}
-            className="remote-sheet-in w-full max-w-sm rounded-2xl p-5 flex flex-col gap-3" style={sheet}>
-            <div className="mb-1">
-              <p className="text-[11px] font-semibold uppercase tracking-widest mb-0.5"
-                style={{ color: C.champagne, fontFamily: C.fontLabel }}>Hi-Res Source</p>
-              <h3 className="text-[20px] font-medium" style={{ color: C.text1, letterSpacing: '-0.01em' }}>Connect Qobuz</h3>
-            </div>
+        <Sheet C={C} kicker="Hi-Res Source" title="Connect Qobuz" onBack={() => !busy && setQobuzModal(false)}>
+          <form onSubmit={submitQobuz} className="flex flex-col gap-3 w-full max-w-sm mx-auto">
+            <p className="text-[14px] mb-1" style={{ color: C.text4 }}>Sign in to stream Qobuz hi-res audio.</p>
             <input type="text" value={username} onChange={e => setUsername(e.target.value)} placeholder="Email / username"
-              autoCapitalize="none" autoComplete="username" className="w-full rounded-xl px-4 py-3 text-[16px] focus:outline-none" style={inputStyle} />
+              autoCapitalize="none" autoComplete="username" className="w-full rounded-xl px-4 py-3.5 text-[16px] focus:outline-none" style={inputStyle} />
             <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="Password"
-              autoComplete="current-password" className="w-full rounded-xl px-4 py-3 text-[16px] focus:outline-none" style={inputStyle} />
-            <div className="flex gap-2 mt-1">
-              <button type="button" disabled={busy} onClick={() => setQobuzModal(false)}
-                className="flex-1 py-3 rounded-full text-[14px] font-semibold active:scale-95 cursor-pointer" style={{ ...card, color: C.text2 }}>Cancel</button>
-              <button type="submit" disabled={busy}
-                className="flex-1 py-3 rounded-full text-[14px] font-semibold active:scale-95 cursor-pointer"
-                style={{ background: C.champagne, color: '#1a1a1a', opacity: busy ? 0.6 : 1 }}>{busy ? 'Connecting…' : 'Connect'}</button>
-            </div>
+              autoComplete="current-password" className="w-full rounded-xl px-4 py-3.5 text-[16px] focus:outline-none" style={inputStyle} />
+            <button type="submit" disabled={busy}
+              className="w-full py-3.5 rounded-full text-[15px] font-semibold active:scale-95 transition-all cursor-pointer mt-1"
+              style={{ background: C.champagne, color: '#1a1c1c', opacity: busy ? 0.6 : 1, fontFamily: C.font }}>
+              {busy ? 'Connecting…' : 'Connect'}</button>
           </form>
-        </Overlay>
+        </Sheet>
       )}
 
       {/* Tidal device flow */}
       {tidalAuth && (
-        <Overlay onClose={() => { clearInterval(pollRef.current); setTidalAuth(null); }}>
-          <div onClick={e => e.stopPropagation()} className="remote-sheet-in w-full max-w-sm rounded-2xl p-6 flex flex-col gap-4 items-center text-center"
-            style={sheet}>
-            <div>
-              <p className="text-[11px] font-semibold uppercase tracking-widest mb-0.5"
-                style={{ color: C.champagne, fontFamily: C.fontLabel }}>Hi-Res Source</p>
-              <h3 className="text-[20px] font-medium" style={{ color: C.text1, letterSpacing: '-0.01em' }}>Connect Tidal</h3>
+        <Sheet C={C} kicker="Hi-Res Source" title="Connect Tidal"
+          onBack={() => { clearInterval(pollRef.current); setTidalAuth(null); }}>
+          <div className="flex flex-col items-center text-center gap-5 w-full max-w-sm mx-auto pt-4">
+            <div className="w-14 h-14 rounded-2xl flex items-center justify-center"
+              style={{ background: C.containerLow, border: `0.5px solid ${C.outline}` }}>
+              <Music2 className="h-6 w-6" style={{ color: C.champagne }} />
             </div>
-            <p className="text-[13px]" style={{ color: C.text3 }}>
+            <p className="text-[14px] leading-relaxed" style={{ color: C.text4 }}>
               On any device open<br /><span style={{ color: C.champagne }}>{tidalAuth.verificationUri}</span><br />and enter this code:
             </p>
-            <div className="text-[28px] font-bold tracking-[0.3em]" style={{ color: C.text1 }}>{tidalAuth.userCode}</div>
-            <p className="text-[11px]" style={{ color: C.text4 }}>Waiting for authorisation…</p>
+            <div className="px-6 py-4 rounded-2xl" style={{ ...card }}>
+              <span className="text-[32px] font-bold tracking-[0.3em]" style={{ color: C.text1 }}>{tidalAuth.userCode}</span>
+            </div>
+            <p className="text-[12px]" style={{ color: C.text3 }}>Waiting for authorisation…</p>
           </div>
-        </Overlay>
+        </Sheet>
       )}
 
       {/* Search + play */}
       {searchFor && (
-        <Overlay onClose={() => setSearchFor(null)}>
-          <div onClick={e => e.stopPropagation()} className="remote-sheet-in w-full max-w-md rounded-2xl p-4 flex flex-col gap-3 max-h-[80vh]"
-            style={sheet}>
-            <div className="flex items-center justify-between">
-              <h3 className="text-[17px] font-medium" style={{ color: C.text1, letterSpacing: '-0.01em' }}>{searchFor === 'tidal' ? 'Tidal' : 'Qobuz'} Search</h3>
-              <button onClick={() => setSearchFor(null)} className="p-1 cursor-pointer"><X className="h-5 w-5" style={{ color: C.text3 }} /></button>
-            </div>
-            <form onSubmit={doSearch} className="flex gap-2">
-              <input value={query} onChange={e => setQuery(e.target.value)} placeholder="Search tracks…" autoFocus
-                className="flex-1 rounded-xl px-4 py-3 text-[16px] focus:outline-none" style={inputStyle} />
-              <button type="submit" disabled={searching}
-                className="px-4 rounded-xl active:scale-95 cursor-pointer flex items-center justify-center" style={{ background: C.champagne }}>
-                <Search className="h-5 w-5" style={{ color: '#1a1a1a' }} />
+        <Sheet C={C} kicker={searchFor === 'tidal' ? 'Tidal' : 'Qobuz'} title="Search" onBack={() => setSearchFor(null)}>
+          <form onSubmit={doSearch} className="flex gap-2 mb-3">
+            <input value={query} onChange={e => setQuery(e.target.value)} placeholder="Search tracks…" autoFocus
+              className="flex-1 rounded-xl px-4 py-3.5 text-[16px] focus:outline-none" style={inputStyle} />
+            <button type="submit" disabled={searching}
+              className="px-4 rounded-xl active:scale-95 cursor-pointer flex items-center justify-center" style={{ background: C.champagne }}>
+              <Search className="h-5 w-5" style={{ color: '#1a1c1c' }} />
+            </button>
+          </form>
+          <div className="flex flex-col gap-1.5">
+            {searching && <p className="text-[13px] py-4 text-center" style={{ color: C.text3 }}>Searching…</p>}
+            {!searching && results.length === 0 && <p className="text-[13px] py-4 text-center" style={{ color: C.text4 }}>No results yet.</p>}
+            {results.map(t => (
+              <button key={t.id} onClick={() => playTrack(t)}
+                className="flex items-center gap-3 p-2 rounded-xl active:scale-[0.98] cursor-pointer text-left" style={{ ...card }}>
+                {t.cover
+                  ? <img src={t.cover} alt="" className="h-11 w-11 rounded-md object-cover" />
+                  : <div className="h-11 w-11 rounded-md" style={{ background: C.containerLow }} />}
+                <div className="min-w-0 flex-1">
+                  <p className="text-[14px] truncate" style={{ color: C.text1 }}>{t.title}</p>
+                  <p className="text-[12px] truncate" style={{ color: C.text3 }}>{t.artist}</p>
+                </div>
               </button>
-            </form>
-            <div className="overflow-y-auto flex flex-col gap-1">
-              {searching && <p className="text-[13px] py-4 text-center" style={{ color: C.text3 }}>Searching…</p>}
-              {!searching && results.length === 0 && <p className="text-[13px] py-4 text-center" style={{ color: C.text4 }}>No results yet.</p>}
-              {results.map(t => (
-                <button key={t.id} onClick={() => playTrack(t)}
-                  className="flex items-center gap-3 p-2 rounded-xl active:scale-[0.98] cursor-pointer text-left" style={{ ...card }}>
-                  {t.cover
-                    ? <img src={t.cover} alt="" className="h-11 w-11 rounded-md object-cover" />
-                    : <div className="h-11 w-11 rounded-md" style={{ background: C.containerHigh || '#333' }} />}
-                  <div className="min-w-0 flex-1">
-                    <p className="text-[14px] truncate" style={{ color: C.text1 }}>{t.title}</p>
-                    <p className="text-[12px] truncate" style={{ color: C.text3 }}>{t.artist}</p>
-                  </div>
-                </button>
-              ))}
-            </div>
+            ))}
           </div>
-        </Overlay>
+        </Sheet>
       )}
     </div>
   );
 }
 
-function Overlay({ children, onClose }) {
+// Full-screen remote sheet — solid background (no dim), header with a back
+// button that returns to the Source view. Defined at module scope so the text
+// inputs inside keep focus across re-renders.
+function Sheet({ C, kicker, title, onBack, children }) {
   return (
-    <div className="remote-scrim fixed inset-0 z-[70] flex items-center justify-center px-6"
-      onClick={onClose}>
-      {children}
+    <div className="remote-root remote-sheet-in fixed inset-0 z-[90] flex flex-col"
+      style={{ background: C.bg, fontFamily: C.font, paddingTop: 'env(safe-area-inset-top)' }}>
+      <div className="flex items-center gap-3 px-5 pt-4 pb-4 shrink-0"
+        style={{ background: C.bg, borderBottom: `0.5px solid ${C.outline}` }}>
+        <button onClick={onBack}
+          className="w-9 h-9 rounded-full flex items-center justify-center active:scale-90 transition-all cursor-pointer shrink-0"
+          style={{ background: C.containerLow, border: `0.5px solid ${C.outline}` }}>
+          <ChevronLeft className="h-5 w-5" style={{ color: C.text3 }} />
+        </button>
+        <div className="min-w-0">
+          <p className="text-[11px] font-semibold uppercase tracking-widest"
+            style={{ color: C.champagne, fontFamily: C.fontLabel }}>{kicker}</p>
+          <p className="text-[20px] font-medium truncate"
+            style={{ color: C.text1, letterSpacing: '-0.01em' }}>{title}</p>
+        </div>
+      </div>
+      <div className="flex-1 overflow-y-auto p-5">{children}</div>
     </div>
   );
 }
