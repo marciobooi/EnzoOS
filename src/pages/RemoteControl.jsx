@@ -4,7 +4,7 @@ import { toast } from '../lib/toast';
 import { api } from '../api';
 import { useResonanceWS } from '../websocket';
 import { EQ_PRESETS } from '../components/EqualizerControl';
-import DspWizard from '../components/DspWizard';
+import RemoteDspWizard from '../components/remote/RemoteDspWizard';
 import RemoteThemeSettings from '../components/remote/RemoteThemeSettings';
 import '../remote.css';
 
@@ -576,8 +576,8 @@ export default function RemoteControl() {
 
         {/* ── Overlays ── */}
         {isDspWizardOpen && (
-          <div className="remote-root fixed inset-0 z-[9999] flex flex-col" style={{ ...rcVars, background: darkMode ? '#0a0f1e' : '#f9f9f9' }}>
-            <DspWizard
+          <div className="remote-root fixed inset-0 z-[9999] flex flex-col" style={{ ...rcVars, background: C.bg }}>
+            <RemoteDspWizard
               onClose={() => { setIsDspWizardOpen(false); api.getDspCalibration().then(c => setDspActive(c && c[0] === 'dsp')).catch(() => {}); }}
               onCalibrationComplete={active => setDspActive(active)}
             />

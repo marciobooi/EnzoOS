@@ -3,7 +3,7 @@ import { Waves, ChevronLeft, Check, X, Cpu, AudioLines } from 'lucide-react';
 import { api } from '../api';
 import { S, cardShadow } from '../styles/stone';
 
-const QUESTIONS = [
+export const QUESTIONS = [
   {
     id: "0",
     question: "Choose your Audio Processing Mode",
