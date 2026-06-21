@@ -485,12 +485,11 @@ div[data-active-theme="origami"] .vu-readout-line span {
    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
 
 div[data-active-theme="origami"] .controls-column {
-  background: var(--paper-warm) !important;
-  border-left: 0.5px solid var(--crease-soft) !important;
+
   position: relative;
 }
 
-div[data-active-theme="origami"] .controls-column::before {
+/* div[data-active-theme="origami"] .controls-column::before {
   content: '';
   position: absolute;
   left: 0; top: 0; bottom: 0;
@@ -501,7 +500,7 @@ div[data-active-theme="origami"] .controls-column::before {
     transparent 100%);
   pointer-events: none;
   z-index: 5;
-}
+} */
 
 /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
    PROGRESS BAR — Kindle reading-location strip
