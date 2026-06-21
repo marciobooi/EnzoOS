@@ -69,15 +69,14 @@ div[data-active-theme="minimalist"] .music-player::before {
   inset: 0;
   z-index: 1;
   pointer-events: none;
-  background: linear-gradient(
-    to right,
-    rgb(var(--extracted-rgb, 5 10 20))         0%,
-    rgb(var(--extracted-rgb, 5 10 20))        50%,
-    rgba(var(--extracted-rgb, 5 10 20), 0.90) 55%,
-    rgba(var(--extracted-rgb, 5 10 20), 0.65) 60%,
-    rgba(var(--extracted-rgb, 5 10 20), 0.28) 66%,
-    rgba(var(--extracted-rgb, 5 10 20), 0.00) 72%
-  );
+  background: linear-gradient(to right,
+  rgb(var(--extracted-rgb, 5 10 20)) 0%,
+  rgb(var(--extracted-rgb, 5 10 20)) 78%,
+  rgba(var(--extracted-rgb, 5 10 20), .9)  83%,
+  rgba(var(--extracted-rgb, 5 10 20), .65) 88%,
+  rgba(var(--extracted-rgb, 5 10 20), .28) 94%,
+  rgba(var(--extracted-rgb, 5 10 20), 0)   100%
+) !important;
 }
 
 /* ── Album column — invisible click-receiver on right 47% ────────────────
