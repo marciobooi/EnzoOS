@@ -6,7 +6,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import YAML from 'yaml';
 import { getFavoriteRadios, addFavoriteRadio, deleteFavoriteRadioByUrl, setSetting, getSetting } from './db.js';
-import { emit, getStandbyState, getCachedVolumeDb } from './event-service.js';
+import { emit, getStandbyState, getCachedVolumeDb, setVolumeState } from './event-service.js';
 
 // ── Streaming source helpers ──────────────────────────────────────────────────
 async function systemctlAction(action, service) {
@@ -98,6 +98,8 @@ router.post('/volume', async (req, res) => {
   }
   try {
     await setCamillaVolume(toDb(vol));
+    // Persist the master level so it survives reboot/restart/wake for every source.
+    setVolumeState(vol, vol <= 0);
     res.json({ success: true });
   } catch (err) {
     console.error('[Volume] Failed:', err);
@@ -131,13 +133,33 @@ export async function setCamillaVolume(dB) {
 }
 
 // POST /api/player/seek -> Seek local track
+// Accepts either a percentage ("50%") or an absolute number of seconds (50).
+// IMPORTANT: `mpc seek 50` means 50 SECONDS, while `mpc seek 50%` means halfway.
+// The clients send a percentage, so a bare parseInt() silently turned "50%" into
+// a 50-second seek — making it impossible to seek any track past ~1:40. We now
+// detect the percentage form explicitly and pass it through to mpc verbatim.
 router.post('/seek', async (req, res) => {
-  const pos = parseInt(req.body.position, 10);
-  if (!Number.isFinite(pos) || pos < 0) {
-    return res.status(400).json({ error: 'Invalid position: must be a non-negative integer' });
+  const raw = req.body.position;
+  let arg;
+
+  if (typeof raw === 'string' && /^\s*\d{1,3}\s*%\s*$/.test(raw)) {
+    const pct = parseInt(raw, 10);
+    if (!Number.isFinite(pct) || pct < 0 || pct > 100) {
+      return res.status(400).json({ error: 'Invalid percentage: must be 0–100' });
+    }
+    arg = `${pct}%`;
+  } else {
+    const secs = parseInt(raw, 10);
+    if (!Number.isFinite(secs) || secs < 0) {
+      return res.status(400).json({ error: 'Invalid position: percentage like "50%" or non-negative seconds' });
+    }
+    arg = String(secs);
   }
+
   try {
-    await execPromise(`mpc seek ${pos}`);
+    // execFile with an argv array — never interpolated into a shell, so the
+    // validated `arg` cannot be used for command injection.
+    await execFilePromise('mpc', ['seek', arg]);
     res.json({ success: true });
   } catch (err) {
     console.error('[Local Player] Seek failed:', err);

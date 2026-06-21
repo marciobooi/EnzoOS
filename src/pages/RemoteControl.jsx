@@ -80,7 +80,7 @@ export default function RemoteControl() {
   };
 
   // ── auth ──────────────────────────────────────────────────────────────────
-  const [isAuthenticated, setIsAuthenticated] = useState(getCookie('remote_auth') === 'true');
+  const [isAuthenticated, setIsAuthenticated] = useState(!!getCookie('remote_token'));
   const [usernameInput, setUsernameInput]     = useState('');
   const [passwordInput, setPasswordInput]     = useState('');
 
@@ -172,6 +172,8 @@ export default function RemoteControl() {
   const progressInterval     = useRef(null);
   const volumeApiTimeout     = useRef(null);
   const lastVolumeChangeTime = useRef(0);
+  const lastNonZeroVolume    = useRef(50);
+  const spotifyVolPinned     = useRef(false);
   const hasCheckedSource     = useRef(false);
 
   // ── websocket ─────────────────────────────────────────────────────────────
@@ -248,6 +250,15 @@ export default function RemoteControl() {
     const id = setInterval(() => { fetchDevices(); localSync(); }, 3000);
     return () => clearInterval(id);
   }, [token, isAuthenticated, spotify]);
+  // Allow the Spotify device to be re-pinned to unity next time it becomes active.
+  useEffect(() => { if (!spotify) spotifyVolPinned.current = false; }, [spotify]);
+  // Validate the stored token on mount — an expired/invalid one forces re-login.
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    fetch('/api/auth/check').then(r => {
+      if (r.status === 401) { eraseCookie('remote_token'); setIsAuthenticated(false); }
+    }).catch(() => {});
+  }, []);
   useEffect(() => {
     if (activeTab === 'library' && libraryItems.length === 0 && libraryView === 'artists') fetchLibraryArtists();
   }, [activeTab]);
@@ -304,10 +315,17 @@ export default function RemoteControl() {
     try {
       const s = await api.getPlaybackState(token);
       if (!s) return;
-      setPlaybackState({ paused: !s.is_playing, position: s.progress_ms, duration: s.item?.duration_ms || 0, shuffle_state: s.shuffle_state, repeat_state: s.repeat_state, volume: s.device?.volume_percent ?? volume, is_muted: s.device?.volume_percent === 0, track_window: { current_track: { uri: s.item?.uri, name: s.item?.name, album: { name: s.item?.album?.name, images: s.item?.album?.images || [] }, artists: s.item?.artists || [] } } });
+      // Volume is intentionally NOT read from Spotify's device here — CamillaDSP is
+      // the single master volume stage. The slider is hydrated from /api/status.
+      setPlaybackState({ paused: !s.is_playing, position: s.progress_ms, duration: s.item?.duration_ms || 0, shuffle_state: s.shuffle_state, repeat_state: s.repeat_state, volume, is_muted: isMuted, track_window: { current_track: { uri: s.item?.uri, name: s.item?.name, album: { name: s.item?.album?.name, images: s.item?.album?.images || [] }, artists: s.item?.artists || [] } } });
       setTrackPosition(s.progress_ms); setTrackDuration(s.item?.duration_ms || 0);
       setShuffleState(s.shuffle_state); setRepeatState(s.repeat_state);
-      if (s.device?.volume_percent !== undefined && Date.now() - lastVolumeChangeTime.current >= 2500) { setVolume(s.device.volume_percent); setIsMuted(s.device.volume_percent === 0); }
+      // Pin the Spotify Connect device to unity once so it does not pre-attenuate
+      // ahead of CamillaDSP (the cause of compounding/too-quiet output after reboot).
+      if (!spotifyVolPinned.current && s.device?.id && s.device.volume_percent !== undefined && s.device.volume_percent !== 100) {
+        spotifyVolPinned.current = true;
+        api.setVolume(token, 100).catch(() => { spotifyVolPinned.current = false; });
+      }
     } catch {}
   };
 
@@ -351,18 +369,26 @@ export default function RemoteControl() {
   const handleRepeat   = async () => { if (!spotify || !token) return; const n = { off: 'context', context: 'track', track: 'off' }[repeatState] || 'off'; setRepeatState(n); try { await api.setRepeat(token, n); requestWSStateSync(); } catch { setRepeatState(repeatState); } };
   const handleSeek     = async e => { const ms = parseInt(e.target.value, 10); setTrackPosition(ms); if (!spotify) { try { await api.localSeek(`${Math.round((ms / (trackDuration || 1)) * 100)}%`); } catch {} return; } if (!token) return; try { await api.seek(token, ms); requestWSStateSync(); } catch {} };
 
+  // Volume is owned by the CamillaDSP master stage for EVERY source (incl. Spotify),
+  // so a single persisted level survives source switches, reboot and wake without
+  // the double-attenuation that came from also driving Spotify's device volume.
   const handleVolumeChange = e => {
     const v = parseInt(e.target.value, 10); setVolume(v); setIsMuted(v === 0); lastVolumeChangeTime.current = Date.now();
-    if (ws.current?.readyState === WebSocket.OPEN) ws.current.send(JSON.stringify({ type: 'BROADCAST_STATE', payload: { ...playbackState, volume: v, is_muted: v === 0 } }));
+    if (v > 0) lastNonZeroVolume.current = v;
+    // Only broadcast a playback payload when there is a real track — otherwise a
+    // trackless {volume} payload wipes the "now playing" card on other clients.
+    if (currentTrack && ws.current?.readyState === WebSocket.OPEN)
+      ws.current.send(JSON.stringify({ type: 'BROADCAST_STATE', payload: { ...playbackState, volume: v, is_muted: v === 0 } }));
     clearTimeout(volumeApiTimeout.current);
-    volumeApiTimeout.current = setTimeout(async () => { if (!spotify) { try { await api.localSetVolume(v); } catch {} return; } if (!token) return; try { await api.setVolume(token, v); } catch {}; }, 180);
+    volumeApiTimeout.current = setTimeout(async () => { try { await api.localSetVolume(v); } catch {} }, 180);
   };
   const handleMuteToggle = async () => {
     const m = !isMuted; setIsMuted(m); lastVolumeChangeTime.current = Date.now();
-    const tv = m ? 0 : (volume || 50);
-    if (ws.current?.readyState === WebSocket.OPEN) ws.current.send(JSON.stringify({ type: 'BROADCAST_STATE', payload: { ...playbackState, volume: tv, is_muted: m } }));
-    if (!spotify) { try { await api.localSetVolume(tv); } catch {} return; }
-    if (!token) return; try { await api.setVolume(token, tv); } catch {};
+    const tv = m ? 0 : (lastNonZeroVolume.current || 30);
+    if (!m) setVolume(tv);
+    if (currentTrack && ws.current?.readyState === WebSocket.OPEN)
+      ws.current.send(JSON.stringify({ type: 'BROADCAST_STATE', payload: { ...playbackState, volume: tv, is_muted: m } }));
+    try { await api.localSetVolume(tv); } catch {}
   };
   const handleToggleFavRadio = async station => {
     const isFav = favoriteStations.some(s => s.url === station.url);
@@ -375,7 +401,25 @@ export default function RemoteControl() {
   };
   const handlePlayTrack   = async uri => { try { await api.play(token, activeDevice?.id || resonanceDevice?.id || null, null, [uri]); setActiveTab('player'); setTimeout(() => { localSync(); requestWSStateSync(); }, 800); } catch (e) { toast.error(e.message); } };
   const handlePlayContext = async uri => { try { await api.play(token, activeDevice?.id || resonanceDevice?.id || null, uri); setActiveTab('player'); setTimeout(() => { localSync(); requestWSStateSync(); }, 800); } catch (e) { toast.error(e.message); } };
-  const handleLoginSubmit = e => { e.preventDefault(); if (usernameInput === 'enzo' && passwordInput === 'enzoOS') { setCookie('remote_auth', 'true', 365); setIsAuthenticated(true); } else toast.error('Invalid credentials'); };
+  const handleLoginSubmit = async e => {
+    e.preventDefault();
+    try {
+      const r = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: usernameInput, password: passwordInput }),
+      });
+      const d = await r.json().catch(() => ({}));
+      if (r.ok && d.token) {
+        setCookie('remote_token', d.token, 365);
+        setIsAuthenticated(true);
+      } else {
+        toast.error(d.error || 'Invalid credentials');
+      }
+    } catch {
+      toast.error('Could not reach the server');
+    }
+  };
   const handleDeactivateDsp = async () => { try { const c = await api.getDspCalibration() || {}; c[0] = 'eq'; await api.saveDspCalibration(c); setDspActive(false); } catch {} };
 
   // ── context value ─────────────────────────────────────────────────────────

@@ -553,4 +553,47 @@ export const api = {
     });
     return r.json();
   },
+
+  // ── Tidal / Qobuz hi-res sources ───────────────────────────────────────────
+  async getTidalStatus() {
+    const r = await fetch('/api/player/tidal/status');
+    return r.json();
+  },
+
+  async tidalConnect(username, password) {
+    const r = await fetch('/api/player/tidal/connect', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password }),
+    });
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(data?.error || 'Tidal connect failed');
+    return data;
+  },
+
+  async tidalDisconnect() {
+    const r = await fetch('/api/player/tidal/disconnect', { method: 'DELETE' });
+    return r.json();
+  },
+
+  async getQobuzStatus() {
+    const r = await fetch('/api/player/qobuz/status');
+    return r.json();
+  },
+
+  async qobuzAuth(username, password) {
+    const r = await fetch('/api/player/qobuz/auth', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password }),
+    });
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(data?.error || 'Qobuz auth failed');
+    return data;
+  },
+
+  async qobuzDisconnect() {
+    const r = await fetch('/api/player/qobuz/disconnect', { method: 'DELETE' });
+    return r.json();
+  },
 };

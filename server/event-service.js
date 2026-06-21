@@ -44,6 +44,24 @@ export function getCachedVolumeDb() {
   return -60 * (1 - cachedVolume / 100);
 }
 
+/**
+ * Update + persist the master volume independent of any playback broadcast.
+ * Called by the REST /api/player/volume route so the saved level is the single
+ * source of truth for ALL sources, persisted even when nothing is playing (idle)
+ * and restored on reboot / wake. Debounced to avoid a DB write on every tick.
+ */
+export function setVolumeState(vol, muted) {
+  const v = Math.max(0, Math.min(100, Number(vol)));
+  if (!Number.isFinite(v)) return;
+  cachedVolume = v;
+  if (muted !== undefined) cachedMuted = !!muted;
+  clearTimeout(volumeSaveTimer);
+  volumeSaveTimer = setTimeout(() => {
+    setSetting('volume', String(cachedVolume));
+    setSetting('muted', cachedMuted ? 'true' : 'false');
+  }, 800);
+}
+
 /** Returns a snapshot of all cached state for new WS client handshake. */
 export function getState() {
   return {
@@ -206,6 +224,15 @@ async function applyStandby(enabled) {
       }
     } else {
       exec('sudo /usr/local/bin/kiosk-power.sh wake');
+      // Re-assert the persisted master volume on wake. CamillaDSP keeps running
+      // during standby so this is usually a no-op, but it guarantees the saved
+      // level is restored even if CamillaDSP was restarted while asleep.
+      try {
+        const { setCamillaVolume } = await import('./player.js');
+        await setCamillaVolume(getCachedVolumeDb());
+      } catch (err) {
+        console.warn('[Standby] Volume re-apply on wake failed (non-fatal):', err.message);
+      }
     }
   } catch (err) {
     console.error('[Standby] Power/mpc action failed:', err);
@@ -252,6 +279,13 @@ async function handleEvent(type, payload, excludeWs) {
       const newSource = payload.source || (payload.spotify ? 'spotify' : 'local');
       cachedSourceState = payload;
       await setSetting('active_source', newSource);
+
+      // Selecting a source implies intent to play, so wake from standby first.
+      // The REST /start endpoints already did this; doing it here means the phone
+      // remote (which only emits SET_SOURCE) also wakes the kiosk on source change.
+      if (cachedStandbyState) {
+        await applyStandby(false);
+      }
 
       // ── Stop services belonging to the PREVIOUS source ───────────────────
       try {
@@ -394,6 +428,29 @@ async function handleEvent(type, payload, excludeWs) {
               },
             },
           };
+
+          // Start the daemon that provides this receiver source. SET_SOURCE is the
+          // single entry point used by BOTH the kiosk and the phone remote, so
+          // starting the daemon here is what makes the remote able to bring up
+          // AirPlay/UPnP/Bluetooth — previously only the kiosk's REST /start calls
+          // did this, leaving the remote with a silenced source and no audio.
+          const sourceDaemon = {
+            airplay:   'shairport-sync',
+            upnp:      'upmpdcli',
+            bluetooth: 'bluealsa',
+          };
+          const daemon = sourceDaemon[newSource];
+          if (daemon) {
+            try {
+              const { exec } = await import('child_process');
+              exec(`sudo systemctl start ${daemon}`, (err) => {
+                if (err) console.error(`[SET_SOURCE] Failed to start ${daemon} for ${newSource}:`, err.message);
+                else console.log(`[SET_SOURCE] Started ${daemon} for ${newSource}`);
+              });
+            } catch (err) {
+              console.error(`[SET_SOURCE] Could not start daemon for ${newSource}:`, err);
+            }
+          }
         }
       }
 

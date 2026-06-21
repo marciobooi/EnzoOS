@@ -139,7 +139,12 @@ export function useResonanceWS({
       const connectWS = () => {
         // Support IPv4, IPv6, HTTP, HTTPS connections seamlessly
         const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-        const wsUrl = `${wsProtocol}//${window.location.host}/ws`;
+        // Browsers can't set headers on the WS handshake, so the remote-access
+        // token (if any) travels in the query string. The kiosk has no token and
+        // is authorized via loopback on the server.
+        const m = `; ${document.cookie}`.split('; remote_token=');
+        const wsToken = m.length === 2 ? m.pop().split(';').shift() : null;
+        const wsUrl = `${wsProtocol}//${window.location.host}/ws${wsToken ? `?token=${encodeURIComponent(wsToken)}` : ''}`;
         socket = new WebSocket(wsUrl);
         ws.current = socket;
   

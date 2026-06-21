@@ -3,6 +3,7 @@ import { spawn } from 'child_process';
 import { getValidAccessToken } from './spotify-auth.js';
 import { getSetting } from './db.js';
 import { setBroadcast, emit, getState } from './event-service.js';
+import { isWsAuthorized } from './auth.js';
 
 function safeParse(jsonStr, label) {
   try {
@@ -86,13 +87,22 @@ export function setupWebSocket(server) {
       pathname = request.url ? request.url.split('?')[0] : '';
     }
 
-    if (pathname === '/ws') {
+    if (pathname !== '/ws') {
+      socket.destroy();
+      return;
+    }
+
+    // Loopback (kiosk) is trusted; LAN clients must present a valid token.
+    isWsAuthorized(request).then((ok) => {
+      if (!ok) {
+        socket.write('HTTP/1.1 401 Unauthorized\r\n\r\n');
+        socket.destroy();
+        return;
+      }
       wss.handleUpgrade(request, socket, head, (ws) => {
         wss.emit('connection', ws, request);
       });
-    } else {
-      socket.destroy();
-    }
+    }).catch(() => socket.destroy());
   });
 
   return { wss, broadcast };

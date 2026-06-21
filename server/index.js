@@ -12,10 +12,12 @@ import spotifyAuthRouter from './spotify-auth.js';
 import playerRouter from './player.js';
 import spotifyDaemonRouter from './spotify-daemon.js';
 import statusRouter from './status.js';
+import authRouter from './auth-routes.js';
 import { setupWebSocket, stopAudioLevelMonitor } from './websocket.js';
 import { loadStateFromDB } from './event-service.js';
 import { closeDB } from './db.js';
 import { stopTokenRefresh } from './spotify-auth.js';
+import { requireAuth, isWsAuthorized } from './auth.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -34,23 +36,29 @@ app.use(express.json());
 // Serve static assets from Vite's production build folder
 app.use(express.static(path.join(__dirname, '../dist')));
 
+// Remote-access auth (login / check). Unauthenticated by design — this is how
+// LAN clients obtain a token. Loopback (kiosk) is always trusted.
+app.use('/api/auth', authRouter);
+
+// Everything below controls the device or exposes sensitive state, so it requires
+// either a loopback origin (the kiosk) or a valid bearer token (the phone remote).
 // System OTA Update Router API Integration
-app.use('/api/system/update', updateRouter);
+app.use('/api/system/update', requireAuth, updateRouter);
 
 // System control routes (services, reboot, shutdown)
-app.use('/api/system', systemRouter);
+app.use('/api/system', requireAuth, systemRouter);
 
 // Spotify OAuth routes
 app.use('/auth/spotify', spotifyAuthRouter);
 
 // Local player control routes
-app.use('/api/player', playerRouter);
+app.use('/api/player', requireAuth, playerRouter);
 
 // Spotify Connect daemon configuration routes
-app.use('/api/spotify', spotifyDaemonRouter);
+app.use('/api/spotify', requireAuth, spotifyDaemonRouter);
 
 // Global system status — single-fetch snapshot for client connect/reconnect
-app.use('/api/status', statusRouter);
+app.use('/api/status', requireAuth, statusRouter);
 
 // Fallback all non-API requests to index.html for Single Page App client routing
 app.use((req, res, next) => {
@@ -102,13 +110,21 @@ if (fs.existsSync(certPath) && fs.existsSync(keyPath)) {
     let pathname = '';
     try { pathname = new URL(request.url, 'http://localhost').pathname; }
     catch { pathname = request.url?.split('?')[0] || ''; }
-    if (pathname === '/ws') {
+    if (pathname !== '/ws') {
+      socket.destroy();
+      return;
+    }
+    // Remote (LAN) sockets must present a valid token; loopback is trusted.
+    isWsAuthorized(request).then((ok) => {
+      if (!ok) {
+        socket.write('HTTP/1.1 401 Unauthorized\r\n\r\n');
+        socket.destroy();
+        return;
+      }
       wss.handleUpgrade(request, socket, head, (ws) => {
         wss.emit('connection', ws, request);
       });
-    } else {
-      socket.destroy();
-    }
+    }).catch(() => socket.destroy());
   });
 
   httpsServer.listen(HTTPS_PORT, () => {
