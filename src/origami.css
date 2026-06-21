@@ -379,34 +379,49 @@ div[data-active-theme="origami"] .icon-button.active {
   color: var(--ori-gold-mid) !important;
 }
 
-/* ── Play / Pause — letterpress ink stamp ────────────────────────────────── */
+/* ── Play / Pause — wax-seal medallion on parchment ─────────────────────── */
+/* Circular, paper-surfaced, ink-bordered — belongs to the book world.
+   Hover reveals the gilt gold; active presses it into the page.           */
 div[data-active-theme="origami"] .icon-button.play {
-  background: var(--ink) !important;
-  border: 1px solid rgba(13,12,9,0.7) !important;
-  color: var(--paper-cool) !important;
-  border-radius: 1px !important;
-  /* Three-layer letterpress shadow: sharp contact, soft lift, ambient */
+  background: radial-gradient(
+    circle at 40% 34%,
+    var(--paper-mat)  0%,
+    var(--paper-cool) 55%,
+    var(--paper-warm) 100%
+  ) !important;
+  border: 1.5px solid var(--ink-2) !important;
+  color: var(--ink-2) !important;
+  border-radius: 50% !important;
   box-shadow:
-    2px  2px 0   var(--ink-2),
-    4px  4px 0   rgba(13,12,9,0.14),
-    0 8px 20px   rgba(13,12,9,0.22) !important;
-  transition: all 0.14s ease !important;
+    inset 0  1px 2px rgba(255,255,255,0.90),
+    inset 0 -1px 3px rgba(13,12,9,0.10),
+    0 1px 0  rgba(255,255,255,0.80),
+    0 3px 10px rgba(13,12,9,0.12),
+    0 6px 20px rgba(13,12,9,0.08) !important;
+  transition:
+    border-color 0.22s ease,
+    color        0.22s ease,
+    box-shadow   0.22s ease,
+    transform    0.16s ease !important;
 }
 
 div[data-active-theme="origami"] .icon-button.play:hover {
-  background: #1A180F !important;
+  border-color: var(--ori-gold) !important;
+  color: var(--ori-gold) !important;
   box-shadow:
-    3px  3px 0   var(--ink-2),
-    6px  6px 0   rgba(13,12,9,0.14),
-    0 12px 28px  rgba(13,12,9,0.26) !important;
-  transform: translate(-1px, -1px) !important;
+    inset 0  1px 2px rgba(255,255,255,0.90),
+    inset 0 -1px 3px rgba(13,12,9,0.10),
+    0 1px 0  rgba(255,255,255,0.80),
+    0 4px 14px rgba(110,83,16,0.16),
+    0 8px 24px rgba(13,12,9,0.10) !important;
+  transform: scale(1.05) !important;
 }
 
 div[data-active-theme="origami"] .icon-button.play:active {
-  transform: translate(2px, 2px) !important;
+  transform: scale(0.96) !important;
   box-shadow:
-    0px 0px 0   var(--ink-2),
-    0 2px 8px   rgba(13,12,9,0.14) !important;
+    inset 0  2px 5px rgba(13,12,9,0.14),
+    0 1px 4px rgba(13,12,9,0.08) !important;
 }
 
 div[data-active-theme="origami"] .icon-button.play::before,
