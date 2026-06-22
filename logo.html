@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@800&display=swap" rel="stylesheet"/>
+<title>Resonance — Logo intro</title>
+<style>
+  :root{--cycle:4.6s}
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{background:#b9b6aa;display:flex;align-items:center;justify-content:center;
+       font-family:'Manrope',system-ui,sans-serif;overflow:hidden}
+  .stage{position:relative;width:min(92vw,760px);aspect-ratio:16/9;border-radius:22px;overflow:hidden;
+    perspective:1100px;
+    background:radial-gradient(125% 105% at 50% 24%,#e4e0d3 0%,#cfccbe 52%,#b7b4a7 100%);
+    box-shadow:0 40px 110px rgba(0,0,0,.45),inset 0 0 0 1px rgba(255,255,255,.25)}
+  .stage::after{content:"";position:absolute;inset:0;pointer-events:none;
+    background:radial-gradient(140% 120% at 50% 30%,transparent 56%,rgba(42,40,38,.13)),
+      repeating-linear-gradient(46deg,rgba(42,40,38,.014) 0 2px,transparent 2px 4px)}
+  .scene{position:absolute;inset:0;transform-style:preserve-3d;display:grid;place-items:center}
+
+  /* ── controls (faceted folded-paper) ─────────────────────────────── */
+  .controls{position:absolute;display:flex;align-items:center;gap:36px;
+    filter:drop-shadow(-7px 9px 6px rgba(42,40,38,.32));
+    animation:controls var(--cycle) ease-in-out infinite}
+  @keyframes controls{0%{opacity:0;transform:translateY(10px)}6%{opacity:1;transform:translateY(0)}
+    24%{opacity:1}30%{opacity:0}100%{opacity:0}}
+  .ctl{position:relative}.ctl i{position:absolute;inset:0;display:block}
+  .fa{background:linear-gradient(135deg,#d6d3c8,#bebbb1)}
+  .fb{background:linear-gradient(135deg,#a6a399,#8c897f)}
+  .fc{background:linear-gradient(135deg,#787469,#5d5a52)}
+  .prev{width:30px;height:46px}
+  .prev .fa{clip-path:polygon(100% 0,0 50%,60% 50%)}
+  .prev .fb{clip-path:polygon(100% 100%,0 50%,60% 50%)}
+  .prev .fc{clip-path:polygon(100% 0,100% 100%,60% 50%)}
+  .next{width:30px;height:46px}
+  .next .fa{clip-path:polygon(0 0,100% 50%,40% 50%)}
+  .next .fb{clip-path:polygon(0 100%,100% 50%,40% 50%)}
+  .next .fc{clip-path:polygon(0 0,0 100%,40% 50%)}
+  .play{width:52px;height:60px;transform-origin:50% 50%;
+    animation:playFold var(--cycle) cubic-bezier(.6,0,.4,1) infinite}
+  .play .fa{clip-path:polygon(0 0,100% 50%,40% 50%)}
+  .play .fb{clip-path:polygon(0 100%,100% 50%,40% 50%)}
+  .play .fc{clip-path:polygon(0 0,0 100%,40% 50%)}
+  @keyframes playFold{0%,12%{transform:rotateY(0) scale(1);opacity:1}
+    24%{transform:rotateY(-68deg) scale(.92);opacity:1}
+    28%{transform:rotateY(-120deg) scale(.7);opacity:0}100%{opacity:0}}
+
+  /* ── shards (triangles) ──────────────────────────────────────────── */
+  .shards{position:absolute;transform-style:preserve-3d}
+  .sh{position:absolute;left:-13px;top:-13px;width:26px;height:26px;
+    clip-path:polygon(50% 0,100% 100%,0 100%);
+    background:linear-gradient(var(--g,135deg),#d6d3c8 0 45%,#8c897f 100%);
+    filter:drop-shadow(-3px 5px 4px rgba(42,40,38,.32));opacity:0;
+    animation:shard var(--cycle) cubic-bezier(.3,.7,.3,1) infinite}
+  @keyframes shard{0%,25%{opacity:0;transform:translate3d(0,0,0) rotate(0) scale(.4)}
+    29%{opacity:1;transform:translate3d(0,0,30px) rotate(0) scale(1)}
+    44%{opacity:1;transform:translate(var(--x),var(--y)) rotate3d(var(--rx),var(--ry),1,var(--r)) scale(1)}
+    60%{opacity:0;transform:translate(calc(var(--x)*1.2),calc(var(--y)*1.2 + 24px)) rotate3d(var(--rx),var(--ry),1,calc(var(--r)*1.4)) scale(.7)}
+    100%{opacity:0}}
+
+  /* ── faceted wordmark — pure CSS: conic facets clipped to the text ── */
+  .word{position:absolute;top:50%;left:50%;white-space:nowrap;
+    font:800 clamp(40px,11.5vw,140px)/1 'Manrope',sans-serif;letter-spacing:1px;
+    transform:translate(-50%,-50%) rotateX(-80deg);transform-origin:50% 62%;
+    clip-path:inset(0 100% 0 0);opacity:0;
+    /* crease lines + 4-triangle diamond facets, tiled */
+    background:
+      repeating-linear-gradient(45deg,rgba(42,40,38,.16) 0 1px,transparent 1px 23px),
+      repeating-linear-gradient(135deg,rgba(42,40,38,.16) 0 1px,transparent 1px 23px),
+      conic-gradient(from 45deg,
+        #d8d5ca 0 90deg,#8d8a80 90deg 180deg,#6c685f 180deg 270deg,#9c988c 270deg 360deg);
+    background-size:46px 46px;
+    -webkit-background-clip:text;background-clip:text;
+    -webkit-text-fill-color:transparent;color:transparent;
+    /* layered 3D shadow: tight contact + soft cast */
+    filter:drop-shadow(-2px 3px 1.5px rgba(42,40,38,.45))
+           drop-shadow(-9px 17px 9px rgba(42,40,38,.24));
+    animation:wordIn var(--cycle) cubic-bezier(.2,.85,.25,1) infinite}
+  @keyframes wordIn{
+    0%,34%{opacity:0;clip-path:inset(0 100% 0 0);transform:translate(-50%,-50%) rotateX(-80deg)}
+    42%{opacity:1}
+    58%{opacity:1;clip-path:inset(0 0 0 0);transform:translate(-50%,-50%) rotateX(0)}
+    88%{opacity:1;clip-path:inset(0 0 0 0);transform:translate(-50%,-50%) rotateX(0)}
+    96%,100%{opacity:0;transform:translate(-50%,-50%) rotateX(34deg)}}
+  .tag{position:absolute;left:0;right:0;bottom:16px;text-align:center;color:#6b6862;
+    font-size:11px;letter-spacing:.32em;text-transform:uppercase;font-weight:800;opacity:.55}
+</style></head>
+<body>
+<div class="stage"><div class="scene">
+  <div class="controls">
+    <div class="ctl prev"><i class="fa"></i><i class="fb"></i><i class="fc"></i></div>
+    <div class="ctl play"><i class="fa"></i><i class="fb"></i><i class="fc"></i></div>
+    <div class="ctl next"><i class="fa"></i><i class="fb"></i><i class="fc"></i></div>
+  </div>
+
+  <div class="shards">
+    <i class="sh" style="--x:-150px;--y:-70px;--r:220deg;--rx:1;--ry:.4;--g:120deg"></i>
+    <i class="sh" style="--x:-90px;--y:-120px;--r:-180deg;--rx:.6;--ry:1;--g:160deg"></i>
+    <i class="sh" style="--x:40px;--y:-140px;--r:300deg;--rx:1;--ry:.2;--g:110deg"></i>
+    <i class="sh" style="--x:150px;--y:-90px;--r:-240deg;--rx:.3;--ry:1;--g:150deg"></i>
+    <i class="sh" style="--x:185px;--y:10px;--r:200deg;--rx:1;--ry:.7;--g:130deg"></i>
+    <i class="sh" style="--x:150px;--y:90px;--r:-300deg;--rx:.8;--ry:.5;--g:140deg"></i>
+    <i class="sh" style="--x:30px;--y:135px;--r:260deg;--rx:1;--ry:1;--g:120deg"></i>
+    <i class="sh" style="--x:-80px;--y:115px;--r:-220deg;--rx:.5;--ry:.9;--g:155deg"></i>
+    <i class="sh" style="--x:-170px;--y:40px;--r:280deg;--rx:1;--ry:.3;--g:115deg"></i>
+    <i class="sh" style="--x:80px;--y:-30px;--r:340deg;--rx:1;--ry:.6;--g:125deg"></i>
+    <i class="sh" style="--x:-120px;--y:-10px;--r:-280deg;--rx:.9;--ry:.4;--g:135deg"></i>
+    <i class="sh" style="--x:-30px;--y:-40px;--r:-160deg;--rx:.7;--ry:.7;--g:145deg"></i>
+  </div>
+
+  <div class="word">resonance</div>
+
+</div></div>
+</body></html>
