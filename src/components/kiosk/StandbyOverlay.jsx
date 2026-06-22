@@ -7,6 +7,15 @@ import ResonanceLogo from '../ResonanceLogo';
 // loop is ~4.6s; we cut just after the "resonance" wordmark is fully shown.
 const WELCOME_MS = 4200;
 
+// The origami theme's page background (warm Paperwhite paper + corner vignettes),
+// copied from origami.css so the welcome sits on the same surface as the skin.
+const ORIGAMI_BG =
+  'radial-gradient(ellipse 55% 55% at 100% 0%, rgba(160,148,128,0.42) 0%, transparent 50%),' +
+  'radial-gradient(ellipse 50% 50% at 0% 100%, rgba(172,158,136,0.35) 0%, transparent 50%),' +
+  'radial-gradient(ellipse 45% 45% at 95% 95%, rgba(150,138,118,0.30) 0%, transparent 44%),' +
+  'radial-gradient(ellipse 40% 40% at 5% 5%, rgba(164,150,130,0.26) 0%, transparent 42%),' +
+  'linear-gradient(162deg, #F6F2EA 0%, #F0ECE4 45%, #E8E0D2 100%)';
+
 export default function StandbyOverlay() {
   const {
     standby,
@@ -50,10 +59,11 @@ export default function StandbyOverlay() {
         </div>
       )}
 
-      {/* ── Welcome — pure CSS/HTML origami logo intro ─────────────────── */}
+      {/* ── Welcome — pure CSS/HTML origami logo intro on the origami paper ─ */}
       {transitionScreen === 'welcome' && (
-        <div className="fixed inset-0 z-[9998] bg-black flex items-center justify-center pointer-events-none select-none animate-kiosk-welcome">
-          <ResonanceLogo />
+        <div className="fixed inset-0 z-[9998] pointer-events-none select-none animate-kiosk-welcome"
+          style={{ background: ORIGAMI_BG }}>
+          <ResonanceLogo bare />
         </div>
       )}
 

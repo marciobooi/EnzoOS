@@ -38,6 +38,12 @@ const CSS = `
 .rl-stage::after{content:"";position:absolute;inset:0;pointer-events:none;
   background:radial-gradient(140% 120% at 50% 30%,transparent 56%,rgba(42,40,38,.13)),
     repeating-linear-gradient(46deg,rgba(42,40,38,.014) 0 2px,transparent 2px 4px)}
+/* bare: drop the card surface and fill the parent (any aspect ratio, e.g. the
+   1400x320 kiosk display) so the logo sits on a parent-provided background */
+.rlogo.rl-bare{width:100%;height:100%}
+.rlogo.rl-bare .rl-stage{background:transparent;box-shadow:none;border-radius:0;
+  max-width:none;width:100%;height:100%;aspect-ratio:auto}
+.rlogo.rl-bare .rl-stage::after{display:none}
 .rl-scene{position:absolute;inset:0;transform-style:preserve-3d;display:grid;place-items:center}
 
 .rl-controls{position:absolute;display:flex;align-items:center;gap:36px;
@@ -102,9 +108,9 @@ const CSS = `
   96%,100%{opacity:0;transform:translate(-50%,-50%) rotateX(34deg)}}
 `;
 
-export default function ResonanceLogo({ className = '', style }) {
+export default function ResonanceLogo({ className = '', style, bare = false }) {
   return (
-    <div className={`rlogo ${className}`.trim()} style={style}>
+    <div className={`rlogo ${bare ? 'rl-bare' : ''} ${className}`.trim()} style={style}>
       <style>{CSS}</style>
       <div className="rl-stage">
         <div className="rl-scene">
