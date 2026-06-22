@@ -396,11 +396,16 @@ export default function TrackSearch({ token, onPlayTrack, onPlayContext, isDrawe
           <>
             {results.tracks?.items?.length > 0 && (
               <Rail icon={Music} label="Tracks" count={results.tracks.items.length}>
-                <div>
+                <HScroll>
                   {results.tracks.items.map(track => (
-                    <TrackRow key={track.id} track={track} onPlay={onPlayTrack} />
+                    <ArtCard key={track.id}
+                      image={track.album?.images?.[0]?.url}
+                      title={track.name}
+                      subtitle={track.artists?.map(a => a.name).join(', ')}
+                      onAction={() => onPlayTrack(track.uri)}
+                    />
                   ))}
-                </div>
+                </HScroll>
               </Rail>
             )}
             {results.albums?.items?.length > 0 && (
