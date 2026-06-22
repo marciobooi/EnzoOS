@@ -6,7 +6,7 @@ const VIDEO_SRC = '/media/1.mp4';
 
 // Time settings
 const VIDEO_START_TIME = 0;      // start video at 0 seconds
-const VIDEO_PLAY_DURATION = 6;   // play for 6 seconds
+const VIDEO_PLAY_DURATION = 60;   // play for 6 seconds
 
 // Aspect ratio / fit setting
 const VIDEO_FIT = 'cover';
