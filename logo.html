@@ -58,24 +58,34 @@
     60%{opacity:0;transform:translate(calc(var(--x)*1.2),calc(var(--y)*1.2 + 24px)) rotate3d(var(--rx),var(--ry),1,calc(var(--r)*1.4)) scale(.7)}
     100%{opacity:0}}
 
-  /* ── faceted wordmark — pure CSS: conic facets clipped to the text ── */
+  /* ── faceted wordmark — pure CSS; the "o" is a play triangle ──────── */
   .word{position:absolute;top:50%;left:50%;white-space:nowrap;
+    display:inline-flex;align-items:baseline;
     font:800 clamp(40px,11.5vw,140px)/1 'Manrope',sans-serif;letter-spacing:1px;
     transform:translate(-50%,-50%) rotateX(-80deg);transform-origin:50% 62%;
     clip-path:inset(0 100% 0 0);opacity:0;
-    /* crease lines + 4-triangle diamond facets, tiled */
+    /* layered 3D shadow: tight contact + soft cast (whole word) */
+    filter:drop-shadow(-2px 3px 1.5px rgba(42,40,38,.45))
+           drop-shadow(-9px 17px 9px rgba(42,40,38,.24));
+    animation:wordIn var(--cycle) cubic-bezier(.2,.85,.25,1) infinite}
+  /* shared folded-paper surface: crease lines + 4-triangle diamond facets */
+  .word .txt,.word .play-o{
     background:
       repeating-linear-gradient(45deg,rgba(42,40,38,.16) 0 1px,transparent 1px 23px),
       repeating-linear-gradient(135deg,rgba(42,40,38,.16) 0 1px,transparent 1px 23px),
       conic-gradient(from 45deg,
         #d8d5ca 0 90deg,#8d8a80 90deg 180deg,#6c685f 180deg 270deg,#9c988c 270deg 360deg);
-    background-size:46px 46px;
-    -webkit-background-clip:text;background-clip:text;
-    -webkit-text-fill-color:transparent;color:transparent;
-    /* layered 3D shadow: tight contact + soft cast */
-    filter:drop-shadow(-2px 3px 1.5px rgba(42,40,38,.45))
-           drop-shadow(-9px 17px 9px rgba(42,40,38,.24));
-    animation:wordIn var(--cycle) cubic-bezier(.2,.85,.25,1) infinite}
+    background-size:46px 46px}
+  .word .txt{-webkit-background-clip:text;background-clip:text;
+    -webkit-text-fill-color:transparent;color:transparent}
+  /* the "o" — a round faceted paper disc with an engraved play triangle,
+     so it keeps the circular letterform while reading as a play button */
+  .word .play-o{position:relative;display:inline-block;width:.64em;height:.64em;margin:0 .02em;
+    border-radius:50%}
+  .word .play-o::after{content:"";position:absolute;inset:0;
+    clip-path:polygon(39% 28%,73% 50%,39% 72%);
+    background:linear-gradient(135deg,#6c685f,#4f4c45);
+    filter:drop-shadow(0 1px 0 rgba(255,255,255,.25))}
   @keyframes wordIn{
     0%,34%{opacity:0;clip-path:inset(0 100% 0 0);transform:translate(-50%,-50%) rotateX(-80deg)}
     42%{opacity:1}
@@ -108,7 +118,7 @@
     <i class="sh" style="--x:-30px;--y:-40px;--r:-160deg;--rx:.7;--ry:.7;--g:145deg"></i>
   </div>
 
-  <div class="word">resonance</div>
+  <div class="word"><span class="txt">res</span><span class="play-o"></span><span class="txt">nance</span></div>
 
 </div></div>
 </body></html>
