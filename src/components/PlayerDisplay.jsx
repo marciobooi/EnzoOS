@@ -55,7 +55,8 @@ function AutoScroll({ children, outerClass = '', innerClass = '', speed = 70, mi
 // Map 0–100 slider value to a dB string for display (matches server toDb())
 function toVolumeDb(vol) {
   if (vol <= 0) return '−∞';
-  return (-60 * (1 - vol / 100)).toFixed(0);
+  const db = -60 * (1 - vol / 100);
+  return db === 0 ? '0.0' : db.toFixed(1);
 }
 
 // Sanitise track names that come from MPD ICY/stream metadata.
@@ -946,9 +947,9 @@ const PlayerDisplay = React.memo(function PlayerDisplay({
               />
               <div className="text-right shrink-0 min-w-[44px]">
                 <div className="text-[10px] font-mono font-bold leading-tight" style={{ color: '#1a1918' }}>
-                  {isMuted ? 'MUTE' : `${volume}`}<span className="text-[8px]" style={{ color: '#9a9896' }}>%</span>
+                  {isMuted ? '−∞' : toVolumeDb(volume)}<span className="text-[8px]" style={{ color: '#9a9896' }}> dB</span>
                 </div>
-                <div className="text-[8px] font-mono leading-tight" style={{ color: '#9a9896' }}>{isMuted ? '−∞' : `${toVolumeDb(volume)} dB`}</div>
+                <div className="text-[8px] font-mono leading-tight" style={{ color: '#9a9896' }}>{isMuted ? 'MUTE' : `${volume}%`}</div>
               </div>
             </div>
           )}
