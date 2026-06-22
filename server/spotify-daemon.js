@@ -26,6 +26,9 @@ function writeRaspotifyConf(extraLines = []) {
       'LIBRESPOT_VOLUME_CTRL=fixed',
       'LIBRESPOT_ENABLE_VOLUME_NORMALISATION=true',
       'LIBRESPOT_FORMAT=S16',
+      // Fire librespot-event.sh on every Spotify Connect event (volumeset, etc.)
+      // The script translates volume commands to CamillaDSP via /api/player/spotify-volume.
+      'LIBRESPOT_ONEVENT=/home/pi/EnzoOS/scripts/librespot-event.sh',
       ...extraLines,
     ];
     const conf = lines.join('\n') + '\n';

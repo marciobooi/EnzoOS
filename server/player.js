@@ -102,12 +102,32 @@ router.post('/volume', async (req, res) => {
   }
   try {
     await setCamillaVolume(toDb(vol));
-    // Persist the master level so it survives reboot/restart/wake for every source.
     setVolumeState(vol, vol <= 0);
     res.json({ success: true });
   } catch (err) {
     console.error('[Volume] Failed:', err);
     res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// POST /api/player/spotify-volume -> Called by the librespot --onevent script
+// when the Spotify app sends a volume command to librespot. librespot is fixed
+// at 100% audio output so it fires the event but ignores the attenuation.
+// We translate the intended Spotify volume to CamillaDSP and broadcast to all
+// WS clients so every view (kiosk, remote) updates its slider in real time.
+router.post('/spotify-volume', async (req, res) => {
+  const vol = Math.max(0, Math.min(100, Math.round(Number(req.body.volume))));
+  if (!Number.isFinite(vol)) return res.status(400).end();
+  try {
+    await setCamillaVolume(toDb(vol));
+    setVolumeState(vol, vol <= 0);
+    // Broadcast so every connected client updates its volume slider immediately.
+    emit('SET_VOLUME', { volume: vol, is_muted: vol <= 0 });
+    console.log(`[Spotify] Volume event: ${vol}% → CamillaDSP ${toDb(vol).toFixed(1)} dB`);
+    res.json({ success: true });
+  } catch (err) {
+    console.error('[Spotify Volume] Failed:', err.message);
+    res.status(500).json({ success: false });
   }
 });
 

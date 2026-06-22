@@ -946,9 +946,9 @@ const PlayerDisplay = React.memo(function PlayerDisplay({
               />
               <div className="text-right shrink-0 min-w-[44px]">
                 <div className="text-[10px] font-mono font-bold leading-tight" style={{ color: '#1a1918' }}>
-                  {isMuted ? '−∞' : toVolumeDb(volume)}<span className="text-[8px]" style={{ color: '#9a9896' }}> dB</span>
+                  {isMuted ? 'MUTE' : `${volume}`}<span className="text-[8px]" style={{ color: '#9a9896' }}>%</span>
                 </div>
-                <div className="text-[8px] font-mono leading-tight" style={{ color: '#9a9896' }}>{isMuted ? 'MUTE' : `${volume}%`}</div>
+                <div className="text-[8px] font-mono leading-tight" style={{ color: '#9a9896' }}>{isMuted ? '−∞' : `${toVolumeDb(volume)} dB`}</div>
               </div>
             </div>
           )}

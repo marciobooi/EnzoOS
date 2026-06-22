@@ -1099,12 +1099,8 @@ export default function Kiosk() {
         setTrackDuration(state.item?.duration_ms || 0);
         setShuffleState(state.shuffle_state);
         setRepeatState(state.repeat_state);
-        // Keep Resonance Connect pinned at 100% Spotify device volume so CamillaDSP
-        // is the single gain master. librespot uses VOLUME_CTRL=fixed so this is
-        // mainly a safety net — re-pin on every poll so any drift is corrected fast.
-        if (state.device?.name === 'Resonance Connect' && state.device?.volume_percent !== 100) {
-          api.setVolume(token, 100).catch(() => {});
-        }
+        // Volume is synced in real-time via librespot --onevent → /api/player/spotify-volume
+        // → SET_VOLUME WS broadcast. No polling pin needed.
 
         // Broadcast current state to other connected clients via WebSocket
         if (ws.current && ws.current.readyState === WebSocket.OPEN) {

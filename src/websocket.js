@@ -253,6 +253,14 @@ export function useResonanceWS({
               }
             }
 
+            // SET_VOLUME: Spotify app changed volume via librespot --onevent hook.
+            // Uses the same lock as PLAYBACK_STATE so kiosk slider changes take
+            // priority for 2.5 s and aren't immediately overridden by this event.
+            if (type === 'SET_VOLUME') {
+              if (payload.volume !== undefined && setters.setVolume) setters.setVolume(payload.volume);
+              if (payload.is_muted !== undefined && setters.setIsMuted) setters.setIsMuted(payload.is_muted);
+            }
+
             if (type === 'EQ_SETTINGS') {
               if (setEqPreset) setEqPreset(payload.preset);
               if (setEqBands) setEqBands(payload.bands);

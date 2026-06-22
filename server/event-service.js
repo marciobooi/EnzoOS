@@ -136,7 +136,8 @@ export async function getFullStatus() {
 }
 
 // Passthrough events — no state mutation, skip the queue entirely
-const PASSTHROUGH = new Set(['SET_TOKEN', 'CLEAR_TOKEN', 'REQUEST_SYNC', 'UPDATE_PROGRESS', 'AUDIO_LEVELS']);
+// SET_VOLUME: server→clients broadcast when Spotify app changes volume via onevent hook.
+const PASSTHROUGH = new Set(['SET_TOKEN', 'CLEAR_TOKEN', 'REQUEST_SYNC', 'UPDATE_PROGRESS', 'AUDIO_LEVELS', 'SET_VOLUME']);
 
 /**
  * Central dispatch. All REST routes and WS handlers call this.
