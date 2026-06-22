@@ -35,7 +35,7 @@ export default function StandbyOverlay() {
 
       timer = setTimeout(() => {
         video.pause();
-      }, VIDEO_PLAY_DURATION * 1000);
+      }, VIDEO_PLAY_DURATION * 100000);
     }
 
     return () => {
