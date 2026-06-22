@@ -9,11 +9,11 @@ import { S, cardShadow } from '../styles/stone';
 
 function ArtCard({ image, title, subtitle, onAction }) {
   return (
-    <div className="shrink-0 w-[84px] select-none" style={{ scrollSnapAlign: 'start' }}>
+    <div className="shrink-0 w-[150px] select-none" style={{ scrollSnapAlign: 'start' }}>
       <button
         onClick={onAction}
         className="block w-full relative rounded-xl overflow-hidden active:scale-95 transition-transform cursor-pointer"
-        style={{ width: 84, height: 84, boxShadow: cardShadow }}
+        style={{ width: 150, height: 150, boxShadow: cardShadow }}
       >
         {image
           ? <img src={image} alt={title} className="w-full h-full object-cover" loading="lazy" />
