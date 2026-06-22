@@ -492,7 +492,7 @@ export default function Kiosk() {
         if (ws.current && ws.current.readyState === WebSocket.OPEN) {
           ws.current.send(JSON.stringify({ type: 'SET_STANDBY', payload: { enabled: true } }));
         }
-      }, 2200);
+      }, 6500);
     } else {
       standbyRef.current = false;
       setStandby(false);
