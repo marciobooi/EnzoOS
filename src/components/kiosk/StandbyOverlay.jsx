@@ -65,7 +65,7 @@ export default function StandbyOverlay() {
             preload="auto"
             onEnded={onWelcomeDone}
             className="absolute inset-0 w-full h-full"
-            style={{ objectFit: VIDEO_FIT, objectPosition: 'center 30%' }}
+            style={{ objectFit: VIDEO_FIT, objectPosition: 'center -30%' }}
           />
           <div className="absolute inset-0 bg-black/25" />
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 text-center">
