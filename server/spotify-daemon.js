@@ -1,56 +1,68 @@
 import express from 'express';
-import { exec } from 'child_process';
-import { promisify } from 'util';
+import { execFile } from 'child_process';
 
-const execPromise = promisify(exec);
 const router = express.Router();
 
-// Writes /etc/raspotify/conf (the path allowed in NOPASSWD sudoers) and restarts.
-// Newer raspotify (librespot 0.8+) uses LIBRESPOT_ env vars; no OPTIONS= wrapper.
-// Device is forced to camilla_input so librespot writes directly to the ALSA
-// loopback instead of trying to open PipeWire's "default" (which fails from
-// a system service because PipeWire runs in user space as pi, not root).
-function buildConf(username, password) {
-  const lines = [
-    '# Resonance HiFi',
-    'LIBRESPOT_NAME="Resonance Connect"',
-    'LIBRESPOT_BITRATE=320',
-    'LIBRESPOT_BACKEND=alsa',
-    'LIBRESPOT_DEVICE=camilla_input',
-    'LIBRESPOT_INITIAL_VOLUME=50',
-    'LIBRESPOT_ENABLE_VOLUME_NORMALISATION=true',
-  ];
-  if (username) lines.push(`LIBRESPOT_USERNAME="${username}"`);
-  if (password) lines.push(`LIBRESPOT_PASSWORD="${password}"`);
-  return lines.join('\n') + '\n';
+// Writes /etc/raspotify/conf using sudo tee (NOPASSWD in sudoers).
+// Uses execFile + stdin pipe to avoid any shell escaping issues.
+// Password auth is deprecated in librespot 0.8 — zeroconf handles it.
+function writeRaspotifyConf(extraLines = []) {
+  return new Promise((resolve, reject) => {
+    const lines = [
+      '# Resonance HiFi — managed by resonance-api, do not edit manually',
+      'LIBRESPOT_NAME="Resonance Connect"',
+      'LIBRESPOT_BITRATE=320',
+      'LIBRESPOT_BACKEND=alsa',
+      'LIBRESPOT_DEVICE=camilla_input',
+      // Start at full volume — server pins Spotify device to 100% anyway,
+      // so starting at 50 (the default) causes a brief audible dip on first play.
+      'LIBRESPOT_INITIAL_VOLUME=100',
+      // Softvol mixer: volume changes come from the Spotify app and are
+      // immediately overridden to 100% by the server — CamillaDSP owns gain.
+      'LIBRESPOT_MIXER=softvol',
+      'LIBRESPOT_VOLUME_CTRL=log',
+      'LIBRESPOT_ENABLE_VOLUME_NORMALISATION=true',
+      'LIBRESPOT_FORMAT=S16',
+      ...extraLines,
+    ];
+    const conf = lines.join('\n') + '\n';
+
+    const child = execFile('sudo', ['/usr/bin/tee', '/etc/raspotify/conf'], (err) => {
+      if (err) reject(err); else resolve();
+    });
+    child.stdin.write(conf);
+    child.stdin.end();
+  });
 }
 
-// POST /api/spotify/credentials -> Configure Spotify Daemon credentials and restart service
+function restartRaspotify() {
+  return new Promise((resolve, reject) => {
+    execFile('sudo', ['systemctl', 'restart', 'raspotify'], (err) => {
+      if (err) reject(err); else resolve();
+    });
+  });
+}
+
+// POST /api/spotify/credentials — kept for backwards compat but creds are
+// ignored (librespot 0.8 deprecated username/password auth). Just (re-)writes
+// the device config and restarts so the device name and ALSA routing are right.
 router.post('/credentials', async (req, res) => {
-  const { username, password } = req.body;
-  if (!username || !password) {
-    return res.status(400).json({ success: false, error: 'Username and password are required' });
-  }
   try {
-    const conf = buildConf(username, password);
-    // sudo tee /etc/raspotify/conf is in NOPASSWD sudoers — safe to call from PM2.
-    await execPromise(`printf '%s' ${JSON.stringify(conf)} | sudo tee /etc/raspotify/conf`);
-    await execPromise('sudo systemctl restart raspotify');
-    console.log(`[Resonance Server] Spotify daemon configured for: ${username}`);
+    await writeRaspotifyConf();
+    await restartRaspotify();
+    console.log('[Resonance Server] Spotify daemon device config applied and restarted.');
     res.json({ success: true, message: 'Spotify daemon configured and restarted' });
   } catch (err) {
-    console.error('[Resonance Server] Failed to configure daemon:', err);
+    console.error('[Resonance Server] Failed to configure daemon:', err.message);
     res.status(500).json({ success: false, error: err.message });
   }
 });
 
-// POST /api/spotify/device -> Re-apply device config without changing credentials.
-// Called after install to ensure camilla_input is always set.
+// POST /api/spotify/device — apply device config without touching credentials.
 router.post('/device', async (req, res) => {
   try {
-    const conf = buildConf();
-    await execPromise(`printf '%s' ${JSON.stringify(conf)} | sudo tee /etc/raspotify/conf`);
-    await execPromise('sudo systemctl restart raspotify');
+    await writeRaspotifyConf();
+    await restartRaspotify();
     console.log('[Resonance Server] Spotify daemon device config re-applied.');
     res.json({ success: true });
   } catch (err) {
@@ -58,4 +70,5 @@ router.post('/device', async (req, res) => {
   }
 });
 
+export { writeRaspotifyConf, restartRaspotify };
 export default router;

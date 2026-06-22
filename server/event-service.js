@@ -633,6 +633,18 @@ export const loadStateFromDB = async () => {
     cachedPureDirect = pureDirectVal === 'true';
     console.log(`[EventService] Loaded pure_direct: ${cachedPureDirect}`);
 
+    // Ensure raspotify always has the correct ALSA device (camilla_input) and
+    // device name ("Resonance Connect"). Runs silently on every startup so a
+    // manual edit or a failed previous write doesn't persist.
+    try {
+      const { writeRaspotifyConf, restartRaspotify } = await import('./spotify-daemon.js');
+      await writeRaspotifyConf();
+      await restartRaspotify();
+      console.log('[EventService] Raspotify device config applied on startup.');
+    } catch (err) {
+      console.warn('[EventService] Raspotify config write failed (non-fatal):', err.message);
+    }
+
     // Pre-mute CamillaDSP before applying config so there is no window at 0 dB
     // (CamillaDSP defaults to full volume on every start; the config apply will
     //  restore the correct level, but this closes any race with early playback).

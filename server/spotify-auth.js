@@ -116,12 +116,15 @@ export const getValidAccessToken = async () => {
   return tokenState.access_token;
 };
 
-// Start auto-refresh interval: check every 5 minutes
+// Proactively refresh 5 minutes before expiry so clients never hold an
+// expired token. Checks every 4 minutes; the window is generous enough
+// that a single missed tick doesn't cause a 401.
+const REFRESH_MARGIN_MS = 5 * 60 * 1000;
 const tokenRefreshInterval = setInterval(async () => {
-  if (tokenState.refresh_token && Date.now() > tokenState.expires_at) {
+  if (tokenState.refresh_token && Date.now() > tokenState.expires_at - REFRESH_MARGIN_MS) {
     await refreshAccessToken();
   }
-}, 5 * 60 * 1000);
+}, 4 * 60 * 1000);
 
 export function stopTokenRefresh() {
   clearInterval(tokenRefreshInterval);

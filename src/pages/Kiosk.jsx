@@ -120,6 +120,7 @@ export default function Kiosk() {
   const volumeApiTimeout = useRef(null);
   const lastNonZeroVolume = useRef(50);
   const spotifyVolPinned = useRef(false);
+  const raspotifyRestartInFlight = useRef(false);
   const standbyRef = useRef(false);
   const volumeRef = useRef(volume);
   useEffect(() => { volumeRef.current = volume; }, [volume]);
@@ -831,19 +832,26 @@ export default function Kiosk() {
   };
 
   // Restart raspotify and poll until "Resonance Connect" appears, then call onReady(deviceId).
+  // Guard prevents concurrent restart storms if the user clicks rapidly.
   const ensureRaspotify = async (onReady) => {
     if (resonanceDeviceId) { onReady(resonanceDeviceId); return; }
+    if (raspotifyRestartInFlight.current) return;
+    raspotifyRestartInFlight.current = true;
     toast.success('Resonance Connect offline — restarting...');
     try { await fetch('/api/system/service/raspotify/restart', { method: 'POST' }); } catch {}
-    for (let i = 0; i < 7; i++) {
-      await new Promise(r => setTimeout(r, 1500));
-      try {
-        const data = await api.getDevices(token);
-        const found = (data.devices || []).find(d => d.name === 'Resonance Connect');
-        if (found) { setDevices(data.devices || []); onReady(found.id); return; }
-      } catch {}
+    try {
+      for (let i = 0; i < 8; i++) {
+        await new Promise(r => setTimeout(r, 1500));
+        try {
+          const data = await api.getDevices(token);
+          const found = (data.devices || []).find(d => d.name === 'Resonance Connect');
+          if (found) { setDevices(data.devices || []); onReady(found.id); return; }
+        } catch {}
+      }
+      toast.error('Resonance Connect did not come online. Check raspotify.');
+    } finally {
+      raspotifyRestartInFlight.current = false;
     }
-    toast.error('Resonance Connect did not come online. Check raspotify.');
   };
 
   // Route audio to local Librespot device
@@ -951,23 +959,36 @@ export default function Kiosk() {
     try {
       if (playbackState?.paused === false) {
         const r = await api.pause(token);
-        // alreadyPaused = state desync (kiosk thought playing, Spotify didn't) — re-sync
         if (r?.alreadyPaused) setPlaybackState(prev => prev ? { ...prev, paused: true } : prev);
         setTimeout(syncCurrentState, 500);
       } else {
-        if (!isLocalDeviceActive && !resonanceDeviceId) {
+        // No device at all — auto-restart raspotify and retry
+        if (!resonanceDeviceId) {
           ensureRaspotify(async (deviceId) => {
-            try { await api.play(token, deviceId); setTimeout(syncCurrentState, 500); }
-            catch (err) { toast.error(`Action failed: ${err.message}`); }
+            try {
+              // Transfer first so Spotify routes audio to our device, then play
+              await api.transferPlayback(token, deviceId, true);
+              setTimeout(syncCurrentState, 800);
+            } catch (err) { toast.error(`Action failed: ${err.message}`); }
           });
           return;
         }
-        const targetId = isLocalDeviceActive ? null : resonanceDeviceId;
-        await api.play(token, targetId);
-        setTimeout(syncCurrentState, 500);
+        // Device exists but may not be active — transferPlayback activates and plays
+        if (!isLocalDeviceActive) {
+          await api.transferPlayback(token, resonanceDeviceId, true);
+        } else {
+          await api.play(token, null);
+        }
+        setTimeout(syncCurrentState, 600);
       }
     } catch (err) {
-      toast.error(`Action failed: ${err.message}`);
+      // 404 on play = no active context yet; tell user to pick a track
+      if (err.message?.includes('404') || err.message?.includes('Not Found') || err.message?.includes('No active')) {
+        toast.error('No track queued — pick a song in Spotify first.');
+        syncCurrentState();
+      } else {
+        toast.error(`Action failed: ${err.message}`);
+      }
     }
   };
 
