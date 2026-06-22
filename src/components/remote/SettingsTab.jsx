@@ -1,14 +1,16 @@
 import React, { useContext, useState, useRef } from 'react';
 import {
   Sliders, Cpu, Timer, Palette, Power, LogOut, Laptop,
-  Music, RefreshCw,
+  Music, RefreshCw, Smartphone,
 } from 'lucide-react';
 import { toast } from '../../lib/toast';
 import { Tk, Row, Section, SpotifyIcon } from './shared';
 import RemoteEqualizer from './RemoteEqualizer';
+import InstallGuide from './InstallGuide';
 
 export default function SettingsTab() {
   const [confirmPending, setConfirmPending] = useState(null);
+  const [showInstall, setShowInstall] = useState(false);
   const confirmRef = useRef(null);
 
   const withConfirm = (key, action) => () => {
@@ -120,6 +122,15 @@ export default function SettingsTab() {
           value={standby ? 'On' : 'Off'} chevron={false}
           onPress={() => handleToggleStandby(!standby)} />
       </Section>
+
+      {/* remote app */}
+      <Section title="Remote App">
+        <Row label="Add to Home Screen" sub="Install as a full-screen app"
+          icon={<Smartphone className="h-4 w-4" style={{ color: C.champagne }} />}
+          onPress={() => setShowInstall(true)} />
+      </Section>
+
+      {showInstall && <InstallGuide onClose={() => setShowInstall(false)} />}
 
       {/* spotify */}
       <Section title="Spotify">
