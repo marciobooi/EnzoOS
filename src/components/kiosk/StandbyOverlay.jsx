@@ -54,63 +54,45 @@ export default function StandbyOverlay() {
         </div>
       )}
 
-      {/* ── Welcome (video) — sized to match the 1400×320 player ──────── */}
+      {/* ── Welcome (video) — fills the full viewport ─────────────────── */}
       {transitionScreen === 'welcome' && (
-        <div
-          className="fixed inset-0 z-[9998] flex items-center justify-center bg-black pointer-events-none select-none"
-        >
-          {/* Constrained to player canvas size */}
-          <div
-            className="relative overflow-hidden animate-kiosk-welcome"
-            style={{ width: W, height: H }}
-          >
-            <video
-              ref={videoRef}
-              src={VIDEO_SRC}
-              muted
-              playsInline
-              preload="auto"
-              onEnded={onWelcomeDone}
-              className="absolute inset-0 w-full h-full"
-              style={{ objectFit: VIDEO_FIT }}
-            />
-
-            {/* Subtle overlay for text legibility */}
-            <div className="absolute inset-0 bg-black/30" />
-
-            <div className="relative z-10 flex flex-col items-center justify-center h-full gap-4 text-center">
-              <div className="text-[9px] font-mono uppercase tracking-[0.55em] text-white/40">
-                Resonance HiFi
-              </div>
-              <div className="text-[3.8rem] font-black text-white tracking-tight leading-none">
-                {getGreeting()}
-              </div>
-              <div className="w-10 h-px bg-white/20" />
-              <div className="text-[9px] font-mono uppercase tracking-[0.3em] text-white/35">
-                Enjoy the music
-              </div>
+        <div className="fixed inset-0 z-[9998] bg-black pointer-events-none select-none animate-kiosk-welcome">
+          <video
+            ref={videoRef}
+            src={VIDEO_SRC}
+            muted
+            playsInline
+            preload="auto"
+            onEnded={onWelcomeDone}
+            className="absolute inset-0 w-full h-full"
+            style={{ objectFit: VIDEO_FIT, objectPosition: 'center 30%' }}
+          />
+          <div className="absolute inset-0 bg-black/25" />
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 text-center">
+            <div className="text-[9px] font-mono uppercase tracking-[0.55em] text-white/40">
+              Resonance HiFi
+            </div>
+            <div className="text-[3.8rem] font-black text-white tracking-tight leading-none">
+              {getGreeting()}
+            </div>
+            <div className="w-10 h-px bg-white/20" />
+            <div className="text-[9px] font-mono uppercase tracking-[0.3em] text-white/35">
+              Enjoy the music
             </div>
           </div>
         </div>
       )}
 
-      {/* ── Goodbye — sized to match the 1400×320 player ──────────────── */}
+      {/* ── Goodbye — fills the full viewport ──────────────────────────── */}
       {transitionScreen === 'goodbye' && (
-        <div
-          className="fixed inset-0 z-[9998] flex items-center justify-center bg-black pointer-events-none select-none"
-        >
-          <div
-            className="relative flex items-center justify-center animate-kiosk-goodbye"
-            style={{ width: W, height: H }}
-          >
-            <div className="flex flex-col items-center gap-5 text-center">
-              <div className="text-[3.8rem] font-black text-white tracking-tight leading-none">
-                See you soon
-              </div>
-              <div className="w-10 h-px bg-white/12" />
-              <div className="text-[9px] font-mono uppercase tracking-[0.55em] text-white/20">
-                Resonance HiFi
-              </div>
+        <div className="fixed inset-0 z-[9998] bg-black flex items-center justify-center pointer-events-none select-none animate-kiosk-goodbye">
+          <div className="flex flex-col items-center gap-5 text-center">
+            <div className="text-[3.8rem] font-black text-white tracking-tight leading-none">
+              See you soon
+            </div>
+            <div className="w-10 h-px bg-white/12" />
+            <div className="text-[9px] font-mono uppercase tracking-[0.55em] text-white/20">
+              Resonance HiFi
             </div>
           </div>
         </div>
