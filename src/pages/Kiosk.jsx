@@ -950,7 +950,9 @@ export default function Kiosk() {
     if (!token) return;
     try {
       if (playbackState?.paused === false) {
-        await api.pause(token);
+        const r = await api.pause(token);
+        // alreadyPaused = state desync (kiosk thought playing, Spotify didn't) — re-sync
+        if (r?.alreadyPaused) setPlaybackState(prev => prev ? { ...prev, paused: true } : prev);
         setTimeout(syncCurrentState, 500);
       } else {
         if (!isLocalDeviceActive && !resonanceDeviceId) {

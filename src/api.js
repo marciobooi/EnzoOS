@@ -90,7 +90,8 @@ export const api = {
   },
 
   /**
-   * Pause active playback.
+   * Pause active playback. 404 means Spotify already considers playback stopped —
+   * treat as success so the UI syncs rather than showing an error.
    */
   async pause(token) {
     const response = await fetch(`${SPOTIFY_API_URL}/me/player/pause`, {
@@ -99,6 +100,7 @@ export const api = {
         'Authorization': `Bearer ${token}`
       }
     });
+    if (response.status === 404) return { success: true, alreadyPaused: true };
     return handleResponse(response);
   },
 
