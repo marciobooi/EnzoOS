@@ -830,14 +830,27 @@ export default function Kiosk() {
     }
   };
 
-  // Route audio to local Librespot device
-  const handleTransferToLocal = async () => {
-    if (resonanceDeviceId) {
-      await transferPlayback(resonanceDeviceId);
-    } else {
-      toast.error('Resonance Connect device not detected on Spotify network. Try starting the daemon.');
-      fetchDevices();
+  // Restart raspotify and poll until "Resonance Connect" appears, then call onReady(deviceId).
+  const ensureRaspotify = async (onReady) => {
+    if (resonanceDeviceId) { onReady(resonanceDeviceId); return; }
+    toast.success('Resonance Connect offline — restarting...');
+    try { await fetch('/api/system/service/raspotify/restart', { method: 'POST' }); } catch {}
+    for (let i = 0; i < 7; i++) {
+      await new Promise(r => setTimeout(r, 1500));
+      try {
+        const data = await api.getDevices(token);
+        const found = (data.devices || []).find(d => d.name === 'Resonance Connect');
+        if (found) { setDevices(data.devices || []); onReady(found.id); return; }
+      } catch {}
     }
+    toast.error('Resonance Connect did not come online. Check raspotify.');
+  };
+
+  // Route audio to local Librespot device
+  const handleTransferToLocal = () => {
+    ensureRaspotify(async (deviceId) => {
+      await transferPlayback(deviceId);
+    });
   };
 
   // Play a searched track on the active device
@@ -938,11 +951,19 @@ export default function Kiosk() {
     try {
       if (playbackState?.paused === false) {
         await api.pause(token);
+        setTimeout(syncCurrentState, 500);
       } else {
+        if (!isLocalDeviceActive && !resonanceDeviceId) {
+          ensureRaspotify(async (deviceId) => {
+            try { await api.play(token, deviceId); setTimeout(syncCurrentState, 500); }
+            catch (err) { toast.error(`Action failed: ${err.message}`); }
+          });
+          return;
+        }
         const targetId = isLocalDeviceActive ? null : resonanceDeviceId;
         await api.play(token, targetId);
+        setTimeout(syncCurrentState, 500);
       }
-      setTimeout(syncCurrentState, 500);
     } catch (err) {
       toast.error(`Action failed: ${err.message}`);
     }
