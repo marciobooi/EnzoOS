@@ -1,7 +1,7 @@
 import { useContext, useEffect, useRef } from 'react';
 import { Power } from 'lucide-react';
 import { Kk } from './KioskContext';
-import ResonanceLogo from '../ResonanceLogo';
+import ResonanceLogo, { ResonanceWordmark } from '../ResonanceLogo';
 
 // How long the welcome intro plays before handing off to the player. The logo
 // loop is ~4.6s; we cut just after the "resonance" wordmark is fully shown.
@@ -71,13 +71,11 @@ export default function StandbyOverlay() {
       {transitionScreen === 'goodbye' && (
         <div className="fixed inset-0 z-[9998] flex items-center justify-center pointer-events-none select-none animate-kiosk-goodbye"
           style={{ background: ORIGAMI_BG }}>
-          <div className="flex flex-col items-center gap-5 text-center">
-            <div className="text-[3.8rem] font-black tracking-tight leading-none" style={{ color: '#28251F' }}>
-              See you soon
-            </div>
+          <div className="flex flex-col items-center gap-4 text-center">
+            <ResonanceWordmark />
             <div className="w-10 h-px" style={{ background: 'rgba(13,12,9,0.18)' }} />
-            <div className="text-[9px] font-mono uppercase tracking-[0.55em]" style={{ color: '#8A8479' }}>
-              Resonance HiFi
+            <div className="text-[11px] font-mono uppercase tracking-[0.5em]" style={{ color: '#8A8479' }}>
+              See you soon
             </div>
           </div>
         </div>
