@@ -475,8 +475,8 @@ export default function Kiosk() {
   const getGreeting = () => {
     const h = new Date().getHours();
     if (h >= 5 && h < 12) return 'Good Morning';
-    if (h >= 12 && h < 17) return 'Good Afternoon';
-    if (h >= 17 && h < 21) return 'Good Evening';
+    if (h >= 12 && h < 19) return 'Good Afternoon';
+    if (h >= 19 && h < 23) return 'Good Evening';
     return 'Good Night';
   };
 
@@ -500,7 +500,7 @@ export default function Kiosk() {
         ws.current.send(JSON.stringify({ type: 'SET_STANDBY', payload: { enabled: false } }));
       }
       setTransitionScreen('welcome');
-      setTimeout(() => setTransitionScreen(null), 2800);
+      setTimeout(() => setTransitionScreen(null), 6500);
     }
   };
 
