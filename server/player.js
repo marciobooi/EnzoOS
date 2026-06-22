@@ -183,7 +183,8 @@ router.post('/play-radio', async (req, res) => {
     if (name) await setSetting('last_radio_name', name);
     await setSetting('last_radio_favicon', favicon || '');
 
-    // Clear playlist, add URL, play
+    // Clear playlist, add URL, play. Repeat on so HLS streams reconnect on segment-list end.
+    await execPromise('mpc repeat on');
     await execPromise('mpc clear');
     await execFilePromise('mpc', ['add', url]);
     await execPromise('mpc play');

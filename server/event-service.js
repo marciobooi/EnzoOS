@@ -291,6 +291,11 @@ async function handleEvent(type, payload, excludeWs) {
         if (['local', 'radio', 'spotify', 'airplay', 'upnp', 'tidal', 'qobuz'].includes(previousSource)) {
           await execP('mpc stop').catch(() => {});
         }
+        // Radio enables repeat so HLS streams reconnect on segment-list end.
+        // Turn it off whenever leaving radio so local playback doesn't loop.
+        if (previousSource === 'radio') {
+          execP('mpc repeat off').catch(() => {});
+        }
         // Stop shairport-sync when leaving AirPlay
         if (previousSource === 'airplay') {
           exec('sudo systemctl stop shairport-sync');
@@ -367,6 +372,7 @@ async function handleEvent(type, payload, excludeWs) {
                 const { promisify } = await import('util');
                 const execP = promisify(exec);
                 const execFileP = promisify(execFile);
+                await execP('mpc repeat on');
                 await execP('mpc clear');
                 await execFileP('mpc', ['add', url]);
                 await execP('mpc play');
