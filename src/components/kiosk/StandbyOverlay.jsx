@@ -67,15 +67,16 @@ export default function StandbyOverlay() {
         </div>
       )}
 
-      {/* ── Goodbye — fills the full viewport ──────────────────────────── */}
+      {/* ── Goodbye — on the same origami paper background ──────────────── */}
       {transitionScreen === 'goodbye' && (
-        <div className="fixed inset-0 z-[9998] bg-black flex items-center justify-center pointer-events-none select-none animate-kiosk-goodbye">
+        <div className="fixed inset-0 z-[9998] flex items-center justify-center pointer-events-none select-none animate-kiosk-goodbye"
+          style={{ background: ORIGAMI_BG }}>
           <div className="flex flex-col items-center gap-5 text-center">
-            <div className="text-[3.8rem] font-black text-white tracking-tight leading-none">
+            <div className="text-[3.8rem] font-black tracking-tight leading-none" style={{ color: '#28251F' }}>
               See you soon
             </div>
-            <div className="w-10 h-px bg-white/12" />
-            <div className="text-[9px] font-mono uppercase tracking-[0.55em] text-white/20">
+            <div className="w-10 h-px" style={{ background: 'rgba(13,12,9,0.18)' }} />
+            <div className="text-[9px] font-mono uppercase tracking-[0.55em]" style={{ color: '#8A8479' }}>
               Resonance HiFi
             </div>
           </div>
