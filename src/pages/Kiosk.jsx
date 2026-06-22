@@ -247,7 +247,7 @@ export default function Kiosk() {
 
   // Show welcome screen on boot, auto-dismiss after animation completes
   useEffect(() => {
-    const t = setTimeout(() => setTransitionScreen(null), 2800);
+    const t = setTimeout(() => setTransitionScreen(null), 6500);
     return () => clearTimeout(t);
   }, []);
 
