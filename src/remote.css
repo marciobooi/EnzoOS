@@ -55,8 +55,8 @@
   width: 18px;
   height: 18px;
   border-radius: 50%;
-  background: var(--rc-champagne, #d4af37);
-  border: 2px solid var(--rc-bg-white, #ffffff);
+  background: #ffffff;
+  border: 2px solid var(--rc-champagne, #d4af37);
   cursor: pointer;
   box-shadow: 0 1px 6px rgba(0, 0, 0, 0.25);
   transition: transform 0.12s ease;
@@ -66,8 +66,8 @@
   width: 18px;
   height: 18px;
   border-radius: 50%;
-  background: var(--rc-champagne, #d4af37);
-  border: 2px solid var(--rc-bg-white, #ffffff);
+  background: #ffffff;
+  border: 2px solid var(--rc-champagne, #d4af37);
   cursor: pointer;
   box-shadow: 0 1px 6px rgba(0, 0, 0, 0.25);
 }

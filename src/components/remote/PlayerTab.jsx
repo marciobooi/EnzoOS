@@ -132,9 +132,11 @@ export default function PlayerTab() {
       {/* progress bar */}
       {source !== 'radio' && (
         <div className="mb-5">
-          <div className="relative h-1 rounded-full mb-2" style={{ background: C.container }}>
+          <div className="relative h-1.5 rounded-full mb-2" style={{ background: C.container }}>
             <div className="absolute inset-y-0 left-0 rounded-full"
               style={{ width: `${progressPct}%`, background: C.champagne }} />
+            <div className="absolute w-[18px] h-[18px] rounded-full top-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none"
+              style={{ left: `${progressPct}%`, background: '#ffffff', border: `2px solid ${C.champagne}`, boxShadow: '0 1px 4px rgba(0,0,0,0.28)' }} />
             <input type="range" min="0" max={trackDuration || 0} value={trackPosition}
               onChange={handleSeek}
               disabled={spotify ? !token || !trackDuration : !trackDuration}
@@ -213,9 +215,11 @@ export default function PlayerTab() {
           className="w-11 h-11 flex items-center justify-center rounded-full active:scale-90 transition-all cursor-pointer shrink-0">
           <VolumeX className="h-[18px] w-[18px]" />
         </button>
-        <div className="relative flex-1 h-1 rounded-full" style={{ background: C.container }}>
+        <div className="relative flex-1 h-1.5 rounded-full" style={{ background: C.container }}>
           <div className="absolute inset-y-0 left-0 rounded-full"
             style={{ width: `${isMuted ? 0 : volume}%`, background: C.champagne }} />
+          <div className="absolute w-[18px] h-[18px] rounded-full top-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none"
+            style={{ left: `${isMuted ? 0 : volume}%`, background: '#ffffff', border: `2px solid ${C.champagne}`, boxShadow: '0 1px 4px rgba(0,0,0,0.28)' }} />
           <input type="range" min="0" max="100" value={isMuted ? 0 : volume}
             onChange={handleVolumeChange} aria-label="Volume"
             disabled={spotify ? !token : false}

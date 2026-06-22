@@ -10,8 +10,8 @@ function RcSlider({ value, min, max, step, onChange }) {
   return (
     <div className="relative h-1.5 rounded-full" style={{ background: C.container }}>
       <div className="absolute inset-y-0 left-0 rounded-full" style={{ width: `${pct}%`, background: C.champagne }} />
-      <div className="absolute w-4 h-4 rounded-full -translate-x-1/2 -translate-y-1/2 top-1/2"
-        style={{ left: `${pct}%`, background: C.champagne, boxShadow: '0 1px 5px rgba(0,0,0,0.25)' }} />
+      <div className="absolute w-[18px] h-[18px] rounded-full -translate-x-1/2 -translate-y-1/2 top-1/2"
+        style={{ left: `${pct}%`, background: '#ffffff', border: `2px solid ${C.champagne}`, boxShadow: '0 1px 5px rgba(0,0,0,0.25)' }} />
       <input type="range" min={min} max={max} step={step} value={value}
         onChange={e => onChange(Number(e.target.value))}
         className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
