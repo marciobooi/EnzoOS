@@ -91,11 +91,9 @@ const CSS = `
     conic-gradient(from 45deg,#d8d5ca 0 90deg,#8d8a80 90deg 180deg,#6c685f 180deg 270deg,#9c988c 270deg 360deg);
   background-size:46px 46px}
 .rl-word .rl-txt{-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:transparent}
-.rl-word .rl-play-o{position:relative;display:inline-block;width:.64em;height:.64em;margin:0 .02em;border-radius:50%}
-.rl-word .rl-play-o::after{content:"";position:absolute;inset:0;
-  clip-path:polygon(39% 28%,73% 50%,39% 72%);
-  background:linear-gradient(135deg,#6c685f,#4f4c45);
-  filter:drop-shadow(0 1px 0 rgba(255,255,255,.25))}
+.rl-word .rl-play-o{display:inline-block;width:.5em;height:.5em;margin:0 .05em;align-self:center;
+  -webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cpath fill='%23fff' fill-rule='evenodd' d='M50 1A49 49 0 1 0 50 99A49 49 0 1 0 50 1Z M40 31L70 50L40 69Z'/%3E%3C/svg%3E") center/contain no-repeat;
+  mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cpath fill='%23fff' fill-rule='evenodd' d='M50 1A49 49 0 1 0 50 99A49 49 0 1 0 50 1Z M40 31L70 50L40 69Z'/%3E%3C/svg%3E") center/contain no-repeat}
 @keyframes rl-wordIn{
   0%,34%{opacity:0;clip-path:inset(0 100% 0 0);transform:translate(-50%,-50%) rotateX(-80deg)}
   42%{opacity:1}
