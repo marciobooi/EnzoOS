@@ -628,8 +628,8 @@ const PlayerDisplay = React.memo(function PlayerDisplay({
               <div className={`volume-feedback ${showVolumeFeedback ? 'visible' : ''}`} aria-live="polite">
                 {isMuted
                   ? <span style={{ color: '#1a1918' }}>MUTE</span>
-                  : <span className="text-[10px] font-mono font-bold leading-tight" style={{ color: '#1a1918' }}>
-                      {toVolumeDb(volume)}<span className="text-[8px]" style={{ color: '#9a9896' }}> dB</span>
+                  : <span className="">
+                      {toVolumeDb(volume)}<span> dB</span>
                     </span>
                 }
               </div>
