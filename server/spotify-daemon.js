@@ -13,7 +13,9 @@ function writeRaspotifyConf(extraLines = []) {
       'LIBRESPOT_NAME="Resonance Connect"',
       'LIBRESPOT_BITRATE=320',
       'LIBRESPOT_BACKEND=alsa',
-      'LIBRESPOT_DEVICE=camilla_input',
+      // plug: prefix adds ALSA's automatic rate/format converter so librespot's
+      // 44100 Hz output is resampled to the 48000 Hz the dmix loopback requires.
+      'LIBRESPOT_DEVICE=plug:camilla_input',
       // Start at full volume — server pins Spotify device to 100% anyway,
       // so starting at 50 (the default) causes a brief audible dip on first play.
       'LIBRESPOT_INITIAL_VOLUME=100',
