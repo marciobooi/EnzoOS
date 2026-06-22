@@ -245,9 +245,10 @@ export default function Kiosk() {
     }
   }
 
-  // Show welcome screen on boot, auto-dismiss after animation completes
+  // Welcome screen is dismissed by the video's onEnded event in StandbyOverlay.
+  // 60 s hard-cap fallback in case the video fails to load or has no end event.
   useEffect(() => {
-    const t = setTimeout(() => setTransitionScreen(null), 2800);
+    const t = setTimeout(() => setTransitionScreen(null), 60_000);
     return () => clearTimeout(t);
   }, []);
 
@@ -1246,6 +1247,9 @@ export default function Kiosk() {
     isRemoteAccessOpen, remoteUrl,
     // dsp wizard
     isDspWizardOpen, setDspActive,
+    // welcome/goodbye transition
+    scale,
+    onWelcomeDone: () => setTransitionScreen(null),
   }), [
     standby, transitionScreen, handleToggleStandby,
     isEqualizerOpen, eqPreset, eqBands, eqSaturation, eqNoiseFloor, eqPreAmp,
@@ -1264,6 +1268,7 @@ export default function Kiosk() {
     isThemeSettingsOpen, activeTheme, handleActiveThemeChange,
     brightness, handleBrightnessChange, visualizerMode, handleVisualizerModeChange,
     isRemoteAccessOpen, remoteUrl, isDspWizardOpen,
+    scale,
   ]);
 
   return (
