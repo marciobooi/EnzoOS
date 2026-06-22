@@ -352,7 +352,7 @@ div[data-active-theme="origami"] .volume-feedback {
   font-family: 'Cormorant Garamond', Georgia, serif !important;
   font-style: italic !important;
   font-weight: 700 !important;
-  font-size: 2.2rem !important;
+  font-size: 2rem !important;
   color: var(--ori-gold) !important;
   background: var(--paper-mat) !important;
   border: 1px solid var(--crease) !important;

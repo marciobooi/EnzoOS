@@ -456,7 +456,7 @@ div[data-active-theme="glassplayer"] .volume-feedback {
   backdrop-filter: blur(24px) saturate(180%) !important;
   -webkit-backdrop-filter: blur(24px) saturate(180%) !important;
   border-radius: 999px !important;
-  font-size: 0.86rem !important;
+  font-size: 2rem !important;
   padding: 0.5rem 0.78rem !important;
   font-weight: 700 !important;
   height: auto !important;
