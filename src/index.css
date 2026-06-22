@@ -690,10 +690,9 @@ div[data-theme="ruby"] *::selection {
 
 /* Kiosk wake/sleep transition screens */
 @keyframes kiosk-welcome {
-  0%   { opacity: 0; transform: translateY(18px); }
-  18%  { opacity: 1; transform: translateY(0); }
-  80%  { opacity: 1; transform: translateY(0); }
-  100% { opacity: 0; transform: translateY(-8px); }
+  /* Fade IN only — dismissal is driven by video onEnded, not CSS timing */
+  0%   { opacity: 0; transform: scale(1.03); }
+  100% { opacity: 1; transform: scale(1); }
 }
 @keyframes kiosk-goodbye {
   0%   { opacity: 0; transform: translateY(18px); }
@@ -701,7 +700,7 @@ div[data-theme="ruby"] *::selection {
   75%  { opacity: 1; transform: translateY(0); }
   100% { opacity: 0; }
 }
-.animate-kiosk-welcome { animation: kiosk-welcome 2.8s cubic-bezier(0.4,0,0.2,1) both; }
+.animate-kiosk-welcome { animation: kiosk-welcome 0.6s ease-out both; }
 .animate-kiosk-goodbye { animation: kiosk-goodbye 2.2s cubic-bezier(0.4,0,0.2,1) both; }
 
 /* ── Remote tab slide animations ─────────────────────────────────────────── */
