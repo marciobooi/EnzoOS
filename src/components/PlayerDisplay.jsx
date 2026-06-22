@@ -626,7 +626,12 @@ const PlayerDisplay = React.memo(function PlayerDisplay({
                 {sanitizeTrackName(trackName)}
               </AutoScroll>
               <div className={`volume-feedback ${showVolumeFeedback ? 'visible' : ''}`} aria-live="polite">
-                {isMuted ? 'MUTE' : volume}
+                {isMuted
+                  ? <span style={{ color: '#1a1918' }}>MUTE</span>
+                  : <span className="text-[10px] font-mono font-bold leading-tight" style={{ color: '#1a1918' }}>
+                      {toVolumeDb(volume)}<span className="text-[8px]" style={{ color: '#9a9896' }}> dB</span>
+                    </span>
+                }
               </div>
             </div>
 
