@@ -16,13 +16,14 @@ function writeRaspotifyConf(extraLines = []) {
       // plug: prefix adds ALSA's automatic rate/format converter so librespot's
       // 44100 Hz output is resampled to the 48000 Hz the dmix loopback requires.
       'LIBRESPOT_DEVICE=plug:camilla_input',
-      // Start at full volume — server pins Spotify device to 100% anyway,
-      // so starting at 50 (the default) causes a brief audible dip on first play.
+      // Fixed at 100% — CamillaDSP is the single master volume for all sources.
+      // LIBRESPOT_VOLUME_CTRL=fixed means librespot ignores Spotify app volume
+      // commands completely, so the Spotify app slider has no effect.
+      // Without this, two independent gain stages compound (e.g. Spotify 50% ×
+      // CamillaDSP 50% = 25% actual output, making the kiosk slider lie).
       'LIBRESPOT_INITIAL_VOLUME=100',
-      // Softvol mixer: volume changes come from the Spotify app and are
-      // immediately overridden to 100% by the server — CamillaDSP owns gain.
       'LIBRESPOT_MIXER=softvol',
-      'LIBRESPOT_VOLUME_CTRL=log',
+      'LIBRESPOT_VOLUME_CTRL=fixed',
       'LIBRESPOT_ENABLE_VOLUME_NORMALISATION=true',
       'LIBRESPOT_FORMAT=S16',
       ...extraLines,

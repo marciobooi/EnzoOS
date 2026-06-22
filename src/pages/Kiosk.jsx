@@ -1099,12 +1099,11 @@ export default function Kiosk() {
         setTrackDuration(state.item?.duration_ms || 0);
         setShuffleState(state.shuffle_state);
         setRepeatState(state.repeat_state);
-        // Pin ONLY the local "Resonance Connect" output to unity once so it does not
-        // pre-attenuate ahead of the CamillaDSP master (prevents compounding / very
-        // quiet output). Never touch a device the user cast playback to elsewhere.
-        if (!spotifyVolPinned.current && state.device?.name === 'Resonance Connect' && state.device.volume_percent !== undefined && state.device.volume_percent !== 100) {
-          spotifyVolPinned.current = true;
-          api.setVolume(token, 100).catch(() => { spotifyVolPinned.current = false; });
+        // Keep Resonance Connect pinned at 100% Spotify device volume so CamillaDSP
+        // is the single gain master. librespot uses VOLUME_CTRL=fixed so this is
+        // mainly a safety net — re-pin on every poll so any drift is corrected fast.
+        if (state.device?.name === 'Resonance Connect' && state.device?.volume_percent !== 100) {
+          api.setVolume(token, 100).catch(() => {});
         }
 
         // Broadcast current state to other connected clients via WebSocket
