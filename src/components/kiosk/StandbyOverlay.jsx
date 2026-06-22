@@ -1,37 +1,33 @@
 import { useContext, useEffect, useRef } from 'react';
 import { Power } from 'lucide-react';
 import { Kk } from './KioskContext';
+import ResonanceLogo from '../ResonanceLogo';
 
-const VIDEO_SRC = '/media/1.mp4';
-const VIDEO_FIT = 'cover'; // 'cover' | 'contain'
+// How long the welcome intro plays before handing off to the player. The logo
+// loop is ~4.6s; we cut just after the "resonance" wordmark is fully shown.
+const WELCOME_MS = 4200;
 
 export default function StandbyOverlay() {
   const {
     standby,
     transitionScreen,
     handleToggleStandby,
-    getGreeting,
-    scale = 1,
     onWelcomeDone,
   } = useContext(Kk);
 
-  const videoRef = useRef(null);
+  // Keep the latest callback without re-arming the timer on every kiosk re-render.
+  const doneRef = useRef(onWelcomeDone);
+  useEffect(() => { doneRef.current = onWelcomeDone; });
 
-  // Play from start whenever welcome screen mounts
+  // The logo animation loops, so (unlike the old video's onEnded) we dismiss the
+  // welcome screen on a timer once the intro has played through.
   useEffect(() => {
-    if (transitionScreen !== 'welcome' || !videoRef.current) return;
-    const v = videoRef.current;
-    v.currentTime = 0;
-    v.play().catch(() => {
-      // Autoplay blocked (e.g. no user gesture yet) — dismiss anyway via fallback
-    });
+    if (transitionScreen !== 'welcome') return;
+    const t = setTimeout(() => doneRef.current?.(), WELCOME_MS);
+    return () => clearTimeout(t);
   }, [transitionScreen]);
 
   if (!standby && transitionScreen !== 'welcome' && transitionScreen !== 'goodbye') return null;
-
-  // Player canvas dimensions (always 1400 × 320 before scale is applied)
-  const W = 1400 * scale;
-  const H = 320  * scale;
 
   return (
     <>
@@ -54,32 +50,10 @@ export default function StandbyOverlay() {
         </div>
       )}
 
-      {/* ── Welcome (video) — fills the full viewport ─────────────────── */}
+      {/* ── Welcome — pure CSS/HTML origami logo intro ─────────────────── */}
       {transitionScreen === 'welcome' && (
-        <div className="fixed inset-0 z-[9998] bg-black pointer-events-none select-none animate-kiosk-welcome">
-          <video
-            ref={videoRef}
-            src={VIDEO_SRC}
-            muted
-            playsInline
-            preload="auto"
-            onEnded={onWelcomeDone}
-            className="absolute inset-0 w-full h-full"
-            style={{ objectFit: VIDEO_FIT }}
-          />
-          <div className="absolute inset-0 bg-black/25" />
-          <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 text-center">
-            <div className="text-[9px] font-mono uppercase tracking-[0.55em] text-white/40">
-              Resonance HiFi
-            </div>
-            <div className="text-[3.8rem] font-black text-white tracking-tight leading-none">
-              {getGreeting()}
-            </div>
-            <div className="w-10 h-px bg-white/20" />
-            <div className="text-[9px] font-mono uppercase tracking-[0.3em] text-white/35">
-              Enjoy the music
-            </div>
-          </div>
+        <div className="fixed inset-0 z-[9998] bg-black flex items-center justify-center pointer-events-none select-none animate-kiosk-welcome">
+          <ResonanceLogo />
         </div>
       )}
 
