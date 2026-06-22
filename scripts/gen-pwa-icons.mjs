@@ -1,71 +1,81 @@
-// One-shot generator for the PWA / home-screen icons. Pure Node (no deps) so it
-// runs in any environment: encodes an RGBA buffer straight to PNG. The art is a
-// Resonance-purple vertical gradient with a white waveform — matches the brand.
-import zlib from 'zlib';
-import { writeFileSync } from 'fs';
+/**
+ * PWA icon generator.
+ *
+ * Reads public/icon-source.png (the master brand image) and produces:
+ *   public/icon-512.png       (PWA large icon)
+ *   public/icon-192.png       (PWA small icon)
+ *   public/apple-touch-icon.png  (iOS home screen, 180×180)
+ *
+ * Uses Python 3 + Pillow for resizing so no npm deps are needed.
+ * Install Pillow once if missing:  pip install Pillow
+ *
+ * Run:  node scripts/gen-pwa-icons.mjs
+ */
+import { execSync } from 'child_process';
+import { existsSync } from 'fs';
+import { resolve, dirname } from 'path';
+import { fileURLToPath } from 'url';
 
-const CRC = (() => {
-  const t = new Uint32Array(256);
-  for (let n = 0; n < 256; n++) {
-    let c = n;
-    for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
-    t[n] = c >>> 0;
+const root   = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+const source = resolve(root, 'public', 'icon-source.png');
+
+if (!existsSync(source)) {
+  console.error(`\n  ERROR: source image not found at public/icon-source.png`);
+  console.error(`  Save your logo there and re-run this script.\n`);
+  process.exit(1);
+}
+
+const sizes = [
+  [512, 'icon-512.png'],
+  [192, 'icon-192.png'],
+  [180, 'apple-touch-icon.png'],
+];
+
+const pyScript = `
+import sys
+from PIL import Image
+
+src = sys.argv[1]
+sizes = [(512, 'icon-512.png'), (192, 'icon-192.png'), (180, 'apple-touch-icon.png')]
+root = sys.argv[2]
+import os
+
+img = Image.open(src).convert('RGBA')
+# Pad to square with transparent background if not already square
+w, h = img.size
+if w != h:
+    side = max(w, h)
+    sq = Image.new('RGBA', (side, side), (0, 0, 0, 0))
+    sq.paste(img, ((side - w) // 2, (side - h) // 2))
+    img = sq
+
+for size, name in sizes:
+    out = img.resize((size, size), Image.LANCZOS)
+    path = os.path.join(root, 'public', name)
+    out.save(path, 'PNG', optimize=True)
+    print(f'wrote {path}')
+`.trim();
+
+try {
+  const result = execSync(
+    `python3 -c "${pyScript.replace(/"/g, '\\"').replace(/\n/g, '\\n')}" "${source}" "${root}"`,
+    { encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'] }
+  );
+  console.log(result.trim());
+  console.log('\nAll icons generated successfully.');
+} catch (err) {
+  // Try python instead of python3 (Windows)
+  try {
+    const result = execSync(
+      `python -c "${pyScript.replace(/"/g, '\\"').replace(/\n/g, '\\n')}" "${source}" "${root}"`,
+      { encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'] }
+    );
+    console.log(result.trim());
+    console.log('\nAll icons generated successfully.');
+  } catch (err2) {
+    console.error('\nFailed to run Python. Make sure Python 3 + Pillow are installed:');
+    console.error('  pip install Pillow\n');
+    console.error(err2.stderr || err2.message);
+    process.exit(1);
   }
-  return (buf) => {
-    let c = 0xffffffff;
-    for (let i = 0; i < buf.length; i++) c = t[(c ^ buf[i]) & 0xff] ^ (c >>> 8);
-    return (c ^ 0xffffffff) >>> 0;
-  };
-})();
-
-function chunk(type, data) {
-  const len = Buffer.alloc(4); len.writeUInt32BE(data.length, 0);
-  const t = Buffer.from(type, 'ascii');
-  const crc = Buffer.alloc(4); crc.writeUInt32BE(CRC(Buffer.concat([t, data])), 0);
-  return Buffer.concat([len, t, data, crc]);
-}
-
-function png(N, rgba) {
-  const sig = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]);
-  const ihdr = Buffer.alloc(13);
-  ihdr.writeUInt32BE(N, 0); ihdr.writeUInt32BE(N, 4);
-  ihdr[8] = 8; ihdr[9] = 6; // 8-bit, RGBA
-  const stride = N * 4 + 1;
-  const raw = Buffer.alloc(stride * N);
-  for (let y = 0; y < N; y++) rgba.copy(raw, y * stride + 1, y * N * 4, (y + 1) * N * 4);
-  const idat = zlib.deflateSync(raw, { level: 9 });
-  return Buffer.concat([sig, chunk('IHDR', ihdr), chunk('IDAT', idat), chunk('IEND', Buffer.alloc(0))]);
-}
-
-function render(N) {
-  const rgba = Buffer.alloc(N * N * 4);
-  const T = [143, 71, 255], B = [74, 30, 150];          // gradient top → bottom
-  const waves = [
-    { amp: 0.13, freq: 1.55, phase: 0.0,         th: 0.060, a: 1.00 },
-    { amp: 0.10, freq: 1.55, phase: Math.PI,     th: 0.032, a: 0.40 },
-  ];
-  for (let y = 0; y < N; y++) {
-    for (let x = 0; x < N; x++) {
-      const fx = x / (N - 1), fy = y / (N - 1);
-      let r = T[0] + (B[0] - T[0]) * fy;
-      let g = T[1] + (B[1] - T[1]) * fy;
-      let b = T[2] + (B[2] - T[2]) * fy;
-      for (const w of waves) {
-        const yc = 0.5 + w.amp * Math.sin(2 * Math.PI * w.freq * fx + w.phase);
-        const d = Math.abs(fy - yc);
-        if (d < w.th) {
-          const alpha = w.a * Math.min(1, (1 - d / w.th) * 1.7);
-          r += (255 - r) * alpha; g += (255 - g) * alpha; b += (255 - b) * alpha;
-        }
-      }
-      const i = (y * N + x) * 4;
-      rgba[i] = Math.round(r); rgba[i + 1] = Math.round(g); rgba[i + 2] = Math.round(b); rgba[i + 3] = 255;
-    }
-  }
-  return rgba;
-}
-
-for (const [N, file] of [[512, 'icon-512.png'], [192, 'icon-192.png'], [180, 'apple-touch-icon.png']]) {
-  writeFileSync(`public/${file}`, png(N, render(N)));
-  console.log('wrote public/' + file);
 }
