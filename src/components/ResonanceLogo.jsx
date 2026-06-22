@@ -91,7 +91,7 @@ const CSS = `
     conic-gradient(from 45deg,#d8d5ca 0 90deg,#8d8a80 90deg 180deg,#6c685f 180deg 270deg,#9c988c 270deg 360deg);
   background-size:46px 46px}
 .rl-word .rl-txt{-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:transparent}
-.rl-word .rl-play-o{display:inline-block;width:.52em;height:.52em;margin:0 .05em;
+.rl-word .rl-play-o{display:inline-block;width:1ex;height:1ex;margin:0 .06em;
   -webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cpath fill='%23fff' fill-rule='evenodd' d='M50 1A49 49 0 1 0 50 99A49 49 0 1 0 50 1Z M40 31L70 50L40 69Z'/%3E%3C/svg%3E") center/contain no-repeat;
   mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cpath fill='%23fff' fill-rule='evenodd' d='M50 1A49 49 0 1 0 50 99A49 49 0 1 0 50 1Z M40 31L70 50L40 69Z'/%3E%3C/svg%3E") center/contain no-repeat}
 @keyframes rl-wordIn{
