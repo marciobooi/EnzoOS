@@ -247,7 +247,7 @@ export default function Kiosk() {
 
   // Show welcome screen on boot, auto-dismiss after animation completes
   useEffect(() => {
-    const t = setTimeout(() => setTransitionScreen(null), 6500);
+    const t = setTimeout(() => setTransitionScreen(null), 2800);
     return () => clearTimeout(t);
   }, []);
 
@@ -475,8 +475,8 @@ export default function Kiosk() {
   const getGreeting = () => {
     const h = new Date().getHours();
     if (h >= 5 && h < 12) return 'Good Morning';
-    if (h >= 12 && h < 19) return 'Good Afternoon';
-    if (h >= 19 && h < 23) return 'Good Evening';
+    if (h >= 12 && h < 17) return 'Good Afternoon';
+    if (h >= 17 && h < 21) return 'Good Evening';
     return 'Good Night';
   };
 
@@ -492,7 +492,7 @@ export default function Kiosk() {
         if (ws.current && ws.current.readyState === WebSocket.OPEN) {
           ws.current.send(JSON.stringify({ type: 'SET_STANDBY', payload: { enabled: true } }));
         }
-      }, 6500);
+      }, 2200);
     } else {
       standbyRef.current = false;
       setStandby(false);
@@ -500,7 +500,7 @@ export default function Kiosk() {
         ws.current.send(JSON.stringify({ type: 'SET_STANDBY', payload: { enabled: false } }));
       }
       setTransitionScreen('welcome');
-      setTimeout(() => setTransitionScreen(null), 6500);
+      setTimeout(() => setTransitionScreen(null), 2800);
     }
   };
 
@@ -1099,8 +1099,13 @@ export default function Kiosk() {
         setTrackDuration(state.item?.duration_ms || 0);
         setShuffleState(state.shuffle_state);
         setRepeatState(state.repeat_state);
-        // Volume is synced in real-time via librespot --onevent → /api/player/spotify-volume
-        // → SET_VOLUME WS broadcast. No polling pin needed.
+        // Pin ONLY the local "Resonance Connect" output to unity once so it does not
+        // pre-attenuate ahead of the CamillaDSP master (prevents compounding / very
+        // quiet output). Never touch a device the user cast playback to elsewhere.
+        if (!spotifyVolPinned.current && state.device?.name === 'Resonance Connect' && state.device.volume_percent !== undefined && state.device.volume_percent !== 100) {
+          spotifyVolPinned.current = true;
+          api.setVolume(token, 100).catch(() => { spotifyVolPinned.current = false; });
+        }
 
         // Broadcast current state to other connected clients via WebSocket
         if (ws.current && ws.current.readyState === WebSocket.OPEN) {
