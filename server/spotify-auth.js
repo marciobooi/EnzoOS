@@ -94,6 +94,8 @@ export const refreshAccessToken = async () => {
         if (data.refresh_token) tokenState.refresh_token = data.refresh_token;
         saveTokens();
         console.log('[Resonance Auth] Access token refreshed successfully.');
+        // Push the new token to all connected clients so they don't keep using the expired one.
+        emit('SET_TOKEN', { token: tokenState.access_token });
         return tokenState.access_token;
       }
     } catch (err) {
