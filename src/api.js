@@ -489,6 +489,17 @@ export const api = {
     return r.json();
   },
 
+  /**
+   * Premium album/artist metadata — aggregated from MusicBrainz, Last.fm and
+   * TheAudioDB on the backend, cached. Called on demand when the user taps the
+   * now-playing cover.
+   */
+  async getAlbumMetadata(artist, album) {
+    const r = await fetch(`/api/metadata/album?artist=${encodeURIComponent(artist)}&album=${encodeURIComponent(album)}`);
+    if (!r.ok) throw new Error('Metadata unavailable');
+    return r.json();
+  },
+
   async restartService(name) {
     const r = await fetch(`/api/system/service/${encodeURIComponent(name)}/restart`, { method: 'POST' });
     return r.json();

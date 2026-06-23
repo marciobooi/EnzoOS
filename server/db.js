@@ -47,6 +47,20 @@ export const dbReady = new Promise((resolve) => {
       } else {
         console.log('[Resonance DB] Favorite radios table initialized.');
       }
+    });
+
+    db.run(`
+      CREATE TABLE IF NOT EXISTS metadata_cache (
+        key TEXT PRIMARY KEY,
+        json TEXT NOT NULL,
+        updated_at INTEGER NOT NULL
+      )
+    `, (err) => {
+      if (err) {
+        console.error('[Resonance DB] Error creating metadata_cache table:', err.message);
+      } else {
+        console.log('[Resonance DB] Metadata cache table initialized.');
+      }
       resolve();
     });
   });
@@ -161,6 +175,37 @@ export const deleteSetting = (key) => {
         resolve();
       }
     });
+  });
+};
+
+/**
+ * Read a cached metadata blob by key (returns parsed object or null).
+ * @param {string} key
+ * @returns {Promise<object|null>}
+ */
+export const getCachedMetadata = (key) => {
+  return new Promise((resolve) => {
+    db.get('SELECT json, updated_at FROM metadata_cache WHERE key = ?', [key], (err, row) => {
+      if (err || !row) return resolve(null);
+      try { resolve({ data: JSON.parse(row.json), updatedAt: row.updated_at }); }
+      catch { resolve(null); }
+    });
+  });
+};
+
+/**
+ * Upsert a metadata blob by key.
+ * @param {string} key
+ * @param {object} obj
+ * @returns {Promise<void>}
+ */
+export const setCachedMetadata = (key, obj) => {
+  return new Promise((resolve) => {
+    db.run(
+      'INSERT OR REPLACE INTO metadata_cache (key, json, updated_at) VALUES (?, ?, ?)',
+      [key, JSON.stringify(obj), Date.now()],
+      () => resolve()
+    );
   });
 };
 

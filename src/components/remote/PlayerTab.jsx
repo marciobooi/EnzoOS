@@ -1,9 +1,10 @@
-import React, { useContext, useRef } from 'react';
+import React, { useContext, useRef, useState } from 'react';
 import {
   Play, Pause, SkipForward, SkipBack, Volume2, VolumeX,
-  Shuffle, Repeat, Music, Heart, Radio, ListMusic,
+  Shuffle, Repeat, Music, Heart, Radio, ListMusic, Info,
 } from 'lucide-react';
 import { Tk, SpotifyIcon, fmt } from './shared';
+import AlbumInfoSheet from './AlbumInfoSheet';
 
 export default function PlayerTab() {
   const {
@@ -20,6 +21,10 @@ export default function PlayerTab() {
   } = useContext(Tk);
 
   const touchStartRef = useRef(null);
+  const [showInfo, setShowInfo] = useState(false);
+
+  const albumName = currentTrack?.album?.name || '';
+  const canInfo = source !== 'radio' && !!trackArtist && !!albumName && trackName !== 'Nothing playing';
 
   const handleTouchStart = e => {
     const t = e.touches[0];
@@ -52,9 +57,11 @@ export default function PlayerTab() {
   return (
     <div className="flex flex-col px-5 pt-5">
 
-      {/* album art */}
-      <div className="relative mb-5 mx-auto" style={{ width: '100%', maxWidth: 280, aspectRatio: '1 / 1' }}
-        onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
+      {/* album art — tap to reveal album info */}
+      <div className={`relative mb-5 mx-auto ${canInfo ? 'cursor-pointer' : ''}`}
+        style={{ width: '100%', maxWidth: 280, aspectRatio: '1 / 1' }}
+        onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}
+        onClick={() => { if (canInfo) setShowInfo(true); }}>
         {albumImage && (
           <div className="absolute inset-0 rounded-[28px] -z-10 scale-[0.88] blur-2xl"
             style={{ backgroundImage: `url(${albumImage})`, backgroundSize: 'cover', opacity: darkMode ? 0.22 : 0.14 }} />
@@ -84,6 +91,11 @@ export default function PlayerTab() {
             {spotify ? 'Spotify' : source === 'radio' ? 'Radio' : 'Local'}
           </span>
         </div>
+        {canInfo && (
+          <div className="absolute top-3 right-3 w-8 h-8 rounded-full flex items-center justify-center" style={cardWhite}>
+            <Info className="h-4 w-4" style={{ color: C.champagne }} />
+          </div>
+        )}
       </div>
 
       {/* track info */}
@@ -243,6 +255,11 @@ export default function PlayerTab() {
               style={{ color: C.text3, fontFamily: C.fontLabel }}>Up Next</span>
           </button>
         </div>
+      )}
+
+      {showInfo && (
+        <AlbumInfoSheet artist={trackArtist} album={albumName} albumImage={albumImage}
+          onClose={() => setShowInfo(false)} />
       )}
     </div>
   );

@@ -12,6 +12,7 @@ import spotifyAuthRouter from './spotify-auth.js';
 import playerRouter from './player.js';
 import spotifyDaemonRouter from './spotify-daemon.js';
 import statusRouter from './status.js';
+import metadataRouter from './metadata.js';
 import authRouter from './auth-routes.js';
 import { setupWebSocket, stopAudioLevelMonitor } from './websocket.js';
 import { loadStateFromDB } from './event-service.js';
@@ -59,6 +60,9 @@ app.use('/api/spotify', requireAuth, spotifyDaemonRouter);
 
 // Global system status — single-fetch snapshot for client connect/reconnect
 app.use('/api/status', requireAuth, statusRouter);
+
+// Premium album/artist metadata aggregator (on-demand, cached)
+app.use('/api/metadata', requireAuth, metadataRouter);
 
 // Fallback all non-API requests to index.html for Single Page App client routing
 app.use((req, res, next) => {
