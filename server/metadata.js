@@ -16,11 +16,19 @@
  * when the user taps the now-playing cover.
  */
 import express from 'express';
+import { MusicBrainzApi } from 'musicbrainz-api';
 import { getCachedMetadata, setCachedMetadata, getSetting, setSetting } from './db.js';
 
 const router = express.Router();
 
-const UA = 'ResonanceHiFiOS/1.0 (https://github.com/marciobooi/EnzoOS)';
+// Official MusicBrainz client — sets the required User-Agent and retries on
+// 429/503 rate-limit responses for us.
+const mbApi = new MusicBrainzApi({
+  appName: 'ResonanceHiFiOS',
+  appVersion: '1.0.0',
+  appContactInfo: 'https://github.com/marciobooi/EnzoOS',
+});
+
 const CACHE_TTL   = 1000 * 60 * 60 * 24 * 30;            // 30 days
 const TIMEOUT_MS  = 7000;
 
@@ -68,24 +76,33 @@ function cleanBio(text) {
 }
 
 async function fromMusicBrainz(artist, album) {
-  const q = enc(`artist:"${artist}" AND release:"${album}"`);
   const search = await mbThrottle(() =>
-    jget(`https://musicbrainz.org/ws/2/release/?query=${q}&fmt=json&limit=1`, { 'User-Agent': UA }));
+    mbApi.search('release', { query: `artist:"${artist}" AND release:"${album}"`, limit: 1 }));
   const rel = search.releases?.[0];
   if (!rel) return null;
   const detail = await mbThrottle(() =>
-    jget(`https://musicbrainz.org/ws/2/release/${rel.id}?inc=artist-credits+labels+release-groups+genres&fmt=json`, { 'User-Agent': UA }));
+    mbApi.lookup('release', rel.id, ['artists', 'labels', 'release-groups', 'genres']));
   const genres = (detail.genres || []).sort((a, b) => (b.count || 0) - (a.count || 0)).map((g) => g.name).slice(0, 6);
+  const rg = detail['release-group'] || {};
+  // "Album", "Live Album", "Compilation EP", etc.
+  const albumType = [rg['primary-type'], ...(rg['secondary-types'] || [])].filter(Boolean).reverse().join(' ') || null;
+  // Physical/digital format(s) of this pressing, de-duplicated: "CD", "12\" Vinyl".
+  const media = [...new Set((detail.media || []).map((m) => m.format).filter(Boolean))].join(' + ') || null;
+  const trackCount = (detail.media || []).reduce((n, m) => n + (m['track-count'] || 0), 0) || detail['track-count'] || null;
   return {
     mbid: detail.id,
     artistMbid: detail['artist-credit']?.[0]?.artist?.id || null,
     title: detail.title,
-    releaseDate: detail.date || detail['release-group']?.['first-release-date'] || null,
+    releaseDate: detail.date || rg['first-release-date'] || null,
+    originalDate: rg['first-release-date'] || null,
+    albumType,
+    media,
     label: detail['label-info']?.[0]?.label?.name || null,
     catalog: detail['label-info']?.[0]?.['catalog-number'] || null,
     country: detail.country || null,
     barcode: detail.barcode || null,
-    trackCount: detail['track-count'] || null,
+    discCount: (detail.media || []).length || null,
+    trackCount,
     genres,
   };
 }
@@ -99,6 +116,13 @@ async function fromLastfm(artist, album, key) {
   ]);
   const album_ = al.status === 'fulfilled' ? al.value?.album : null;
   const artist_ = ar.status === 'fulfilled' ? ar.value?.artist : null;
+  // album.getinfo returns a single track as an object, many as an array — normalise.
+  const rawTracks = album_?.tracks?.track;
+  const trackArr = Array.isArray(rawTracks) ? rawTracks : (rawTracks ? [rawTracks] : []);
+  const tracks = trackArr.map((t) => ({
+    name: t.name,
+    duration: t.duration ? Number(t.duration) : null,
+  })).filter((t) => t.name);
   return {
     albumSummary: cleanBio(album_?.wiki?.summary),
     artistBio: cleanBio(artist_?.bio?.summary),
@@ -106,6 +130,8 @@ async function fromLastfm(artist, album, key) {
     playcount: album_?.playcount ? Number(album_.playcount) : null,
     tags: (album_?.tags?.tag || artist_?.tags?.tag || []).map((t) => t.name).slice(0, 6),
     similar: (artist_?.similar?.artist || []).map((a) => a.name).slice(0, 6),
+    tracks,
+    onTour: artist_?.ontour === '1',
   };
 }
 
@@ -115,19 +141,35 @@ async function fromAudioDB(artist, album, key) {
     jget(`${base}/search.php?s=${enc(artist)}`),
     jget(`${base}/searchalbum.php?s=${enc(artist)}&a=${enc(album)}`),
   ]);
-  const artist_ = ar.status === 'fulfilled' ? ar.value?.artists?.[0] : null;
-  const album_ = al.status === 'fulfilled' ? al.value?.album?.[0] : null;
+  const a = ar.status === 'fulfilled' ? ar.value?.artists?.[0] : null;
+  const b = al.status === 'fulfilled' ? al.value?.album?.[0] : null;
+  const num = (v) => (v != null && v !== '' && !isNaN(v) ? Number(v) : null);
   return {
-    artistBio: artist_?.strBiographyEN || null,
-    artistThumb: artist_?.strArtistThumb || null,
-    artistBanner: artist_?.strArtistBanner || null,
-    style: artist_?.strStyle || null,
-    mood: artist_?.strMood || null,
-    formedYear: artist_?.intFormedYear || null,
-    albumReview: album_?.strDescriptionEN || null,
-    albumThumb: album_?.strAlbumThumb || null,
-    albumYear: album_?.intYearReleased || null,
-    albumGenre: album_?.strGenre || null,
+    // artist / band
+    artistBio: a?.strBiographyEN || null,
+    artistThumb: a?.strArtistThumb || null,
+    artistBanner: a?.strArtistBanner || null,
+    artistFanart: a?.strArtistFanart || a?.strArtistFanart2 || null,
+    artistLogo: a?.strArtistLogo || null,
+    style: a?.strStyle || null,
+    mood: a?.strMood || null,
+    genre: a?.strGenre || null,
+    origin: a?.strCountry || null,
+    formedYear: num(a?.intFormedYear),
+    bornYear: num(a?.intBornYear),
+    diedYear: num(a?.intDiedYear),
+    members: num(a?.intMembers),
+    gender: a?.strGender || null,
+    website: a?.strWebsite || null,
+    // album
+    albumReview: b?.strDescriptionEN || null,
+    albumThumb: b?.strAlbumThumb || null,
+    albumYear: num(b?.intYearReleased),
+    albumGenre: b?.strGenre || null,
+    albumLabel: b?.strLabel || null,
+    albumScore: num(b?.intScore),
+    releaseFormat: b?.strReleaseFormat || null,
+    theme: b?.strTheme || null,
   };
 }
 
@@ -153,6 +195,9 @@ async function aggregate(artist, album, keys) {
   if (LF) sources.push('Last.fm');
   if (ADB && (ADB.artistBio || ADB.albumReview || ADB.albumThumb)) sources.push('TheAudioDB');
 
+  // High-res front cover from the Cover Art Archive (keyed by the release MBID).
+  const coverArt = MB?.mbid ? `https://coverartarchive.org/release/${MB.mbid}/front-500` : null;
+
   return {
     artist,
     album,
@@ -160,20 +205,40 @@ async function aggregate(artist, album, keys) {
     biography,
     review,
     genres,
+    // ── imagery ──
+    coverArt,                                   // album front (CAA, high-res)
+    albumImage: ADB?.albumThumb || null,        // album thumb (TheAudioDB)
+    artistImage: ADB?.artistThumb || null,      // artist portrait
+    artistBanner: ADB?.artistBanner || null,
+    artistFanart: ADB?.artistFanart || null,    // wide hero background
+    artistLogo: ADB?.artistLogo || null,
+    // ── album facts ──
+    albumType: MB?.albumType || null,           // Album / EP / Live / Compilation
     releaseDate: MB?.releaseDate || (ADB?.albumYear ? String(ADB.albumYear) : null),
-    label: MB?.label || null,
+    originalDate: MB?.originalDate || null,      // first-ever release date
+    label: MB?.label || ADB?.albumLabel || null,
     catalog: MB?.catalog || null,
-    country: MB?.country || null,
+    country: MB?.country || null,               // release country
     barcode: MB?.barcode || null,
+    discCount: MB?.discCount || null,
     trackCount: MB?.trackCount || null,
-    listeners: LF?.listeners || null,
-    playcount: LF?.playcount || null,
-    similar: LF?.similar || [],
+    format: MB?.media || ADB?.releaseFormat || null,   // CD / Vinyl / Digital
+    rating: ADB?.albumScore || null,            // /10
+    theme: ADB?.theme || null,
+    tracks: LF?.tracks || [],                    // [{ name, duration }]
+    // ── band facts ──
+    origin: ADB?.origin || null,                // where the band is from
+    formedYear: ADB?.formedYear || ADB?.bornYear || null,
+    diedYear: ADB?.diedYear || null,
+    members: ADB?.members || null,
+    website: ADB?.website || null,
     style: ADB?.style || null,
     mood: ADB?.mood || null,
-    formedYear: ADB?.formedYear || null,
-    artistImage: ADB?.artistThumb || null,
-    albumImage: ADB?.albumThumb || null,
+    // ── popularity / discovery ──
+    listeners: LF?.listeners || null,
+    playcount: LF?.playcount || null,
+    onTour: LF?.onTour || false,
+    similar: LF?.similar || [],
     mbid: MB?.mbid || null,
     sources,
     fetchedAt: Date.now(),
@@ -196,7 +261,7 @@ router.get('/album', async (req, res) => {
     }
     const data = await aggregate(artist, album, keys);
     // Only cache results that actually carry something useful.
-    if (data.biography || data.review || data.label || data.genres.length) {
+    if (data.biography || data.review || data.label || data.genres.length || data.tracks.length) {
       await setCachedMetadata(cacheKey, data);
     }
     res.json({ ...data, lastfmConfigured, cached: false });
