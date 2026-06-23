@@ -1,6 +1,6 @@
 import React, { useContext, useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { ChevronLeft, KeyRound, ExternalLink } from 'lucide-react';
+import { ChevronLeft, KeyRound, ExternalLink, Eye, EyeOff } from 'lucide-react';
 import { Tk } from './shared';
 import { api } from '../../api';
 import { toast } from '../../lib/toast';
@@ -26,6 +26,7 @@ const FIELDS = [
 export default function MetadataKeysSheet({ onClose }) {
   const { C, card } = useContext(Tk);
   const [vals, setVals] = useState({ lastfm: '', theaudiodb: '', discogs: '' });
+  const [show, setShow] = useState({ lastfm: false, theaudiodb: false, discogs: false });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -85,12 +86,21 @@ export default function MetadataKeysSheet({ onClose }) {
           <div key={f.id}>
             <label className="text-[14px] font-medium" style={{ color: C.text1 }}>{f.label}</label>
             <p className="text-[12px] mt-0.5 mb-2" style={{ color: C.text3 }}>{f.hint}</p>
-            <input
-              type="text" value={vals[f.id]} disabled={loading}
-              onChange={(e) => setVals((v) => ({ ...v, [f.id]: e.target.value }))}
-              placeholder={loading ? 'Loading…' : 'Paste key…'}
-              autoCapitalize="none" autoCorrect="off" spellCheck={false}
-              className="w-full rounded-xl px-4 py-3 text-[15px] focus:outline-none" style={inputStyle} />
+            <div className="relative">
+              <input
+                type={show[f.id] ? 'text' : 'password'} value={vals[f.id]} disabled={loading}
+                onChange={(e) => setVals((v) => ({ ...v, [f.id]: e.target.value }))}
+                placeholder={loading ? 'Loading…' : 'Paste key…'}
+                autoCapitalize="none" autoCorrect="off" autoComplete="off" spellCheck={false}
+                className="w-full rounded-xl pl-4 pr-12 py-3 text-[15px] focus:outline-none" style={inputStyle} />
+              <button type="button" onClick={() => setShow((s) => ({ ...s, [f.id]: !s[f.id] }))}
+                aria-label={show[f.id] ? 'Hide key' : 'Show key'}
+                className="absolute right-1.5 top-1/2 -translate-y-1/2 w-9 h-9 flex items-center justify-center rounded-full active:scale-90 transition-all cursor-pointer">
+                {show[f.id]
+                  ? <EyeOff className="h-4 w-4" style={{ color: C.text3 }} />
+                  : <Eye className="h-4 w-4" style={{ color: C.text3 }} />}
+              </button>
+            </div>
             <a href={f.link} target="_blank" rel="noreferrer"
               className="inline-flex items-center gap-1 text-[12px] mt-2 active:opacity-60"
               style={{ color: C.champagne }}>
