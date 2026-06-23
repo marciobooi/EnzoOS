@@ -102,6 +102,7 @@ const PlayerDisplay = React.memo(function PlayerDisplay({
   handleToggleRepeat,
   playbackState,
   onToggleMenu,
+  onToggleAlbumInfo,
   onTransferPlayback,
   hasToken,
   spotify,
@@ -454,6 +455,10 @@ const PlayerDisplay = React.memo(function PlayerDisplay({
   const albumImage = currentTrack?.album?.images?.[0]?.url || 'https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?q=80&w=300&auto=format&fit=crop';
   const trackAlbumName = currentTrack?.album?.name || 'No Album Loaded';
   const isCurrentFavorite = currentTrack?.url ? favoriteStations.some(s => s.url === currentTrack.url) : false;
+  // Tap the cover for album info when there's a real album; otherwise fall back
+  // to the configuration menu (radio / nothing playing).
+  const canShowInfo = !!onToggleAlbumInfo && source !== 'radio'
+    && !!currentTrack?.album?.name && !!trackArtist && trackName !== 'SYSTEM IDLE';
 
   const [extractedRgb, setExtractedRgb] = useState('5, 10, 20');
 
@@ -560,7 +565,9 @@ const PlayerDisplay = React.memo(function PlayerDisplay({
     >
       
       {/* 1. Album Column */}
-      <section className="album-column cursor-pointer" aria-label="Album artwork" onClick={onToggleMenu} title="Click to Open Configuration Menu">
+      <section className="album-column cursor-pointer" aria-label="Album artwork"
+        onClick={canShowInfo ? onToggleAlbumInfo : onToggleMenu}
+        title={canShowInfo ? 'Tap for album info' : 'Click to Open Configuration Menu'}>
         {source === 'radio' ? (
           <div className="album-art album-art--radio" aria-label="Radio station art">
             {albumImage && !albumImage.includes('unsplash.com') ? (

@@ -1,0 +1,154 @@
+import { useContext, useEffect, useState } from 'react';
+import { X, Disc3, Building2, Globe, Tag, BarChart3, Users } from 'lucide-react';
+import { Kk } from './KioskContext';
+import { S, cardShadow } from '../../styles/stone';
+import { api } from '../../api';
+
+function Credit({ icon, label, value }) {
+  if (!value) return null;
+  return (
+    <div className="flex items-center gap-2 py-1.5" style={{ borderBottom: `0.5px solid ${S.border}` }}>
+      {icon}
+      <span className="text-[11px] font-light uppercase tracking-[0.18em] w-20 shrink-0" style={{ color: S.label }}>{label}</span>
+      <span className="text-[13px] font-medium flex-1 text-right truncate" style={{ color: S.strong }}>{value}</span>
+    </div>
+  );
+}
+
+export default function AlbumInfoOverlay() {
+  const {
+    isAlbumInfoOpen, setIsAlbumInfoOpen,
+    albumInfoArtist: artist, albumInfoAlbum: album, albumInfoImage,
+  } = useContext(Kk);
+
+  // Keyed result so we never call setState synchronously inside the effect.
+  const [res, setRes] = useState({ album: null, data: null, error: false });
+
+  useEffect(() => {
+    if (!isAlbumInfoOpen || !album) return;
+    let alive = true;
+    api.getAlbumMetadata(artist, album)
+      .then((d) => { if (alive) setRes({ album, data: d, error: false }); })
+      .catch(() => { if (alive) setRes({ album, data: null, error: true }); });
+    return () => { alive = false; };
+  }, [isAlbumInfoOpen, album, artist]);
+
+  const ready = res.album === album;
+  const loading = isAlbumInfoOpen && !ready;
+  const d = ready ? res.data : null;
+  const error = ready ? res.error : false;
+  const cover = d?.albumImage || albumInfoImage;
+  const fmtNum = (n) => n ? Number(n).toLocaleString() : null;
+
+  return (
+    <div
+      className={`absolute inset-0 rounded-3xl z-50 transform transition-all duration-300 ease-in-out flex flex-col p-5 font-sans ${
+        isAlbumInfoOpen ? 'opacity-100 scale-100 pointer-events-auto' : 'opacity-0 scale-95 pointer-events-none'
+      }`}
+      style={{ background: S.bg, border: `1px solid ${S.borderHi}` }}
+    >
+      {/* header */}
+      <div className="flex items-center justify-between pb-3 mb-3 shrink-0" style={{ borderBottom: `1px solid ${S.border}` }}>
+        <span className="text-sm font-light tracking-[0.25em] uppercase" style={{ color: S.label }}>
+          album info & credits
+        </span>
+        <button onClick={() => setIsAlbumInfoOpen(false)}
+          className="cursor-pointer w-8 h-8 rounded-full flex items-center justify-center transition-all active:scale-90"
+          style={{ background: S.accent, color: S.accentFg }} aria-label="Close">
+          <X className="w-4 h-4" />
+        </button>
+      </div>
+
+      {/* body: left identity, right editorial */}
+      <div className="flex-grow flex flex-row gap-5 min-h-0">
+        {/* left */}
+        <div className="w-[34%] flex flex-row gap-4 shrink-0 rounded-2xl p-4" style={{ background: S.surface, border: `1px solid ${S.border}` }}>
+          <div className="w-[120px] h-[120px] rounded-xl overflow-hidden shrink-0 flex items-center justify-center"
+            style={{ background: S.surfaceLo, border: `1px solid ${S.border}`, boxShadow: cardShadow }}>
+            {cover ? <img src={cover} alt="" className="w-full h-full object-cover" /> : <Disc3 className="w-8 h-8" style={{ color: S.label }} />}
+          </div>
+          <div className="min-w-0 flex flex-col">
+            <h3 className="text-base font-bold leading-tight truncate" style={{ color: S.strong }}>{d?.title || album}</h3>
+            <p className="text-sm font-light truncate" style={{ color: S.muted }}>{artist}</p>
+            {d?.releaseDate && <p className="text-xs mt-0.5" style={{ color: S.label }}>{String(d.releaseDate).slice(0, 4)}</p>}
+            {d?.genres?.length > 0 && (
+              <div className="flex flex-wrap gap-1.5 mt-2 overflow-hidden">
+                {d.genres.slice(0, 4).map((g) => (
+                  <span key={g} className="text-[10px] font-medium px-2 py-0.5 rounded-full"
+                    style={{ background: S.surfaceLo, color: S.muted, border: `1px solid ${S.border}` }}>{g}</span>
+                ))}
+              </div>
+            )}
+            {(d?.style || d?.mood) && (
+              <p className="text-[11px] mt-auto pt-2" style={{ color: S.label }}>
+                {[d.style, d.mood].filter(Boolean).join(' · ')}
+              </p>
+            )}
+          </div>
+        </div>
+
+        {/* right */}
+        <div className="flex-grow rounded-2xl p-4 overflow-y-auto stone-scrollbar" style={{ background: S.surface, border: `1px solid ${S.border}` }}>
+          {loading && (
+            <div className="h-full flex flex-col items-center justify-center gap-2">
+              <Disc3 className="w-7 h-7 animate-spin" style={{ color: S.accent, animationDuration: '2.4s' }} />
+              <p className="text-sm font-light" style={{ color: S.muted }}>Gathering credits & biography…</p>
+            </div>
+          )}
+          {error && !loading && (
+            <div className="h-full flex items-center justify-center">
+              <p className="text-sm font-light" style={{ color: S.muted }}>Could not load album info.</p>
+            </div>
+          )}
+          {d && !loading && (
+            <div className="flex flex-row gap-5">
+              {/* editorial */}
+              <div className="flex-grow min-w-0 space-y-3">
+                {d.biography && (
+                  <div>
+                    <p className="text-[11px] font-light uppercase tracking-[0.2em] mb-1" style={{ color: S.label }}>Artist</p>
+                    <p className="text-[13px] font-light leading-relaxed" style={{ color: S.text }}>{d.biography}</p>
+                  </div>
+                )}
+                {d.review && (
+                  <div>
+                    <p className="text-[11px] font-light uppercase tracking-[0.2em] mb-1" style={{ color: S.label }}>About this album</p>
+                    <p className="text-[13px] font-light leading-relaxed" style={{ color: S.text }}>{d.review}</p>
+                  </div>
+                )}
+                {d.similar?.length > 0 && (
+                  <div>
+                    <p className="text-[11px] font-light uppercase tracking-[0.2em] mb-1.5 flex items-center gap-1.5" style={{ color: S.label }}>
+                      <Users className="w-3 h-3" /> Similar Artists
+                    </p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {d.similar.map((s) => (
+                        <span key={s} className="text-[12px] px-2.5 py-1 rounded-full" style={{ background: S.surfaceLo, color: S.muted, border: `1px solid ${S.border}` }}>{s}</span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {!d.biography && !d.review && (
+                  <p className="text-sm font-light" style={{ color: S.muted }}>No extended editorial found for this album.</p>
+                )}
+                {d.sources?.length > 0 && (
+                  <p className="text-[11px] font-light pt-1" style={{ color: S.label }}>Powered by {d.sources.join(' · ')}</p>
+                )}
+              </div>
+
+              {/* credits column */}
+              <div className="w-[230px] shrink-0">
+                <p className="text-[11px] font-light uppercase tracking-[0.2em] mb-1" style={{ color: S.label }}>Release</p>
+                <Credit icon={<Building2 className="w-3.5 h-3.5" style={{ color: S.label }} />} label="Label" value={d.label} />
+                <Credit icon={<Tag className="w-3.5 h-3.5" style={{ color: S.label }} />} label="Catalog" value={d.catalog} />
+                <Credit icon={<Globe className="w-3.5 h-3.5" style={{ color: S.label }} />} label="Country" value={d.country} />
+                <Credit icon={<Disc3 className="w-3.5 h-3.5" style={{ color: S.label }} />} label="Tracks" value={d.trackCount} />
+                <Credit icon={<BarChart3 className="w-3.5 h-3.5" style={{ color: S.label }} />} label="Listeners" value={fmtNum(d.listeners)} />
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}

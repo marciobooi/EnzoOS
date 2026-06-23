@@ -11,6 +11,7 @@ import PlayerDisplay from '../components/PlayerDisplay';
 import { Kk } from '../components/kiosk/KioskContext';
 import StandbyOverlay from '../components/kiosk/StandbyOverlay';
 import EqualizerOverlay from '../components/kiosk/EqualizerOverlay';
+import AlbumInfoOverlay from '../components/kiosk/AlbumInfoOverlay';
 import SettingsMenuOverlay from '../components/kiosk/SettingsMenuOverlay';
 import SearchOverlay from '../components/kiosk/SearchOverlay';
 import ThemeSettingsOverlay from '../components/kiosk/ThemeSettingsOverlay';
@@ -41,6 +42,7 @@ export default function Kiosk() {
   const [isMuted, setIsMuted] = useState(false);
 
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isAlbumInfoOpen, setIsAlbumInfoOpen] = useState(false);
   const [isEqualizerOpen, setIsEqualizerOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [eqPreset, setEqPreset] = useState(() => localStorage.getItem('resonance_eq_preset') || 'Clinical Reference');
@@ -1206,6 +1208,7 @@ export default function Kiosk() {
   const onToggleMenu      = useCallback(() => setIsMenuOpen(v => !v), []);
   const onToggleEqualizer = useCallback(() => setIsEqualizerOpen(v => !v), []);
   const onToggleSearch    = useCallback(() => setIsSearchOpen(v => !v), []);
+  const onToggleAlbumInfo = useCallback(() => setIsAlbumInfoOpen(true), []);
 
   const kioskCtx = useMemo(() => ({
     // standby / transitions
@@ -1217,6 +1220,11 @@ export default function Kiosk() {
     handleNoiseFloorChange, handlePreAmpChange,
     dspActive, handleDeactivateDsp,
     pureDirect, handleTogglePureDirect,
+    // album info
+    isAlbumInfoOpen, setIsAlbumInfoOpen,
+    albumInfoArtist: trackArtist,
+    albumInfoAlbum: currentTrack?.album?.name || '',
+    albumInfoImage: albumImage,
     // settings menu
     isMenuOpen, setIsMenuOpen,
     token, handleLogout,
@@ -1256,6 +1264,7 @@ export default function Kiosk() {
     handleEqPresetChange, handleBandChange, handleSaturationChange,
     handleNoiseFloorChange, handlePreAmpChange, dspActive, handleDeactivateDsp,
     pureDirect, handleTogglePureDirect,
+    isAlbumInfoOpen, trackArtist, currentTrack, albumImage,
     isMenuOpen, token, handleLogout, devices, isFetchingDevices,
     transferPlayback, fetchDevices, theme, handleThemeColorChange,
     otaProgress, otaPercent, source, handleToggleSource,
@@ -1330,6 +1339,7 @@ export default function Kiosk() {
           handleToggleRepeat={handleToggleRepeat}
           playbackState={playbackState}
           onToggleMenu={onToggleMenu}
+          onToggleAlbumInfo={onToggleAlbumInfo}
           onTransferPlayback={handleTransferToLocal}
           hasToken={!!token}
           spotify={spotify}
@@ -1345,6 +1355,7 @@ export default function Kiosk() {
         />
 
         <EqualizerOverlay />
+        <AlbumInfoOverlay />
         <SettingsMenuOverlay />
         {isSearchOpen && <SearchOverlay />}
         <ThemeSettingsOverlay />
