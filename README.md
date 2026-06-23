@@ -53,7 +53,10 @@ Resonance HiFi is an open-source, self-hosted audio streaming platform for Raspb
 ### UI & UX
 - **Stone warm-greige design system** — single source of truth (`src/styles/stone.js`), applied across all overlays and menus
 - **Kiosk display** — React UI optimised for 1480×320 landscape (Waveshare 11.9" HDMI LCD)
-- **Mobile remote** — same React codebase, responsive layout for phones and tablets
+- **Dedicated mobile remote** — a phone-first UI (`/remote`) with its own design system (`src/remote.css`, scoped under `.remote-root`) so the kiosk skins never leak into its modals, sliders or sheets. HIG/Material-3 tuned touch targets, safe-area handling and accessible names
+- **Installable PWA** — "Add to Home Screen" turns the remote into a full-screen, app-like experience on iOS and Android (web manifest + apple-touch icons; in-app install guide in Settings)
+- **Premium album info** — tap the now-playing cover (kiosk or remote) to reveal an aggregated biography, album review, credits (label, catalog, country, tracks), genres, listeners and similar artists (see *Album Metadata* below)
+- **Origami logo intro** — pure CSS/HTML kiosk welcome & goodbye animation (`src/components/ResonanceLogo.jsx`, `logo.html`) on the origami paper background — no video file
 - **QR code access** — tap the Remote card on the kiosk to display a scannable QR code
 - **Source-aware search** — search tab reflects the active source (Spotify search for Spotify, radio scanner for radio)
 - **Streaming source menu behaviour** — AirPlay, UPnP, and Bluetooth cards keep the settings menu open on activation (connect-and-wait flow); Spotify, Local, and Radio close it immediately
@@ -298,6 +301,7 @@ On every startup, `detectDac()` scans `/proc/asound/card*/stream*` and returns:
 - Favourite radio stations
 - Acoustic calibration profile
 - Remote access settings
+- Aggregated album metadata cache (`metadata_cache`, 30-day TTL — see *Album Metadata*)
 
 ---
 
@@ -329,6 +333,36 @@ On every startup, `detectDac()` scans `/proc/asound/card*/stream*` and returns:
 | `GET` | `/api/system/health` | CPU temp, RAM, Wi-Fi signal |
 | `POST` | `/api/system/reboot` | Reboot the Pi |
 | `POST` | `/api/update` | Trigger OTA update |
+
+### Metadata
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/api/metadata/album?artist=&album=` | Aggregated album/artist metadata (bio, review, credits, genres, similar). Cached; called on demand when the cover is tapped |
+
+---
+
+## Album Metadata
+
+Tapping the now-playing cover (kiosk or remote) opens a deep-metadata panel. A
+backend **hybrid meta-engine** (`server/metadata.js`) merges several
+royalty-free, community-driven sources into one object with `Promise.allSettled`
+(any source failing never breaks the response) and caches the result in SQLite
+so each album hits the network only once.
+
+| Source | Key required | Provides |
+|--------|--------------|----------|
+| **MusicBrainz** | none | Factual credits — label, catalog #, country, release date, track count, genres (strict 1 req/sec, handled by a serial queue) |
+| **Last.fm** | `LASTFM_API_KEY` (free) | Editorial — artist biography, tags, listeners, similar artists |
+| **TheAudioDB** | `THEAUDIODB_KEY` (defaults to free dev key `2`) | Biographies, album reviews, artwork |
+
+All keys are optional — with none set you still get MusicBrainz credits and
+TheAudioDB bios/reviews. Add `LASTFM_API_KEY` (free at
+<https://www.last.fm/api/account/create>) to fill in artist biographies and
+similar artists. Results are cached in the `metadata_cache` table for 30 days.
+
+> The remote shows a "Powered by …" attribution for whichever sources
+> contributed, as required by the Last.fm API terms.
 
 ---
 
@@ -364,6 +398,17 @@ https://resonance.local:5001/remote
 
 4. Accept the self-signed certificate warning (one-time, per browser)
 5. Log in with username `enzo` / password `enzoOS`
+
+### Install as an app (PWA)
+
+The remote can be added to the home screen for a full-screen, app-like
+experience. **Settings → Remote App → Add to Home Screen** shows a
+platform-aware guide:
+
+- **iOS / iPadOS** — in **Safari**, tap *Share* → *Add to Home Screen*
+- **Android / Chrome** — a one-tap **Install** button (or *⋮ menu → Install app*)
+
+Tapping the now-playing cover inside the remote opens the [album metadata](#album-metadata) panel.
 
 ---
 
@@ -476,6 +521,10 @@ SPOTIFY_CLIENT_ID=your_spotify_client_id
 SPOTIFY_CLIENT_SECRET=your_spotify_client_secret
 PORT=5000
 HTTPS_PORT=5001
+
+# Album metadata (all optional — tap the now-playing cover)
+LASTFM_API_KEY=            # free key → artist bios, similar artists
+THEAUDIODB_KEY=2           # free dev key; set a Patreon key for production volume
 ```
 
 ### Key files
@@ -485,9 +534,12 @@ HTTPS_PORT=5001
 | `server/player.js` | CamillaDSP config gen, DAC detection, signal-path API, volume, MPD/radio routes |
 | `server/websocket.js` | WebSocket hub, VU meter monitor, standby management |
 | `server/event-service.js` | Central event bus, state cache, serial queue, safe startup sequence |
-| `server/db.js` | SQLite helpers (settings, favourites) |
+| `server/metadata.js` | Album metadata aggregator (MusicBrainz + Last.fm + TheAudioDB), SQLite-cached |
+| `server/db.js` | SQLite helpers (settings, favourites, metadata cache) |
 | `server/index.js` | Express entry point, Spotify OAuth, HTTPS setup |
 | `server/status.js` | Full status snapshot endpoint |
+| `src/remote.css` | Dedicated mobile-remote design system (scoped under `.remote-root`) |
+| `src/components/ResonanceLogo.jsx` | Pure CSS/HTML origami logo intro + static wordmark (kiosk welcome/goodbye) |
 | `scripts/kiosk-power.sh` | Display standby: `vcgencmd` on Pi, `xset dpms` on QEMU |
 | `install.sh` | Master installer — packages, PipeWire, CamillaDSP, shairport-sync, upmpdcli |
 | `camilladsp.yml` | Active CamillaDSP pipeline config (auto-generated on startup — do not hand-edit) |
