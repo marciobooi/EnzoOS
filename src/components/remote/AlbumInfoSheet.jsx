@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { ChevronLeft, Disc3, Users, Tag, Building2, Globe, BarChart3 } from 'lucide-react';
 import { Tk } from './shared';
 import { api } from '../../api';
+import { toast } from '../../lib/toast';
 
 // Small labelled credit row.
 function Credit({ C, icon, label, value }) {
@@ -25,7 +26,14 @@ export default function AlbumInfoSheet({ artist, album, albumImage, onClose }) {
   useEffect(() => {
     let alive = true;
     api.getAlbumMetadata(artist, album)
-      .then((d) => { if (alive) setState({ loading: false, error: null, data: d }); })
+      .then((d) => {
+        if (!alive) return;
+        setState({ loading: false, error: null, data: d });
+        // Nudge the user toward richer data if no Last.fm key is set.
+        if (!d.lastfmConfigured && !d.biography && !d.review) {
+          toast.success('Tip: add a Last.fm key in Settings → Album Info for biographies & reviews', { duration: 5000 });
+        }
+      })
       .catch(() => { if (alive) setState({ loading: false, error: 'Could not load album info.', data: null }); });
     return () => { alive = false; };
   }, [artist, album]);

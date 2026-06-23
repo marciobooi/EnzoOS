@@ -16,15 +16,29 @@
  * when the user taps the now-playing cover.
  */
 import express from 'express';
-import { getCachedMetadata, setCachedMetadata } from './db.js';
+import { getCachedMetadata, setCachedMetadata, getSetting, setSetting } from './db.js';
 
 const router = express.Router();
 
 const UA = 'ResonanceHiFiOS/1.0 (https://github.com/marciobooi/EnzoOS)';
-const LASTFM_KEY  = process.env.LASTFM_API_KEY || '';
-const AUDIODB_KEY = process.env.THEAUDIODB_KEY || '2';   // free low-volume dev key
 const CACHE_TTL   = 1000 * 60 * 60 * 24 * 30;            // 30 days
 const TIMEOUT_MS  = 7000;
+
+// Keys are resolved per request: DB setting first (managed from the remote
+// Settings tab), then env var, then a sensible default. This lets users add
+// keys at runtime without editing .env or restarting.
+async function resolveKeys() {
+  const [lf, adb, dc] = await Promise.all([
+    getSetting('lastfm_api_key').catch(() => null),
+    getSetting('theaudiodb_key').catch(() => null),
+    getSetting('discogs_token').catch(() => null),
+  ]);
+  return {
+    lastfm:  (lf  || process.env.LASTFM_API_KEY  || '').trim(),
+    audiodb: (adb || process.env.THEAUDIODB_KEY  || '2').trim(),   // '2' = free dev key
+    discogs: (dc  || process.env.DISCOGS_TOKEN   || '').trim(),
+  };
+}
 
 const enc = (s) => encodeURIComponent(s);
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -76,12 +90,12 @@ async function fromMusicBrainz(artist, album) {
   };
 }
 
-async function fromLastfm(artist, album) {
-  if (!LASTFM_KEY) return null;
+async function fromLastfm(artist, album, key) {
+  if (!key) return null;
   const base = 'https://ws.audioscrobbler.com/2.0/';
   const [al, ar] = await Promise.allSettled([
-    jget(`${base}?method=album.getinfo&api_key=${LASTFM_KEY}&artist=${enc(artist)}&album=${enc(album)}&format=json`),
-    jget(`${base}?method=artist.getinfo&api_key=${LASTFM_KEY}&artist=${enc(artist)}&format=json`),
+    jget(`${base}?method=album.getinfo&api_key=${key}&artist=${enc(artist)}&album=${enc(album)}&format=json`),
+    jget(`${base}?method=artist.getinfo&api_key=${key}&artist=${enc(artist)}&format=json`),
   ]);
   const album_ = al.status === 'fulfilled' ? al.value?.album : null;
   const artist_ = ar.status === 'fulfilled' ? ar.value?.artist : null;
@@ -95,8 +109,8 @@ async function fromLastfm(artist, album) {
   };
 }
 
-async function fromAudioDB(artist, album) {
-  const base = `https://www.theaudiodb.com/api/v1/json/${AUDIODB_KEY}`;
+async function fromAudioDB(artist, album, key) {
+  const base = `https://www.theaudiodb.com/api/v1/json/${key || '2'}`;
   const [ar, al] = await Promise.allSettled([
     jget(`${base}/search.php?s=${enc(artist)}`),
     jget(`${base}/searchalbum.php?s=${enc(artist)}&a=${enc(album)}`),
@@ -117,11 +131,11 @@ async function fromAudioDB(artist, album) {
   };
 }
 
-async function aggregate(artist, album) {
+async function aggregate(artist, album, keys) {
   const [mb, lf, adb] = await Promise.allSettled([
     fromMusicBrainz(artist, album),
-    fromLastfm(artist, album),
-    fromAudioDB(artist, album),
+    fromLastfm(artist, album, keys.lastfm),
+    fromAudioDB(artist, album, keys.audiodb),
   ]);
   const MB = mb.status === 'fulfilled' ? mb.value : null;
   const LF = lf.status === 'fulfilled' ? lf.value : null;
@@ -172,21 +186,48 @@ router.get('/album', async (req, res) => {
   const album = (req.query.album || '').toString().trim();
   if (!artist || !album) return res.status(400).json({ error: 'artist and album are required' });
 
-  const key = `album:${artist}|${album}`.toLowerCase();
+  const keys = await resolveKeys();
+  const lastfmConfigured = !!keys.lastfm;
+  const cacheKey = `album:${artist}|${album}`.toLowerCase();
   try {
-    const cached = await getCachedMetadata(key);
+    const cached = await getCachedMetadata(cacheKey);
     if (cached && Date.now() - cached.updatedAt < CACHE_TTL) {
-      return res.json({ ...cached.data, cached: true });
+      return res.json({ ...cached.data, lastfmConfigured, cached: true });
     }
-    const data = await aggregate(artist, album);
+    const data = await aggregate(artist, album, keys);
     // Only cache results that actually carry something useful.
     if (data.biography || data.review || data.label || data.genres.length) {
-      await setCachedMetadata(key, data);
+      await setCachedMetadata(cacheKey, data);
     }
-    res.json({ ...data, cached: false });
+    res.json({ ...data, lastfmConfigured, cached: false });
   } catch (err) {
     console.error('[Metadata] aggregate failed:', err.message);
     res.status(500).json({ error: 'metadata lookup failed' });
+  }
+});
+
+// GET /api/metadata/keys — current keys (for the Settings form to pre-fill).
+// The free TheAudioDB dev key '2' is reported as empty (not user-configured).
+router.get('/keys', async (req, res) => {
+  const k = await resolveKeys();
+  res.json({
+    lastfm: k.lastfm || '',
+    theaudiodb: k.audiodb && k.audiodb !== '2' ? k.audiodb : '',
+    discogs: k.discogs || '',
+  });
+});
+
+// POST /api/metadata/keys — save provided keys to the DB (empty string clears).
+router.post('/keys', async (req, res) => {
+  const { lastfm, theaudiodb, discogs } = req.body || {};
+  try {
+    if (lastfm !== undefined)     await setSetting('lastfm_api_key', String(lastfm).trim());
+    if (theaudiodb !== undefined) await setSetting('theaudiodb_key', String(theaudiodb).trim());
+    if (discogs !== undefined)    await setSetting('discogs_token', String(discogs).trim());
+    res.json({ success: true });
+  } catch (err) {
+    console.error('[Metadata] save keys failed:', err.message);
+    res.status(500).json({ error: 'could not save keys' });
   }
 });
 

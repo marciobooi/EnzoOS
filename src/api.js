@@ -500,6 +500,24 @@ export const api = {
     return r.json();
   },
 
+  /** Current metadata provider keys (pre-fills the Settings form). */
+  async getMetadataKeys() {
+    const r = await fetch('/api/metadata/keys');
+    if (!r.ok) throw new Error('Could not load keys');
+    return r.json();
+  },
+
+  /** Save metadata provider keys to the DB. */
+  async setMetadataKeys(keys) {
+    const r = await fetch('/api/metadata/keys', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(keys),
+    });
+    if (!r.ok) throw new Error('Could not save keys');
+    return r.json();
+  },
+
   async restartService(name) {
     const r = await fetch(`/api/system/service/${encodeURIComponent(name)}/restart`, { method: 'POST' });
     return r.json();

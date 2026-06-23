@@ -1,16 +1,18 @@
 import React, { useContext, useState, useRef } from 'react';
 import {
   Sliders, Cpu, Timer, Palette, Power, LogOut, Laptop,
-  Music, RefreshCw, Smartphone,
+  Music, RefreshCw, Smartphone, Disc3,
 } from 'lucide-react';
 import { toast } from '../../lib/toast';
 import { Tk, Row, Section, SpotifyIcon } from './shared';
 import RemoteEqualizer from './RemoteEqualizer';
 import InstallGuide from './InstallGuide';
+import MetadataKeysSheet from './MetadataKeysSheet';
 
 export default function SettingsTab() {
   const [confirmPending, setConfirmPending] = useState(null);
   const [showInstall, setShowInstall] = useState(false);
+  const [showKeys, setShowKeys] = useState(false);
   const confirmRef = useRef(null);
 
   const withConfirm = (key, action) => () => {
@@ -123,6 +125,13 @@ export default function SettingsTab() {
           onPress={() => handleToggleStandby(!standby)} />
       </Section>
 
+      {/* album info */}
+      <Section title="Album Info">
+        <Row label="Metadata Keys" sub="Last.fm · TheAudioDB · Discogs"
+          icon={<Disc3 className="h-4 w-4" style={{ color: C.champagne }} />}
+          onPress={() => setShowKeys(true)} />
+      </Section>
+
       {/* remote app */}
       <Section title="Remote App">
         <Row label="Add to Home Screen" sub="Install as a full-screen app"
@@ -131,6 +140,7 @@ export default function SettingsTab() {
       </Section>
 
       {showInstall && <InstallGuide onClose={() => setShowInstall(false)} />}
+      {showKeys && <MetadataKeysSheet onClose={() => setShowKeys(false)} />}
 
       {/* spotify */}
       <Section title="Spotify">
