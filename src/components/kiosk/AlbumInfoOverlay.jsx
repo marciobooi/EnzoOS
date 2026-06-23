@@ -37,7 +37,7 @@ export default function AlbumInfoOverlay() {
   const loading = isAlbumInfoOpen && !ready;
   const d = ready ? res.data : null;
   const error = ready ? res.error : false;
-  const cover = d?.albumImage || albumInfoImage;
+  const cover = d?.coverArt || d?.albumImage || albumInfoImage;
   const fmtNum = (n) => n ? Number(n).toLocaleString() : null;
 
   return (
@@ -139,8 +139,9 @@ export default function AlbumInfoOverlay() {
               {/* credits column */}
               <div className="w-[230px] shrink-0">
                 <p className="text-[11px] font-light uppercase tracking-[0.2em] mb-1" style={{ color: S.label }}>Release</p>
+                <Credit icon={<Tag className="w-3.5 h-3.5" style={{ color: S.label }} />} label="Type" value={d.albumType} />
+                <Credit icon={<Disc3 className="w-3.5 h-3.5" style={{ color: S.label }} />} label="Format" value={d.format} />
                 <Credit icon={<Building2 className="w-3.5 h-3.5" style={{ color: S.label }} />} label="Label" value={d.label} />
-                <Credit icon={<Tag className="w-3.5 h-3.5" style={{ color: S.label }} />} label="Catalog" value={d.catalog} />
                 <Credit icon={<Globe className="w-3.5 h-3.5" style={{ color: S.label }} />} label="Country" value={d.country} />
                 <Credit icon={<Disc3 className="w-3.5 h-3.5" style={{ color: S.label }} />} label="Tracks" value={d.trackCount} />
                 <Credit icon={<BarChart3 className="w-3.5 h-3.5" style={{ color: S.label }} />} label="Listeners" value={fmtNum(d.listeners)} />
