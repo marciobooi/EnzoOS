@@ -150,6 +150,14 @@ export default function UniversalSearchOverlay() {
     })),
   ].filter(r => activeFilter === 'all' || r.source === activeFilter);
 
+  // Sources that actually returned results
+  const activeSources = Object.entries(results).filter(([, v]) => v.length > 0).map(([k]) => k);
+
+  // If the selected filter has no results, fall back to 'all'
+  useEffect(() => {
+    if (activeFilter !== 'all' && !activeSources.includes(activeFilter)) setFilter('all');
+  }, [results]);
+
   return (
     <div className="absolute inset-0 rounded-3xl z-50 flex flex-col overflow-hidden"
       style={{ background: S.bg, border: `1px solid ${S.borderHi}` }}>
@@ -182,15 +190,24 @@ export default function UniversalSearchOverlay() {
         </button>
       </div>
 
-      {/* Source filter pills */}
+      {/* Source filter pills — only show sources with results */}
       <div className="flex items-center gap-1.5 px-3 pb-1.5 shrink-0">
-        {PILLS.map(p => (
+        {activeSources.length > 0 && (
+          <button key="all" onClick={() => setFilter('all')}
+            className="px-2.5 py-1 rounded-full text-[9px] font-bold uppercase tracking-wider cursor-pointer active:scale-95 transition-all shrink-0"
+            style={activeFilter === 'all'
+              ? { background: S.accent, color: S.accentFg }
+              : { background: S.surface, color: S.muted, border: `1px solid ${S.border}` }}>
+            All
+          </button>
+        )}
+        {PILLS.filter(p => p !== 'all' && activeSources.includes(p)).map(p => (
           <button key={p} onClick={() => setFilter(p)}
             className="px-2.5 py-1 rounded-full text-[9px] font-bold uppercase tracking-wider cursor-pointer active:scale-95 transition-all shrink-0"
             style={activeFilter === p
               ? { background: S.accent, color: S.accentFg }
               : { background: S.surface, color: S.muted, border: `1px solid ${S.border}` }}>
-            {p === 'all' ? 'All' : SOURCE_LABELS[p]}
+            {SOURCE_LABELS[p]}
           </button>
         ))}
         {loading && (
