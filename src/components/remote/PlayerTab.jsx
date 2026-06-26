@@ -1,9 +1,11 @@
-import React, { useContext, useRef } from 'react';
+import React, { useContext, useRef, useState } from 'react';
 import {
   Play, Pause, SkipForward, SkipBack, Volume2, VolumeX,
-  Shuffle, Repeat, Music, Heart, Radio, ListMusic,
+  Shuffle, Repeat, Music, Heart, Radio, ListMusic, Info, Mic2,
 } from 'lucide-react';
 import { Tk, SpotifyIcon, fmt } from './shared';
+import AlbumInfoSheet from './AlbumInfoSheet';
+import LyricsSheet from './LyricsSheet';
 
 export default function PlayerTab() {
   const {
@@ -17,9 +19,21 @@ export default function PlayerTab() {
     handleVolumeChange, handleMuteToggle,
     handleToggleFavRadio, setActiveTab,
     queueOpen, setQueueOpen,
+    favorites, handleToggleFavorite,
+    liveFormat,
   } = useContext(Tk);
 
   const touchStartRef = useRef(null);
+  const [showInfo, setShowInfo]     = useState(false);
+  const [showLyrics, setShowLyrics] = useState(false);
+
+  const albumName = currentTrack?.album?.name || '';
+  const canInfo   = source !== 'radio' && !!trackArtist && !!albumName && trackName !== 'Nothing playing';
+  const canLyrics = source !== 'radio' && !!trackArtist && trackName !== 'Nothing playing';
+  const trackUri  = currentTrack?.uri || currentTrack?.url || '';
+  const isFav     = source === 'radio'
+    ? isCurrentFav
+    : favorites?.some(f => f.source === source && f.uri === trackUri);
 
   const handleTouchStart = e => {
     const t = e.touches[0];
@@ -38,23 +52,34 @@ export default function PlayerTab() {
   };
 
   const qualityLabel = (() => {
-    if (source === 'radio') return 'AAC STREAM';
+    if (liveFormat) {
+      const { rate, bits } = liveFormat;
+      if (bits >= 24 && rate >= 88200) return `HI-RES ${bits}/${Math.round(rate/1000)}k`;
+      if (bits >= 24) return `LOSSLESS ${bits}bit`;
+      if (bits >= 16 && rate >= 44100) return `CD QUALITY ${Math.round(rate/1000)}k`;
+      return `${bits}bit/${Math.round(rate/1000)}k`;
+    }
+    if (source === 'tidal') return 'TIDAL LOSSLESS';
+    if (source === 'qobuz') return 'QOBUZ HI-RES';
+    if (source === 'radio') return 'LIVE STREAM';
     if (source === 'local') {
-      const path = currentTrack?.uri || '';
-      if (path.endsWith('.flac') || path.includes('flac')) return 'FLAC LOSSLESS';
-      if (path.endsWith('.mp3'))  return 'MP3';
-      if (path.endsWith('.wav'))  return 'PCM WAV';
+      const p = currentTrack?.uri || currentTrack?.file || '';
+      if (p.includes('.flac') || p.includes('flac')) return 'FLAC LOSSLESS';
+      if (p.includes('.mp3')) return 'MP3';
+      if (p.includes('.wav')) return 'PCM WAV';
       return 'LOCAL FILE';
     }
-    return 'OGG VORBIS';
+    return source === 'spotify' ? 'SPOTIFY OGG' : 'STREAMING';
   })();
 
   return (
     <div className="flex flex-col px-5 pt-5">
 
-      {/* album art */}
-      <div className="relative mb-5 mx-auto" style={{ width: '100%', maxWidth: 280, aspectRatio: '1 / 1' }}
-        onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
+      {/* album art — tap to reveal album info */}
+      <div className={`relative mb-5 mx-auto ${canInfo ? 'cursor-pointer' : ''}`}
+        style={{ width: '100%', maxWidth: 280, aspectRatio: '1 / 1' }}
+        onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}
+        onClick={() => { if (canInfo) setShowInfo(true); }}>
         {albumImage && (
           <div className="absolute inset-0 rounded-[28px] -z-10 scale-[0.88] blur-2xl"
             style={{ backgroundImage: `url(${albumImage})`, backgroundSize: 'cover', opacity: darkMode ? 0.22 : 0.14 }} />
@@ -84,6 +109,11 @@ export default function PlayerTab() {
             {spotify ? 'Spotify' : source === 'radio' ? 'Radio' : 'Local'}
           </span>
         </div>
+        {canInfo && (
+          <div className="absolute top-3 right-3 w-8 h-8 rounded-full flex items-center justify-center" style={cardWhite}>
+            <Info className="h-4 w-4" style={{ color: C.champagne }} />
+          </div>
+        )}
       </div>
 
       {/* track info */}
@@ -102,14 +132,29 @@ export default function PlayerTab() {
             </span>
           </div>
         )}
-        {source === 'radio' && currentTrack?.url && (
-          <button
-            onClick={() => handleToggleFavRadio({ name: trackName, url: currentTrack.url, favicon: albumImage || '', country: '', tags: '' })}
-            aria-label={isCurrentFav ? 'Remove from favourites' : 'Add to favourites'}
-            className="mt-1.5 w-11 h-11 inline-flex items-center justify-center rounded-full active:scale-90 transition-all cursor-pointer"
-            style={{ color: isCurrentFav ? C.error : C.outline }}>
-            <Heart className={`h-5 w-5 ${isCurrentFav ? 'fill-current' : ''}`} />
-          </button>
+        {trackName && trackName !== 'Nothing playing' && (
+          <div className="mt-2 flex items-center justify-center gap-3">
+            <button
+              onClick={() => {
+                if (source === 'radio') {
+                  handleToggleFavRadio({ name: trackName, url: currentTrack?.url, favicon: albumImage || '', country: '', tags: '' });
+                } else {
+                  handleToggleFavorite({ source, uri: trackUri, title: trackName, artist: trackArtist, album: albumName, cover: albumImage });
+                }
+              }}
+              aria-label={isFav ? 'Remove from favourites' : 'Add to favourites'}
+              className="w-10 h-10 inline-flex items-center justify-center rounded-full active:scale-90 transition-all cursor-pointer"
+              style={{ color: isFav ? C.error : C.text4 }}>
+              <Heart className={`h-5 w-5 ${isFav ? 'fill-current' : ''}`} />
+            </button>
+            {canLyrics && (
+              <button onClick={() => setShowLyrics(true)}
+                className="w-10 h-10 inline-flex items-center justify-center rounded-full active:scale-90 transition-all cursor-pointer"
+                style={{ color: C.text4 }}>
+                <Mic2 className="h-5 w-5" />
+              </button>
+            )}
+          </div>
         )}
       </div>
 
@@ -233,7 +278,7 @@ export default function PlayerTab() {
       </div>
 
       {/* queue button */}
-      {spotify && token && (
+      {(spotify ? !!token : source !== 'radio') && (
         <div className="flex justify-center mt-5">
           <button onClick={() => setQueueOpen(true)}
             className="flex items-center gap-2 px-4 py-2 rounded-full active:scale-95 transition-all cursor-pointer"
@@ -243,6 +288,16 @@ export default function PlayerTab() {
               style={{ color: C.text3, fontFamily: C.fontLabel }}>Up Next</span>
           </button>
         </div>
+      )}
+
+      {showInfo && (
+        <AlbumInfoSheet artist={trackArtist} album={albumName} albumImage={albumImage}
+          onClose={() => setShowInfo(false)} />
+      )}
+      {showLyrics && (
+        <LyricsSheet title={trackName} artist={trackArtist} album={albumName}
+          duration={trackDuration} position={trackPosition}
+          onClose={() => setShowLyrics(false)} />
       )}
     </div>
   );

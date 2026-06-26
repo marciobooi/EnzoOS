@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useContext, useRef } from 'react';
 import {
   Search, X, ChevronLeft, ChevronRight, RefreshCw,
-  User, Disc2, Music, Library, Play, Loader,
+  User, Disc2, Music, Library, Play, Loader, Clock, Heart, Trash2, Tag,
 } from 'lucide-react';
 import { Tk, SpotifyIcon } from './shared';
 import { api } from '../../api';
+import { toast } from '../../lib/toast';
 import SkeletonList from '../ui/SkeletonList';
 
 const GENRES = [
@@ -20,6 +21,8 @@ const RECENT_KEY = 'resonance_recent_searches';
 const loadRecent = () => { try { return JSON.parse(localStorage.getItem(RECENT_KEY) || '[]'); } catch { return []; } };
 const saveRecent = arr => localStorage.setItem(RECENT_KEY, JSON.stringify(arr));
 
+const SOURCE_COLORS = { spotify: '#1ed760', local: '#f59e0b', radio: '#3b82f6', tidal: '#0078ff', qobuz: '#a855f7' };
+
 export default function LibraryTab() {
   const {
     C, card, cardWhite, btn,
@@ -29,8 +32,10 @@ export default function LibraryTab() {
     fetchLibraryArtists, fetchLibraryAlbums, fetchLibraryTracks,
     setSelectedArtist, setLibraryView, setSelectedAlbum,
     handlePlayTrack, handlePlayContext,
+    favorites, handleToggleFavorite,
   } = useContext(Tk);
 
+  const [libTab, setLibTab]         = useState('library'); // 'library' | 'history' | 'favorites'
   const [query, setQuery]           = useState('');
   const [results, setResults]       = useState(null);
   const [searching, setSearching]   = useState(false);
@@ -38,6 +43,16 @@ export default function LibraryTab() {
   const [pendingUri, setPendingUri] = useState(null);
   const debounceRef                 = useRef(null);
   const isDeep                      = libraryView !== 'artists';
+
+  const [history, setHistory]         = useState([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+
+  useEffect(() => {
+    if (libTab === 'history') {
+      setHistoryLoading(true);
+      api.getHistory(50).then(setHistory).catch(() => {}).finally(() => setHistoryLoading(false));
+    }
+  }, [libTab]);
 
   useEffect(() => {
     if (!query.trim()) { setResults(null); return; }
@@ -146,7 +161,7 @@ export default function LibraryTab() {
     <div className="flex flex-col pt-5 pb-2">
 
       {/* header */}
-      <div className="flex items-center gap-3 px-5 mb-4">
+      <div className="flex items-center gap-3 px-5 mb-3">
         <div className="flex-1 min-w-0">
           <p className="text-[11px] font-semibold uppercase tracking-widest mb-0.5"
             style={{ color: C.champagne, fontFamily: C.fontLabel }}>My Music</p>
@@ -158,6 +173,123 @@ export default function LibraryTab() {
           <RefreshCw className={`h-4 w-4 ${libraryLoading ? 'animate-spin' : ''}`} style={{ color: C.champagne }} />
         </button>
       </div>
+
+      {/* tab pills */}
+      <div className="flex gap-2 px-5 mb-4">
+        {[
+          { id: 'library', label: 'Library', Icon: Library },
+          { id: 'history', label: 'History', Icon: Clock },
+          { id: 'favorites', label: 'Favorites', Icon: Heart },
+        ].map(({ id, label, Icon }) => (
+          <button key={id} onClick={() => setLibTab(id)}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-semibold active:scale-95 transition-all cursor-pointer"
+            style={libTab === id
+              ? { background: C.champagne, color: '#1a1c1c', fontFamily: C.fontLabel }
+              : { background: C.containerLow, color: C.text3, border: `0.5px solid ${C.outline}`, fontFamily: C.fontLabel }}>
+            <Icon className="h-3 w-3" />{label}
+          </button>
+        ))}
+      </div>
+
+      {/* ── History view ── */}
+      {libTab === 'history' && (
+        <div className="px-4">
+          {historyLoading
+            ? <SkeletonList count={6} />
+            : history.length === 0
+              ? (
+                <div className="flex flex-col items-center gap-4 py-12 text-center">
+                  <Clock className="h-10 w-10" style={{ color: C.outline }} />
+                  <p className="text-[15px]" style={{ color: C.text4 }}>No history yet</p>
+                </div>
+              ) : (
+                <>
+                  <div className="flex justify-end mb-2">
+                    <button onClick={async () => { await api.clearHistory(); setHistory([]); toast.success('History cleared'); }}
+                      className="text-[11px] font-semibold active:opacity-60 cursor-pointer"
+                      style={{ color: C.text3, fontFamily: C.fontLabel }}>Clear all</button>
+                  </div>
+                  <div className="rounded-xl overflow-hidden" style={cardWhite}>
+                    {history.map((h, idx) => {
+                      const color = SOURCE_COLORS[h.source] || C.text4;
+                      return (
+                        <React.Fragment key={h.id}>
+                          {idx > 0 && <div className="ml-16" style={{ height: '0.5px', background: `linear-gradient(90deg, transparent 0%, ${C.outline} 15%, ${C.outline} 85%, transparent 100%)` }} />}
+                          <div className="flex items-center gap-3 px-4 py-3">
+                            {h.cover
+                              ? <img src={h.cover} alt="" className="w-10 h-10 rounded-lg object-cover shrink-0" />
+                              : (
+                                <span className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0"
+                                  style={{ background: C.containerLow, border: `0.5px solid ${C.outline}` }}>
+                                  <Music className="h-4 w-4" style={{ color: C.text4 }} />
+                                </span>
+                              )}
+                            <div className="flex-1 min-w-0">
+                              <p className="text-[13px] font-medium truncate" style={{ color: C.text1 }}>{h.title || 'Unknown'}</p>
+                              <p className="text-[11px] truncate" style={{ color: C.text3 }}>{h.artist || h.source}</p>
+                            </div>
+                            <span className="text-[10px] font-bold uppercase px-1.5 py-0.5 rounded shrink-0"
+                              style={{ background: color + '22', color }}>{h.source}</span>
+                          </div>
+                        </React.Fragment>
+                      );
+                    })}
+                  </div>
+                </>
+              )
+          }
+        </div>
+      )}
+
+      {/* ── Favorites view ── */}
+      {libTab === 'favorites' && (
+        <div className="px-4">
+          {!favorites || favorites.length === 0
+            ? (
+              <div className="flex flex-col items-center gap-4 py-12 text-center">
+                <Heart className="h-10 w-10" style={{ color: C.outline }} />
+                <p className="text-[15px]" style={{ color: C.text4 }}>No favorites yet</p>
+                <p className="text-[13px]" style={{ color: C.text3 }}>Tap ♥ on any track to save it here</p>
+              </div>
+            ) : (
+              <div className="rounded-xl overflow-hidden" style={cardWhite}>
+                {favorites.map((f, idx) => {
+                  const color = SOURCE_COLORS[f.source] || C.text4;
+                  return (
+                    <React.Fragment key={f.id}>
+                      {idx > 0 && <div className="ml-16" style={{ height: '0.5px', background: `linear-gradient(90deg, transparent 0%, ${C.outline} 15%, ${C.outline} 85%, transparent 100%)` }} />}
+                      <div className="flex items-center gap-3 px-4 py-3">
+                        {f.cover
+                          ? <img src={f.cover} alt="" className="w-10 h-10 rounded-lg object-cover shrink-0" />
+                          : (
+                            <span className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0"
+                              style={{ background: C.containerLow, border: `0.5px solid ${C.outline}` }}>
+                              <Music className="h-4 w-4" style={{ color: C.text4 }} />
+                            </span>
+                          )}
+                        <div className="flex-1 min-w-0">
+                          <p className="text-[13px] font-medium truncate" style={{ color: C.text1 }}>{f.title || 'Unknown'}</p>
+                          <p className="text-[11px] truncate" style={{ color: C.text3 }}>{f.artist}</p>
+                        </div>
+                        <span className="text-[10px] font-bold uppercase px-1.5 py-0.5 rounded mr-1 shrink-0"
+                          style={{ background: color + '22', color }}>{f.source}</span>
+                        <button onClick={() => handleToggleFavorite({ source: f.source, uri: f.uri, title: f.title, artist: f.artist, cover: f.cover })}
+                          className="w-8 h-8 flex items-center justify-center rounded-full active:scale-90 shrink-0"
+                          style={{ color: '#f59e0b' }}>
+                          <Heart className="h-4 w-4 fill-current" />
+                        </button>
+                      </div>
+                    </React.Fragment>
+                  );
+                })}
+              </div>
+            )
+          }
+        </div>
+      )}
+
+      {/* ── Library tab content ── */}
+      {libTab === 'library' && (<>
 
       {/* ── Spotify search bar ── */}
       {spotify && token && (
@@ -389,6 +521,7 @@ export default function LibraryTab() {
           </div>
         </>
       )}
+      </>)}
     </div>
   );
 }
