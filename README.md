@@ -62,6 +62,27 @@ Resonance HiFi is an open-source, self-hosted audio streaming platform for Raspb
 - **System health monitor** — live CPU temperature, RAM, and Wi-Fi signal in the settings panel
 - **mDNS discovery** — accessible at `resonance.local` on the local network via Avahi
 
+### Library & History
+- **Play history** — last 50 tracks recorded automatically on every track change, persisted in SQLite `play_history` table; viewable from the Library tab with source badges and timestamps
+- **Unified favorites** — heart any track across all sources (local, Spotify, Tidal, Qobuz, radio); stored in SQLite `favorites` table; browsable from the Library tab
+- **Synchronized lyrics** — tap the mic icon to open a bottom sheet with word-synced LRC lyrics fetched from [LRCLIB](https://lrclib.net); auto-scrolls to the current line based on playback position; falls back to plain text when synced lyrics are unavailable
+
+### Playback Controls
+- **Queue editing** — view the current MPD queue and delete individual tracks without stopping playback
+- **Streaming quality badge** — live format label (e.g. `FLAC 24-bit / 96 kHz`, `AAC 320`, `ALAC`) derived from MPD format and CamillaDSP capture rate; shown beneath the track title in the player
+
+### DSP & Signal Processing
+- **ReplayGain** — set MPD ReplayGain mode (off / track / album / auto) from Settings; gain applied per-track to normalise loudness across sources
+- **L/R channel balance** — stereo balance slider in Settings; adjusts left and right channel gain offset in real time via CamillaDSP without touching the master volume
+- **Phase inversion** — per-channel phase inversion toggle in Settings; applies a `Gain` filter with `inverted: true` in CamillaDSP for correcting out-of-phase speaker wiring
+- **Crossfade** — configurable crossfade duration (0–10 s) between MPD tracks, set from Settings
+
+### System & Connectivity
+- **Wi-Fi from the UI** — scan for nearby networks, connect with a password, and view signal strength; all via `nmcli` from the Settings panel (requires `network-manager`)
+- **Storage stats** — live disk usage (used / total / free) for the Pi's SD card, shown in Settings
+- **Settings backup / restore** — export all settings to a JSON file and restore them later; covers EQ bands, calibration profile, volume, theme, and all preferences
+- **Factory reset from UI** — wipe all stored settings and favourites from the Settings panel with a single tap; server resets to defaults and broadcasts a state refresh
+
 ### Security
 - **AirPlay — LAN only** — discovery via mDNS/Bonjour (multicast) does not route through NAT; external devices cannot discover or connect
 - **UPnP/DLNA — LAN only** — SSDP discovery is multicast and LAN-bound by protocol; invisible outside the local subnet
@@ -294,10 +315,13 @@ On every startup, `detectDac()` scans `/proc/asound/card*/stream*` and returns:
 
 `server/resonance.db` persists:
 
-- User settings (theme, EQ bands, volume, active source, pure direct mode)
-- Favourite radio stations
-- Acoustic calibration profile
-- Remote access settings
+| Table | Contents |
+|-------|----------|
+| `settings` | Key-value store: theme, EQ bands, volume, active source, pure direct, replaygain, crossfade, balance, phase, remote access credentials, calibration profile |
+| `favorite_radios` | Radio stations saved from the radio scanner (name, URL, favicon, country, tags) |
+| `metadata_cache` | Cached API responses (album art, track info) keyed by artist+title |
+| `play_history` | Last 50 played tracks across all sources (source, title, artist, album, file path, cover URL, timestamp) |
+| `favorites` | Heart-saved tracks across all sources (source, URI, title, artist, album, cover, timestamp) |
 
 ---
 
@@ -320,6 +344,24 @@ On every startup, `detectDac()` scans `/proc/asound/card*/stream*` and returns:
 | `POST` | `/api/player/airplay/start` | Start shairport-sync |
 | `POST` | `/api/player/upnp/start` | Start upmpdcli |
 | `POST` | `/api/player/bluetooth/start` | Start BlueALSA |
+| `GET` | `/api/player/queue/detailed` | Current MPD queue with full track metadata |
+| `DELETE` | `/api/player/queue/:pos` | Remove a single track from the queue by position |
+| `POST` | `/api/player/replaygain` | Set MPD ReplayGain mode `{ mode: "off"|"track"|"album"|"auto" }` |
+| `POST` | `/api/player/crossfade` | Set MPD crossfade duration `{ seconds: 0–10 }` |
+| `POST` | `/api/player/balance` | Set L/R balance via CamillaDSP gain `{ balance: -1.0–1.0 }` |
+| `POST` | `/api/player/phase` | Set per-channel phase inversion `{ left: bool, right: bool }` |
+| `GET` | `/api/player/lyrics` | Fetch synced LRC lyrics from LRCLIB `?title=&artist=&album=&duration=` |
+
+### Library & History
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/api/history` | Play history (last 50 entries) |
+| `DELETE` | `/api/history` | Clear entire play history |
+| `GET` | `/api/favorites` | All saved favorites across sources |
+| `POST` | `/api/favorites` | Add a track to favorites `{ source, uri, title, artist, album, cover }` |
+| `DELETE` | `/api/favorites/:id` | Remove a favorite by database ID |
+| `DELETE` | `/api/favorites/uri` | Remove a favorite by source+uri `{ source, uri }` |
 
 ### System
 
@@ -327,6 +369,12 @@ On every startup, `detectDac()` scans `/proc/asound/card*/stream*` and returns:
 |--------|----------|-------------|
 | `GET` | `/api/status` | Full system snapshot — source, playback, EQ, theme, volume |
 | `GET` | `/api/system/health` | CPU temp, RAM, Wi-Fi signal |
+| `GET` | `/api/system/storage` | Disk usage stats for the SD card (used, total, free) |
+| `GET` | `/api/system/wifi` | Scan nearby Wi-Fi networks (requires network-manager) |
+| `POST` | `/api/system/wifi/connect` | Connect to a Wi-Fi network `{ ssid, password }` |
+| `GET` | `/api/system/backup` | Download all settings as a JSON backup file |
+| `POST` | `/api/system/restore` | Restore settings from a previously exported JSON backup |
+| `POST` | `/api/system/factory-reset` | Wipe all settings and favourites, reset to defaults |
 | `POST` | `/api/system/reboot` | Reboot the Pi |
 | `POST` | `/api/update` | Trigger OTA update |
 
@@ -376,8 +424,16 @@ https://resonance.local:5001/remote
 | Parametric EQ | Tap the VU meter display |
 | Audio processing mode | Settings → **Acoustic** → Calibration Wizard → first screen |
 | Pure Direct | Calibration Wizard → **Pure Direct** option |
+| ReplayGain | Settings → **Playback** → ReplayGain mode |
+| Crossfade | Settings → **Playback** → Crossfade duration (0–10 s) |
+| L/R Balance | Settings → **DSP** → Balance slider |
+| Phase Inversion | Settings → **DSP** → Phase L / Phase R toggles |
 | Theme | Settings → **Theme** card |
 | Remote access | Settings → **Remote** card |
+| Wi-Fi | Settings → **Wi-Fi** → scan and connect |
+| Storage | Settings → **Storage** → disk usage display |
+| Backup / Restore | Settings → **Backup** → export or import JSON |
+| Factory Reset | Settings → **Danger Zone** → Factory Reset |
 | OTA update | Settings → **Update** card |
 
 ### Spotify credentials
@@ -485,7 +541,7 @@ HTTPS_PORT=5001
 | `server/player.js` | CamillaDSP config gen, DAC detection, signal-path API, volume, MPD/radio routes |
 | `server/websocket.js` | WebSocket hub, VU meter monitor, standby management |
 | `server/event-service.js` | Central event bus, state cache, serial queue, safe startup sequence |
-| `server/db.js` | SQLite helpers (settings, favourites) |
+| `server/db.js` | SQLite helpers — settings, favourite radios, metadata cache, play history, unified favorites |
 | `server/index.js` | Express entry point, Spotify OAuth, HTTPS setup |
 | `server/status.js` | Full status snapshot endpoint |
 | `scripts/kiosk-power.sh` | Display standby: `vcgencmd` on Pi, `xset dpms` on QEMU |

@@ -166,7 +166,8 @@ apt_install install -y \
   sqlite3 \
   libsqlite3-dev \
   xinput \
-  evtest
+  evtest \
+  network-manager
 
 # Enable ALSA Loopback kernel module immediately and on boot.
 # CamillaDSP (ALSA-only build) still captures from this loopback via dsnoop.
