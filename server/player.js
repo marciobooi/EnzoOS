@@ -1211,6 +1211,31 @@ router.get('/library/tracks', async (req, res) => {
   }
 });
 
+// GET /api/player/library/search?q=<query>&limit=<n>
+// Full-text search across the MPD library (title, artist, album, any).
+router.get('/library/search', async (req, res) => {
+  const q = (req.query.q || '').toString().trim();
+  const limit = Math.min(parseInt(req.query.limit, 10) || 12, 50);
+  if (!q || q.length > 500) return res.json({ tracks: [] });
+  try {
+    const { stdout } = await execFilePromise('mpc', [
+      '-f', '%title%||%artist%||%album%||%file%',
+      'search', 'any', q,
+    ]);
+    const tracks = stdout.split('\n')
+      .map(s => s.trim()).filter(Boolean)
+      .slice(0, limit)
+      .map(line => {
+        const [title, artist, album, file] = line.split('||');
+        return { title: title || '', artist: artist || '', album: album || '', file: file || '' };
+      })
+      .filter(t => t.file);
+    res.json({ tracks });
+  } catch {
+    res.json({ tracks: [] });
+  }
+});
+
 // GET /api/player/queue
 router.get('/queue', async (req, res) => {
   try {

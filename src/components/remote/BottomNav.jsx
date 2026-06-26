@@ -1,29 +1,21 @@
 import React, { useContext } from 'react';
-import { Music, Library, Layers, Radio, Sliders, Search } from 'lucide-react';
+import { Music, Library, Layers, Sliders, Search } from 'lucide-react';
 import { Tk } from './shared';
 
 const BASE_TABS = [
   { id: 'player',   Icon: Music,    label: 'Player'   },
   { id: 'library',  Icon: Library,  label: 'Library'  },
   { id: 'source',   Icon: Layers,   label: 'Source'   },
-  { id: 'radio',    Icon: Radio,    label: 'Radio'    },
+  { id: 'radio',    Icon: Search,   label: 'Search'   },
   { id: 'settings', Icon: Sliders,  label: 'Settings' },
 ];
 
 const N = BASE_TABS.length;
 
 export default function BottomNav({ navH }) {
-  const { C, activeTab, setActiveTab, darkMode, source } = useContext(Tk);
+  const { C, activeTab, setActiveTab, darkMode } = useContext(Tk);
 
-  const TABS = BASE_TABS.map(t =>
-    t.id === 'radio'
-      ? source === 'radio'
-        ? t
-        : { ...t, Icon: Search, label: 'Search' }
-      : t
-  );
-
-  const activeIdx = TABS.findIndex(t => t.id === activeTab);
+  const activeIdx = BASE_TABS.findIndex(t => t.id === activeTab);
 
   return (
     <div className="relative shrink-0 z-10" style={{ height: navH, paddingBottom: 'env(safe-area-inset-bottom)' }}>
@@ -48,7 +40,7 @@ export default function BottomNav({ navH }) {
       />
 
       <div className="relative flex items-start justify-around pt-3 px-1">
-        {TABS.map(({ id, Icon, label }) => {
+        {BASE_TABS.map(({ id, Icon, label }) => {
           const active = activeTab === id;
           return (
             <button key={id} onClick={() => setActiveTab(id)}

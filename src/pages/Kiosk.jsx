@@ -13,7 +13,7 @@ import StandbyOverlay from '../components/kiosk/StandbyOverlay';
 import EqualizerOverlay from '../components/kiosk/EqualizerOverlay';
 import AlbumInfoOverlay from '../components/kiosk/AlbumInfoOverlay';
 import SettingsMenuOverlay from '../components/kiosk/SettingsMenuOverlay';
-import SearchOverlay from '../components/kiosk/SearchOverlay';
+import UniversalSearchOverlay from '../components/kiosk/UniversalSearchOverlay';
 import ThemeSettingsOverlay from '../components/kiosk/ThemeSettingsOverlay';
 import RemoteAccessOverlay from '../components/kiosk/RemoteAccessOverlay';
 import DspWizardOverlay from '../components/kiosk/DspWizardOverlay';
@@ -1357,7 +1357,7 @@ export default function Kiosk() {
         <EqualizerOverlay />
         <AlbumInfoOverlay />
         <SettingsMenuOverlay />
-        {isSearchOpen && <SearchOverlay />}
+        {isSearchOpen && <UniversalSearchOverlay />}
         <ThemeSettingsOverlay />
         <RemoteAccessOverlay />
         {isDspWizardOpen && <DspWizardOverlay />}

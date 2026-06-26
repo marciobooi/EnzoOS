@@ -554,6 +554,13 @@ export const api = {
     return r.json();
   },
 
+  async searchLibrary(q, limit = 12) {
+    const r = await fetch(`/api/player/library/search?q=${encodeURIComponent(q)}&limit=${limit}`);
+    if (!r.ok) return [];
+    const d = await r.json();
+    return d.tracks || [];
+  },
+
   async getQueue() {
     const r = await fetch('/api/player/queue');
     return r.json();
