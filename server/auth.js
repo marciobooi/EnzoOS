@@ -6,18 +6,16 @@ import { getSetting, setSetting } from './db.js';
 // The kiosk runs in a browser ON the Pi (http://localhost:5000) so every kiosk
 // request and WebSocket arrives over the loopback interface. Those are trusted
 // implicitly. Everything that reaches the box over the LAN (the phone remote on
-// HTTP/HTTPS) must present a signed bearer token obtained from /api/auth/login.
+// HTTP/HTTPS) must present a signed bearer token.
 //
-// This closes the holes where any LAN device could:
-//   • open /ws and immediately receive the Spotify access token, and
-//   • POST to /api/player or /api/system to control / reboot / shut down the Pi.
-//
-// Tokens are HMAC-signed with a per-install secret kept in the DB, so they
-// survive restarts and cannot be forged without the secret.
+// Authentication is QR-code-only: no username/password. The kiosk generates a
+// short-lived (10 min) single-use token and bakes it into the remote URL as
+// ?qr=<token>. The remote page redeems it for a long-lived (1 year) bearer token
+// stored in a cookie. Tokens are HMAC-signed with a per-install secret kept in
+// the DB, so they survive restarts and cannot be forged without the secret.
 
-const DEFAULT_USERNAME = 'enzo';
-const DEFAULT_PASSWORD = 'enzoOS';
-const TOKEN_TTL_MS = 365 * 24 * 60 * 60 * 1000; // 1 year — appliance on a home LAN
+const TOKEN_TTL_MS    = 180 * 24 * 60 * 60 * 1000; // 6 months bearer
+const QR_TTL_MS       = 10 * 60 * 1000;             // 10 min QR token
 
 let cachedSecret = null;
 
@@ -33,14 +31,6 @@ async function getAuthSecret() {
   return secret;
 }
 
-async function getCredentials() {
-  const [u, p] = await Promise.all([
-    getSetting('remote_username').catch(() => null),
-    getSetting('remote_password').catch(() => null),
-  ]);
-  return { username: u || DEFAULT_USERNAME, password: p || DEFAULT_PASSWORD };
-}
-
 function b64url(buf) {
   return Buffer.from(buf).toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 }
@@ -48,15 +38,6 @@ function b64url(buf) {
 function sign(payloadB64, secret) {
   return crypto.createHmac('sha256', secret).update(payloadB64).digest('base64')
     .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-}
-
-/** Validate username/password and return a signed token, or null on failure. */
-export async function login(username, password) {
-  const creds = await getCredentials();
-  const userMatch = String(username ?? '') === creds.username;
-  const passMatch = String(password ?? '') === creds.password;
-  if (!userMatch || !passMatch) return null;
-  return issueToken();
 }
 
 export async function issueToken() {
@@ -71,7 +52,6 @@ export async function verifyToken(token) {
   if (!payloadB64 || !sig) return false;
   const secret = await getAuthSecret();
   const expected = sign(payloadB64, secret);
-  // timingSafeEqual requires equal lengths
   if (sig.length !== expected.length) return false;
   if (!crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(expected))) return false;
   try {
@@ -121,4 +101,40 @@ export async function isWsAuthorized(request) {
     token = new URLSearchParams(q).get('token');
   }
   return verifyToken(token);
+}
+
+// ─── QR token store ────────────────────────────────────────────────────────────
+// In-memory map: token → expiresAt (ms). Single-use; auto-pruned every minute.
+
+const qrTokens = new Map();
+
+setInterval(() => {
+  const now = Date.now();
+  for (const [t, exp] of qrTokens) if (exp <= now) qrTokens.delete(t);
+}, 60_000);
+
+/**
+ * Generate a short-lived single-use QR token.
+ * Returns { token, expiresAt, ttlSeconds } — caller appends token to the remote URL.
+ */
+export function generateQrToken() {
+  const token = crypto.randomBytes(24).toString('hex');
+  const expiresAt = Date.now() + QR_TTL_MS;
+  qrTokens.set(token, expiresAt);
+  return { token, expiresAt, ttlSeconds: QR_TTL_MS / 1000 };
+}
+
+/**
+ * Redeem a QR token for a long-lived bearer token (one-time use).
+ * Returns a signed bearer string on success, null if invalid/expired.
+ */
+export async function redeemQrToken(qrToken) {
+  if (!qrToken || typeof qrToken !== 'string') return null;
+  const exp = qrTokens.get(qrToken);
+  if (!exp || Date.now() > exp) {
+    qrTokens.delete(qrToken);
+    return null;
+  }
+  qrTokens.delete(qrToken); // one-time use
+  return issueToken();
 }

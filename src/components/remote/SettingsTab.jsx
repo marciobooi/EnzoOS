@@ -253,11 +253,11 @@ export default function SettingsTab() {
           onPress={withConfirm('shutdown', handleShutdown)} />
       </Section>
 
-      {/* account */}
+      {/* session */}
       <Section>
-        <Row label={confirmPending === 'signout' ? 'Tap again to sign out' : 'Sign Out'} destructive chevron={false}
+        <Row label={confirmPending === 'signout' ? 'Tap again to disconnect' : 'Disconnect'} destructive chevron={false}
           icon={<LogOut className="h-4 w-4" style={{ color: C.error }} />}
-          onPress={withConfirm('signout', () => { eraseCookie('remote_token'); eraseCookie('remote_auth'); setIsAuthenticated(false); setActiveTab('player'); })} />
+          onPress={withConfirm('signout', () => { eraseCookie('remote_token'); setIsAuthenticated(false); setActiveTab('player'); })} />
       </Section>
     </div>
   );

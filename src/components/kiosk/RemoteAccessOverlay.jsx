@@ -1,6 +1,6 @@
-import { useContext } from 'react';
+import { useContext, useEffect, useState } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
-import { Smartphone, Check } from 'lucide-react';
+import { Smartphone, Check, Clock } from 'lucide-react';
 import { Kk } from './KioskContext';
 import { S, cardShadow } from '../../styles/stone';
 
@@ -14,10 +14,51 @@ export default function RemoteAccessOverlay() {
     sendUpdate,
   } = useContext(Kk);
 
+  const [qrUrl, setQrUrl] = useState('');
+  const [expiresAt, setExpiresAt] = useState(0);
+  const [secondsLeft, setSecondsLeft] = useState(0);
+
+  // Fetch a fresh QR token whenever the overlay opens (or remoteUrl first lands).
+  useEffect(() => {
+    if (!isRemoteAccessOpen || !remoteUrl) return;
+    let alive = true;
+    let refreshTimeout = null;
+
+    const doFetch = async () => {
+      try {
+        const r = await fetch('/api/auth/qr-token');
+        const d = await r.json();
+        if (!alive || !d.token) return;
+        const sep = remoteUrl.includes('?') ? '&' : '?';
+        setQrUrl(`${remoteUrl}${sep}qr=${d.token}`);
+        setExpiresAt(d.expiresAt);
+        setSecondsLeft(Math.floor(d.ttlSeconds));
+        // Refresh 30 s before expiry so the QR is always valid while visible.
+        refreshTimeout = setTimeout(doFetch, Math.max(0, d.ttlSeconds - 30) * 1000);
+      } catch {}
+    };
+
+    doFetch();
+    return () => { alive = false; clearTimeout(refreshTimeout); };
+  }, [isRemoteAccessOpen, remoteUrl]);
+
+  // Countdown ticker
+  useEffect(() => {
+    if (!expiresAt) return;
+    const id = setInterval(() => {
+      setSecondsLeft(Math.max(0, Math.floor((expiresAt - Date.now()) / 1000)));
+    }, 1000);
+    return () => clearInterval(id);
+  }, [expiresAt]);
+
+  const fmtTTL = (s) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+
   const toggle = (enabled) => {
     setRemoteAccessEnabled(enabled);
     sendUpdate('SET_REMOTE_ACCESS', { enabled });
   };
+
+  const qrValue = qrUrl || remoteUrl || 'http://resonance.local';
 
   return (
     <div
@@ -103,7 +144,7 @@ export default function RemoteAccessOverlay() {
               opacity: remoteAccessEnabled ? 1 : 0.25,
             }}>
             <QRCodeSVG
-              value={remoteUrl || 'http://resonance.local'}
+              value={qrValue}
               size={130}
               fgColor="#1a1918"
               bgColor="transparent"
@@ -111,6 +152,15 @@ export default function RemoteAccessOverlay() {
               style={{ maxWidth: '100%', height: 'auto' }}
             />
           </div>
+          {/* Countdown badge */}
+          {secondsLeft > 0 && remoteAccessEnabled && (
+            <div className="flex items-center gap-1 shrink-0">
+              <Clock className="w-3 h-3" style={{ color: S.label }} />
+              <span className="text-[11px] font-light tabular-nums" style={{ color: S.label }}>
+                {fmtTTL(secondsLeft)}
+              </span>
+            </div>
+          )}
         </div>
 
         {/* Col 3 — URL + instructions */}
@@ -132,8 +182,9 @@ export default function RemoteAccessOverlay() {
             </p>
             {[
               'Point your phone camera at the QR code',
-              'Open the link in your mobile browser',
+              'The link opens and connects automatically',
               'Both devices must be on the same Wi-Fi',
+              'QR refreshes every 10 minutes — scan anytime',
             ].map((step, i) => (
               <div key={i} className="flex items-center gap-3 p-2.5 rounded-xl shrink-0"
                 style={{ background: S.surfaceLo, border: `1px solid ${S.border}` }}>

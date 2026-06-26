@@ -70,7 +70,7 @@ Resonance HiFi is an open-source, self-hosted audio streaming platform for Raspb
 - **UPnP/DLNA — LAN only** — SSDP discovery is multicast and LAN-bound by protocol; invisible outside the local subnet
 - **Bluetooth — confirmation pairing** — `bt-agent` uses `DisplayYesNo` capability; connecting device shows a 6-digit code the user must confirm. Silent auto-accept (`NoInputNoOutput`) is disabled
 - **On-demand activation** — AirPlay, UPnP, and Bluetooth services are stopped at boot and only started when the user explicitly activates them from the kiosk menu
-- **Remote web interface** — HTTPS with username/password login; self-signed certificate; accessible only on the local network
+- **Remote web interface** — HTTPS with QR-code token authentication (no username/password); self-signed certificate; accessible only on the local network. Each QR code is single-use and expires in 10 minutes; redeemed sessions last 6 months
 
 ---
 
@@ -455,15 +455,12 @@ Pure Direct path:  Source → PipeWire → CamillaDSP (mixer + SetVolume) → DA
 ### Connecting from a phone or tablet
 
 1. On the kiosk, tap the settings button to open the Source Menu
-2. Tap the **Remote** card — a QR code and URL are displayed
-3. Scan the QR code or navigate to:
+2. Tap the **Remote** card — a QR code is displayed with a 10-minute access token baked in
+3. Point your phone camera at the QR code — it opens the remote URL automatically
+4. Accept the self-signed certificate warning once (only the first time per browser)
+5. You're in — no username or password needed
 
-```
-https://resonance.local:5001/remote
-```
-
-4. Accept the self-signed certificate warning (one-time, per browser)
-5. Log in with username `enzo` / password `enzoOS`
+The QR code refreshes automatically every 9.5 minutes so it's always ready to scan. Each code is single-use; once redeemed it issues a 6-month session token stored in your browser. Use **Settings → Disconnect** on the remote to revoke your session.
 
 ### Install as an app (PWA)
 

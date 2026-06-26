@@ -89,8 +89,7 @@ export default function RemoteControl() {
 
   // ── auth ──────────────────────────────────────────────────────────────────
   const [isAuthenticated, setIsAuthenticated] = useState(!!getCookie('remote_token'));
-  const [usernameInput, setUsernameInput]     = useState('');
-  const [passwordInput, setPasswordInput]     = useState('');
+  const [qrRedeemError, setQrRedeemError]     = useState('');
 
   // ── nav ───────────────────────────────────────────────────────────────────
   const [activeTab, setActiveTab] = useState('player');
@@ -262,12 +261,33 @@ export default function RemoteControl() {
   }, [token, isAuthenticated, spotify]);
   // Allow the Spotify device to be re-pinned to unity next time it becomes active.
   useEffect(() => { if (!spotify) spotifyVolPinned.current = false; }, [spotify]);
-  // Validate the stored token on mount — an expired/invalid one forces re-login.
+  // On mount: redeem a ?qr= token from the URL, or validate an existing cookie.
   useEffect(() => {
-    if (!isAuthenticated) return;
-    fetch('/api/auth/check').then(r => {
-      if (r.status === 401) { eraseCookie('remote_token'); setIsAuthenticated(false); }
-    }).catch(() => {});
+    const params = new URLSearchParams(window.location.search);
+    const qrToken = params.get('qr');
+    if (qrToken) {
+      // Remove the token from the URL immediately to avoid sharing/reuse.
+      const clean = new URL(window.location.href);
+      clean.searchParams.delete('qr');
+      window.history.replaceState({}, '', clean.toString());
+      fetch('/api/auth/qr-redeem', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token: qrToken }),
+      }).then(async r => {
+        const d = await r.json().catch(() => ({}));
+        if (r.ok && d.token) {
+          setCookie('remote_token', d.token, 365);
+          setIsAuthenticated(true);
+        } else {
+          setQrRedeemError(d.error || 'QR code expired — scan a fresh one from the kiosk.');
+        }
+      }).catch(() => setQrRedeemError('Could not reach the server.'));
+    } else if (isAuthenticated) {
+      fetch('/api/auth/check').then(r => {
+        if (r.status === 401) { eraseCookie('remote_token'); setIsAuthenticated(false); }
+      }).catch(() => {});
+    }
   }, []);
   useEffect(() => {
     if (activeTab === 'library' && libraryItems.length === 0 && libraryView === 'artists') fetchLibraryArtists();
@@ -410,25 +430,6 @@ export default function RemoteControl() {
   };
   const handlePlayTrack   = async uri => { try { await api.play(token, activeDevice?.id || resonanceDevice?.id || null, null, [uri]); setActiveTab('player'); setTimeout(() => { localSync(); requestWSStateSync(); }, 800); } catch (e) { toast.error(e.message); } };
   const handlePlayContext = async uri => { try { await api.play(token, activeDevice?.id || resonanceDevice?.id || null, uri); setActiveTab('player'); setTimeout(() => { localSync(); requestWSStateSync(); }, 800); } catch (e) { toast.error(e.message); } };
-  const handleLoginSubmit = async e => {
-    e.preventDefault();
-    try {
-      const r = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username: usernameInput, password: passwordInput }),
-      });
-      const d = await r.json().catch(() => ({}));
-      if (r.ok && d.token) {
-        setCookie('remote_token', d.token, 365);
-        setIsAuthenticated(true);
-      } else {
-        toast.error(d.error || 'Invalid credentials');
-      }
-    } catch {
-      toast.error('Could not reach the server');
-    }
-  };
   const handleDeactivateDsp = async () => { try { const c = await api.getDspCalibration() || {}; c[0] = 'eq'; await api.saveDspCalibration(c); setDspActive(false); } catch {} };
 
   // ── context value ─────────────────────────────────────────────────────────
@@ -508,38 +509,43 @@ export default function RemoteControl() {
   );
 
   // ══════════════════════════════════════════════════════════════════════════
-  // LOGIN
+  // SCAN QR — shown when no valid session exists
   // ══════════════════════════════════════════════════════════════════════════
   if (!isAuthenticated) return (
-    <>
-      <div style={{ ...rcVars, fontFamily: C.font, background: C.bg }} className="remote-root fixed inset-0 flex flex-col items-center justify-center px-6 touch-manipulation select-none overflow-hidden">
-        <div className="absolute top-[-80px] left-1/2 -translate-x-1/2 w-[320px] h-[320px] rounded-full pointer-events-none"
-          style={{ background: `radial-gradient(ellipse, ${C.champagne} 0%, transparent 70%)`, opacity: darkMode ? 0.06 : 0.11 }} />
-        <div className="w-full max-w-xs z-10 flex flex-col gap-8">
-          <div className="flex flex-col items-center gap-4">
-            <div className="w-16 h-16 rounded-3xl flex items-center justify-center" style={card}>
-              <Waves className="h-7 w-7" style={{ color: C.champagne }} />
-            </div>
-            <div className="text-center">
-              <p className="text-[30px] font-medium" style={{ color: C.text1, letterSpacing: '-0.02em' }}>Resonance</p>
-              <p className="text-[11px] uppercase tracking-widest font-semibold mt-1" style={{ color: C.text3, fontFamily: C.fontLabel }}>Remote Control</p>
-            </div>
+    <div style={{ ...rcVars, fontFamily: C.font, background: C.bg }} className="remote-root fixed inset-0 flex flex-col items-center justify-center px-6 touch-manipulation select-none overflow-hidden">
+      <div className="absolute top-[-80px] left-1/2 -translate-x-1/2 w-[320px] h-[320px] rounded-full pointer-events-none"
+        style={{ background: `radial-gradient(ellipse, ${C.champagne} 0%, transparent 70%)`, opacity: darkMode ? 0.06 : 0.11 }} />
+      <div className="w-full max-w-xs z-10 flex flex-col items-center gap-8">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-20 h-20 rounded-3xl flex items-center justify-center" style={card}>
+            <Waves className="h-9 w-9" style={{ color: C.champagne }} />
           </div>
-          <form onSubmit={handleLoginSubmit} className="flex flex-col gap-3">
-            <input type="text" value={usernameInput} onChange={e => setUsernameInput(e.target.value)} placeholder="Username" required autoCapitalize="none"
-              className="w-full rounded-xl px-4 py-4 text-[16px] focus:outline-none"
-              style={{ ...card, color: C.text1, fontFamily: C.font }} />
-            <input type="password" value={passwordInput} onChange={e => setPasswordInput(e.target.value)} placeholder="Password" required
-              className="w-full rounded-xl px-4 py-4 text-[16px] focus:outline-none"
-              style={{ ...card, color: C.text1, fontFamily: C.font }} />
-            <button type="submit" className="w-full py-4 rounded-full text-[16px] font-semibold active:scale-95 transition-all cursor-pointer mt-1"
-              style={{ background: C.champagne, color: '#1a1c1c', fontFamily: C.font, letterSpacing: '-0.01em', boxShadow: `0 4px 24px ${C.champagne}50` }}>
-              Sign In
-            </button>
-          </form>
+          <div className="text-center">
+            <p className="text-[30px] font-medium" style={{ color: C.text1, letterSpacing: '-0.02em' }}>Resonance</p>
+            <p className="text-[11px] uppercase tracking-widest font-semibold mt-1" style={{ color: C.text3, fontFamily: C.fontLabel }}>Remote Control</p>
+          </div>
         </div>
+        <div className="w-full rounded-2xl p-6 flex flex-col items-center gap-4 text-center" style={{ background: C.containerLow, border: `0.5px solid ${C.outline}` }}>
+          <div className="w-14 h-14 rounded-2xl flex items-center justify-center" style={{ background: C.container, border: `0.5px solid ${C.outline}` }}>
+            <Smartphone className="h-7 w-7" style={{ color: C.champagne }} />
+          </div>
+          <div>
+            <p className="text-[17px] font-semibold mb-1" style={{ color: C.text1 }}>Scan QR to Connect</p>
+            <p className="text-[14px] leading-relaxed" style={{ color: C.text3 }}>
+              Open the Remote panel on your Hi-Fi system and point your camera at the QR code.
+            </p>
+          </div>
+          {qrRedeemError && (
+            <p className="text-[13px] px-3 py-2 rounded-xl w-full" style={{ color: C.error, background: `${C.error}15`, border: `0.5px solid ${C.error}40` }}>
+              {qrRedeemError}
+            </p>
+          )}
+        </div>
+        <p className="text-[12px] text-center" style={{ color: C.text3 }}>
+          No password needed — the QR code authenticates you automatically.
+        </p>
       </div>
-    </>
+    </div>
   );
 
   // ══════════════════════════════════════════════════════════════════════════
