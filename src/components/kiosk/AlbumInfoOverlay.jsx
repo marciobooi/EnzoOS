@@ -39,6 +39,7 @@ export default function AlbumInfoOverlay() {
   const error = ready ? res.error : false;
   const cover = d?.coverArt || d?.albumImage || albumInfoImage;
   const fmtNum = (n) => n ? Number(n).toLocaleString() : null;
+  const fmtDur = (s) => s ? `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}` : '';
 
   return (
     <div
@@ -128,7 +129,23 @@ export default function AlbumInfoOverlay() {
                     </div>
                   </div>
                 )}
-                {!d.biography && !d.review && (
+                {d.tracks?.length > 0 && (
+                  <div>
+                    <p className="text-[11px] font-light uppercase tracking-[0.2em] mb-1.5" style={{ color: S.label }}>
+                      Tracklist · {d.tracks.length}
+                    </p>
+                    <div className="space-y-0">
+                      {d.tracks.map((t, i) => (
+                        <div key={i} className="flex items-center gap-2 py-1" style={{ borderBottom: `0.5px solid ${S.border}` }}>
+                          <span className="text-[10px] w-4 text-right tabular-nums shrink-0" style={{ color: S.label }}>{i + 1}</span>
+                          <span className="flex-1 text-[12px] truncate" style={{ color: S.text }}>{t.name}</span>
+                          {t.duration ? <span className="text-[10px] tabular-nums shrink-0" style={{ color: S.label }}>{fmtDur(t.duration)}</span> : null}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {!d.biography && !d.review && !d.tracks?.length && (
                   <p className="text-sm font-light" style={{ color: S.muted }}>No extended editorial found for this album.</p>
                 )}
                 {d.sources?.length > 0 && (

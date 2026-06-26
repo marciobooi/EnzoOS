@@ -338,7 +338,9 @@ On every startup, `detectDac()` scans `/proc/asound/card*/stream*` and returns:
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| `GET` | `/api/metadata/album?artist=&album=` | Aggregated album/artist metadata (bio, review, credits, genres, similar). Cached; called on demand when the cover is tapped |
+| `GET` | `/api/metadata/album?artist=&album=` | Aggregated album/artist metadata (bio, review, tracklist, credits, artwork, band facts). SQLite-cached 30 days; called on demand when the cover is tapped |
+| `GET` | `/api/metadata/keys` | Current configured metadata keys (for the Settings form to pre-fill) |
+| `POST` | `/api/metadata/keys` | Save Last.fm / TheAudioDB / Discogs keys to the database `{ lastfm, theaudiodb, discogs }` |
 
 ---
 
@@ -350,19 +352,83 @@ royalty-free, community-driven sources into one object with `Promise.allSettled`
 (any source failing never breaks the response) and caches the result in SQLite
 so each album hits the network only once.
 
+### Sources
+
 | Source | Key required | Provides |
 |--------|--------------|----------|
-| **MusicBrainz** | none | Factual credits — label, catalog #, country, release date, track count, genres (strict 1 req/sec, handled by a serial queue) |
-| **Last.fm** | `LASTFM_API_KEY` (free) | Editorial — artist biography, tags, listeners, similar artists |
-| **TheAudioDB** | `THEAUDIODB_KEY` (defaults to free dev key `2`) | Biographies, album reviews, artwork |
+| **MusicBrainz** | none | Label, catalog #, country, release date, original date, album type (Album / EP / Live / Compilation), media format (CD / Vinyl / Digital), disc count, track count, genres — via `musicbrainz-api` (official client, handles 429/503 retries, serialised to honour the strict 1 req/sec policy) |
+| **Cover Art Archive** | none | High-res album front cover (keyed by MusicBrainz release ID) |
+| **Last.fm** | `LASTFM_API_KEY` (free) | Artist biography, album summary, tags, listener count, play count, on-tour status, similar artists, full **tracklist with durations** |
+| **TheAudioDB** | `THEAUDIODB_KEY` (defaults to free dev key `2`) | Artist biography & portrait, album review, album artwork, artist fanart / banner / logo, band origin, formed year, member count, official website, album score (/10), release format, style, mood |
 
-All keys are optional — with none set you still get MusicBrainz credits and
-TheAudioDB bios/reviews. Add `LASTFM_API_KEY` (free at
-<https://www.last.fm/api/account/create>) to fill in artist biographies and
-similar artists. Results are cached in the `metadata_cache` table for 30 days.
+### Fields returned (`GET /api/metadata/album`)
 
-> The remote shows a "Powered by …" attribution for whichever sources
-> contributed, as required by the Last.fm API terms.
+| Field | Type | Source |
+|-------|------|--------|
+| `title` | string | MusicBrainz |
+| `releaseDate` | string | MusicBrainz → TheAudioDB |
+| `originalDate` | string | MusicBrainz (first-ever release) |
+| `albumType` | string | MusicBrainz (`Album`, `EP`, `Live`, `Compilation`, …) |
+| `format` | string | MusicBrainz (`CD`, `12" Vinyl`, `Digital Media`, …) |
+| `label` | string | MusicBrainz → TheAudioDB |
+| `catalog` | string | MusicBrainz |
+| `country` | string | MusicBrainz |
+| `barcode` | string | MusicBrainz |
+| `discCount` | number | MusicBrainz |
+| `trackCount` | number | MusicBrainz |
+| `tracks` | `{name, duration}[]` | Last.fm (duration in seconds) |
+| `genres` | string[] | MusicBrainz → Last.fm tags → TheAudioDB |
+| `biography` | string | TheAudioDB → Last.fm |
+| `review` | string | TheAudioDB → Last.fm album summary |
+| `listeners` | number | Last.fm |
+| `playcount` | number | Last.fm |
+| `onTour` | boolean | Last.fm |
+| `similar` | string[] | Last.fm |
+| `rating` | number | TheAudioDB (/10) |
+| `coverArt` | URL | Cover Art Archive (high-res, 500 px) |
+| `albumImage` | URL | TheAudioDB album thumbnail |
+| `artistImage` | URL | TheAudioDB artist portrait |
+| `artistBanner` | URL | TheAudioDB artist banner |
+| `artistFanart` | URL | TheAudioDB artist fanart (hero background) |
+| `artistLogo` | URL | TheAudioDB transparent artist logo |
+| `origin` | string | TheAudioDB (country the band is from) |
+| `formedYear` | number | TheAudioDB |
+| `members` | number | TheAudioDB |
+| `website` | string | TheAudioDB |
+| `style` | string | TheAudioDB |
+| `mood` | string | TheAudioDB |
+| `mbid` | string | MusicBrainz release ID |
+| `sources` | string[] | Which providers contributed data |
+| `cached` | boolean | Whether the response came from SQLite cache |
+| `lastfmConfigured` | boolean | Whether a Last.fm key is active |
+
+### What each view shows
+
+| Panel | Kiosk overlay | Remote sheet |
+|-------|---------------|--------------|
+| Cover art | Cover Art Archive → TheAudioDB → local thumbnail | Same, with `SmartImg` fallback chain |
+| Album title, year, type | ✓ | ✓ |
+| Genres | Pill chips (up to 4) | Pill chips (all) |
+| Artist biography | ✓ | ✓ (with artist portrait, formed year, origin, member count, On Tour badge, website link) |
+| Album review | ✓ | ✓ |
+| Tracklist | ✓ (numbered, with duration) | ✓ (numbered, with duration) |
+| Similar artists | Chips | Chips |
+| Facts (label, country, tracks, …) | Credits column | 2-column facts grid |
+| Fanart hero | — | Full-width background with gradient fade |
+| Star rating | — | Inline badge |
+
+### Keys
+
+All keys are optional — with none set you still get MusicBrainz credits,
+Cover Art Archive covers, and TheAudioDB bios/reviews (free dev key `2`).
+
+Keys can be set in two ways:
+1. **`.env` file** — `LASTFM_API_KEY`, `THEAUDIODB_KEY`, `DISCOGS_TOKEN`
+2. **In-app** — remote Settings → **Album Info** → Metadata Keys (stored in SQLite, takes precedence over env; fields are masked with an eye-toggle)
+
+Results are cached in the `metadata_cache` SQLite table for **30 days**.
+
+> The "Powered by …" attribution in the panel is required by the Last.fm API terms.
 
 ---
 
