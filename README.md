@@ -676,6 +676,13 @@ HTTPS_PORT=5001
 # Album metadata (all optional — tap the now-playing cover)
 LASTFM_API_KEY=            # free key → artist bios, similar artists
 THEAUDIODB_KEY=2           # free dev key; set a Patreon key for production volume
+
+# Tidal device-flow client (hi-res). PUBLIC community "TV" credentials from the
+# open-source tidalapi project — not a private secret, but required by Tidal's
+# device flow (no PKCE option). Shipped in .env, overridable. Kept out of the
+# application source so no credential literal lives in server code.
+TIDAL_CLIENT_ID=zU4XHVVkc2tDPo4t
+TIDAL_CLIENT_SECRET=…       # public tidalapi TV-client secret (see .env.example)
 ```
 
 ### Key files

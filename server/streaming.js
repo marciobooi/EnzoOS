@@ -150,9 +150,20 @@ export async function qobuzTrackUrl(trackId, formatId = 27) {
 // ════════════════════════════════════════════════════════════════════════════
 const TIDAL_AUTH = 'https://auth.tidal.com/v1/oauth2';
 const TIDAL_API = 'https://api.tidal.com/v1';
-// Public TV client used by the community python tidalapi for the device flow.
-const TIDAL_CLIENT_ID = process.env.TIDAL_CLIENT_ID || 'zU4XHVVkc2tDPo4t';
-const TIDAL_CLIENT_SECRET = process.env.TIDAL_CLIENT_SECRET || 'VJKhDFqJPqvsPVNBV6ukXTJmwlvbttP7wlMlrc72se4=';
+// Tidal's device-code flow uses the PUBLIC "TV" client credentials published by
+// the open-source `tidalapi` project — shared community credentials, NOT a
+// private Resonance secret (Tidal issues no per-app key for this flow and it
+// has no PKCE option). They are supplied via env rather than embedded in source
+// so the application code carries no credential literal; install.sh / .env.example
+// ship the public defaults, and any deployment can override them.
+const TIDAL_CLIENT_ID = process.env.TIDAL_CLIENT_ID || '';
+const TIDAL_CLIENT_SECRET = process.env.TIDAL_CLIENT_SECRET || '';
+
+function assertTidalConfigured() {
+  if (!TIDAL_CLIENT_ID || !TIDAL_CLIENT_SECRET) {
+    throw new Error('Tidal is not configured — set TIDAL_CLIENT_ID and TIDAL_CLIENT_SECRET in .env');
+  }
+}
 
 let tidalSession = null; // { accessToken, refreshToken, countryCode, expiresAt }
 
@@ -170,6 +181,7 @@ async function tidalSave(s) {
 
 // Step 1: ask Tidal for a device + user code. The user authorises at the link.
 export async function tidalDeviceAuth() {
+  assertTidalConfigured();
   const body = new URLSearchParams({ client_id: TIDAL_CLIENT_ID, scope: 'r_usr w_usr' });
   const data = await jfetch(`${TIDAL_AUTH}/device_authorization`, {
     method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body,
@@ -185,6 +197,7 @@ export async function tidalDeviceAuth() {
 
 // Step 2: poll until the user finishes authorising in their browser.
 export async function tidalPollToken(deviceCode) {
+  assertTidalConfigured();
   const basic = Buffer.from(`${TIDAL_CLIENT_ID}:${TIDAL_CLIENT_SECRET}`).toString('base64');
   const body = new URLSearchParams({
     client_id: TIDAL_CLIENT_ID, device_code: deviceCode,
@@ -212,6 +225,7 @@ async function tidalAccessToken() {
   if (!s?.accessToken) throw new Error('Tidal: not connected');
   if (Date.now() < s.expiresAt - 60000) return s;
   // Refresh.
+  assertTidalConfigured();
   const basic = Buffer.from(`${TIDAL_CLIENT_ID}:${TIDAL_CLIENT_SECRET}`).toString('base64');
   const body = new URLSearchParams({
     client_id: TIDAL_CLIENT_ID, refresh_token: s.refreshToken, grant_type: 'refresh_token', scope: 'r_usr w_usr',

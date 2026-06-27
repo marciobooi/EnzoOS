@@ -976,14 +976,20 @@ else
   echo -e "${YELLOW}Note: verify MPD has the curl input plugin (web radio must work first).${NC}"
 fi
 
-# Optional: override the public Tidal device-flow client via the project .env.
-# (Leave unset to use the built-in community TV client id.)
+# Tidal device-code client credentials. These are the PUBLIC "TV" client
+# credentials published by the open-source `tidalapi` project — shared community
+# credentials, not a private secret. They live in .env (not application source)
+# so Tidal stays configurable and the code carries no credential literal.
+# Override TIDAL_CLIENT_ID / TIDAL_CLIENT_SECRET in the environment to use your own.
+TIDAL_CLIENT_ID="${TIDAL_CLIENT_ID:-zU4XHVVkc2tDPo4t}"
+TIDAL_CLIENT_SECRET="${TIDAL_CLIENT_SECRET:-VJKhDFqJPqvsPVNBV6ukXTJmwlvbttP7wlMlrc72se4=}"
 if [ -f "$PROJECT_DIR/.env" ] && ! grep -q "TIDAL_CLIENT_ID" "$PROJECT_DIR/.env"; then
   {
     echo ''
-    echo '# Optional Tidal device-flow client override (uses a built-in default if unset)'
-    echo '#TIDAL_CLIENT_ID='
-    echo '#TIDAL_CLIENT_SECRET='
+    echo '# Tidal device-flow client — PUBLIC community "TV" credentials (open-source tidalapi).'
+    echo '# Not a private secret; required by Tidal'"'"'s device flow. Override with your own if desired.'
+    echo "TIDAL_CLIENT_ID=${TIDAL_CLIENT_ID}"
+    echo "TIDAL_CLIENT_SECRET=${TIDAL_CLIENT_SECRET}"
   } >> "$PROJECT_DIR/.env"
 fi
 echo -e "${GREEN}Tidal/Qobuz hi-res streaming enabled (plays through MPD → CamillaDSP).${NC}"
