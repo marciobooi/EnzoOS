@@ -23,8 +23,8 @@ import { requireAuth, isWsAuthorized } from './auth.js';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-if (!process.env.SPOTIFY_CLIENT_ID || !process.env.SPOTIFY_CLIENT_SECRET) {
-  console.warn('[Resonance Backend] SPOTIFY_CLIENT_ID / SPOTIFY_CLIENT_SECRET not set — Spotify auth will be unavailable.');
+if (!process.env.SPOTIFY_CLIENT_ID) {
+  console.warn('[Resonance Backend] SPOTIFY_CLIENT_ID not set — Spotify auth will be unavailable. (PKCE flow needs no client secret.)');
 }
 
 const app = express();

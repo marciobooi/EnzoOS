@@ -49,11 +49,10 @@ Create a production `.env` file in the root of the project directory.
 nano .env
 ```
 
-Add your Spotify credentials:
+Add your Spotify Client ID (Authorization Code + PKCE — no client secret needed):
 ```env
-# Spotify App Credentials
+# Spotify App — Client ID only (PKCE flow; never add a client secret)
 SPOTIFY_CLIENT_ID=your_spotify_client_id_here
-SPOTIFY_CLIENT_SECRET=your_spotify_client_secret_here
 
 # Replace <server-ip> with your Raspberry Pi or VM's IP address (e.g., 192.168.1.150)
 SPOTIFY_REDIRECT_URI=http://<server-ip>:5000/api/callback

@@ -724,6 +724,17 @@ export const api = {
     });
     return r.json();
   },
+  async getBitPerfect() {
+    const r = await fetch('/api/player/bitperfect');
+    return r.json();
+  },
+  async setBitPerfect(enabled) {
+    const r = await fetch('/api/player/bitperfect', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ enabled }),
+    });
+    return r.json();
+  },
 
   // ── Queue editing ────────────────────────────────────────────────────────────
   async getDetailedQueue() {

@@ -17,6 +17,20 @@ function getRedirectUri(req) {
   return `http://127.0.0.1:${port}/auth/spotify/callback`;
 }
 
+// ── PKCE (Authorization Code with Proof Key for Code Exchange) ────────────────
+// Resonance is a public/native client: it ships an installable image, so a
+// client *secret* could never be kept confidential. PKCE removes the secret
+// entirely — the app proves possession of a one-time random `code_verifier`
+// instead. Only the (non-confidential) Client ID is needed on-device.
+function base64url(buf) {
+  return buf.toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+function createPkcePair() {
+  const verifier = base64url(crypto.randomBytes(64));            // 86-char high-entropy string
+  const challenge = base64url(crypto.createHash('sha256').update(verifier).digest());
+  return { verifier, challenge };
+}
+
 // In-memory token state
 let tokenState = {
   access_token: null,
@@ -69,20 +83,18 @@ export const refreshAccessToken = async () => {
   if (refreshing) return refreshing; // return the in-flight promise to concurrent callers
 
   const clientId = process.env.SPOTIFY_CLIENT_ID;
-  const clientSecret = process.env.SPOTIFY_CLIENT_SECRET;
-  if (!clientId || !clientSecret || !tokenState.refresh_token) return null;
+  if (!clientId || !tokenState.refresh_token) return null;
 
   refreshing = (async () => {
     try {
+      // PKCE refresh: client_id in the body, no client secret / Basic auth.
       const response = await fetch('https://accounts.spotify.com/api/token', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-          'Authorization': `Basic ${Buffer.from(`${clientId}:${clientSecret}`).toString('base64')}`,
-        },
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: new URLSearchParams({
           grant_type: 'refresh_token',
           refresh_token: tokenState.refresh_token,
+          client_id: clientId,
         }),
       });
 
@@ -137,9 +149,8 @@ let pendingOAuth = null;
 
 router.get('/login', (req, res) => {
   const clientId = process.env.SPOTIFY_CLIENT_ID;
-  const clientSecret = process.env.SPOTIFY_CLIENT_SECRET;
 
-  if (!clientId || !clientSecret) {
+  if (!clientId) {
     return res.status(500).send(`
       <html>
         <head><title>Resonance — Setup Required</title><meta name="viewport" content="width=device-width,initial-scale=1"/></head>
@@ -147,8 +158,8 @@ router.get('/login', (req, res) => {
           <div style="max-width:420px;background:#13161c;border:1px solid rgba(255,255,255,0.05);padding:32px;border-radius:16px;text-align:center;">
             <h1 style="color:#ff3366;font-size:1.2rem;margin:0 0 12px;text-transform:uppercase;letter-spacing:0.1em;">Setup Required</h1>
             <p style="color:#8695a7;font-size:0.85rem;line-height:1.6;margin:0 0 20px;">
-              Spotify credentials are not configured on this server.<br/><br/>
-              Add <strong style="color:#fff;">SPOTIFY_CLIENT_ID</strong> and <strong style="color:#fff;">SPOTIFY_CLIENT_SECRET</strong> to the <code style="color:#c788ff;">.env</code> file in the project root, then restart the server.
+              Spotify is not configured on this server.<br/><br/>
+              Add <strong style="color:#fff;">SPOTIFY_CLIENT_ID</strong> to the <code style="color:#c788ff;">.env</code> file in the project root, then restart the server. No client secret is required (PKCE).
             </p>
             <a href="/" style="display:inline-block;padding:10px 24px;background:#1ed760;color:#000;border-radius:50px;font-weight:800;text-decoration:none;font-size:0.8rem;text-transform:uppercase;letter-spacing:0.08em;">Back to App</a>
           </div>
@@ -175,13 +186,15 @@ router.get('/login', (req, res) => {
   ].join(' ');
 
   const state = crypto.randomBytes(16).toString('hex') + (isFromRemote ? '_remote' : '');
+  const { verifier, challenge } = createPkcePair();
   pendingOAuth = {
     state,
     redirectUri,
     isFromRemote,
+    codeVerifier: verifier,
   };
 
-  console.log(`[Resonance Auth] Starting OAuth flow. Redirect URI: ${redirectUri}`);
+  console.log(`[Resonance Auth] Starting OAuth (PKCE) flow. Redirect URI: ${redirectUri}`);
 
   const params = new URLSearchParams({
     response_type: 'code',
@@ -189,6 +202,8 @@ router.get('/login', (req, res) => {
     scope: scopes,
     redirect_uri: redirectUri,
     state,
+    code_challenge_method: 'S256',
+    code_challenge: challenge,
   });
 
   res.redirect(`https://accounts.spotify.com/authorize?${params.toString()}`);
@@ -198,13 +213,13 @@ router.get('/login', (req, res) => {
 router.get('/callback', async (req, res) => {
   const { code, state, error } = req.query;
   const clientId = process.env.SPOTIFY_CLIENT_ID;
-  const clientSecret = process.env.SPOTIFY_CLIENT_SECRET;
   const stateValue = typeof state === 'string' ? state : '';
   const pendingWasRemote = !!pendingOAuth?.isFromRemote;
   const isFromRemote = stateValue.endsWith('_remote') || pendingWasRemote;
   const redirectBase = isFromRemote ? '/remote' : '/';
   const fallbackRedirectUri = getRedirectUri(req);
   const redirectUri = pendingOAuth?.redirectUri || fallbackRedirectUri;
+  const codeVerifier = pendingOAuth?.codeVerifier || '';
 
   if (error) {
     return res.redirect(`${redirectBase}?auth_error=${encodeURIComponent(error)}`);
@@ -217,16 +232,17 @@ router.get('/callback', async (req, res) => {
   pendingOAuth = null;
 
   try {
+    // PKCE token exchange: prove possession of the one-time code_verifier.
+    // No client secret / Basic auth — client_id travels in the body.
     const tokenResponse = await fetch('https://accounts.spotify.com/api/token', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-        'Authorization': `Basic ${Buffer.from(`${clientId}:${clientSecret}`).toString('base64')}`,
-      },
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: new URLSearchParams({
         grant_type: 'authorization_code',
         code,
         redirect_uri: redirectUri,
+        client_id: clientId,
+        code_verifier: codeVerifier,
       }),
     });
 

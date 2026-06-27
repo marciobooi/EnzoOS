@@ -26,6 +26,29 @@ PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$PROJECT_DIR"
 echo -e "Project directory: $PROJECT_DIR"
 
+# Record the exact commit we are updating FROM, so a failed update can roll the
+# working tree back to a known-good state instead of leaving it half-applied.
+PREV_SHA="$(git rev-parse HEAD 2>/dev/null || echo '')"
+echo -e "Current revision: ${PREV_SHA:-unknown}"
+
+# Restore the previous revision and rebuild it, then abort the update. Called
+# when npm install or the build fails on the new code.
+rollback_and_exit() {
+  echo -e "${RED}Update failed — rolling back to ${PREV_SHA:-previous revision}...${NC}"
+  if [ -n "$PREV_SHA" ]; then
+    git reset --hard "$PREV_SHA" 2>&1 | tail -1
+    # Rebuild the known-good revision so the running app stays consistent.
+    npm install        > /dev/null 2>&1 || true
+    rm -rf "$PROJECT_DIR/dist" 2>/dev/null || true
+    npm run build      > /dev/null 2>&1 || true
+    echo -e "${YELLOW}Rolled back to the previous working revision. The server was NOT changed.${NC}"
+  else
+    echo -e "${RED}No previous revision recorded — cannot roll back automatically.${NC}"
+  fi
+  echo "[PROGRESS: 0]"
+  exit 1
+}
+
 # Clean any local changes to prevent conflicts
 # Exclude node_modules and resonance.db so npm install stays fast
 echo -e "${YELLOW}Clearing local modifications...${NC}"
@@ -52,8 +75,7 @@ echo -e "${YELLOW}Installing npm dependencies...${NC}"
 echo "[PROGRESS: 60]"
 if ! npm install; then
   echo -e "${RED}ERROR: npm install failed.${NC}"
-  echo "[PROGRESS: 0]"
-  exit 1
+  rollback_and_exit
 fi
 
 # Clean old build artifacts
@@ -68,8 +90,7 @@ echo -e "${YELLOW}Rebuilding frontend bundle...${NC}"
 echo "[PROGRESS: 80]"
 if ! npm run build; then
   echo -e "${RED}ERROR: npm build failed.${NC}"
-  echo "[PROGRESS: 0]"
-  exit 1
+  rollback_and_exit
 fi
 
 # Sync user kiosk startup config (.xinitrc)

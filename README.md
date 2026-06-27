@@ -23,7 +23,7 @@ Resonance HiFi is an open-source, self-hosted audio streaming platform for Raspb
 - **Qobuz** — lossless streaming up to 24-bit/192 kHz
 
 ### Audio Quality
-- **Bit-perfect playback** — PipeWire `clock.allowed-rates` switches the graph clock to the source's native sample rate (44.1 / 48 / 88.2 / 96 / 176.4 / 192 kHz), eliminating inter-domain resampling. Allowed rates are derived from the detected DAC's actual hardware capabilities — no rate is advertised that the DAC cannot handle
+- **Bit-perfect playback** — PipeWire `clock.allowed-rates` switches the graph clock to the source's native sample rate (44.1 / 48 / 88.2 / 96 / 176.4 / 192 kHz), eliminating inter-domain resampling. Allowed rates are derived from the detected DAC's actual hardware capabilities — no rate is advertised that the DAC cannot handle. The full PipeWire → loopback → CamillaDSP bridge runs in a **32-bit** container so source bit-depth survives (no 16-bit truncation). Bit-perfect rate-following is on by default; a one-tap **Fixed 48 kHz fallback** (Settings → DSP → Bit-Perfect) covers DACs that mishandle loopback rate switching. *Rate-following behaviour is hardware-dependent — validate with your specific DAC.*
 - **Automatic DAC detection** — scans `/proc/asound` at startup to detect the connected DAC's card name, supported formats (S16/S24/S32), and all supported sample rates
 - **Rate-following** — persistent MPD idle connection watches for song changes; when the audio format changes, CamillaDSP capture rate is reconfigured automatically via hot-reload with no audio gap
 - **Zero-lag volume** — volume applied post-buffer inside CamillaDSP via `SetVolume`, instant response on all sources regardless of buffer depth
@@ -83,7 +83,7 @@ Resonance HiFi is an open-source, self-hosted audio streaming platform for Raspb
 - **Source-aware search** — search tab reflects the active source (Spotify search for Spotify, radio scanner for radio)
 - **Streaming source menu behaviour** — AirPlay, UPnP, and Bluetooth cards keep the settings menu open on activation (connect-and-wait flow); Spotify, Local, and Radio close it immediately
 - **ICY/XML track title sanitiser** — stations that send StreamTitle as raw XML (e.g. Dalet automation systems) are parsed to extract song name and artist before display
-- **OTA updates** — `git pull` + PM2 restart, triggered from the kiosk settings menu
+- **OTA updates** — `git pull` + rebuild + PM2 restart, triggered from the kiosk settings menu. The updater records the current commit before syncing and **automatically rolls back** to it (rebuilding the last-good revision) if `npm install` or the build fails, so a bad push can't leave the streamer unbootable
 - **System health monitor** — live CPU temperature, RAM, and Wi-Fi signal in the settings panel
 - **mDNS discovery** — accessible at `resonance.local` on the local network via Avahi
 
@@ -183,6 +183,10 @@ Example for a hi-res I²S DAC (e.g., Sabre ES9038Q2M):
 For the QEMU dev target (Intel HDA):
 - Detected rates: `[44100, 48000]`
 - Generated: `default.clock.allowed-rates = [ 44100 48000 ]`
+
+The ALSA loopback (`loop_dsnoop`/`camilla_input`) is written **rate-agnostic** (no fixed rate) and at `S32_LE`, so its slaves inherit whatever rate PipeWire opened the loopback at, and CamillaDSP's capture rate follows via the rate watcher's `SetConfig`.
+
+> **Fallback toggle.** ALSA's `snd-aloop` loopback shares one rate per substream, so on some DACs a rate switch can momentarily drop the bridge. If you hear dropouts on rate changes, flip **Settings → DSP → Bit-Perfect** to **Fixed 48 kHz** (or `POST /api/player/bitperfect {"enabled":false}`) and reboot — that path keeps the proven single-rate clock but still runs 32-bit (no truncation). The setting is persisted (`bitperfect` in the `settings` table). PipeWire clock changes apply on the next session, so a reboot is required after toggling.
 
 ### Volume safety
 
@@ -378,6 +382,8 @@ On every startup, `detectDac()` scans `/proc/asound/card*/stream*` and returns:
 | `POST` | `/api/player/crossfade` | Set MPD crossfade duration `{ seconds: 0–10 }` |
 | `POST` | `/api/player/balance` | Set L/R balance via CamillaDSP gain `{ balance: -1.0–1.0 }` |
 | `POST` | `/api/player/phase` | Set per-channel phase inversion `{ left: bool, right: bool }` |
+| `GET` | `/api/player/bitperfect` | Current bit-perfect mode `{ enabled }` |
+| `POST` | `/api/player/bitperfect` | Toggle bit-perfect rate-following vs fixed 48 kHz `{ enabled: bool }` (reboot to apply) |
 | `GET` | `/api/player/lyrics` | Fetch synced LRC lyrics from LRCLIB `?title=&artist=&album=&duration=` |
 
 ### Library & History
@@ -570,18 +576,21 @@ Tapping the now-playing cover inside the remote opens the [album metadata](#albu
 
 ### Spotify credentials
 
+Spotify auth uses the **Authorization Code + PKCE** flow, so **no client secret is required or stored on-device** — only the (non-confidential) Client ID. A Client ID is public by design: it appears in the browser's OAuth redirect.
+
 1. Create an app at [developer.spotify.com/dashboard](https://developer.spotify.com/dashboard)
 2. Add redirect URIs:
    ```
    http://127.0.0.1:5000/auth/spotify/callback
    https://resonance.local:5001/auth/spotify/callback
    ```
-3. Edit `/home/pi/EnzoOS/.env`:
+3. Edit `/home/pi/EnzoOS/.env` (Client ID only — never add a secret):
    ```env
    SPOTIFY_CLIENT_ID=your_client_id
-   SPOTIFY_CLIENT_SECRET=your_client_secret
    ```
 4. `pm2 restart resonance-api`
+
+> **Security:** earlier builds hardcoded a Spotify Client **Secret** in `install.sh`. PKCE removes the need for it entirely, and it has been deleted from the source. If you ever deployed an affected build, **rotate that secret in the Spotify dashboard** — once committed to a public repo it is permanently exposed in git history and code changes cannot un-leak it.
 
 ---
 
@@ -660,8 +669,7 @@ Password: 1234   ← change in production
 ### Environment variables
 
 ```env
-SPOTIFY_CLIENT_ID=your_spotify_client_id
-SPOTIFY_CLIENT_SECRET=your_spotify_client_secret
+SPOTIFY_CLIENT_ID=your_spotify_client_id   # Client ID only — PKCE needs no secret
 PORT=5000
 HTTPS_PORT=5001
 

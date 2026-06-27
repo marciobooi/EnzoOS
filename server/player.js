@@ -476,25 +476,42 @@ function detectDac() {
  * prevents CamillaDSP ALSA open failures on rate-switch events.
  * Written via sudo tee; PipeWire is restarted only if the config changed.
  */
-export async function updatePipeWireClock(dacInfo) {
-  // IMPORTANT: clock.allowed-rates is intentionally NOT used here.
-  // The ALSA loopback bridge (hw:Loopback,0,0 ↔ loop_dsnoop) requires a
-  // FIXED sample rate shared by both PipeWire and CamillaDSP. If PipeWire
-  // switches clock rates (e.g. to 44100 Hz for AAC radio), hw:Loopback,0,0
-  // is opened at the new rate while loop_dsnoop is configured for 48000 Hz
-  // → rate mismatch → PCM Slave Active stays off → silence.
+export async function updatePipeWireClock(dacInfo, bitPerfect = true) {
+  // Bit-perfect mode publishes clock.allowed-rates = exactly the DAC's supported
+  // rates, so PipeWire switches its graph clock to each source's native rate
+  // (44.1 / 48 / 88.2 / 96 / 176.4 / 192 kHz) instead of resampling everything
+  // to 48 kHz. The ALSA loopback then runs rate-agnostic (see ensureAsoundConf)
+  // and CamillaDSP follows via the MPD rate watcher (SetConfig).
   //
-  // PipeWire resamples all content to 48000 Hz before writing to the loopback.
-  // True bit-perfect requires the CamillaDSP ALSA plugin (Phase 2).
+  // Fallback mode (bitPerfect=false) keeps the proven FIXED 48000 Hz clock: the
+  // loopback bridge then never sees a rate switch (which historically left
+  // PCM Slave Active = off → silence on some hardware).
   //
-  // Also: restarting PipeWire drops MPD's connection ("Failed to open audio
-  // output") and requires manual MPD restart. Never restart PipeWire from here.
+  // Either way we do NOT restart PipeWire here — that would drop MPD's audio
+  // connection. The new clock config applies on the next PipeWire session start.
   const confPath = '/etc/pipewire/pipewire.conf.d/52-resonance-bitperfect.conf';
-  const content = `# Resonance HiFi — PipeWire fixed clock at 48000 Hz
+  const rates = Array.isArray(dacInfo?.supportedRates) && dacInfo.supportedRates.length
+    ? dacInfo.supportedRates
+    : [44100, 48000, 88200, 96000];
+
+  const content = bitPerfect
+    ? `# Resonance HiFi — PipeWire bit-perfect clock (rate-following)
 # Generated from detected DAC: ${dacInfo?.cardName || 'unknown'} (${dacInfo?.device || 'unknown'})
-# clock.allowed-rates is intentionally absent: the ALSA loopback bridge
-# requires a fixed rate shared by PipeWire and CamillaDSP. Rate switching
-# causes the loopback to stop delivering audio (PCM Slave Active = off).
+# clock.allowed-rates = the DAC's native rates → PipeWire matches the source
+# rate with no resampling. The loopback runs rate-agnostic and CamillaDSP
+# follows via the MPD rate watcher.
+context.properties = {
+    default.clock.rate          = 48000
+    default.clock.allowed-rates = [ ${rates.join(' ')} ]
+    default.clock.quantum       = 1024
+    default.clock.min-quantum   = 32
+    default.clock.max-quantum   = 8192
+}
+`
+    : `# Resonance HiFi — PipeWire fixed clock at 48000 Hz (stable fallback)
+# Generated from detected DAC: ${dacInfo?.cardName || 'unknown'} (${dacInfo?.device || 'unknown'})
+# clock.allowed-rates intentionally absent: fixed shared rate avoids loopback
+# rate-switch silence on hardware where rate-following is unreliable.
 context.properties = {
     default.clock.rate          = 48000
     default.clock.quantum       = 1024
@@ -506,7 +523,7 @@ context.properties = {
   let current = '';
   try { current = fs.readFileSync(confPath, 'utf8'); } catch {}
   if (current.trim() === content.trim()) {
-    console.log('[PipeWire] Clock config unchanged (48000 Hz fixed) — skipping update.');
+    console.log(`[PipeWire] Clock config unchanged (${bitPerfect ? 'bit-perfect rate-following' : '48000 Hz fixed'}) — skipping update.`);
     return;
   }
 
@@ -514,7 +531,7 @@ context.properties = {
   try {
     fs.writeFileSync(tempPath, content, 'utf8');
     await execPromise(`sudo /usr/bin/tee ${confPath} < ${tempPath} > /dev/null`);
-    console.log('[PipeWire] Updated clock config (48000 Hz fixed, no allowed-rates).');
+    console.log(`[PipeWire] Updated clock config (${bitPerfect ? 'bit-perfect rate-following: ' + rates.join('/') + ' Hz' : '48000 Hz fixed'}).`);
     // NOTE: NOT restarting PipeWire — doing so drops MPD's audio connection.
     // The new config takes effect on the next PipeWire session start (reboot).
   } catch (err) {
@@ -592,9 +609,14 @@ const presetDatabase = {
 // pureDirect = true: bypass all EQ, output flat pipeline (volume control still active)
 // balance: -12..+12 dB. Positive = right louder (attenuate left). Negative = left louder (attenuate right).
 // phaseLeft/phaseRight: invert polarity of that channel
-function generateCamillaConfig(answers, eqSettings, dacInfo, { pureDirect = false, balance = 0, phaseLeft = false, phaseRight = false } = {}) {
+function generateCamillaConfig(answers, eqSettings, dacInfo, { pureDirect = false, balance = 0, phaseLeft = false, phaseRight = false, bitPerfect = true } = {}) {
   const isDspActive = answers && (answers[0] === 'dsp' || answers['0'] === 'dsp');
   const isSubwooferSetup = answers && answers.q1_setup === "2 Speakers + 1 Subwoofer";
+
+  // Capture (loopback) sample format. In bit-perfect mode the whole bridge runs
+  // at 32-bit so source bit-depth survives — no truncation to 16-bit. The
+  // proven fixed-rate fallback also benefits (S32 instead of the old S16_LE).
+  const captureFormat = bitPerfect ? "S32_LE" : "S16_LE";
 
   const selectedPresetName = eqSettings?.preset || "Clinical Reference";
   
@@ -639,7 +661,7 @@ function generateCamillaConfig(answers, eqSettings, dacInfo, { pureDirect = fals
         samplerate: dacInfo.samplerate || 44100,
         chunksize: 1024,
         queuelimit: 4,
-        capture:  { type: "Alsa", channels: 2, device: "loop_dsnoop", format: "S16_LE" },
+        capture:  { type: "Alsa", channels: 2, device: "loop_dsnoop", format: captureFormat },
         playback: { type: "Alsa", channels: dacInfo.channels || 2, device: dacInfo.device || "hw:CARD=DAC,DEV=0", format: dacInfo.format || "S24_3_LE" },
       },
       mixers: {
@@ -665,7 +687,7 @@ function generateCamillaConfig(answers, eqSettings, dacInfo, { pureDirect = fals
       // CamillaDSP 4.1.3 is built with ALSA-only backends (no Pulse/PipeWire).
       // Audio reaches here via: PipeWire → ResonanceInput virtual sink
       //   → PW loopback module → hw:Loopback,0,0 → ALSA dsnoop (loop_dsnoop)
-      capture: { type: "Alsa", channels: 2, device: "loop_dsnoop", format: "S16_LE" },
+      capture: { type: "Alsa", channels: 2, device: "loop_dsnoop", format: captureFormat },
       playback: {
         type: "Alsa",
         channels: dacInfo.channels || 2,
@@ -844,8 +866,14 @@ function generateCamillaConfig(answers, eqSettings, dacInfo, { pureDirect = fals
 // PipeWire owns the default ALSA device (via /usr/share/alsa/alsa.conf.d/99-pipewire-default.conf).
 // We only need to keep loop_dsnoop so CamillaDSP (ALSA-only build) can still capture audio.
 // PipeWire's loopback module bridges ResonanceInput.monitor → hw:Loopback,0,0 for CamillaDSP.
-async function ensureAsoundConf() {
+async function ensureAsoundConf(bitPerfect = true) {
   const asoundConfPath = '/etc/asound.conf';
+  // Bit-perfect: 32-bit container so source depth survives, and NO forced rate
+  // on the dsnoop/dmix slaves — they inherit whatever rate PipeWire opened the
+  // loopback at (rate-following). Fallback: fixed 48000 Hz, the proven-stable
+  // shared rate, but still 32-bit (no 16-bit truncation).
+  const loopFormat = bitPerfect ? 'S32_LE' : 'S16_LE';
+  const rateLine   = bitPerfect ? '' : '        rate 48000\n';
   // No forced rate: PipeWire switches clock to match source (44100/48000/96000/etc).
   // CamillaDSP captures at whatever rate PipeWire writes, enabling native bit-perfect
   // when combined with PipeWire clock.allowed-rates configuration.
@@ -859,10 +887,13 @@ async function ensureAsoundConf() {
   // Both at 48000 Hz to match CamillaDSP's processing rate.
   // MPD uses type "alsa" device "camilla_input" — bypasses the PipeWire
   // loopback bridge which was not reliably connecting to hw:Loopback,0,0.
+  const modeComment = bitPerfect
+    ? '# Bit-perfect: 32-bit, rate-following (slaves inherit PipeWire\'s loopback rate).'
+    : '# Fixed 48000 Hz shared rate (proven-stable fallback), 32-bit container.';
   const expectedContent = `# Resonance HiFi — ALSA config
 # camilla_input: ALSA dmix — MPD/ALSA sources write directly to loopback
 # loop_dsnoop:   ALSA dsnoop — CamillaDSP reads from loopback
-# Both fixed at 48000 Hz (ALSA loopback module requires a single shared rate).
+${modeComment}
 
 pcm.camilla_input {
     type dmix
@@ -871,8 +902,7 @@ pcm.camilla_input {
     slave {
         pcm "hw:Loopback,0,0"
         channels 2
-        rate 48000
-        format S16_LE
+${rateLine}        format ${loopFormat}
         period_size 1024
     }
 }
@@ -884,8 +914,7 @@ pcm.loop_dsnoop {
     slave {
         pcm "hw:Loopback,1,0"
         channels 2
-        rate 48000
-        format S16_LE
+${rateLine}        format ${loopFormat}
         period_size 1024
     }
 }
@@ -959,21 +988,26 @@ router.get('/dsp-calibration', async (req, res) => {
 
 // Exportable helper to update configuration on any settings change
 export async function updateCamillaConfigFromSettings({ skipAlsa = false, samplerate = null, pureDirect = false } = {}) {
-  const [dspVal, eqVal, balanceVal, phaseVal] = await Promise.all([
+  const [dspVal, eqVal, balanceVal, phaseVal, bitPerfectVal] = await Promise.all([
     getSetting('dsp_calibration'),
     getSetting('eq_settings'),
     getSetting('balance'),
     getSetting('phase'),
+    getSetting('bitperfect'),
   ]);
 
   const answers = dspVal ? JSON.parse(dspVal) : null;
   const eqSettings = eqVal ? JSON.parse(eqVal) : null;
   const balance = balanceVal ? parseFloat(balanceVal) : 0;
   const phase = phaseVal ? JSON.parse(phaseVal) : { left: false, right: false };
+  // Bit-perfect rate-following is the default (the headline feature). Set the
+  // `bitperfect` setting to "false" / "0" to fall back to the proven fixed-rate
+  // 48 kHz pipeline if a particular DAC mishandles loopback rate switching.
+  const bitPerfect = !(bitPerfectVal === 'false' || bitPerfectVal === '0');
 
   // Auto-configure ALSA Loopback routing — skip during EQ updates since
   // ALSA config never changes when only EQ bands/levels are adjusted
-  if (!skipAlsa) await ensureAsoundConf();
+  if (!skipAlsa) await ensureAsoundConf(bitPerfect);
 
   // Scan for DAC capability automatically
   const dacInfo = detectDac();
@@ -982,7 +1016,7 @@ export async function updateCamillaConfigFromSettings({ skipAlsa = false, sample
   // Sync PipeWire clock.allowed-rates to exactly the rates this DAC supports.
   // Fire-and-forget — never blocks the config generation path.
   if (!skipAlsa) {
-    updatePipeWireClock(dacInfo).catch(err =>
+    updatePipeWireClock(dacInfo, bitPerfect).catch(err =>
       console.warn('[PipeWire] Clock update failed (non-fatal):', err.message)
     );
   }
@@ -1002,7 +1036,7 @@ export async function updateCamillaConfigFromSettings({ skipAlsa = false, sample
 
   // Generate CamillaDSP yaml configuration
   const configObj = generateCamillaConfig(answers, eqSettings, dacInfo, {
-    pureDirect, balance, phaseLeft: phase.left, phaseRight: phase.right,
+    pureDirect, balance, phaseLeft: phase.left, phaseRight: phase.right, bitPerfect,
   });
   const yamlString = YAML.stringify(configObj, { indent: 2 });
 
@@ -1732,6 +1766,28 @@ router.post('/phase', async (req, res) => {
     await setSetting('phase', JSON.stringify({ left, right }));
     await updateCamillaConfigFromSettings({ skipAlsa: true });
     res.json({ success: true, left, right });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// ── Bit-perfect mode toggle ───────────────────────────────────────────────────
+// ON  (default): rate-following — PipeWire clock.allowed-rates + rate-agnostic
+//                32-bit loopback so each source plays at its native rate.
+// OFF (fallback): fixed 48 kHz shared rate (still 32-bit), for DACs where
+//                loopback rate switching is unreliable.
+// Changing this rewrites /etc/asound.conf and the PipeWire clock config, which
+// fully take effect after a reboot (PipeWire clock is applied on session start).
+router.get('/bitperfect', async (req, res) => {
+  const val = await getSetting('bitperfect').catch(() => null);
+  res.json({ enabled: !(val === 'false' || val === '0') });
+});
+
+router.post('/bitperfect', async (req, res) => {
+  const enabled = !(req.body.enabled === false || req.body.enabled === 'false');
+  try {
+    await setSetting('bitperfect', enabled ? 'true' : 'false');
+    // Full reconfig: rewrites asound.conf + PipeWire clock + CamillaDSP capture.
+    await updateCamillaConfigFromSettings({ skipAlsa: false });
+    res.json({ success: true, enabled, rebootRequired: true });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 

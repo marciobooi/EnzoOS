@@ -25,6 +25,7 @@ export default function SettingsTab() {
   const [showBalance, setShowBalance] = useState(false);
   const [phaseLeft, setPhaseLeft]     = useState(false);
   const [phaseRight, setPhaseRight]   = useState(false);
+  const [bitPerfect, setBitPerfect]   = useState(true);
 
   // Wi-Fi
   const [showWifi, setShowWifi]         = useState(false);
@@ -43,6 +44,7 @@ export default function SettingsTab() {
     api.getCrossfade().then(d => setCrossfade(d.seconds || 0)).catch(() => {});
     api.getBalance().then(d => setBalance(d.balance || 0)).catch(() => {});
     api.getPhase().then(d => { setPhaseLeft(!!d.left); setPhaseRight(!!d.right); }).catch(() => {});
+    api.getBitPerfect().then(d => setBitPerfect(d.enabled !== false)).catch(() => {});
   }, []);
 
   const handleReplayGainChange = async (mode) => {
@@ -65,6 +67,15 @@ export default function SettingsTab() {
       try { await api.setBalance(v); }
       catch (e) { toast.error(e.message); }
     }, 400);
+  };
+
+  const handleBitPerfectToggle = async () => {
+    const next = !bitPerfect;
+    setBitPerfect(next);
+    try {
+      await api.setBitPerfect(next);
+      toast.success(next ? 'Bit-perfect on — reboot to apply' : 'Fixed 48 kHz mode — reboot to apply');
+    } catch (e) { setBitPerfect(!next); toast.error(e.message); }
   };
 
   const handlePhaseChange = async (left, right) => {
@@ -242,6 +253,11 @@ export default function SettingsTab() {
             else if (!phaseLeft && phaseRight) handlePhaseChange(true, true);
             else handlePhaseChange(false, false);
           }} />
+        <Row label="Bit-Perfect (rate-following)"
+          icon={<Disc3 className="h-4 w-4" style={{ color: bitPerfect ? C.champagne : C.text4 }} />}
+          value={bitPerfect ? 'On' : 'Fixed 48k'}
+          chevron={false}
+          onPress={handleBitPerfectToggle} />
       </Section>
 
       {/* display */}
