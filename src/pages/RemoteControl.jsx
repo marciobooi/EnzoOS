@@ -172,8 +172,13 @@ export default function RemoteControl() {
   const [queue, setQueue]             = useState([]);
   const [queueLoading, setQueueLoading] = useState(false);
 
+  // ── unified favorites & live format ───────────────────────────────────────
+  const [favorites, setFavorites]     = useState([]);
+  const [liveFormat, setLiveFormat]   = useState(null);
+
   // refs
   const themeSyncTimeout     = useRef(null);
+  const prevTrackUriRef      = useRef(null);
   const eqSyncTimeout        = useRef(null);
   const progressInterval     = useRef(null);
   const volumeApiTimeout     = useRef(null);
@@ -323,8 +328,25 @@ export default function RemoteControl() {
     return () => clearInterval(id);
   }, [sleepRemaining]);
 
+  // Record to play history whenever the track changes
+  useEffect(() => {
+    if (!trackName || trackName === 'Nothing playing') return;
+    const uri = currentTrack?.uri || currentTrack?.url || '';
+    if (uri && uri === prevTrackUriRef.current) return;
+    prevTrackUriRef.current = uri;
+    api.addToHistory({
+      source, title: trackName, artist: trackArtist,
+      album: currentTrack?.album?.name || '',
+      file: currentTrack?.file || uri || '',
+      cover: albumImage || '',
+    }).catch(() => {});
+  }, [trackName, source]);
+
   // ── data fetchers ─────────────────────────────────────────────────────────
-  const fetchFavorites    = async () => { try { setFavoriteStations(await api.getFavoriteRadios() || []); } catch {} };
+  const fetchFavorites    = async () => {
+    try { setFavoriteStations(await api.getFavoriteRadios() || []); } catch {}
+    try { setFavorites(await api.getFavorites() || []); } catch {}
+  };
   const fetchDevices      = async () => { if (!token) return; setIsFetchingDevices(true); try { setDevices((await api.getDevices(token)).devices || []); } catch {} finally { setIsFetchingDevices(false); } };
   const fetchSystemHealth = async () => { try { setSystemHealth(await api.getSystemHealth()); } catch {} };
   const fetchServices     = async () => { try { setServices((await api.getServices()).services || {}); } catch {} };
@@ -422,6 +444,19 @@ export default function RemoteControl() {
     const isFav = favoriteStations.some(s => s.url === station.url);
     try { if (isFav) await api.deleteFavoriteRadio(station.url); else await api.addFavoriteRadio({ name: station.name, url: station.url, favicon: station.favicon, country: station.country, tags: station.tags }); fetchFavorites(); } catch (e) { toast.error(e.message); }
   };
+  const handleToggleFavorite = async ({ source: src, uri, title, artist, album, cover }) => {
+    const isFav = favorites.some(f => f.source === src && f.uri === uri);
+    try {
+      if (isFav) {
+        await api.removeFavoriteByUri(src, uri);
+        setFavorites(prev => prev.filter(f => !(f.source === src && f.uri === uri)));
+      } else {
+        const added = await api.addFavorite({ source: src, uri, title, artist, album, cover });
+        setFavorites(prev => [...prev, added]);
+        toast.success('Added to favorites');
+      }
+    } catch (e) { toast.error(e.message); }
+  };
   const handleRadioSearch = async () => {
     const q = radioSearch.trim(); if (!q) { setStationsList(favoriteStations); return; }
     setIsSearching(true);
@@ -446,7 +481,8 @@ export default function RemoteControl() {
     handlePlayPause, handleNext, handlePrevious,
     handleShuffle, handleRepeat, handleSeek,
     handleVolumeChange, handleMuteToggle,
-    handleToggleFavRadio, wakeKiosk, requestWSStateSync,
+    handleToggleFavRadio, handleToggleFavorite, wakeKiosk, requestWSStateSync,
+    favorites, liveFormat,
     handlePlayTrack, handlePlayContext,
     libraryView, selectedArtist, selectedAlbum, libraryItems, libraryLoading,
     handleLibraryBack, handleLibraryPlayTrack,
@@ -480,7 +516,7 @@ export default function RemoteControl() {
     volume, isMuted, shuffleState, repeatState,
     playbackState, currentTrack, activeDevice, resonanceDevice, devices,
     albumImage, trackName, trackArtist,
-    favoriteStations, isCurrentFav,
+    favoriteStations, isCurrentFav, favorites, liveFormat,
     libraryView, selectedArtist, selectedAlbum, libraryItems, libraryLoading,
     radioSearch, stationsList, isSearching,
     eqPreset, eqBands, eqSaturation, eqNoiseFloor, eqPreAmp,

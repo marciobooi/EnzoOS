@@ -1,19 +1,97 @@
-import React, { useContext, useState, useRef } from 'react';
+import React, { useContext, useState, useRef, useEffect } from 'react';
 import {
   Sliders, Cpu, Timer, Palette, Power, LogOut, Laptop,
-  Music, RefreshCw, Smartphone, Disc3,
+  Music, RefreshCw, Smartphone, Disc3, Wifi, HardDrive,
+  RotateCcw, Download, Upload, FlipHorizontal, Scale,
 } from 'lucide-react';
 import { toast } from '../../lib/toast';
 import { Tk, Row, Section, SpotifyIcon } from './shared';
 import RemoteEqualizer from './RemoteEqualizer';
 import InstallGuide from './InstallGuide';
 import MetadataKeysSheet from './MetadataKeysSheet';
+import { api } from '../../api';
 
 export default function SettingsTab() {
   const [confirmPending, setConfirmPending] = useState(null);
   const [showInstall, setShowInstall] = useState(false);
   const [showKeys, setShowKeys] = useState(false);
   const confirmRef = useRef(null);
+
+  // Sound DSP settings
+  const [replayGain, setReplayGain]   = useState('off');
+  const [crossfade, setCrossfade]     = useState(0);
+  const [showCrossfade, setShowCrossfade] = useState(false);
+  const [balance, setBalance]         = useState(0);
+  const [showBalance, setShowBalance] = useState(false);
+  const [phaseLeft, setPhaseLeft]     = useState(false);
+  const [phaseRight, setPhaseRight]   = useState(false);
+
+  // Wi-Fi
+  const [showWifi, setShowWifi]         = useState(false);
+  const [wifiNetworks, setWifiNetworks] = useState([]);
+  const [wifiSsid, setWifiSsid]         = useState('');
+  const [wifiPassword, setWifiPassword] = useState('');
+  const [wifiScanning, setWifiScanning] = useState(false);
+  const [wifiConnecting, setWifiConnecting] = useState(false);
+
+  // Storage
+  const [storage, setStorage]     = useState(null);
+  const [showStorage, setShowStorage] = useState(false);
+
+  useEffect(() => {
+    api.getReplayGain().then(d => setReplayGain(d.mode || 'off')).catch(() => {});
+    api.getCrossfade().then(d => setCrossfade(d.seconds || 0)).catch(() => {});
+    api.getBalance().then(d => setBalance(d.balance || 0)).catch(() => {});
+    api.getPhase().then(d => { setPhaseLeft(!!d.left); setPhaseRight(!!d.right); }).catch(() => {});
+  }, []);
+
+  const handleReplayGainChange = async (mode) => {
+    setReplayGain(mode);
+    try { await api.setReplayGain(mode); toast.success(`ReplayGain: ${mode}`); }
+    catch (e) { toast.error(e.message); }
+  };
+
+  const handleCrossfadeChange = async (secs) => {
+    setCrossfade(secs);
+    try { await api.setCrossfade(secs); }
+    catch (e) { toast.error(e.message); }
+  };
+
+  const balanceDebounce = useRef(null);
+  const handleBalanceChange = (v) => {
+    setBalance(v);
+    clearTimeout(balanceDebounce.current);
+    balanceDebounce.current = setTimeout(async () => {
+      try { await api.setBalance(v); }
+      catch (e) { toast.error(e.message); }
+    }, 400);
+  };
+
+  const handlePhaseChange = async (left, right) => {
+    setPhaseLeft(left); setPhaseRight(right);
+    try { await api.setPhase(left, right); toast.success('Phase updated'); }
+    catch (e) { toast.error(e.message); }
+  };
+
+  const handleWifiScan = async () => {
+    setWifiScanning(true);
+    try { const d = await api.scanWifi(); setWifiNetworks(d.networks || []); }
+    catch (e) { toast.error(e.message); }
+    finally { setWifiScanning(false); }
+  };
+
+  const handleWifiConnect = async () => {
+    if (!wifiSsid) return;
+    setWifiConnecting(true);
+    try { await api.connectWifi(wifiSsid, wifiPassword); toast.success(`Connected to ${wifiSsid}`); setShowWifi(false); }
+    catch (e) { toast.error(e.message); }
+    finally { setWifiConnecting(false); }
+  };
+
+  const handleLoadStorage = async () => {
+    try { setStorage(await api.getStorage()); setShowStorage(true); }
+    catch (e) { toast.error(e.message); }
+  };
 
   const withConfirm = (key, action) => () => {
     if (confirmPending === key) {
@@ -112,6 +190,58 @@ export default function SettingsTab() {
             ))}
           </div>
         )}
+        <Row label="ReplayGain"
+          icon={<Scale className="h-4 w-4" style={{ color: C.text4 }} />}
+          value={replayGain}
+          chevron={false}
+          onPress={() => {
+            const modes = ['off', 'track', 'album', 'auto'];
+            handleReplayGainChange(modes[(modes.indexOf(replayGain) + 1) % modes.length]);
+          }} />
+        <Row label={`Crossfade · ${crossfade}s`}
+          icon={<RefreshCw className="h-4 w-4" style={{ color: C.text4 }} />}
+          value={crossfade > 0 ? `${crossfade}s` : 'Off'}
+          chevron={false}
+          onPress={() => setShowCrossfade(v => !v)} />
+        {showCrossfade && (
+          <div className="px-4 pb-4 flex gap-2 flex-wrap">
+            {[0, 2, 4, 6, 8, 10].map(s => (
+              <button key={s}
+                onClick={() => { handleCrossfadeChange(s); setShowCrossfade(false); }}
+                className="px-4 py-2 rounded-full text-[12px] font-semibold active:scale-95 transition-all cursor-pointer"
+                style={crossfade === s
+                  ? { background: C.champagne, color: '#1a1c1c', fontFamily: C.fontLabel }
+                  : { ...card, color: C.text4, fontFamily: C.fontLabel }}>
+                {s === 0 ? 'Off' : `${s}s`}
+              </button>
+            ))}
+          </div>
+        )}
+        <Row label={`Balance · ${balance > 0 ? `R +${balance}` : balance < 0 ? `L +${Math.abs(balance)}` : 'Centre'}`}
+          icon={<FlipHorizontal className="h-4 w-4" style={{ color: Math.abs(balance) > 0 ? C.champagne : C.text4 }} />}
+          value={`${balance > 0 ? '+' : ''}${balance} dB`}
+          chevron={false}
+          onPress={() => setShowBalance(v => !v)} />
+        {showBalance && (
+          <div className="px-4 pb-4">
+            <input type="range" min="-12" max="12" step="0.5" value={balance}
+              onChange={e => handleBalanceChange(parseFloat(e.target.value))}
+              className="w-full" />
+            <div className="flex justify-between text-[11px] mt-1" style={{ color: C.text3, fontFamily: C.fontLabel }}>
+              <span>L</span><span>Centre</span><span>R</span>
+            </div>
+          </div>
+        )}
+        <Row label="Phase Inversion"
+          icon={<RotateCcw className="h-4 w-4" style={{ color: (phaseLeft || phaseRight) ? C.champagne : C.text4 }} />}
+          value={phaseLeft && phaseRight ? 'L+R' : phaseLeft ? 'L' : phaseRight ? 'R' : 'Off'}
+          chevron={false}
+          onPress={() => {
+            if (!phaseLeft && !phaseRight) handlePhaseChange(true, false);
+            else if (phaseLeft && !phaseRight) handlePhaseChange(false, true);
+            else if (!phaseLeft && phaseRight) handlePhaseChange(true, true);
+            else handlePhaseChange(false, false);
+          }} />
       </Section>
 
       {/* display */}
@@ -245,6 +375,62 @@ export default function SettingsTab() {
             </div>
           </div>
         )}
+        <Row label="Wi-Fi Network"
+          icon={<Wifi className="h-4 w-4" style={{ color: C.text4 }} />}
+          onPress={() => { setShowWifi(v => !v); if (!showWifi) handleWifiScan(); }} />
+        {showWifi && (
+          <div className="px-4 pb-4 flex flex-col gap-2">
+            {wifiScanning && <p className="text-[12px]" style={{ color: C.text3 }}>Scanning…</p>}
+            {wifiNetworks.slice(0, 8).map(n => (
+              <button key={n.ssid} onClick={() => setWifiSsid(n.ssid)}
+                className="px-3 py-2 rounded-xl text-left text-[13px] transition-all"
+                style={wifiSsid === n.ssid
+                  ? { background: C.champagne, color: '#1a1c1c', fontWeight: 600 }
+                  : { ...card, color: C.text2 }}>
+                {n.ssid} <span className="text-[11px]" style={{ opacity: 0.7 }}>({n.signal}dBm)</span>
+              </button>
+            ))}
+            <input type="text" placeholder="SSID" value={wifiSsid} onChange={e => setWifiSsid(e.target.value)}
+              className="px-3 py-2 rounded-xl text-[13px] focus:outline-none"
+              style={{ background: C.containerLow, color: C.text1, border: `0.5px solid ${C.outline}` }} />
+            <input type="password" placeholder="Password" value={wifiPassword} onChange={e => setWifiPassword(e.target.value)}
+              className="px-3 py-2 rounded-xl text-[13px] focus:outline-none"
+              style={{ background: C.containerLow, color: C.text1, border: `0.5px solid ${C.outline}` }} />
+            <button onClick={handleWifiConnect} disabled={wifiConnecting || !wifiSsid}
+              className="py-2.5 rounded-xl text-[13px] font-semibold active:scale-95 transition-all disabled:opacity-40"
+              style={{ background: C.champagne, color: '#1a1c1c' }}>
+              {wifiConnecting ? 'Connecting…' : 'Connect'}
+            </button>
+          </div>
+        )}
+        <Row label="Storage" sub="Library and disk usage"
+          icon={<HardDrive className="h-4 w-4" style={{ color: C.text4 }} />}
+          onPress={handleLoadStorage} />
+        {showStorage && storage && (
+          <div className="mx-4 mb-3 rounded-xl p-4 flex flex-col gap-3" style={cardWhite}>
+            <div>
+              <div className="flex justify-between text-[12px] mb-1" style={{ color: C.text3 }}>
+                <span>Disk used</span>
+                <span>{storage.rootMb?.used} / {storage.rootMb?.size} MB</span>
+              </div>
+              <div className="h-1.5 rounded-full overflow-hidden" style={{ background: C.container }}>
+                <div className="h-full rounded-full" style={{ width: `${storage.rootMb?.pct}%`, background: C.champagne }} />
+              </div>
+            </div>
+            <p className="text-[12px]" style={{ color: C.text3 }}>
+              Music library: {storage.musicFiles} files · {storage.musicSizeMb} MB
+            </p>
+          </div>
+        )}
+        <Row label="Backup Settings"
+          icon={<Download className="h-4 w-4" style={{ color: C.text4 }} />}
+          onPress={() => { window.open('/api/system/backup', '_blank'); }} />
+        <Row label={confirmPending === 'factory-reset' ? 'Tap again to reset everything' : 'Factory Reset'} destructive
+          icon={<RotateCcw className="h-4 w-4" style={{ color: C.error }} />}
+          onPress={withConfirm('factory-reset', async () => {
+            try { await api.factoryReset(); toast.success('Settings reset. Restart to apply.'); }
+            catch (e) { toast.error(e.message); }
+          })} />
         <Row label={confirmPending === 'reboot' ? 'Tap again to reboot' : 'Reboot Kiosk'}
           icon={<RefreshCw className="h-4 w-4" style={{ color: confirmPending === 'reboot' ? '#f59e0b' : C.text4 }} />}
           onPress={withConfirm('reboot', handleReboot)} />

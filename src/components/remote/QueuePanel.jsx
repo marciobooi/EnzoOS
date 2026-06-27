@@ -1,15 +1,38 @@
-import React, { useContext } from 'react';
-import { X, Music, ListMusic } from 'lucide-react';
+import React, { useContext, useEffect, useState } from 'react';
+import { X, Music, ListMusic, Trash2 } from 'lucide-react';
 import { Tk } from './shared';
+import { api } from '../../api';
+import { toast } from '../../lib/toast';
 
 export default function QueuePanel({ queue, queueLoading, onClose }) {
-  const { C, cardWhite, darkMode, albumImage, trackName, trackArtist } = useContext(Tk);
+  const { C, cardWhite, darkMode, albumImage, trackName, trackArtist, source, spotify } = useContext(Tk);
+
+  const [localQueue, setLocalQueue] = useState([]);
+  const [localLoading, setLocalLoading] = useState(false);
+
+  const isLocal = !spotify && source !== 'radio';
+
+  useEffect(() => {
+    if (!isLocal) return;
+    setLocalLoading(true);
+    api.getDetailedQueue()
+      .then(d => setLocalQueue(d.tracks || []))
+      .catch(() => {})
+      .finally(() => setLocalLoading(false));
+  }, [isLocal]);
+
+  const handleDeleteLocal = async (id) => {
+    try {
+      await api.removeFromQueue(id);
+      setLocalQueue(prev => prev.filter(t => t.id !== id));
+    } catch (e) { toast.error(e.message); }
+  };
 
   const panelBg = darkMode
     ? { background: 'rgba(10,14,28,0.97)', backdropFilter: 'blur(24px) saturate(180%)', WebkitBackdropFilter: 'blur(24px) saturate(180%)' }
     : { background: 'rgba(249,249,249,0.97)', backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)' };
 
-  const tracks = Array.isArray(queue) ? queue.slice(0, 20) : [];
+  const spotifyTracks = Array.isArray(queue) ? queue.slice(0, 20) : [];
 
   return (
     <div className="fixed inset-0 z-[9998]" onClick={onClose}>
@@ -57,21 +80,55 @@ export default function QueuePanel({ queue, queueLoading, onClose }) {
 
         {/* queue list */}
         <div className="overflow-y-auto px-4 pb-8" style={{ maxHeight: '50vh' }}>
-          {queueLoading ? (
+          {(isLocal ? localLoading : queueLoading) ? (
             <div className="flex justify-center py-8">
               <div className="w-6 h-6 rounded-full border-2 animate-spin"
                 style={{ borderColor: C.container, borderTopColor: C.champagne }} />
             </div>
-          ) : tracks.length === 0 ? (
+          ) : isLocal ? (
+            localQueue.length === 0 ? (
+              <div className="flex flex-col items-center gap-3 py-8 text-center">
+                <ListMusic className="h-8 w-8" style={{ color: C.outline }} />
+                <p className="text-[14px]" style={{ color: C.text3 }}>Queue is empty</p>
+              </div>
+            ) : (
+              <div className="rounded-xl overflow-hidden" style={cardWhite}>
+                {localQueue.map((t, idx) => (
+                  <React.Fragment key={t.id}>
+                    {idx > 0 && (
+                      <div className="ml-14" style={{ height: '0.5px', background: `linear-gradient(90deg, transparent 0%, ${C.outline} 15%, ${C.outline} 85%, transparent 100%)` }} />
+                    )}
+                    <div className="flex items-center gap-3 px-3 py-2.5">
+                      <span className="text-[11px] w-5 text-right shrink-0 font-semibold tabular-nums"
+                        style={{ color: C.text4 }}>{idx + 1}</span>
+                      <div className="w-9 h-9 rounded-lg overflow-hidden shrink-0 flex items-center justify-center"
+                        style={{ background: C.containerLow, border: `0.5px solid ${C.outline}` }}>
+                        <Music className="h-3.5 w-3.5" style={{ color: C.text4 }} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[13px] font-medium truncate" style={{ color: C.text1 }}>{t.title}</p>
+                        <p className="text-[11px] truncate" style={{ color: C.text3 }}>{t.artist}</p>
+                      </div>
+                      <button onClick={() => handleDeleteLocal(t.id)}
+                        className="w-8 h-8 flex items-center justify-center rounded-full shrink-0 active:scale-90 transition-all cursor-pointer"
+                        style={{ color: C.text4 }}>
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  </React.Fragment>
+                ))}
+              </div>
+            )
+          ) : spotifyTracks.length === 0 ? (
             <div className="flex flex-col items-center gap-3 py-8 text-center">
               <ListMusic className="h-8 w-8" style={{ color: C.outline }} />
               <p className="text-[14px]" style={{ color: C.text3 }}>Queue is empty</p>
             </div>
           ) : (
             <div className="rounded-xl overflow-hidden" style={cardWhite}>
-              {tracks.map((t, idx) => {
-                const img   = t.album?.images?.[2]?.url || t.album?.images?.[0]?.url;
-                const name  = t.name;
+              {spotifyTracks.map((t, idx) => {
+                const img    = t.album?.images?.[2]?.url || t.album?.images?.[0]?.url;
+                const name   = t.name;
                 const artist = t.artists?.map(a => a.name).join(', ');
                 return (
                   <React.Fragment key={`${t.uri}-${idx}`}>

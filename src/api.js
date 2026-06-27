@@ -672,4 +672,186 @@ export const api = {
     const r = await fetch('/api/player/qobuz/disconnect', { method: 'DELETE' });
     return r.json();
   },
+
+  // ── ReplayGain ──────────────────────────────────────────────────────────────
+  async getReplayGain() {
+    const r = await fetch('/api/player/replaygain');
+    return r.json();
+  },
+  async setReplayGain(mode) {
+    const r = await fetch('/api/player/replaygain', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ mode }),
+    });
+    return r.json();
+  },
+
+  // ── Crossfade ───────────────────────────────────────────────────────────────
+  async getCrossfade() {
+    const r = await fetch('/api/player/crossfade');
+    return r.json();
+  },
+  async setCrossfade(seconds) {
+    const r = await fetch('/api/player/crossfade', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ seconds }),
+    });
+    return r.json();
+  },
+
+  // ── Balance ─────────────────────────────────────────────────────────────────
+  async getBalance() {
+    const r = await fetch('/api/player/balance');
+    return r.json();
+  },
+  async setBalance(balance) {
+    const r = await fetch('/api/player/balance', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ balance }),
+    });
+    return r.json();
+  },
+
+  // ── Phase ────────────────────────────────────────────────────────────────────
+  async getPhase() {
+    const r = await fetch('/api/player/phase');
+    return r.json();
+  },
+  async setPhase(left, right) {
+    const r = await fetch('/api/player/phase', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ left, right }),
+    });
+    return r.json();
+  },
+
+  // ── Queue editing ────────────────────────────────────────────────────────────
+  async getDetailedQueue() {
+    const r = await fetch('/api/player/queue/detailed');
+    return r.json();
+  },
+  async removeFromQueue(id) {
+    const r = await fetch(`/api/player/queue/${id}`, { method: 'DELETE' });
+    return r.json();
+  },
+  async moveInQueue(from, to) {
+    const r = await fetch('/api/player/queue/move', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ from, to }),
+    });
+    return r.json();
+  },
+
+  // ── Lyrics ───────────────────────────────────────────────────────────────────
+  async getLyrics(title, artist, album, duration) {
+    const params = new URLSearchParams({ title, artist });
+    if (album) params.set('album', album);
+    if (duration) params.set('duration', duration);
+    const r = await fetch(`/api/player/lyrics?${params}`);
+    return r.json();
+  },
+
+  // ── History ──────────────────────────────────────────────────────────────────
+  async getHistory(limit = 50) {
+    const r = await fetch(`/api/player/history?limit=${limit}`);
+    return r.json();
+  },
+  async addToHistory(entry) {
+    const r = await fetch('/api/player/history', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(entry),
+    });
+    return r.json();
+  },
+  async clearHistory() {
+    const r = await fetch('/api/player/history', { method: 'DELETE' });
+    return r.json();
+  },
+
+  // ── Favorites ────────────────────────────────────────────────────────────────
+  async getFavorites() {
+    const r = await fetch('/api/player/favorites');
+    return r.json();
+  },
+  async addFavorite(entry) {
+    const r = await fetch('/api/player/favorites', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(entry),
+    });
+    return r.json();
+  },
+  async removeFavorite(id) {
+    const r = await fetch(`/api/player/favorites/${id}`, { method: 'DELETE' });
+    return r.json();
+  },
+  async removeFavoriteByUri(source, uri) {
+    const r = await fetch('/api/player/favorites', {
+      method: 'DELETE', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ source, uri }),
+    });
+    return r.json();
+  },
+  async checkFavorite(source, uri) {
+    const r = await fetch(`/api/player/favorites/check?source=${encodeURIComponent(source)}&uri=${encodeURIComponent(uri)}`);
+    return r.json();
+  },
+
+  // ── Library genres ───────────────────────────────────────────────────────────
+  async getLibraryGenres() {
+    const r = await fetch('/api/player/library/genres');
+    return r.json();
+  },
+  async getLibraryByGenre(genre) {
+    const r = await fetch(`/api/player/library/by-genre?genre=${encodeURIComponent(genre)}`);
+    return r.json();
+  },
+
+  // ── Playlists ────────────────────────────────────────────────────────────────
+  async getPlaylists() {
+    const r = await fetch('/api/player/playlists');
+    return r.json();
+  },
+  async savePlaylist(name) {
+    const r = await fetch(`/api/player/playlists/${encodeURIComponent(name)}/save`, { method: 'POST' });
+    return r.json();
+  },
+  async deletePlaylist(name) {
+    const r = await fetch(`/api/player/playlists/${encodeURIComponent(name)}`, { method: 'DELETE' });
+    return r.json();
+  },
+  async playPlaylist(name) {
+    const r = await fetch(`/api/player/playlists/${encodeURIComponent(name)}/play`, { method: 'POST' });
+    return r.json();
+  },
+
+  // ── Stats ────────────────────────────────────────────────────────────────────
+  async getStats() {
+    const r = await fetch('/api/player/stats');
+    return r.json();
+  },
+
+  // ── System extras ────────────────────────────────────────────────────────────
+  async getStorage() {
+    const r = await fetch('/api/system/storage');
+    return r.json();
+  },
+  async getWifi() {
+    const r = await fetch('/api/system/wifi');
+    return r.json();
+  },
+  async scanWifi() {
+    const r = await fetch('/api/system/wifi/scan');
+    return r.json();
+  },
+  async connectWifi(ssid, password) {
+    const r = await fetch('/api/system/wifi/connect', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ssid, password }),
+    });
+    return r.json();
+  },
+  async factoryReset() {
+    const r = await fetch('/api/system/factory-reset', { method: 'POST' });
+    return r.json();
+  },
 };

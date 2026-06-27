@@ -5,7 +5,11 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import YAML from 'yaml';
-import { getFavoriteRadios, addFavoriteRadio, deleteFavoriteRadioByUrl, setSetting, getSetting } from './db.js';
+import {
+  getFavoriteRadios, addFavoriteRadio, deleteFavoriteRadioByUrl, setSetting, getSetting,
+  addPlayHistory, getPlayHistory, clearPlayHistory,
+  getFavorites, addFavorite, removeFavorite, removeFavoriteByUri, isFavorite,
+} from './db.js';
 import { emit, getStandbyState, getCachedVolumeDb, setVolumeState } from './event-service.js';
 import {
   qobuzLogin, qobuzSearch, qobuzTrackUrl, qobuzConnected, clearQobuz,
@@ -586,7 +590,9 @@ const presetDatabase = {
 
 // --- CamillaDSP Configuration Generator ---
 // pureDirect = true: bypass all EQ, output flat pipeline (volume control still active)
-function generateCamillaConfig(answers, eqSettings, dacInfo, { pureDirect = false } = {}) {
+// balance: -12..+12 dB. Positive = right louder (attenuate left). Negative = left louder (attenuate right).
+// phaseLeft/phaseRight: invert polarity of that channel
+function generateCamillaConfig(answers, eqSettings, dacInfo, { pureDirect = false, balance = 0, phaseLeft = false, phaseRight = false } = {}) {
   const isDspActive = answers && (answers[0] === 'dsp' || answers['0'] === 'dsp');
   const isSubwooferSetup = answers && answers.q1_setup === "2 Speakers + 1 Subwoofer";
 
@@ -613,9 +619,21 @@ function generateCamillaConfig(answers, eqSettings, dacInfo, { pureDirect = fals
     profile = presetDatabase[selectedPresetName] || presetDatabase["Clinical Reference"];
   }
 
+  // Compute per-channel balance gains (applied in mixer)
+  const balL = balance > 0 ? -Math.abs(balance) : 0;
+  const balR = balance < 0 ? -Math.abs(balance) : 0;
+
   // Pure Direct: bypass all EQ — flat pipeline with unity gain only.
   // Volume control via CamillaDSP SetVolume remains active.
   if (pureDirect) {
+    const pdFilters = {};
+    const pdPipeLeft  = [];
+    const pdPipeRight = [];
+    if (phaseLeft)  { pdFilters.phase_left  = { type: "Gain", parameters: { gain: 0, inverted: true, mute: false } }; pdPipeLeft.push("phase_left"); }
+    if (phaseRight) { pdFilters.phase_right = { type: "Gain", parameters: { gain: 0, inverted: true, mute: false } }; pdPipeRight.push("phase_right"); }
+    const pdPipeline = [{ type: "Mixer", name: "speaker_map" }];
+    if (pdPipeLeft.length)  pdPipeline.push({ type: "Filter", channels: [0], names: pdPipeLeft });
+    if (pdPipeRight.length) pdPipeline.push({ type: "Filter", channels: [1], names: pdPipeRight });
     const pdConfig = {
       devices: {
         samplerate: dacInfo.samplerate || 44100,
@@ -628,15 +646,13 @@ function generateCamillaConfig(answers, eqSettings, dacInfo, { pureDirect = fals
         speaker_map: {
           channels: { in: 2, out: 2 },
           mapping: [
-            { dest: 0, sources: [{ channel: 0, gain: 0 }] },
-            { dest: 1, sources: [{ channel: 1, gain: 0 }] },
+            { dest: 0, sources: [{ channel: 0, gain: balL }] },
+            { dest: 1, sources: [{ channel: 1, gain: balR }] },
           ],
         },
       },
-      filters: {},
-      pipeline: [
-        { type: "Mixer", name: "speaker_map" },
-      ],
+      filters: pdFilters,
+      pipeline: pdPipeline,
     };
     return pdConfig;
   }
@@ -694,9 +710,9 @@ function generateCamillaConfig(answers, eqSettings, dacInfo, { pureDirect = fals
     config.mixers.speaker_map = {
       channels: { in: 2, out: 3 },
       mapping: [
-        { dest: 0, sources: [{ channel: 0, gain: 0 }] },
-        { dest: 1, sources: [{ channel: 1, gain: 0 }] },
-        { dest: 2, sources: [{ channel: 0, gain: -3.0 }, { channel: 1, gain: -3.0 }] }
+        { dest: 0, sources: [{ channel: 0, gain: balL }] },
+        { dest: 1, sources: [{ channel: 1, gain: balR }] },
+        { dest: 2, sources: [{ channel: 0, gain: -3.0 + balL }, { channel: 1, gain: -3.0 + balR }] }
       ]
     };
   } else {
@@ -704,8 +720,8 @@ function generateCamillaConfig(answers, eqSettings, dacInfo, { pureDirect = fals
     config.mixers.speaker_map = {
       channels: { in: 2, out: 2 },
       mapping: [
-        { dest: 0, sources: [{ channel: 0, gain: 0 }] },
-        { dest: 1, sources: [{ channel: 1, gain: 0 }] }
+        { dest: 0, sources: [{ channel: 0, gain: balL }] },
+        { dest: 1, sources: [{ channel: 1, gain: balR }] }
       ]
     };
   }
@@ -798,7 +814,7 @@ function generateCamillaConfig(answers, eqSettings, dacInfo, { pureDirect = fals
     subPipeline.unshift("sub_lowpass");
   }
 
-  // --- STAGE E: PREAMP GAIN ---
+  // --- STAGE E: PREAMP GAIN + PHASE ---
   // Extra -1 dB safety headroom is applied here for all pipelines.
   // This prevents any multi-stage EQ summing from exceeding 0 dBFS,
   // which would cause hard clipping and potential speaker damage.
@@ -807,6 +823,9 @@ function generateCamillaConfig(answers, eqSettings, dacInfo, { pureDirect = fals
   leftPipeline.push("preamp_gain");
   rightPipeline.push("preamp_gain");
   if (isSubwooferSetup) subPipeline.push("preamp_gain");
+
+  if (phaseLeft)  { config.filters.phase_left  = { type: "Gain", parameters: { gain: 0, inverted: true, mute: false } }; leftPipeline.push("phase_left"); }
+  if (phaseRight) { config.filters.phase_right = { type: "Gain", parameters: { gain: 0, inverted: true, mute: false } }; rightPipeline.push("phase_right"); }
 
   // --- STAGE F: COMPILE THE PIPELINE MATRIX ---
   // CamillaDSP v4: Filter steps use 'channels' (array) instead of v2's 'channel' (integer).
@@ -940,11 +959,17 @@ router.get('/dsp-calibration', async (req, res) => {
 
 // Exportable helper to update configuration on any settings change
 export async function updateCamillaConfigFromSettings({ skipAlsa = false, samplerate = null, pureDirect = false } = {}) {
-  const dspVal = await getSetting('dsp_calibration');
-  const eqVal = await getSetting('eq_settings');
+  const [dspVal, eqVal, balanceVal, phaseVal] = await Promise.all([
+    getSetting('dsp_calibration'),
+    getSetting('eq_settings'),
+    getSetting('balance'),
+    getSetting('phase'),
+  ]);
 
   const answers = dspVal ? JSON.parse(dspVal) : null;
   const eqSettings = eqVal ? JSON.parse(eqVal) : null;
+  const balance = balanceVal ? parseFloat(balanceVal) : 0;
+  const phase = phaseVal ? JSON.parse(phaseVal) : { left: false, right: false };
 
   // Auto-configure ALSA Loopback routing — skip during EQ updates since
   // ALSA config never changes when only EQ bands/levels are adjusted
@@ -976,7 +1001,9 @@ export async function updateCamillaConfigFromSettings({ skipAlsa = false, sample
   }
 
   // Generate CamillaDSP yaml configuration
-  const configObj = generateCamillaConfig(answers, eqSettings, dacInfo, { pureDirect });
+  const configObj = generateCamillaConfig(answers, eqSettings, dacInfo, {
+    pureDirect, balance, phaseLeft: phase.left, phaseRight: phase.right,
+  });
   const yamlString = YAML.stringify(configObj, { indent: 2 });
 
   // Save configuration file
@@ -1633,6 +1660,278 @@ router.delete('/qobuz/disconnect', async (req, res) => {
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
+});
+
+// ── ReplayGain (#2) ───────────────────────────────────────────────────────────
+router.get('/replaygain', async (req, res) => {
+  try {
+    const { stdout } = await execPromise('mpc replaygain');
+    const match = stdout.trim().match(/ReplayGain:\s*(\S+)/i);
+    res.json({ mode: match ? match[1].toLowerCase() : 'off' });
+  } catch { res.json({ mode: 'off' }); }
+});
+
+router.post('/replaygain', async (req, res) => {
+  const mode = (req.body.mode || 'off').toLowerCase();
+  if (!['off', 'track', 'album', 'auto'].includes(mode))
+    return res.status(400).json({ error: 'mode must be off|track|album|auto' });
+  try {
+    await execFilePromise('mpc', ['replaygain', mode]);
+    await setSetting('replaygain_mode', mode);
+    res.json({ success: true, mode });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// ── Crossfade (#5) ────────────────────────────────────────────────────────────
+router.get('/crossfade', async (req, res) => {
+  try {
+    const { stdout } = await execPromise('mpc status');
+    const match = stdout.match(/crossfade:\s*(\d+)/i);
+    res.json({ seconds: match ? parseInt(match[1], 10) : 0 });
+  } catch { res.json({ seconds: 0 }); }
+});
+
+router.post('/crossfade', async (req, res) => {
+  const secs = parseInt(req.body.seconds ?? 0, 10);
+  if (!Number.isFinite(secs) || secs < 0 || secs > 60)
+    return res.status(400).json({ error: 'seconds must be 0-60' });
+  try {
+    await execFilePromise('mpc', ['crossfade', String(secs)]);
+    await setSetting('crossfade_seconds', secs);
+    res.json({ success: true, seconds: secs });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// ── Balance (#3) ──────────────────────────────────────────────────────────────
+router.get('/balance', async (req, res) => {
+  const val = await getSetting('balance').catch(() => null);
+  res.json({ balance: val ? parseFloat(val) : 0 });
+});
+
+router.post('/balance', async (req, res) => {
+  const bal = parseFloat(req.body.balance ?? 0);
+  if (!Number.isFinite(bal) || bal < -12 || bal > 12)
+    return res.status(400).json({ error: 'balance must be -12..+12 dB' });
+  try {
+    await setSetting('balance', bal);
+    await updateCamillaConfigFromSettings({ skipAlsa: true });
+    res.json({ success: true, balance: bal });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// ── Phase inversion (#4) ──────────────────────────────────────────────────────
+router.get('/phase', async (req, res) => {
+  const val = await getSetting('phase').catch(() => null);
+  res.json(val ? JSON.parse(val) : { left: false, right: false });
+});
+
+router.post('/phase', async (req, res) => {
+  const left  = !!req.body.left;
+  const right = !!req.body.right;
+  try {
+    await setSetting('phase', JSON.stringify({ left, right }));
+    await updateCamillaConfigFromSettings({ skipAlsa: true });
+    res.json({ success: true, left, right });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// ── Queue editing (#11) ───────────────────────────────────────────────────────
+// GET /api/player/queue/detailed — returns id + title + artist + file
+router.get('/queue/detailed', async (req, res) => {
+  try {
+    const { stdout } = await execPromise('mpc -f "%id%||%title%||%artist%||%file%" playlist');
+    const tracks = stdout.split('\n').map(s => s.trim()).filter(Boolean).map(line => {
+      const [id, title, artist, file] = line.split('||');
+      return { id: id || '', title: title || file?.split('/').pop() || '', artist: artist || '', file: file || '' };
+    });
+    res.json({ tracks });
+  } catch { res.json({ tracks: [] }); }
+});
+
+// DELETE /api/player/queue/:id — remove by MPD song id
+router.delete('/queue/:id', async (req, res) => {
+  const id = parseInt(req.params.id, 10);
+  if (!Number.isFinite(id)) return res.status(400).json({ error: 'invalid id' });
+  try {
+    await execFilePromise('mpc', ['deleteid', String(id)]);
+    res.json({ success: true });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// POST /api/player/queue/move {from, to} — reorder (0-based positions)
+router.post('/queue/move', async (req, res) => {
+  const from = parseInt(req.body.from, 10);
+  const to   = parseInt(req.body.to,   10);
+  if (!Number.isFinite(from) || !Number.isFinite(to))
+    return res.status(400).json({ error: 'from and to required' });
+  try {
+    await execFilePromise('mpc', ['move', String(from + 1), String(to + 1)]);
+    res.json({ success: true });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// ── Lyrics (#7) via LRCLIB ───────────────────────────────────────────────────
+let _lyricsNodeFetch = null;
+async function getLyricsFetch() {
+  if (!_lyricsNodeFetch) _lyricsNodeFetch = (await import('node-fetch')).default;
+  return _lyricsNodeFetch;
+}
+
+router.get('/lyrics', async (req, res) => {
+  const title  = (req.query.title  || '').trim();
+  const artist = (req.query.artist || '').trim();
+  const album  = (req.query.album  || '').trim();
+  const duration = parseInt(req.query.duration, 10) || 0;
+  if (!title || !artist) return res.status(400).json({ error: 'title and artist required' });
+  try {
+    const fetch = await getLyricsFetch();
+    const params = new URLSearchParams({ track_name: title, artist_name: artist });
+    if (album) params.set('album_name', album);
+    if (duration) params.set('duration', duration);
+    const r = await fetch(`https://lrclib.net/api/get?${params}`, {
+      headers: { 'Lrclib-Client': 'ResonanceHiFi/1.0' },
+      signal: AbortSignal.timeout(8000),
+    });
+    if (!r.ok) return res.json({ plain: null, synced: null });
+    const d = await r.json();
+    res.json({ plain: d.plainLyrics || null, synced: d.syncedLyrics || null });
+  } catch (err) {
+    res.json({ plain: null, synced: null });
+  }
+});
+
+// ── Play History (#13) ────────────────────────────────────────────────────────
+router.get('/history', async (req, res) => {
+  const limit = Math.min(parseInt(req.query.limit, 10) || 50, 100);
+  res.json(await getPlayHistory(limit));
+});
+
+router.post('/history', async (req, res) => {
+  const { source, title, artist, album, file, cover } = req.body || {};
+  if (!source) return res.status(400).json({ error: 'source required' });
+  await addPlayHistory({ source, title, artist, album, file, cover });
+  res.json({ success: true });
+});
+
+router.delete('/history', async (req, res) => {
+  await clearPlayHistory();
+  res.json({ success: true });
+});
+
+// ── Unified Favorites (#25) ───────────────────────────────────────────────────
+router.get('/favorites', async (req, res) => {
+  res.json(await getFavorites());
+});
+
+router.post('/favorites', async (req, res) => {
+  const { source, uri, title, artist, album, file, cover } = req.body || {};
+  if (!source || !uri) return res.status(400).json({ error: 'source and uri required' });
+  const result = await addFavorite({ source, uri, title, artist, album, file, cover });
+  res.json(result || { success: false, message: 'already favorited' });
+});
+
+router.delete('/favorites/:id', async (req, res) => {
+  const id = parseInt(req.params.id, 10);
+  if (!Number.isFinite(id)) return res.status(400).json({ error: 'invalid id' });
+  await removeFavorite(id);
+  res.json({ success: true });
+});
+
+router.delete('/favorites', async (req, res) => {
+  const { source, uri } = req.body || {};
+  if (!source || !uri) return res.status(400).json({ error: 'source and uri required' });
+  await removeFavoriteByUri(source, uri);
+  res.json({ success: true });
+});
+
+router.get('/favorites/check', async (req, res) => {
+  const { source, uri } = req.query;
+  if (!source || !uri) return res.json({ favorited: false });
+  res.json({ favorited: await isFavorite(source, uri) });
+});
+
+// ── Library genres / years (#14) ─────────────────────────────────────────────
+router.get('/library/genres', async (req, res) => {
+  try {
+    const { stdout } = await execPromise('mpc list genre');
+    const genres = stdout.split('\n').map(s => s.trim()).filter(Boolean).sort((a, b) => a.localeCompare(b));
+    res.json({ genres });
+  } catch { res.json({ genres: [] }); }
+});
+
+router.get('/library/by-genre', async (req, res) => {
+  const genre = (req.query.genre || '').trim();
+  if (!genre || genre.length > 500) return res.json({ tracks: [] });
+  try {
+    const { stdout } = await execFilePromise('mpc', [
+      '-f', '%title%||%artist%||%album%||%file%',
+      'find', 'genre', genre,
+    ]);
+    const tracks = stdout.split('\n').map(s => s.trim()).filter(Boolean).map(line => {
+      const [title, artist, album, file] = line.split('||');
+      return { title: title || '', artist: artist || '', album: album || '', file: file || '' };
+    }).filter(t => t.file);
+    res.json({ tracks });
+  } catch { res.json({ tracks: [] }); }
+});
+
+// ── MPD Playlists (#12) ───────────────────────────────────────────────────────
+router.get('/playlists', async (req, res) => {
+  try {
+    const { stdout } = await execPromise('mpc lsplaylists');
+    const playlists = stdout.split('\n').map(s => s.trim()).filter(Boolean);
+    res.json({ playlists });
+  } catch { res.json({ playlists: [] }); }
+});
+
+router.post('/playlists/:name/save', async (req, res) => {
+  const name = req.params.name.replace(/[^\w\s\-_.]/g, '').trim();
+  if (!name) return res.status(400).json({ error: 'invalid playlist name' });
+  try {
+    await execFilePromise('mpc', ['save', name]);
+    res.json({ success: true });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+router.delete('/playlists/:name', async (req, res) => {
+  const name = req.params.name.replace(/[^\w\s\-_.]/g, '').trim();
+  if (!name) return res.status(400).json({ error: 'invalid playlist name' });
+  try {
+    await execFilePromise('mpc', ['rm', name]);
+    res.json({ success: true });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+router.post('/playlists/:name/play', async (req, res) => {
+  const name = req.params.name.replace(/[^\w\s\-_.]/g, '').trim();
+  if (!name) return res.status(400).json({ error: 'invalid playlist name' });
+  try {
+    if (getStandbyState()) await emit('SET_STANDBY', { enabled: false });
+    await execPromise('mpc clear');
+    await execFilePromise('mpc', ['load', name]);
+    await execPromise('mpc play');
+    res.json({ success: true });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// ── Listening Stats (#26) ─────────────────────────────────────────────────────
+router.get('/stats', async (req, res) => {
+  try {
+    const history = await getPlayHistory(500);
+    const totalMs  = history.length * 3 * 60 * 1000; // rough 3-min avg
+    const byArtist = {};
+    const bySource = {};
+    const byTitle  = {};
+    for (const h of history) {
+      if (h.artist) byArtist[h.artist] = (byArtist[h.artist] || 0) + 1;
+      if (h.source) bySource[h.source] = (bySource[h.source] || 0) + 1;
+      if (h.title)  byTitle[h.title]   = (byTitle[h.title]   || 0) + 1;
+    }
+    const topArtists = Object.entries(byArtist).sort((a, b) => b[1] - a[1]).slice(0, 10).map(([name, count]) => ({ name, count }));
+    const topTracks  = Object.entries(byTitle).sort((a, b) => b[1] - a[1]).slice(0, 10).map(([name, count]) => ({ name, count }));
+    const sourceBreakdown = Object.entries(bySource).map(([source, count]) => ({ source, count }));
+    res.json({ totalPlays: history.length, totalMs, topArtists, topTracks, sourceBreakdown });
+  } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
 export default router;
