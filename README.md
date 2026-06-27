@@ -47,6 +47,13 @@ Resonance HiFi is an open-source, self-hosted audio streaming platform for Raspb
 - **`log2ram` — `/var/log` in RAM** — system logs are routed into a tmpfs RAM disk (128 MB) so playback never triggers flash writes for logging. The RAM copy is synced back to disk periodically and flushed on a clean shutdown via the log2ram service's `ExecStop`, so logs survive a graceful power-down but never touch flash mid-stream
 - **Idempotent storage helper** — `scripts/setup-storage-silence.sh` applies both; it runs at install time and is re-applied on every OTA update. The `log2ram` step is best-effort — a package-repo failure never aborts the install (the system simply keeps logging to disk)
 
+### RAM Preloading / Memory Locking
+- **`mlockall` execution engine** — CamillaDSP (the DSP execution engine) is launched with an `LD_PRELOAD` shim (`resonance-mlockall.so`) whose constructor calls `mlockall(MCL_CURRENT | MCL_FUTURE)` before `main()`, pinning every current and future page into physical RAM so the kernel can never page the DSP engine — or the audio chunks it is processing — out to disk during playback
+- **`LimitMEMLOCK=infinity` daemons** — systemd drop-ins raise `RLIMIT_MEMLOCK` to infinity for CamillaDSP, MPD, raspotify, shairport-sync and the PipeWire user service, permitting each to lock its real-time pages. (The forced `mlockall` shim is applied only to CamillaDSP — bounded RT memory; decoders get the limit raise so their own RT threads may lock without blanket-pinning a large MPD music database on low-RAM Pis)
+- **PipeWire native mlock** — `mem.allow-mlock = true` + `mem.mlock-all = true` context properties (`53-resonance-mlock.conf`) lock PipeWire's real-time graph memory into RAM
+- **Pro-audio limits baseline** — `/etc/security/limits.d/95-resonance-audio.conf` grants the `audio` group `memlock unlimited` and real-time priority for login-session clients
+- **Idempotent memory-lock helper** — `scripts/setup-ram-preload.sh` compiles the shim and writes all drop-ins; it runs at install time and is re-applied on every OTA update, skipping any step (compiler, service, PipeWire) that isn't present
+
 ### DSP
 - **CamillaDSP 4.1.3** — real-time parametric EQ, biquad filters, crossovers, room correction
 - **Hot-reload** — EQ/filter changes apply via WebSocket `SetConfig` with no audio interruption
@@ -214,11 +221,12 @@ The installer will:
 6. Write `/etc/asound.conf` (rate-agnostic loop_dsnoop for bit-perfect chain)
 7. Apply real-time audio tuning — `threadirqs` + `rtirq` IRQ priority and `isolcpus=2,3` core isolation with per-service CPU affinity (`scripts/setup-rtaudio.sh`)
 8. Apply storage silence — `noatime,nodiratime` fstab mounts and `log2ram` RAM-backed `/var/log` (`scripts/setup-storage-silence.sh`)
-9. Generate a self-signed TLS certificate for HTTPS remote access (port 5001)
-10. Build the React frontend (`npm run build`)
-11. Register the backend as a PM2 service (`resonance-api`)
-12. Configure autologin on TTY1 and launch Chromium in kiosk mode
-13. Reboot automatically
+9. Apply RAM preloading — `mlockall` shim + `LimitMEMLOCK` + PipeWire mlock to keep the audio engine resident in RAM (`scripts/setup-ram-preload.sh`)
+10. Generate a self-signed TLS certificate for HTTPS remote access (port 5001)
+11. Build the React frontend (`npm run build`)
+12. Register the backend as a PM2 service (`resonance-api`)
+13. Configure autologin on TTY1 and launch Chromium in kiosk mode
+14. Reboot automatically
 
 **Typical install time:** 15–25 minutes (shairport-sync and upmpdcli builds from source add time).
 
@@ -677,6 +685,8 @@ THEAUDIODB_KEY=2           # free dev key; set a Patreon key for production volu
 | `src/components/ResonanceLogo.jsx` | Pure CSS/HTML origami logo intro + static wordmark (kiosk welcome/goodbye) |
 | `scripts/setup-rtaudio.sh` | Real-time audio tuning — `threadirqs`, `rtirq` IRQ priority, `isolcpus=2,3` core isolation, per-service CPU affinity (idempotent; run by installer and OTA update) |
 | `scripts/setup-storage-silence.sh` | Storage silence — `noatime,nodiratime` fstab mounts + `log2ram` RAM-backed `/var/log` (idempotent; run by installer and OTA update) |
+| `scripts/setup-ram-preload.sh` | RAM preloading — `mlockall` shim + `LimitMEMLOCK` drop-ins + PipeWire mlock to keep audio daemons resident in RAM (idempotent; run by installer and OTA update) |
+| `scripts/resonance-mlockall.c` | `LD_PRELOAD` shim source — `mlockall(MCL_CURRENT\|MCL_FUTURE)` constructor, compiled to `/usr/local/lib/resonance-mlockall.so` at install |
 | `scripts/kiosk-power.sh` | Display standby: `vcgencmd` on Pi, `xset dpms` on QEMU |
 | `install.sh` | Master installer — packages, PipeWire, CamillaDSP, shairport-sync, upmpdcli |
 | `camilladsp.yml` | Active CamillaDSP pipeline config (auto-generated on startup — do not hand-edit) |

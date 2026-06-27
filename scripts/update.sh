@@ -112,6 +112,13 @@ if [ "$EUID" -eq 0 ]; then
   echo -e "${YELLOW}Re-applying file system & storage silence...${NC}"
   bash "$PROJECT_DIR/scripts/setup-storage-silence.sh" || \
     echo -e "${YELLOW}Storage silence reported an issue — continuing.${NC}"
+
+  # Re-apply RAM preloading / memory locking (mlockall, LimitMEMLOCK, PipeWire
+  # mlock). Idempotent — recompiles the shim and rewrites the drop-ins.
+  echo -e "${YELLOW}Re-applying RAM preloading / memory locking...${NC}"
+  RT_TARGET_USER="$(stat -c '%U' "$PROJECT_DIR" 2>/dev/null || echo "$USER")" \
+    bash "$PROJECT_DIR/scripts/setup-ram-preload.sh" || \
+    echo -e "${YELLOW}Memory-lock tuning reported an issue — continuing.${NC}"
 fi
 
 echo -e "${GREEN}OTA Update completed successfully!${NC}"

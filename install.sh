@@ -631,6 +631,15 @@ chmod +x "$PROJECT_DIR/scripts/setup-storage-silence.sh"
 bash "$PROJECT_DIR/scripts/setup-storage-silence.sh" || \
   echo -e "${YELLOW}  Storage silence reported an issue — continuing install.${NC}"
 
+# ── RAM preloading execution engine (mlockall memory locking) ──────────────────
+# Lock the core audio daemons into physical RAM (LimitMEMLOCK + mlockall shim +
+# PipeWire native mlock) so the decoding/DSP engine and its audio chunks never
+# page to disk during playback. Idempotent helper — shared with scripts/update.sh.
+echo -e "\n${GREEN}[5e/7] Configuring RAM preloading / memory locking (mlockall)...${NC}"
+chmod +x "$PROJECT_DIR/scripts/setup-ram-preload.sh"
+RT_TARGET_USER="$TARGET_USER" bash "$PROJECT_DIR/scripts/setup-ram-preload.sh" || \
+  echo -e "${YELLOW}  Memory-lock tuning reported an issue — continuing install.${NC}"
+
 echo -e "\n${GREEN}[6/7] Configuring kiosk startup files...${NC}"
 
 # Deploy kiosk power management and wake monitor scripts
