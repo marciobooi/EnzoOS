@@ -97,6 +97,14 @@ if [ "$EUID" -eq 0 ]; then
   cp "$PROJECT_DIR/scripts/resonance.service" /etc/avahi/services/resonance.service || true
   chmod 644 /etc/avahi/services/resonance.service
   systemctl restart avahi-daemon || true
+
+  # Re-apply real-time audio tuning (threadirqs, rtirq, isolcpus, CPU affinity).
+  # Idempotent — picks up new tuning on existing installs. Boot-param changes
+  # take effect on the next reboot; service affinity applies immediately.
+  echo -e "${YELLOW}Re-applying real-time audio tuning...${NC}"
+  RT_TARGET_USER="$(stat -c '%U' "$PROJECT_DIR" 2>/dev/null || echo "$USER")" \
+    bash "$PROJECT_DIR/scripts/setup-rtaudio.sh" || \
+    echo -e "${YELLOW}Real-time audio tuning reported an issue — continuing.${NC}"
 fi
 
 echo -e "${GREEN}OTA Update completed successfully!${NC}"

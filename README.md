@@ -32,6 +32,16 @@ Resonance HiFi is an open-source, self-hosted audio streaming platform for Raspb
 - **-1 dB safety headroom** — applied at Stage E (preamp gain) across all built-in and custom pipelines as a guard against multi-stage EQ filter gains summing above 0 dBFS
 - **Safe startup sequence** — CamillaDSP is pre-muted to -100 dB before config apply on startup, then volume is restored from the stored value. Prevents the 0 dB (full volume) window that occurs on every CamillaDSP process start
 
+### Real-Time Performance
+- **Threaded interrupts (`threadirqs`)** — added to the kernel boot cmdline so every hardware IRQ runs as a schedulable kernel thread, the prerequisite for assigning interrupts individual real-time priorities
+- **Real-time IRQ priority (`rtirq`)** — `rtirq-init` identifies the connected audio device's hardware IRQ (the USB host controller for USB DACs, or the I²S bus for I²S DACs) and pins its IRQ thread to a real-time priority *above* the network (Wi-Fi/Ethernet) and storage (SD/USB) drivers, which are left on default scheduling — so audio servicing always wins contention
+- **Hard CPU core isolation (`isolcpus=2,3`)** — cores 2 and 3 are removed from the Linux load balancer so the scheduler never migrates processes onto them, eliminating the L1/L2 cache invalidation that core-hopping inflicts on the audio pipeline. Companion `rcu_nocbs=2,3` offloads RCU callbacks off the isolated cores
+- **Asymmetric workload split** — the four Pi cores are partitioned by role:
+  - *Cores 0 & 1* — OS tasks, Node.js API backend, SQLite, and Chromium kiosk (everything non-isolated lands here automatically)
+  - *Core 2* — PipeWire + CamillaDSP audio pipeline, pinned via systemd `CPUAffinity`
+  - *Core 3* — source streaming daemons (raspotify/librespot, shairport-sync), pinned via systemd `CPUAffinity`
+- **Idempotent tuning helper** — `scripts/setup-rtaudio.sh` applies all of the above; it runs at install time and is re-applied on every OTA update, gracefully skipping the kernel-param and affinity steps on non-Pi / sub-quad-core hosts
+
 ### DSP
 - **CamillaDSP 4.1.3** — real-time parametric EQ, biquad filters, crossovers, room correction
 - **Hot-reload** — EQ/filter changes apply via WebSocket `SetConfig` with no audio interruption
@@ -194,11 +204,12 @@ The installer will:
 4. Build upmpdcli from source via npupnp → libupnpp → upmpdcli (UPnP/DLNA)
 5. Configure PipeWire virtual sink, loopback bridge, and bit-perfect clock config
 6. Write `/etc/asound.conf` (rate-agnostic loop_dsnoop for bit-perfect chain)
-7. Generate a self-signed TLS certificate for HTTPS remote access (port 5001)
-8. Build the React frontend (`npm run build`)
-9. Register the backend as a PM2 service (`resonance-api`)
-10. Configure autologin on TTY1 and launch Chromium in kiosk mode
-11. Reboot automatically
+7. Apply real-time audio tuning — `threadirqs` + `rtirq` IRQ priority and `isolcpus=2,3` core isolation with per-service CPU affinity (`scripts/setup-rtaudio.sh`)
+8. Generate a self-signed TLS certificate for HTTPS remote access (port 5001)
+9. Build the React frontend (`npm run build`)
+10. Register the backend as a PM2 service (`resonance-api`)
+11. Configure autologin on TTY1 and launch Chromium in kiosk mode
+12. Reboot automatically
 
 **Typical install time:** 15–25 minutes (shairport-sync and upmpdcli builds from source add time).
 
@@ -544,6 +555,7 @@ HTTPS_PORT=5001
 | `server/db.js` | SQLite helpers — settings, favourite radios, metadata cache, play history, unified favorites |
 | `server/index.js` | Express entry point, Spotify OAuth, HTTPS setup |
 | `server/status.js` | Full status snapshot endpoint |
+| `scripts/setup-rtaudio.sh` | Real-time audio tuning — `threadirqs`, `rtirq` IRQ priority, `isolcpus=2,3` core isolation, per-service CPU affinity (idempotent; run by installer and OTA update) |
 | `scripts/kiosk-power.sh` | Display standby: `vcgencmd` on Pi, `xset dpms` on QEMU |
 | `install.sh` | Master installer — packages, PipeWire, CamillaDSP, shairport-sync, upmpdcli |
 | `camilladsp.yml` | Active CamillaDSP pipeline config (auto-generated on startup — do not hand-edit) |

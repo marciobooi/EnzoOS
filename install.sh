@@ -612,6 +612,16 @@ chmod 644 "$UDEV_TOUCH"
 udevadm control --reload-rules 2>/dev/null && udevadm trigger 2>/dev/null || true
 echo -e "${GREEN}  Touch udev rule written to $UDEV_TOUCH${NC}"
 
+# ── Real-time audio tuning (threadirqs + rtirq + isolcpus + CPU affinity) ──────
+# Thread hardware IRQs (threadirqs), pin the audio IRQ above network/storage
+# (rtirq), isolate cores 2 & 3 from the scheduler (isolcpus), and split the
+# workload: cores 0/1 → OS+API+kiosk, core 2 → PipeWire+CamillaDSP, core 3 →
+# source daemons. Idempotent helper — shared with scripts/update.sh.
+echo -e "\n${GREEN}[5c/7] Configuring real-time audio tuning (IRQ priority + CPU isolation)...${NC}"
+chmod +x "$PROJECT_DIR/scripts/setup-rtaudio.sh"
+RT_TARGET_USER="$TARGET_USER" bash "$PROJECT_DIR/scripts/setup-rtaudio.sh" || \
+  echo -e "${YELLOW}  Real-time audio tuning reported an issue — continuing install.${NC}"
+
 echo -e "\n${GREEN}[6/7] Configuring kiosk startup files...${NC}"
 
 # Deploy kiosk power management and wake monitor scripts
