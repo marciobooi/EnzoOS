@@ -105,6 +105,13 @@ if [ "$EUID" -eq 0 ]; then
   RT_TARGET_USER="$(stat -c '%U' "$PROJECT_DIR" 2>/dev/null || echo "$USER")" \
     bash "$PROJECT_DIR/scripts/setup-rtaudio.sh" || \
     echo -e "${YELLOW}Real-time audio tuning reported an issue — continuing.${NC}"
+
+  # Re-apply file system & storage silence (noatime,nodiratime + log2ram).
+  # Idempotent — fstab edits are no-ops once applied; log2ram install is skipped
+  # when already present.
+  echo -e "${YELLOW}Re-applying file system & storage silence...${NC}"
+  bash "$PROJECT_DIR/scripts/setup-storage-silence.sh" || \
+    echo -e "${YELLOW}Storage silence reported an issue — continuing.${NC}"
 fi
 
 echo -e "${GREEN}OTA Update completed successfully!${NC}"

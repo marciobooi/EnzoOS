@@ -622,6 +622,15 @@ chmod +x "$PROJECT_DIR/scripts/setup-rtaudio.sh"
 RT_TARGET_USER="$TARGET_USER" bash "$PROJECT_DIR/scripts/setup-rtaudio.sh" || \
   echo -e "${YELLOW}  Real-time audio tuning reported an issue — continuing install.${NC}"
 
+# ── File system & storage silence (noatime,nodiratime + log2ram) ───────────────
+# Stop read-timestamp writes to flash on every track load and route /var/log
+# into a RAM disk so playback never triggers SD/SSD writes. Idempotent helper —
+# shared with scripts/update.sh.
+echo -e "\n${GREEN}[5d/7] Configuring file system & storage silence (noatime + log2ram)...${NC}"
+chmod +x "$PROJECT_DIR/scripts/setup-storage-silence.sh"
+bash "$PROJECT_DIR/scripts/setup-storage-silence.sh" || \
+  echo -e "${YELLOW}  Storage silence reported an issue — continuing install.${NC}"
+
 echo -e "\n${GREEN}[6/7] Configuring kiosk startup files...${NC}"
 
 # Deploy kiosk power management and wake monitor scripts

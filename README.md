@@ -42,6 +42,11 @@ Resonance HiFi is an open-source, self-hosted audio streaming platform for Raspb
   - *Core 3* — source streaming daemons (raspotify/librespot, shairport-sync), pinned via systemd `CPUAffinity`
 - **Idempotent tuning helper** — `scripts/setup-rtaudio.sh` applies all of the above; it runs at install time and is re-applied on every OTA update, gracefully skipping the kernel-param and affinity steps on non-Pi / sub-quad-core hosts
 
+### File System & Storage Silence
+- **`noatime,nodiratime` mounts** — the installer rewrites `/etc/fstab` so on-disk storage partitions (SD card, USB SSD) stop writing read-access timestamps back to flash every time a track is loaded, removing journal/atime write overhead and the electrical noise those writes inject onto the SBC power rail. Conflicting `relatime`/`strictatime` options are stripped; swap, tmpfs and pseudo-filesystems are left untouched; a pristine `/etc/fstab.resonance.bak` is kept and the new fstab is validated (root mount must survive) before it is written
+- **`log2ram` — `/var/log` in RAM** — system logs are routed into a tmpfs RAM disk (128 MB) so playback never triggers flash writes for logging. The RAM copy is synced back to disk periodically and flushed on a clean shutdown via the log2ram service's `ExecStop`, so logs survive a graceful power-down but never touch flash mid-stream
+- **Idempotent storage helper** — `scripts/setup-storage-silence.sh` applies both; it runs at install time and is re-applied on every OTA update. The `log2ram` step is best-effort — a package-repo failure never aborts the install (the system simply keeps logging to disk)
+
 ### DSP
 - **CamillaDSP 4.1.3** — real-time parametric EQ, biquad filters, crossovers, room correction
 - **Hot-reload** — EQ/filter changes apply via WebSocket `SetConfig` with no audio interruption
@@ -208,11 +213,12 @@ The installer will:
 5. Configure PipeWire virtual sink, loopback bridge, and bit-perfect clock config
 6. Write `/etc/asound.conf` (rate-agnostic loop_dsnoop for bit-perfect chain)
 7. Apply real-time audio tuning — `threadirqs` + `rtirq` IRQ priority and `isolcpus=2,3` core isolation with per-service CPU affinity (`scripts/setup-rtaudio.sh`)
-8. Generate a self-signed TLS certificate for HTTPS remote access (port 5001)
-9. Build the React frontend (`npm run build`)
-10. Register the backend as a PM2 service (`resonance-api`)
-11. Configure autologin on TTY1 and launch Chromium in kiosk mode
-12. Reboot automatically
+8. Apply storage silence — `noatime,nodiratime` fstab mounts and `log2ram` RAM-backed `/var/log` (`scripts/setup-storage-silence.sh`)
+9. Generate a self-signed TLS certificate for HTTPS remote access (port 5001)
+10. Build the React frontend (`npm run build`)
+11. Register the backend as a PM2 service (`resonance-api`)
+12. Configure autologin on TTY1 and launch Chromium in kiosk mode
+13. Reboot automatically
 
 **Typical install time:** 15–25 minutes (shairport-sync and upmpdcli builds from source add time).
 
@@ -670,6 +676,7 @@ THEAUDIODB_KEY=2           # free dev key; set a Patreon key for production volu
 | `src/remote.css` | Dedicated mobile-remote design system (scoped under `.remote-root`) |
 | `src/components/ResonanceLogo.jsx` | Pure CSS/HTML origami logo intro + static wordmark (kiosk welcome/goodbye) |
 | `scripts/setup-rtaudio.sh` | Real-time audio tuning — `threadirqs`, `rtirq` IRQ priority, `isolcpus=2,3` core isolation, per-service CPU affinity (idempotent; run by installer and OTA update) |
+| `scripts/setup-storage-silence.sh` | Storage silence — `noatime,nodiratime` fstab mounts + `log2ram` RAM-backed `/var/log` (idempotent; run by installer and OTA update) |
 | `scripts/kiosk-power.sh` | Display standby: `vcgencmd` on Pi, `xset dpms` on QEMU |
 | `install.sh` | Master installer — packages, PipeWire, CamillaDSP, shairport-sync, upmpdcli |
 | `camilladsp.yml` | Active CamillaDSP pipeline config (auto-generated on startup — do not hand-edit) |
