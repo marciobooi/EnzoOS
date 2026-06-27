@@ -7,6 +7,8 @@ Resonance HiFi is an open-source, self-hosted audio streaming platform for Raspb
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
 [![Platform](https://img.shields.io/badge/platform-Raspberry%20Pi%204%2F5-red.svg)](https://www.raspberrypi.com/)
 [![OS](https://img.shields.io/badge/OS-Ubuntu%2024.04%20ARM64-orange.svg)](https://ubuntu.com/)
+[![CI](https://github.com/marciobooi/EnzoOS/actions/workflows/ci.yml/badge.svg)](https://github.com/marciobooi/EnzoOS/actions/workflows/ci.yml)
+[![Version](https://img.shields.io/badge/version-1.0.0-brightgreen.svg)](CHANGELOG.md)
 
 ---
 
@@ -627,6 +629,15 @@ Streaming sources (AirPlay, UPnP, Bluetooth) are activated on demand — they do
 
 ---
 
+## Versioning, CI & verification
+
+- **Semantic versioning** — tracked in `package.json` and [`CHANGELOG.md`](CHANGELOG.md) (Keep a Changelog format). Current: **1.0.0**.
+- **Continuous integration** — [`.github/workflows/ci.yml`](.github/workflows/ci.yml) runs on every push/PR to `main`: `npm ci`, server module validation (`node --check`), shell-script validation (`bash -n`), a production frontend build, plus advisory ESLint and ShellCheck.
+- **Local validation** — `npm run check:server`, `npm run check:scripts`, and `npm run build` mirror CI.
+- **Post-install verification** — `npm run verify` (or `bash scripts/verify-install.sh`) reports the live state of every install step and premium optimization (active / pending-reboot / skipped / failed), so a tuning helper that "continued past" a failure can't silently hide a missing feature. The installer runs it automatically at the end.
+
+> **Releases & rollback.** OTA updates roll back automatically on `npm install` / build / server-validation failure (the updater records the pre-update commit and rebuilds it). This is commit-level recovery, not A/B-partition imaging — a fully immutable image with automatic boot-slot fallback remains a future, OS-image-level enhancement.
+
 ## Development
 
 ### Local setup
@@ -701,6 +712,8 @@ TIDAL_CLIENT_SECRET=…       # public tidalapi TV-client secret (see .env.examp
 | `scripts/setup-rtaudio.sh` | Real-time audio tuning — `threadirqs`, `rtirq` IRQ priority, `isolcpus=2,3` core isolation, per-service CPU affinity (idempotent; run by installer and OTA update) |
 | `scripts/setup-storage-silence.sh` | Storage silence — `noatime,nodiratime` fstab mounts + `log2ram` RAM-backed `/var/log` (idempotent; run by installer and OTA update) |
 | `scripts/setup-ram-preload.sh` | RAM preloading — `mlockall` shim + `LimitMEMLOCK` drop-ins + PipeWire mlock to keep audio daemons resident in RAM (idempotent; run by installer and OTA update) |
+| `scripts/verify-install.sh` | Post-install verification — reports active/pending/skipped/failed state of every install step and optimization (`npm run verify`) |
+| `.github/workflows/ci.yml` | CI — build, server `node --check`, script `bash -n`, advisory lint + shellcheck |
 | `scripts/resonance-mlockall.c` | `LD_PRELOAD` shim source — `mlockall(MCL_CURRENT\|MCL_FUTURE)` constructor, compiled to `/usr/local/lib/resonance-mlockall.so` at install |
 | `scripts/kiosk-power.sh` | Display standby: `vcgencmd` on Pi, `xset dpms` on QEMU |
 | `install.sh` | Master installer — packages, PipeWire, CamillaDSP, shairport-sync, upmpdcli |

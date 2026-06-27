@@ -1,0 +1,51 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    name: Build & validate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Validate server modules (node --check)
+        run: npm run check:server
+
+      - name: Validate shell scripts (bash -n)
+        run: npm run check:scripts
+
+      - name: Build frontend
+        run: npm run build
+
+      # Lint is advisory for now — it reports issues without failing the build
+      # so CI stays green while the existing codebase is brought up to the rules.
+      - name: Lint (advisory)
+        run: npm run lint
+        continue-on-error: true
+
+  shellcheck:
+    name: ShellCheck
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run shellcheck on install & helper scripts
+        uses: ludeeus/action-shellcheck@master
+        with:
+          severity: error
+          scandir: '.'
+          additional_files: 'install.sh'
+        continue-on-error: true

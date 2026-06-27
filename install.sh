@@ -435,11 +435,26 @@ else
   fi
 fi
 
+# Detect the best playback device for the INITIAL config. server/player.js
+# re-detects on startup via detectDac(), but the very first boot runs whatever
+# this file names — so prefer a real DAC (USB/I²S) over HDMI/onboard, otherwise
+# first-boot audio could be sent to the TV. Name-based (hw:CARD=…) is robust
+# against card-number reordering, matching what the backend writes.
+DAC_DEVICE="hw:0,0"
+if [ -f /proc/asound/cards ]; then
+  DAC_CARD=$(grep -iE "USB" /proc/asound/cards | grep -oE '\[[^]]+\]' | head -n1 | tr -d '[] ')
+  if [ -z "$DAC_CARD" ]; then
+    DAC_CARD=$(grep -ivE "hdmi|vc4" /proc/asound/cards | grep -oE '\[[^]]+\]' | head -n1 | tr -d '[] ')
+  fi
+  [ -n "$DAC_CARD" ] && DAC_DEVICE="hw:CARD=${DAC_CARD},DEV=0"
+fi
+echo -e "${YELLOW}Initial CamillaDSP playback device: ${DAC_DEVICE}${NC}"
+
 # Create default flat CamillaDSP v4 configuration to prevent crash on initial run.
 # CamillaDSP 4.x is built with ALSA-only backends (no Pulse/PipeWire capture).
 # Audio path: PipeWire → ResonanceInput virtual sink → PW loopback → hw:Loopback,0,0
 #             → ALSA dsnoop (loop_dsnoop) → CamillaDSP capture (this config)
-# Note: v4 uses S16_LE format strings and 'channels' (array) in pipeline Filter steps
+# Capture is S32_LE to match the bit-perfect 32-bit loopback (see asound.conf).
 echo -e "${YELLOW}Creating initial flat CamillaDSP configuration...${NC}"
 cat <<EOF > "$PROJECT_DIR/camilladsp.yml"
 devices:
@@ -450,11 +465,11 @@ devices:
     type: Alsa
     channels: 2
     device: loop_dsnoop
-    format: S16_LE
+    format: S32_LE
   playback:
     type: Alsa
     channels: 2
-    device: hw:0,0
+    device: ${DAC_DEVICE}
     format: S16_LE
 mixers:
   speaker_map:
@@ -934,7 +949,7 @@ echo -e "${GREEN}Bluetooth configured: PipeWire handles A2DP sink natively via W
 # everything silently — replaced here for household security.
 # Bluetooth is also only discoverable when the user activates it from the
 # kiosk menu (on-demand activation), providing a second layer of control.
-cat <<'BTEOF' > /etc/systemd/system/bt-agent.service
+cat <<BTEOF > /etc/systemd/system/bt-agent.service
 [Unit]
 Description=Bluetooth Pairing Agent (Resonance HiFi)
 After=bluetooth.service
@@ -942,7 +957,7 @@ Requires=bluetooth.service
 
 [Service]
 Type=simple
-User=pi
+User=${TARGET_USER}
 ExecStart=/usr/bin/bt-agent -c DisplayYesNo
 Restart=always
 RestartSec=3
@@ -1102,6 +1117,13 @@ PM2_STARTUP_CMD=$(pm2 startup systemd -u $TARGET_USER --hp $USER_HOME | grep "su
 if [ -n "$PM2_STARTUP_CMD" ]; then
   eval "$PM2_STARTUP_CMD"
 fi
+
+# Verify the final state of every install step and premium optimization, so a
+# tuning helper that "continued past" a failure can't silently hide a missing
+# feature. Re-runnable any time: bash scripts/verify-install.sh
+chmod +x "$PROJECT_DIR/scripts/verify-install.sh"
+bash "$PROJECT_DIR/scripts/verify-install.sh" || \
+  echo -e "${RED}Verification flagged a CRITICAL issue above — review before relying on this unit.${NC}"
 
 echo -e "\n${GREEN}====================================================================${NC}"
 echo -e "${GREEN}                 INSTALLATION COMPLETED SUCCESSFULLY                ${NC}"

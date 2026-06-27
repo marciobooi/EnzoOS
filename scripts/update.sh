@@ -93,6 +93,15 @@ if ! npm run build; then
   rollback_and_exit
 fi
 
+# Pre-flight: parse every server module BEFORE we restart onto the new code.
+# The frontend build never touches server/*.js, so a syntax error there would
+# otherwise only surface as a crash-looping backend after the restart.
+echo -e "${YELLOW}Validating server modules...${NC}"
+if ! ( for f in "$PROJECT_DIR"/server/*.js; do node --check "$f" || exit 1; done ); then
+  echo -e "${RED}ERROR: a server module failed validation.${NC}"
+  rollback_and_exit
+fi
+
 # Sync user kiosk startup config (.xinitrc)
 echo -e "${YELLOW}Syncing user kiosk startup config (.xinitrc)...${NC}"
 cp "$PROJECT_DIR/scripts/xinitrc" "$HOME/.xinitrc" && chmod +x "$HOME/.xinitrc" || true

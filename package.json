@@ -1,7 +1,7 @@
 {
   "name": "resonance",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -9,7 +9,10 @@
     "dev:all": "concurrently \"npm run dev\" \"npm run server\"",
     "build": "vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "verify": "bash scripts/verify-install.sh",
+    "check:server": "for f in server/*.js; do node --check \"$f\" || exit 1; done",
+    "check:scripts": "for f in install.sh scripts/*.sh; do bash -n \"$f\" || exit 1; done"
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.3.0",
