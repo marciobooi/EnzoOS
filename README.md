@@ -249,6 +249,8 @@ https://resonance.local:5001/remote
 
 ## Architecture
 
+> 📐 **Flow diagrams** (audio signal path, application/software, state sync, boot & tuning) live in **[`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)** — rendered Mermaid.
+
 ### Frontend — React + Tailwind CSS
 
 Two views share a single React codebase:
