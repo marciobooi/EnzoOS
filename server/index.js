@@ -19,6 +19,7 @@ import { loadStateFromDB } from './event-service.js';
 import { closeDB } from './db.js';
 import { stopTokenRefresh } from './spotify-auth.js';
 import { requireAuth, isWsAuthorized } from './auth.js';
+import { rateLimit } from 'express-rate-limit';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -36,6 +37,15 @@ app.use(express.json());
 
 // Serve static assets from Vite's production build folder
 app.use(express.static(path.join(__dirname, '../dist')));
+
+// ── Rate limiting ─────────────────────────────────────────────────────────────
+// Generous DoS guard across the whole API — set high enough not to interfere
+// with the kiosk/remote polling (signal-path every 5 s, status, VU, …).
+const apiLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 3000, standardHeaders: true, legacyHeaders: false });
+app.use('/api', apiLimiter);
+// Stricter cap on token issuance/redemption to slow brute-force attempts.
+const authLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 40, standardHeaders: true, legacyHeaders: false });
+app.use('/api/auth', authLimiter);
 
 // Remote-access auth (login / check). Unauthenticated by design — this is how
 // LAN clients obtain a token. Loopback (kiosk) is always trusted.

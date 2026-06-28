@@ -14,7 +14,7 @@ import { getSetting, setSetting } from './db.js';
 // stored in a cookie. Tokens are HMAC-signed with a per-install secret kept in
 // the DB, so they survive restarts and cannot be forged without the secret.
 
-const TOKEN_TTL_MS    = 180 * 24 * 60 * 60 * 1000; // 6 months bearer
+const TOKEN_TTL_MS    = 30 * 24 * 60 * 60 * 1000;  // 30-day bearer session
 const QR_TTL_MS       = 10 * 60 * 1000;             // 10 min QR token
 
 let cachedSecret = null;

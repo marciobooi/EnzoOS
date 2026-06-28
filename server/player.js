@@ -1130,8 +1130,15 @@ export async function updateCamillaConfigFromSettings({ skipAlsa = false, sample
     try {
       await execPromise('sudo systemctl restart camilladsp');
       console.log('[CamillaDSP] Restarted camilladsp service (fallback).');
-      // Service restart takes ~800 ms before it accepts WS commands.
-      await new Promise(r => setTimeout(r, 900));
+      // Poll the WS until it actually accepts commands (max 5 s) instead of a
+      // fixed 900 ms guess — robust when the Pi is under transient CPU load.
+      const deadline = Date.now() + 5000;
+      let ready = false;
+      while (Date.now() < deadline) {
+        if (await getCamillaStatus()) { ready = true; break; }
+        await new Promise(r => setTimeout(r, 100));
+      }
+      if (!ready) console.warn('[CamillaDSP] WS not ready 5 s after restart — proceeding anyway.');
     } catch (err) {
       console.warn('[CamillaDSP] Failed to restart camilladsp service:', err.message);
     }

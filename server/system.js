@@ -1,4 +1,5 @@
 import express from 'express';
+import { rateLimit } from 'express-rate-limit';
 import { exec, execFile } from 'child_process';
 import { promisify } from 'util';
 import os from 'os';
@@ -17,6 +18,11 @@ const execFileP = promisify(execFile);
 const router = express.Router();
 
 const ALLOWED_SERVICES = ['mpd', 'camilladsp', 'raspotify'];
+
+// Tight limiter for destructive / privileged actions (reboot, shutdown, factory
+// reset, service restart, Wi-Fi connect) — these are one-shot user actions, so a
+// low cap stops abuse without affecting the read-only status/storage polling.
+const sensitiveLimiter = rateLimit({ windowMs: 10 * 60 * 1000, max: 20, standardHeaders: true, legacyHeaders: false });
 
 // GET /api/system/lan-url — returns the LAN-accessible remote URL for QR code generation
 router.get('/lan-url', (req, res) => {
@@ -43,7 +49,7 @@ router.get('/services', async (req, res) => {
 });
 
 // POST /api/system/service/:name/restart
-router.post('/service/:name/restart', async (req, res) => {
+router.post('/service/:name/restart', sensitiveLimiter, async (req, res) => {
   const { name } = req.params;
   if (!ALLOWED_SERVICES.includes(name)) {
     return res.status(400).json({ error: 'Service not allowed' });
@@ -57,13 +63,13 @@ router.post('/service/:name/restart', async (req, res) => {
 });
 
 // POST /api/system/reboot
-router.post('/reboot', (req, res) => {
+router.post('/reboot', sensitiveLimiter, (req, res) => {
   res.json({ success: true, message: 'Rebooting...' });
   setTimeout(() => execFileP('sudo', ['systemctl', 'reboot']).catch(() => {}), 1500);
 });
 
 // POST /api/system/shutdown
-router.post('/shutdown', (req, res) => {
+router.post('/shutdown', sensitiveLimiter, (req, res) => {
   res.json({ success: true, message: 'Shutting down...' });
   setTimeout(() => execFileP('sudo', ['systemctl', 'poweroff']).catch(() => {}), 1500);
 });
@@ -113,7 +119,7 @@ router.get('/wifi/scan', async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-router.post('/wifi/connect', async (req, res) => {
+router.post('/wifi/connect', sensitiveLimiter, async (req, res) => {
   const { ssid, password } = req.body || {};
   if (!ssid) return res.status(400).json({ error: 'ssid required' });
   try {
@@ -163,7 +169,7 @@ router.post('/restore', async (req, res) => {
 // preserved, so the user driving the reset from the remote isn't locked out.
 const FACTORY_RESET_PROTECTED = ['auth_secret', 'remote_access_enabled'];
 
-router.post('/factory-reset', async (req, res) => {
+router.post('/factory-reset', sensitiveLimiter, async (req, res) => {
   try {
     await clearSettingsExcept(FACTORY_RESET_PROTECTED);
     res.json({ success: true, message: 'Settings reset to factory defaults. Restart to apply.' });

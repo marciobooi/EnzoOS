@@ -32,6 +32,24 @@ const mbApi = new MusicBrainzApi({
 const CACHE_TTL   = 1000 * 60 * 60 * 24 * 30;            // 30 days
 const TIMEOUT_MS  = 7000;
 
+// In-memory L1 cache in front of the SQLite metadata_cache (L2). Avoids a disk
+// read every time a cover is opened — aligns with the project's "storage
+// silence" goal. Bounded (LRU-ish: re-insert on hit, evict oldest over cap).
+const MEM_CACHE_MAX = 64;
+const memCache = new Map(); // key → { data, updatedAt }
+function memGet(key) {
+  const e = memCache.get(key);
+  if (!e) return null;
+  if (Date.now() - e.updatedAt >= CACHE_TTL) { memCache.delete(key); return null; }
+  memCache.delete(key); memCache.set(key, e); // mark as most-recently-used
+  return e;
+}
+function memSet(key, data, updatedAt = Date.now()) {
+  memCache.delete(key);
+  memCache.set(key, { data, updatedAt });
+  if (memCache.size > MEM_CACHE_MAX) memCache.delete(memCache.keys().next().value);
+}
+
 // Keys are resolved per request: DB setting first (managed from the remote
 // Settings tab), then env var, then a sensible default. This lets users add
 // keys at runtime without editing .env or restarting.
@@ -255,13 +273,19 @@ router.get('/album', async (req, res) => {
   const lastfmConfigured = !!keys.lastfm;
   const cacheKey = `album:${artist}|${album}`.toLowerCase();
   try {
+    // L1: in-memory.
+    const mem = memGet(cacheKey);
+    if (mem) return res.json({ ...mem.data, lastfmConfigured, cached: true });
+    // L2: SQLite — promote a hit into memory so repeat lookups skip the disk.
     const cached = await getCachedMetadata(cacheKey);
     if (cached && Date.now() - cached.updatedAt < CACHE_TTL) {
+      memSet(cacheKey, cached.data, cached.updatedAt);
       return res.json({ ...cached.data, lastfmConfigured, cached: true });
     }
     const data = await aggregate(artist, album, keys);
     // Only cache results that actually carry something useful.
     if (data.biography || data.review || data.label || data.genres.length || data.tracks.length) {
+      memSet(cacheKey, data);
       await setCachedMetadata(cacheKey, data);
     }
     res.json({ ...data, lastfmConfigured, cached: false });

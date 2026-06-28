@@ -16,9 +16,17 @@ const db = new sqlite3.Database(dbPath, (err) => {
   }
 });
 
+// Auto-retry for up to 5 s when the DB is momentarily locked instead of failing
+// with SQLITE_BUSY — covers concurrent writes from the kiosk + multiple remotes.
+db.configure('busyTimeout', 5000);
+
 // Setup tables and export a ready promise
 export const dbReady = new Promise((resolve) => {
   db.serialize(() => {
+    // WAL lets readers and a writer proceed concurrently (no whole-file lock);
+    // synchronous=NORMAL is the recommended, safe durability pairing for WAL.
+    db.run('PRAGMA journal_mode=WAL');
+    db.run('PRAGMA synchronous=NORMAL');
     db.run(`
       CREATE TABLE IF NOT EXISTS settings (
         key TEXT PRIMARY KEY,

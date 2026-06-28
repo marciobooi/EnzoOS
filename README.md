@@ -116,7 +116,9 @@ Resonance HiFi is an open-source, self-hosted audio streaming platform for Raspb
 - **UPnP/DLNA — LAN only** — SSDP discovery is multicast and LAN-bound by protocol; invisible outside the local subnet
 - **Bluetooth — confirmation pairing** — `bt-agent` uses `DisplayYesNo` capability; connecting device shows a 6-digit code the user must confirm. Silent auto-accept (`NoInputNoOutput`) is disabled
 - **On-demand activation** — AirPlay, UPnP, and Bluetooth services are stopped at boot and only started when the user explicitly activates them from the kiosk menu
-- **Remote web interface** — HTTPS with QR-code token authentication (no username/password); self-signed certificate; accessible only on the local network. Each QR code is single-use and expires in 10 minutes; redeemed sessions last 6 months
+- **Remote web interface** — HTTPS with QR-code token authentication (no username/password); self-signed certificate; accessible only on the local network. Each QR code is single-use and expires in 10 minutes; redeemed sessions last 30 days
+- **Rate limiting** — `express-rate-limit` guards the API: a generous global cap (DoS), a strict cap on token issuance (`/api/auth`, brute-force), and a tight limiter on destructive system actions (reboot, shutdown, factory-reset, Wi-Fi connect)
+- **Hardened shell calls** — all `nmcli` / `systemctl` invocations use `execFile` with an argv array (no shell), so SSID/password/service inputs can never be interpreted as commands
 
 ---
 

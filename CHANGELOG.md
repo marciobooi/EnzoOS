@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Security
+- **Remote session TTL cut from 6 months to 30 days** (`server/auth.js`) — the
+  QR token still expires in 10 min; the redeemed bearer session is now far shorter.
+- **API rate limiting** (`express-rate-limit`) — a generous global guard on
+  `/api` (DoS protection that doesn't disturb polling), a strict cap on
+  `/api/auth` token issuance/redemption (brute-force), and a tight limiter on the
+  destructive `/api/system` actions (reboot, shutdown, factory-reset, service
+  restart, Wi-Fi connect).
+
+### Performance
+- **SQLite WAL mode + 5 s busy timeout** (`server/db.js`) — concurrent reads and
+  writes from the kiosk and multiple remotes no longer hit `SQLITE_BUSY`.
+- **In-memory metadata cache (L1)** in front of the SQLite cache (L2)
+  (`server/metadata.js`) — repeat album-info lookups skip the disk (bounded,
+  LRU-style, 64 entries), aligning with the project's storage-silence goal.
+
+### Fixed
+- **CamillaDSP restart no longer uses a fixed 900 ms wait** (`server/player.js`)
+  — it now polls the CamillaDSP WebSocket every 100 ms (up to 5 s) and proceeds
+  the moment it accepts commands, robust under transient CPU load.
+
 ### Added
 - **DSD native bypass (DoP)** — `.dsf`/`.dff` files played in Pure Direct mode are
   routed straight to the hardware DAC via a dedicated "DSD Direct" MPD output
