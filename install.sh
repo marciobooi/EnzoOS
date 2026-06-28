@@ -52,6 +52,21 @@ stop_apt_daemons() {
 apt_install() {
   apt-get -o DPkg::Lock::Timeout=300 "$@"
 }
+
+# Pick the best playback DAC for initial configs — prefer a real DAC (USB / I²S)
+# over HDMI, onboard, or the ALSA loopback. Name-based (hw:CARD=…) so it is
+# stable across card-number reordering. The backend re-detects on startup.
+detect_dac_device() {
+  local dev="hw:0,0" card=""
+  if [ -f /proc/asound/cards ]; then
+    card=$(grep -iE "USB" /proc/asound/cards | grep -oE '\[[^]]+\]' | head -n1 | tr -d '[] ')
+    if [ -z "$card" ]; then
+      card=$(grep -ivE "hdmi|vc4|loopback" /proc/asound/cards | grep -oE '\[[^]]+\]' | head -n1 | tr -d '[] ')
+    fi
+    [ -n "$card" ] && dev="hw:CARD=${card},DEV=0"
+  fi
+  echo "$dev"
+}
 # ─────────────────────────────────────────────────────────────────────────────
 
 # 1. Verify Root Privileges (Must be run as root/sudo)
@@ -347,7 +362,17 @@ echo -e "${GREEN}PipeWire configured: all sources → ResonanceInput → loopbac
 # the loopback — bypasses the PipeWire loopback bridge which does not reliably
 # connect to hw:Loopback,0,0. Volume managed by CamillaDSP via SetVolume.
 echo -e "${YELLOW}Writing complete MPD configuration (/etc/mpd.conf)...${NC}"
-cat <<'MPDEOF' > /etc/mpd.conf
+# Detect the hardware DAC for the direct DSD output (see below).
+MPD_DAC_DEVICE="$(detect_dac_device)"
+echo -e "${YELLOW}MPD DSD-direct output device: ${MPD_DAC_DEVICE}${NC}"
+
+# Two outputs:
+#   1. "CamillaDSP Input" → the ALSA loopback (PCM path through CamillaDSP). Default.
+#   2. "DSD Direct"       → straight to the hardware DAC, DoP-wrapped, NO mixing.
+#      Disabled by default; the backend enables ONLY this one (and disables #1)
+#      when a .dsf/.dff DSD file plays while Pure Direct is active, so the DAC
+#      receives an untouched DSD bitstream and lights its "DSD" indicator.
+cat <<MPDEOF > /etc/mpd.conf
 music_directory         "/var/lib/mpd/music"
 playlist_directory      "/var/lib/mpd/playlists"
 db_file                 "/var/lib/mpd/tag_cache"
@@ -362,6 +387,15 @@ audio_output {
     name            "CamillaDSP Input"
     device          "camilla_input"
     mixer_type      "none"
+}
+
+audio_output {
+    type            "alsa"
+    name            "DSD Direct"
+    device          "${MPD_DAC_DEVICE}"
+    mixer_type      "none"
+    dop             "yes"
+    enabled         "no"
 }
 MPDEOF
 
@@ -440,14 +474,7 @@ fi
 # this file names — so prefer a real DAC (USB/I²S) over HDMI/onboard, otherwise
 # first-boot audio could be sent to the TV. Name-based (hw:CARD=…) is robust
 # against card-number reordering, matching what the backend writes.
-DAC_DEVICE="hw:0,0"
-if [ -f /proc/asound/cards ]; then
-  DAC_CARD=$(grep -iE "USB" /proc/asound/cards | grep -oE '\[[^]]+\]' | head -n1 | tr -d '[] ')
-  if [ -z "$DAC_CARD" ]; then
-    DAC_CARD=$(grep -ivE "hdmi|vc4" /proc/asound/cards | grep -oE '\[[^]]+\]' | head -n1 | tr -d '[] ')
-  fi
-  [ -n "$DAC_CARD" ] && DAC_DEVICE="hw:CARD=${DAC_CARD},DEV=0"
-fi
+DAC_DEVICE="$(detect_dac_device)"
 echo -e "${YELLOW}Initial CamillaDSP playback device: ${DAC_DEVICE}${NC}"
 
 # Create default flat CamillaDSP v4 configuration to prevent crash on initial run.

@@ -1177,6 +1177,74 @@ async function getMpdAudioFormat() {
   });
 }
 
+// ── DSD Direct Bypass ─────────────────────────────────────────────────────────
+// Purists expect their DAC's "DSD" indicator to light up on .dsf/.dff playback.
+// That only happens if the DSD bitstream reaches the DAC untouched — i.e. NOT
+// resampled to PCM through the PipeWire → loopback → CamillaDSP chain. So when a
+// DSD file plays AND Pure Direct is active AND the bypass is enabled, we flip
+// MPD's active output from "CamillaDSP Input" to the DoP "DSD Direct" output
+// (straight to hw:CARD=…), and flip back for PCM. Controlled by `dsd_bypass`
+// (default on). The PCM path is completely untouched when not bypassing.
+const DSD_OUTPUT_NAME = 'DSD Direct';
+const PCM_OUTPUT_NAME = 'CamillaDSP Input';
+let _dsdActive = false;
+
+async function getMpdOutputs() {
+  try {
+    const { stdout } = await execPromise('mpc outputs');
+    return stdout.split('\n').map(l => {
+      const m = l.match(/^Output\s+(\d+)\s+\((.+)\)\s+is\s+(enabled|disabled)/i);
+      return m ? { id: parseInt(m[1], 10), name: m[2].trim(), enabled: m[3].toLowerCase() === 'enabled' } : null;
+    }).filter(Boolean);
+  } catch { return []; }
+}
+
+// Enable exactly one output by name, disabling the others — without stopping playback.
+async function mpcEnableOnly(name) {
+  const outs = await getMpdOutputs();
+  const target = outs.find(o => o.name === name);
+  if (!target) { console.warn(`[DSD] MPD output "${name}" not found (check /etc/mpd.conf).`); return false; }
+  for (const o of outs) {
+    const want = o.id === target.id;
+    if (o.enabled !== want) {
+      await execPromise(`mpc ${want ? 'enable' : 'disable'} ${o.id}`).catch(() => {});
+    }
+  }
+  return true;
+}
+
+async function getCurrentMpdFile() {
+  try { const { stdout } = await execPromise('mpc -f "%file%" current'); return stdout.trim(); }
+  catch { return ''; }
+}
+
+// Re-evaluate routing for the current track. Safe to call on every player event.
+export async function applyDsdRouting() {
+  const [bypassVal, pdVal] = await Promise.all([
+    getSetting('dsd_bypass').catch(() => null),
+    getSetting('pure_direct').catch(() => null),
+  ]);
+  const bypassEnabled = !(bypassVal === 'false' || bypassVal === '0'); // default ON
+  const pureDirect = pdVal === 'true';
+  const file = await getCurrentMpdFile();
+  const isDsd = /\.(dsf|dff)$/i.test(file);
+  const wantDsd = bypassEnabled && pureDirect && isDsd;
+
+  if (wantDsd === _dsdActive) return wantDsd; // already in the right state
+
+  if (wantDsd) {
+    const ok = await mpcEnableOnly(DSD_OUTPUT_NAME);
+    if (ok) { _dsdActive = true; console.log('[DSD] Native bypass ON — MPD → DAC direct (DoP), CamillaDSP bypassed.'); }
+    return ok;
+  }
+  await mpcEnableOnly(PCM_OUTPUT_NAME);
+  if (_dsdActive) console.log('[DSD] Bypass OFF — MPD → CamillaDSP PCM chain restored.');
+  _dsdActive = false;
+  return false;
+}
+
+export function isDsdBypassActive() { return _dsdActive; }
+
 let _lastMpdRate = 0;
 let _mpdRateWatcherActive = false;
 
@@ -1211,6 +1279,9 @@ function _connectMpdIdle() {
         const changed = buf.includes('changed: player');
         buf = '';
         if (changed) {
+          // DSD bypass first: if we're switching to/from a DSD bitstream, flip
+          // the MPD output before touching the (now-bypassed) CamillaDSP rate.
+          applyDsdRouting().catch(err => console.warn('[DSD] Routing update failed:', err.message));
           getMpdAudioFormat().then(fmt => {
             if (fmt?.rate && fmt.rate !== _lastMpdRate) {
               const prev = _lastMpdRate;
@@ -1788,6 +1859,24 @@ router.post('/bitperfect', async (req, res) => {
     // Full reconfig: rewrites asound.conf + PipeWire clock + CamillaDSP capture.
     await updateCamillaConfigFromSettings({ skipAlsa: false });
     res.json({ success: true, enabled, rebootRequired: true });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// ── DSD Direct Bypass toggle ──────────────────────────────────────────────────
+// When ON (default) a .dsf/.dff file played in Pure Direct mode streams natively
+// (DoP) straight to the DAC, bypassing CamillaDSP. When OFF, DSD is decoded to
+// PCM through the normal chain. Re-applies routing immediately for the current track.
+router.get('/dsd-bypass', async (req, res) => {
+  const val = await getSetting('dsd_bypass').catch(() => null);
+  res.json({ enabled: !(val === 'false' || val === '0'), active: isDsdBypassActive() });
+});
+
+router.post('/dsd-bypass', async (req, res) => {
+  const enabled = !(req.body.enabled === false || req.body.enabled === 'false');
+  try {
+    await setSetting('dsd_bypass', enabled ? 'true' : 'false');
+    const active = await applyDsdRouting();
+    res.json({ success: true, enabled, active });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 

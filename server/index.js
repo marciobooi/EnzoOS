@@ -9,7 +9,7 @@ import fs from 'fs';
 import updateRouter from './update.js';
 import systemRouter from './system.js';
 import spotifyAuthRouter from './spotify-auth.js';
-import playerRouter from './player.js';
+import playerRouter, { startMpdRateWatcher } from './player.js';
 import spotifyDaemonRouter from './spotify-daemon.js';
 import statusRouter from './status.js';
 import metadataRouter from './metadata.js';
@@ -85,6 +85,9 @@ const { wss } = setupWebSocket(server);
 
 server.listen(PORT, () => {
   console.log(`[Resonance Backend] Server listening on http://localhost:${PORT}`);
+  // Start the persistent MPD idle watcher: follows per-track sample-rate changes
+  // (bit-perfect capture) and flips the DSD Direct bypass on .dsf/.dff playback.
+  startMpdRateWatcher();
 });
 
 const shutdown = async () => {

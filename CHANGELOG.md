@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **DSD native bypass (DoP)** — `.dsf`/`.dff` files played in Pure Direct mode are
+  routed straight to the hardware DAC via a dedicated "DSD Direct" MPD output
+  (DoP), bypassing the PipeWire→loopback→CamillaDSP PCM chain so the DAC receives
+  an untouched DSD bitstream. Toggle via Settings → DSP or `/api/player/dsd-bypass`.
+
+### Fixed
+- **MPD rate watcher now started at server boot** (`startMpdRateWatcher()` was
+  defined but never invoked) — restores per-track sample-rate following for the
+  bit-perfect path and drives the new DSD output flip.
+
 ## [1.0.0] — 2026-06-27
 
 First versioned release. Establishes semantic versioning, a changelog, and CI.

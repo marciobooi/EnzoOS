@@ -26,6 +26,7 @@ export default function SettingsTab() {
   const [phaseLeft, setPhaseLeft]     = useState(false);
   const [phaseRight, setPhaseRight]   = useState(false);
   const [bitPerfect, setBitPerfect]   = useState(true);
+  const [dsdBypass, setDsdBypass]     = useState(true);
 
   // Wi-Fi
   const [showWifi, setShowWifi]         = useState(false);
@@ -45,6 +46,7 @@ export default function SettingsTab() {
     api.getBalance().then(d => setBalance(d.balance || 0)).catch(() => {});
     api.getPhase().then(d => { setPhaseLeft(!!d.left); setPhaseRight(!!d.right); }).catch(() => {});
     api.getBitPerfect().then(d => setBitPerfect(d.enabled !== false)).catch(() => {});
+    api.getDsdBypass().then(d => setDsdBypass(d.enabled !== false)).catch(() => {});
   }, []);
 
   const handleReplayGainChange = async (mode) => {
@@ -76,6 +78,15 @@ export default function SettingsTab() {
       await api.setBitPerfect(next);
       toast.success(next ? 'Bit-perfect on — reboot to apply' : 'Fixed 48 kHz mode — reboot to apply');
     } catch (e) { setBitPerfect(!next); toast.error(e.message); }
+  };
+
+  const handleDsdBypassToggle = async () => {
+    const next = !dsdBypass;
+    setDsdBypass(next);
+    try {
+      await api.setDsdBypass(next);
+      toast.success(next ? 'DSD native bypass on' : 'DSD decoded to PCM');
+    } catch (e) { setDsdBypass(!next); toast.error(e.message); }
   };
 
   const handlePhaseChange = async (left, right) => {
@@ -258,6 +269,11 @@ export default function SettingsTab() {
           value={bitPerfect ? 'On' : 'Fixed 48k'}
           chevron={false}
           onPress={handleBitPerfectToggle} />
+        <Row label="DSD Native Bypass"
+          icon={<Disc3 className="h-4 w-4" style={{ color: dsdBypass ? C.champagne : C.text4 }} />}
+          value={dsdBypass ? 'Native' : 'PCM'}
+          chevron={false}
+          onPress={handleDsdBypassToggle} />
       </Section>
 
       {/* display */}
