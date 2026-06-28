@@ -159,3 +159,68 @@ Chromium · núcleo 2 = PipeWire + CamillaDSP · núcleo 3 = raspotify + shairpo
 reinício do PM2. Em falha de install/build/validação do servidor faz **rollback
 automático** para o commit anterior (recuperação ao nível de commit; imagem
 A/B imutável fica como melhoria futura).
+
+---
+
+## 5. Pipeline interno do CamillaDSP (stages A→E)
+
+Gerado por `generateCamillaConfig()` em `server/player.js`. O sinal entra pelo
+`loop_dsnoop`, passa pelo *mixer* (mapeamento de canais + balance) e por uma
+cadeia de filtros por canal; o volume é aplicado **fora** do pipeline via
+`SetVolume` (pós-buffer, latência zero). Em **Pure Direct** todo o bloco de EQ
+é saltado — fica só o mixer (+ phase).
+
+```mermaid
+flowchart TD
+    CAP["Capture · loop_dsnoop<br/>S32_LE (bit-perfect) / S16_LE"]
+    CAP --> MIX["Mixer 'speaker_map'<br/>2→2 (ou 2→3 c/ subwoofer)<br/>balance: ganho L/R"]
+
+    MIX --> PD{"Pure Direct?"}
+    PD -->|"sim"| PHA
+    PD -->|"não"| A
+
+    subgraph CHAIN["Cadeia de filtros (por canal)"]
+        A["Stage A · Room Correction<br/>curva Harman (se calibrado)"]
+        B["Stage B · EQ de perfil<br/>5 bandas (Lowshelf/Peaking/Highshelf)<br/>+ saturação analógica (opcional)"]
+        C["Stage C · Ajustes de sala"]
+        D["Stage D · Crossover<br/>highpass mains · lowpass sub (se subwoofer)"]
+        E["Stage E · Preamp gain<br/>−pico(EQ) auto-headroom · −1 dB safety · −6 dB se DSP"]
+        A --> B --> C --> D --> E
+    end
+
+    E --> PHA["Phase · inversão de polaridade<br/>phase_left / phase_right (opcional)"]
+    PHA --> OUT["Playback · hw:CARD=DAC,DEV=0<br/>S32/S24 (formato nativo do DAC)"]
+
+    VOL["CamillaDSP WS :1234 · SetVolume (dB)"] -.->|"pós-buffer, fora do pipeline"| OUT
+```
+
+---
+
+## 6. Autenticação Spotify (OAuth Authorization Code + PKCE)
+
+`server/spotify-auth.js`. **Sem client secret** no dispositivo — o cliente prova
+posse de um `code_verifier` único (PKCE). Só o Client ID (público) é necessário.
+
+```mermaid
+sequenceDiagram
+    participant B as Browser (kiosk/remote)
+    participant S as Server · spotify-auth.js
+    participant SP as Spotify Accounts
+    participant API as Spotify API
+    participant DB as SQLite
+
+    B->>S: GET /auth/spotify/login
+    S->>S: gera state + PKCE<br/>verifier + challenge (S256)
+    S-->>B: redirect → accounts.spotify.com/authorize<br/>(client_id, code_challenge, scopes, state)
+    B->>SP: utilizador autoriza
+    SP-->>B: redirect → /callback?code&state
+    B->>S: GET /auth/spotify/callback
+    S->>S: valida state (CSRF)
+    S->>SP: POST /api/token<br/>code + code_verifier + client_id<br/>(SEM secret)
+    SP-->>S: access_token + refresh_token
+    S->>API: GET /v1/me (display name)
+    S->>DB: persiste tokens
+    S-->>B: redirect app · emit SET_TOKEN
+
+    Note over S,SP: Refresh automático (a cada ~4 min)<br/>grant_type=refresh_token + client_id, sem secret
+```
