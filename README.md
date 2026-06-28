@@ -86,7 +86,7 @@ Resonance HiFi is an open-source, self-hosted audio streaming platform for Raspb
 - **Source-aware search** — search tab reflects the active source (Spotify search for Spotify, radio scanner for radio)
 - **Streaming source menu behaviour** — AirPlay, UPnP, and Bluetooth cards keep the settings menu open on activation (connect-and-wait flow); Spotify, Local, and Radio close it immediately
 - **ICY/XML track title sanitiser** — stations that send StreamTitle as raw XML (e.g. Dalet automation systems) are parsed to extract song name and artist before display
-- **OTA updates** — `git pull` + rebuild + PM2 restart, triggered from the kiosk settings menu. The updater records the current commit before syncing and **automatically rolls back** to it (rebuilding the last-good revision) if `npm install` or the build fails, so a bad push can't leave the streamer unbootable
+- **OTA updates** — `git pull` + rebuild + service restart, triggered from the kiosk settings menu. The updater records the current commit before syncing and **automatically rolls back** to it (rebuilding the last-good revision) if `npm install` or the build fails, so a bad push can't leave the streamer unbootable
 - **System health monitor** — live CPU temperature, RAM, and Wi-Fi signal in the settings panel
 - **mDNS discovery** — accessible at `resonance.local` on the local network via Avahi
 
@@ -233,7 +233,7 @@ The installer will:
 9. Apply RAM preloading — `mlockall` shim + `LimitMEMLOCK` + PipeWire mlock to keep the audio engine resident in RAM (`scripts/setup-ram-preload.sh`)
 10. Generate a self-signed TLS certificate for HTTPS remote access (port 5001)
 11. Build the React frontend (`npm run build`)
-12. Register the backend as a PM2 service (`resonance-api`)
+12. Register the backend as a native systemd service (`resonance-api`)
 13. Configure autologin on TTY1 and launch Chromium in kiosk mode
 14. Reboot automatically
 
@@ -604,7 +604,7 @@ Spotify auth uses the **Authorization Code + PKCE** flow, so **no client secret 
    ```env
    SPOTIFY_CLIENT_ID=your_client_id
    ```
-4. `pm2 restart resonance-api`
+4. `sudo systemctl restart resonance-api`
 
 > **Security:** earlier builds hardcoded a Spotify Client **Secret** in `install.sh`. PKCE removes the need for it entirely, and it has been deleted from the source. If you ever deployed an affected build, **rotate that secret in the Spotify dashboard** — once committed to a public repo it is permanently exposed in git history and code changes cannot un-leak it.
 
@@ -639,7 +639,7 @@ Streaming sources (AirPlay, UPnP, Bluetooth) are activated on demand — they do
 | `upmpdcli` | UPnP/DLNA renderer (built from source) | On demand |
 | `bluealsa` / `bluealsa-aplay` | Bluetooth A2DP bridge | On demand |
 | `bt-agent` | Bluetooth auto-pair agent | Boot |
-| `resonance-api` (PM2) | Node.js backend | Boot (PM2 startup) |
+| `resonance-api` | Node.js backend (native systemd unit) | Boot (always) |
 
 ---
 
@@ -680,7 +680,7 @@ The frontend proxies API calls to the backend. ALSA/MPD/CamillaDSP calls fail on
 cd /home/pi/EnzoOS
 git pull origin main
 npm run build
-pm2 restart resonance-api
+sudo systemctl restart resonance-api
 ```
 
 ### SSH access
@@ -726,6 +726,7 @@ TIDAL_CLIENT_SECRET=…       # public tidalapi TV-client secret (see .env.examp
 | `scripts/setup-rtaudio.sh` | Real-time audio tuning — `threadirqs`, `rtirq` IRQ priority, `isolcpus=2,3` core isolation, per-service CPU affinity (idempotent; run by installer and OTA update) |
 | `scripts/setup-storage-silence.sh` | Storage silence — `noatime,nodiratime` fstab mounts + `log2ram` RAM-backed `/var/log` (idempotent; run by installer and OTA update) |
 | `scripts/setup-ram-preload.sh` | RAM preloading — `mlockall` shim + `LimitMEMLOCK` drop-ins + PipeWire mlock to keep audio daemons resident in RAM (idempotent; run by installer and OTA update) |
+| `scripts/setup-service.sh` | Registers the backend as a native `resonance-api` systemd unit (replaces PM2); migrates an existing PM2 install on re-run |
 | `scripts/verify-install.sh` | Post-install verification — reports active/pending/skipped/failed state of every install step and optimization (`npm run verify`) |
 | `.github/workflows/ci.yml` | CI — build, server `node --check`, script `bash -n`, advisory lint + shellcheck |
 | `scripts/resonance-mlockall.c` | `LD_PRELOAD` shim source — `mlockall(MCL_CURRENT\|MCL_FUTURE)` constructor, compiled to `/usr/local/lib/resonance-mlockall.so` at install |

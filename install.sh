@@ -590,7 +590,7 @@ echo -e "${GREEN}Raspotify Spotify Connect service configured and started.${NC}"
 # Configure passwordless sudo for service management (CamillaDSP, Spotify, AirPlay, etc.)
 echo -e "${YELLOW}Configuring sudo permissions for service management...${NC}"
 cat <<EOF > /etc/sudoers.d/resonance
-$TARGET_USER ALL=(ALL) NOPASSWD: /usr/bin/tee /etc/raspotify/conf, /bin/tee /etc/raspotify/conf, /usr/bin/tee /etc/asound.conf, /bin/tee /etc/asound.conf, /usr/bin/tee /etc/pipewire/pipewire.conf.d/52-resonance-bitperfect.conf, /bin/tee /etc/pipewire/pipewire.conf.d/52-resonance-bitperfect.conf, /usr/bin/systemctl restart raspotify, /bin/systemctl restart raspotify, /usr/bin/systemctl restart camilladsp, /bin/systemctl restart camilladsp, /usr/bin/systemctl reload camilladsp, /bin/systemctl reload camilladsp, /usr/local/bin/kiosk-power.sh, /usr/local/bin/kiosk-brightness.sh, /usr/bin/systemctl start shairport-sync, /bin/systemctl start shairport-sync, /usr/bin/systemctl stop shairport-sync, /bin/systemctl stop shairport-sync, /usr/bin/systemctl start upmpdcli, /bin/systemctl start upmpdcli, /usr/bin/systemctl stop upmpdcli, /bin/systemctl stop upmpdcli, /usr/bin/systemctl restart mpd, /bin/systemctl restart mpd, /usr/bin/systemctl start bluealsa, /bin/systemctl start bluealsa, /usr/bin/systemctl stop bluealsa, /bin/systemctl stop bluealsa, /usr/bin/systemctl reboot, /bin/systemctl reboot, /usr/bin/systemctl poweroff, /bin/systemctl poweroff, /usr/bin/nmcli, /bin/nmcli
+$TARGET_USER ALL=(ALL) NOPASSWD: /usr/bin/tee /etc/raspotify/conf, /bin/tee /etc/raspotify/conf, /usr/bin/tee /etc/asound.conf, /bin/tee /etc/asound.conf, /usr/bin/tee /etc/pipewire/pipewire.conf.d/52-resonance-bitperfect.conf, /bin/tee /etc/pipewire/pipewire.conf.d/52-resonance-bitperfect.conf, /usr/bin/systemctl restart raspotify, /bin/systemctl restart raspotify, /usr/bin/systemctl restart camilladsp, /bin/systemctl restart camilladsp, /usr/bin/systemctl reload camilladsp, /bin/systemctl reload camilladsp, /usr/local/bin/kiosk-power.sh, /usr/local/bin/kiosk-brightness.sh, /usr/bin/systemctl start shairport-sync, /bin/systemctl start shairport-sync, /usr/bin/systemctl stop shairport-sync, /bin/systemctl stop shairport-sync, /usr/bin/systemctl start upmpdcli, /bin/systemctl start upmpdcli, /usr/bin/systemctl stop upmpdcli, /bin/systemctl stop upmpdcli, /usr/bin/systemctl restart mpd, /bin/systemctl restart mpd, /usr/bin/systemctl start bluealsa, /bin/systemctl start bluealsa, /usr/bin/systemctl stop bluealsa, /bin/systemctl stop bluealsa, /usr/bin/systemctl reboot, /bin/systemctl reboot, /usr/bin/systemctl poweroff, /bin/systemctl poweroff, /usr/bin/nmcli, /bin/nmcli, /usr/bin/systemctl restart resonance-api, /bin/systemctl restart resonance-api, /usr/bin/systemctl start resonance-api, /bin/systemctl start resonance-api, /usr/bin/systemctl stop resonance-api, /bin/systemctl stop resonance-api
 EOF
 chmod 440 /etc/sudoers.d/resonance
 
@@ -1036,8 +1036,8 @@ if [ -f "$PROJECT_DIR/.env" ] && ! grep -q "TIDAL_CLIENT_ID" "$PROJECT_DIR/.env"
 fi
 echo -e "${GREEN}Tidal/Qobuz hi-res streaming enabled (plays through MPD → CamillaDSP).${NC}"
 
-# 9. Install Node modules, build code and startup PM2
-echo -e "\n${GREEN}[7/7] Building application & setting up PM2 server daemon...${NC}"
+# 9. Install Node modules, build code and register the systemd service
+echo -e "\n${GREEN}[7/7] Building application & registering the systemd service...${NC}"
 
 # Detect primary local IP address dynamically
 LOCAL_IP=$(ip route get 1.1.1.1 2>/dev/null | grep -oP 'src \K\S+' || hostname -I | awk '{print $1}')
@@ -1129,21 +1129,15 @@ fi
 echo -e "${YELLOW}Compiling production assets (running as $TARGET_USER)...${NC}"
 sudo -u $TARGET_USER npm run build
 
-# Install PM2 globally
-echo -e "${YELLOW}Installing PM2 process manager...${NC}"
-npm install -g pm2
-
-# Clear existing instances & start the backend as the target user
-sudo -u $TARGET_USER pm2 delete resonance-api &>/dev/null || true
-sudo -u $TARGET_USER pm2 start "$PROJECT_DIR/server/index.js" --name "resonance-api" --env PORT=5000
-sudo -u $TARGET_USER pm2 save
-
-# Setup PM2 server boot startup configuration
-echo -e "${YELLOW}Registering PM2 service with systemd...${NC}"
-PM2_STARTUP_CMD=$(pm2 startup systemd -u $TARGET_USER --hp $USER_HOME | grep "sudo env" || true)
-if [ -n "$PM2_STARTUP_CMD" ]; then
-  eval "$PM2_STARTUP_CMD"
-fi
+# Register the backend as a native systemd service (replaces PM2). Re-running
+# the installer over a PM2 install migrates it cleanly (setup-service.sh tears
+# down the PM2 instance before we start the systemd unit, so :5000 is free).
+echo -e "${YELLOW}Registering resonance-api as a systemd service...${NC}"
+chmod +x "$PROJECT_DIR/scripts/setup-service.sh"
+SERVICE_USER="$TARGET_USER" bash "$PROJECT_DIR/scripts/setup-service.sh"
+systemctl restart resonance-api && \
+  echo -e "${GREEN}resonance-api.service started.${NC}" || \
+  echo -e "${RED}Failed to start resonance-api.service — check: journalctl -u resonance-api${NC}"
 
 # Verify the final state of every install step and premium optimization, so a
 # tuning helper that "continued past" a failure can't silently hide a missing

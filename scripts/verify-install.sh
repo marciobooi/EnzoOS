@@ -42,8 +42,10 @@ echo -e "\n${BLUE}Core services${NC}"
 if command -v camilladsp >/dev/null 2>&1; then ok "CamillaDSP binary ($(camilladsp --version 2>/dev/null | head -n1))"; else crit "CamillaDSP binary" "not installed"; fi
 svc_active camilladsp && ok "camilladsp.service running" || bad "camilladsp.service" "not active"
 svc_active mpd        && ok "mpd.service running"        || bad "mpd.service" "not active"
-command -v pm2 >/dev/null 2>&1 && pm2 pid resonance-api >/dev/null 2>&1 && ok "resonance-api (PM2) running" \
-  || { pgrep -f "resonance" >/dev/null 2>&1 && ok "resonance backend process found" || crit "resonance-api backend" "not running"; }
+if svc_active resonance-api; then ok "resonance-api.service (systemd) running"
+elif command -v pm2 >/dev/null 2>&1 && pm2 pid resonance-api >/dev/null 2>&1; then ok "resonance-api (PM2, legacy — re-run install.sh to migrate)"
+elif pgrep -f "resonance" >/dev/null 2>&1; then ok "resonance backend process found"
+else crit "resonance-api backend" "not running"; fi
 
 echo -e "\n${BLUE}Real-time audio (setup-rtaudio.sh)${NC}"
 case "$(cmdline_state threadirqs)" in

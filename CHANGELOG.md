@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **Backend now runs as a native systemd service** (`resonance-api.service`)
+  instead of PM2 — unifies process management under `systemctl` (like every
+  other audio daemon), removes the global `pm2` npm dependency, and lowers RAM.
+  `scripts/setup-service.sh` writes/enables the unit; the installer starts it.
+  Re-running `install.sh` migrates an existing PM2 install (tears down the PM2
+  instance and its boot hook before starting the systemd unit). The OTA updater
+  is process-manager-agnostic: it uses the systemd service when present and
+  falls back to PM2 for installs not yet migrated.
+
 ### Security
 - **Remote session TTL cut from 6 months to 30 days** (`server/auth.js`) — the
   QR token still expires in 10 min; the redeemed bearer session is now far shorter.

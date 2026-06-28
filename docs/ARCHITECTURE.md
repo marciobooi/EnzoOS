@@ -142,7 +142,7 @@ flowchart LR
     INSTALL --> VERIFY["verify-install.sh<br/>relatório do estado final"]
     INSTALL --> REBOOT["reboot"]
     REBOOT --> BOOT["boot"]
-    BOOT --> PM2["PM2: resonance-api<br/>→ startMpdRateWatcher()"]
+    BOOT --> SVC["systemd: resonance-api.service<br/>→ startMpdRateWatcher()"]
     BOOT --> CAM["camilladsp.service"]
     BOOT --> KIOSKX["X + Chromium kiosk"]
 ```
@@ -156,7 +156,8 @@ Chromium · núcleo 2 = PipeWire + CamillaDSP · núcleo 3 = raspotify + shairpo
 
 `scripts/update.sh`: regista o commit atual → `git reset --hard origin/main` →
 `npm install` → `npm run build` → re-aplica tuning (rt-audio / storage / ram) →
-reinício do PM2. Em falha de install/build/validação do servidor faz **rollback
+reinício do serviço (`systemctl restart resonance-api`; fallback PM2 em
+instalações ainda não migradas). Em falha de install/build/validação do servidor faz **rollback
 automático** para o commit anterior (recuperação ao nível de commit; imagem
 A/B imutável fica como melhoria futura).
 

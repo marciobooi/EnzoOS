@@ -18,7 +18,11 @@ echo "Timestamp: $(date)"
 echo "Executing User: $(whoami)"
 echo "Node version: $(node -v 2>&1 || echo 'Not found')"
 echo "NPM version:  $(npm -v 2>&1 || echo 'Not found')"
-echo "PM2 version:  $(pm2 -v 2>&1 || echo 'Not found')"
+if systemctl list-unit-files resonance-api.service 2>/dev/null | grep -q 'resonance-api'; then
+  echo "Process manager: systemd (resonance-api.service)"
+else
+  echo "Process manager: PM2 ($(pm2 -v 2>&1 || echo 'not found')) — re-run install.sh to migrate to systemd"
+fi
 echo "=========================="
 
 # Find absolute path of the project directory (one level up from scripts/)
@@ -154,12 +158,22 @@ fi
 echo -e "${GREEN}OTA Update completed successfully!${NC}"
 echo "[PROGRESS: 100]"
 
-# IMPORTANT: We must NOT restart PM2 immediately — the Node process broadcasting
-# this output IS the resonance-api PM2 process. Killing it immediately would cut
-# the WebSocket stream before the client receives the 100% signal.
-# We schedule the restart 4 seconds later in a fully detached subshell.
-echo -e "${YELLOW}Scheduling server restart in 4 seconds...${NC}"
-(sleep 4 && pm2 restart resonance-api > /dev/null 2>&1 && pkill -f chromium-browser || true) &
+# IMPORTANT: We must NOT restart the backend immediately — the Node process
+# broadcasting this output IS resonance-api. Killing it now would cut the
+# WebSocket stream before the client receives the 100% signal. We schedule the
+# restart 4 s later in a fully detached subshell.
+#
+# Process-manager-agnostic: prefer the native systemd service; fall back to PM2
+# for installs not yet migrated (re-running install.sh performs the migration).
+if systemctl list-unit-files resonance-api.service 2>/dev/null | grep -q '^resonance-api\.service'; then
+  RESTART_CMD="sudo systemctl restart resonance-api"
+elif command -v pm2 >/dev/null 2>&1; then
+  RESTART_CMD="pm2 restart resonance-api"
+else
+  RESTART_CMD="sudo systemctl restart resonance-api"
+fi
+echo -e "${YELLOW}Scheduling backend restart in 4 seconds (${RESTART_CMD})...${NC}"
+(sleep 4 && eval "$RESTART_CMD" > /dev/null 2>&1 && pkill -f chromium-browser || true) &
 disown $!
 
 echo -e "${GREEN}Update sequence complete. Server will restart shortly.${NC}"
