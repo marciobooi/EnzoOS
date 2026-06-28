@@ -318,6 +318,8 @@ On every startup, `detectDac()` scans `/proc/asound/card*/stream*` and returns:
 
 `supportedRates` drives PipeWire `clock.allowed-rates` via `updatePipeWireClock()`. The config is written only if it changed from the current `/etc/pipewire/pipewire.conf.d/52-resonance-bitperfect.conf`, and PipeWire is restarted only if the config changed (startup-time only).
 
+**First-boot routing.** The very first boot runs whatever `camilladsp.yml` the installer wrote, *before* the backend's `detectDac()` runs. So `install.sh` performs its own lightweight detection when generating the initial config — it scans `/proc/asound/cards` and prefers a real DAC (USB / I²S) over HDMI or onboard audio, writing a name-based `hw:CARD=…,DEV=0` device. This prevents first-boot audio from being routed to the TV on Pis where card 0 is the HDMI output; the backend then re-detects and refines on startup.
+
 ### Signal Path API
 
 `GET /api/player/signal-path` — polled every 5 seconds by the frontend:
