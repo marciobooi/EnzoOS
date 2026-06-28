@@ -1330,6 +1330,38 @@ export async function applyDsdRouting() {
 
 export function isDsdBypassActive() { return _dsdActive; }
 
+// MPD does NOT persist crossfade or ReplayGain across a restart (they reset to
+// 0 / off), but we save the user's choice in the DB. Re-apply both on startup so
+// the settings actually survive a reboot. MPD may not be reachable the instant
+// the API boots, so probe with a short retry first.
+export async function applyPersistedMpdSettings() {
+  let reachable = false;
+  for (let attempt = 0; attempt < 10; attempt++) {
+    try { await execFilePromise('mpc', ['version']); reachable = true; break; }
+    catch { await new Promise(r => setTimeout(r, 1000)); }
+  }
+  if (!reachable) { console.warn('[MPD] Not reachable at startup — skipping persisted-setting restore.'); return; }
+
+  try {
+    const [xfVal, rgVal] = await Promise.all([
+      getSetting('crossfade_seconds').catch(() => null),
+      getSetting('replaygain_mode').catch(() => null),
+    ]);
+    const secs = parseInt(xfVal ?? '', 10);
+    if (Number.isFinite(secs) && secs >= 0) {
+      await execFilePromise('mpc', ['crossfade', String(secs)]).catch(() => {});
+    }
+    if (rgVal && ['off', 'track', 'album', 'auto'].includes(rgVal)) {
+      await execFilePromise('mpc', ['replaygain', rgVal]).catch(() => {});
+    }
+    if ((Number.isFinite(secs) && secs > 0) || (rgVal && rgVal !== 'off')) {
+      console.log(`[MPD] Restored persisted settings — crossfade: ${Number.isFinite(secs) ? secs + 's' : 'n/a'}, replaygain: ${rgVal || 'n/a'}`);
+    }
+  } catch (err) {
+    console.warn('[MPD] Failed to restore persisted settings:', err.message);
+  }
+}
+
 let _lastMpdRate = 0;
 let _mpdRateWatcherActive = false;
 

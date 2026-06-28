@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **Crossfade & ReplayGain now survive a reboot** (`server/player.js`,
+  `server/index.js`) — both are saved to the DB but MPD doesn't persist them
+  across restarts, so they were silently lost. A new `applyPersistedMpdSettings()`
+  runs at startup (after MPD becomes reachable) and re-applies `crossfade_seconds`
+  and `replaygain_mode` via `mpc`.
+
+### Security
+- **`.gitignore` now excludes `certs/` and `*.pem`** (plus the SQLite WAL
+  sidecar files) — prevents the self-signed TLS *private key* (`certs/key.pem`,
+  generated in the repo dir by the installer) from ever being committed.
+
 ### Hardening
 - **fstab edit is now kernel-validated** (`scripts/setup-storage-silence.sh`) —
   after writing `noatime,nodiratime`, the new `/etc/fstab` is checked with
