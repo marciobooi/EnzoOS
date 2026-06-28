@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Hardening
+- **fstab edit is now kernel-validated** (`scripts/setup-storage-silence.sh`) —
+  after writing `noatime,nodiratime`, the new `/etc/fstab` is checked with
+  `findmnt --verify` / `mount --fake --all`; if either rejects it, the script
+  restores the backup immediately, so a mangled custom/NFS/USB entry can never
+  leave the Pi unbootable.
+- **rtirq I²S vs USB IRQ priority** (`scripts/setup-rtaudio.sh`) — the IRQ name
+  list now lists the BCM2835 I²S drivers (`snd_soc_bcm2835_i2s` / `bcm2835_i2s`
+  / `snd_bcm2835`) explicitly and above the USB host controllers, so I²S DACs
+  get the right interrupt prioritised instead of only the USB bus.
+
 ### Changed
 - **Backend now runs as a native systemd service** (`resonance-api.service`)
   instead of PM2 — unifies process management under `systemctl` (like every

@@ -71,14 +71,24 @@ if [ -f "$FSTAB" ]; then
   if [ "$new_data" -eq "$orig_data" ] && [ "$new_data" -gt 0 ] \
      && awk '$2 == "/" { found = 1 } END { exit found ? 0 : 1 }' "$TMP_FSTAB"; then
     cp "$TMP_FSTAB" "$FSTAB"
-    echo -e "  ${GREEN}/etc/fstab updated with noatime,nodiratime (backup: /etc/fstab.resonance.bak).${NC}"
-    # Apply immediately to currently-mounted on-disk filesystems (reboot also applies).
-    while read -r mp; do
-      [ -n "$mp" ] && mount -o remount "$mp" 2>/dev/null \
-        && echo -e "  Remounted $mp with new options." || true
-    done < <(awk '$3 ~ /^(ext2|ext3|ext4|vfat|fat|f2fs|btrfs|xfs)$/ && $2 ~ /^\// { print $2 }' "$FSTAB")
+    # Second gate: let the kernel/util-linux actually parse the written fstab
+    # (catches a mangled UUID, NFS, or external-USB entry the sed/awk pass could
+    # have broken). If neither validator accepts it, restore the backup at once
+    # so the Pi can never boot into a corrupt fstab — worst case the optimization
+    # is simply skipped. (A false revert is harmless; an unbootable Pi is not.)
+    if findmnt --verify >/dev/null 2>&1 || mount --fake --all >/dev/null 2>&1; then
+      echo -e "  ${GREEN}/etc/fstab updated with noatime,nodiratime (kernel-validated; backup: /etc/fstab.resonance.bak).${NC}"
+      # Apply immediately to currently-mounted on-disk filesystems (reboot also applies).
+      while read -r mp; do
+        [ -n "$mp" ] && mount -o remount "$mp" 2>/dev/null \
+          && echo -e "  Remounted $mp with new options." || true
+      done < <(awk '$3 ~ /^(ext2|ext3|ext4|vfat|fat|f2fs|btrfs|xfs)$/ && $2 ~ /^\// { print $2 }' "$FSTAB")
+    else
+      cp /etc/fstab.resonance.bak "$FSTAB"
+      echo -e "  ${RED}New fstab failed kernel validation (findmnt --verify / mount --fake) — reverted to backup.${NC}"
+    fi
   else
-    echo -e "  ${YELLOW}fstab validation failed — keeping original unchanged.${NC}"
+    echo -e "  ${YELLOW}fstab structural validation failed — keeping original unchanged.${NC}"
   fi
   rm -f "$TMP_FSTAB"
 else

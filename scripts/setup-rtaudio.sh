@@ -124,7 +124,15 @@ if [ -d /etc/default ]; then
 # Audio interrupt threads are pinned to RT priorities above network
 # (Wi-Fi/Ethernet) and storage (SD/USB) drivers, which are intentionally
 # excluded and keep their default non-RT scheduling.
-RTIRQ_NAME_LIST="snd_usb_audio snd_soc snd usb xhci_hcd dwc_otg i2s"
+#
+# Order = priority (first is highest). Audio comes BEFORE the USB host
+# controllers so the right thread wins on both DAC topologies:
+#   • USB DACs → the interrupt is on xhci_hcd/dwc_otg, fed by snd_usb_audio.
+#   • I²S DACs → the interrupt is the SoC I²S/DMA block, NOT the USB bus, so the
+#     BCM2835 I²S drivers (snd_soc_bcm2835_i2s / bcm2835_i2s / snd_bcm2835) are
+#     listed explicitly and ABOVE usb/xhci — otherwise raising the USB bus does
+#     nothing for I²S and can cause clock contention with other USB peripherals.
+RTIRQ_NAME_LIST="snd_usb_audio snd_soc_bcm2835_i2s bcm2835_i2s snd_soc snd_bcm2835 snd i2s usb xhci_hcd dwc_otg"
 RTIRQ_PRIO_HIGH=90
 RTIRQ_PRIO_DECR=5
 RTIRQ_PRIO_LOW=51
