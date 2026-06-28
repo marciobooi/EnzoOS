@@ -18,11 +18,7 @@ import UniversalSearch from '../components/remote/UniversalSearch';
 import SettingsTab from '../components/remote/SettingsTab';
 import MiniPlayer  from '../components/remote/MiniPlayer';
 import QueuePanel  from '../components/remote/QueuePanel';
-
-// ─── cookie helpers ───────────────────────────────────────────────────────────
-const setCookie   = (n, v, d = 365) => { const e = new Date(); e.setTime(e.getTime() + d * 86400000); document.cookie = `${n}=${v}; expires=${e.toUTCString()}; path=/`; };
-const getCookie   = n => { const v = `; ${document.cookie}`, p = v.split(`; ${n}=`); return p.length === 2 ? p.pop().split(';').shift() : null; };
-const eraseCookie = n => { document.cookie = `${n}=; Max-Age=-99999999; path=/`; };
+import { setCookie, getCookie, eraseCookie } from '../lib/cookies';
 
 const NAV_H = 72;
 

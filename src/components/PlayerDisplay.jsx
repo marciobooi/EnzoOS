@@ -1,81 +1,8 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Play, Pause, SkipForward, SkipBack, Shuffle, Repeat, Volume2, VolumeX, Home, Volume1, Sliders, Radio, Heart, Power, Search } from 'lucide-react';
 import { S, cardShadow } from '../styles/stone';
-
-
-
-// Conditional text ticker — scrolls only when text is wider than its container.
-// A hidden absolute-positioned measurement span gives accurate scrollWidth
-// without affecting layout. No ResizeObserver — the kiosk has a fixed width
-// so we only recheck when the text content itself changes.
-function AutoScroll({ children, outerClass = '', innerClass = '', speed = 70, minDuration = 6 }) {
-  const containerRef = useRef(null);
-  const measureRef   = useRef(null);
-  const [scrolling, setScrolling] = useState(false);
-  const [duration,  setDuration]  = useState(10);
-
-  useEffect(() => {
-    const container = containerRef.current;
-    const measure   = measureRef.current;
-    if (!container || !measure) return;
-    // Single synchronous read — no ResizeObserver so no feedback loop.
-    const overflows = measure.scrollWidth > container.clientWidth + 2;
-    setScrolling(overflows);
-    if (overflows) {
-      const excess = measure.scrollWidth - container.clientWidth;
-      setDuration(Math.max(minDuration, excess / speed));
-    } else {
-      setScrolling(false);
-    }
-  }, [children, speed, minDuration]);
-
-  return (
-    <div ref={containerRef} className={`overflow-hidden relative ${outerClass}`}>
-      {/* Hidden single-copy — accurate width measurement, never affects layout */}
-      <span ref={measureRef} aria-hidden="true" className={innerClass}
-        style={{ position: 'absolute', visibility: 'hidden',
-                 whiteSpace: 'nowrap', pointerEvents: 'none' }}>
-        {children}
-      </span>
-      {/* Visible — ellipsis when fits, ticker when overflows */}
-      <span className={innerClass}
-        style={scrolling
-          ? { display: 'inline-block', whiteSpace: 'nowrap',
-              animation: `marquee ${duration + minDuration}s linear infinite` }
-          : { display: 'block', whiteSpace: 'nowrap',
-              overflow: 'hidden', textOverflow: 'ellipsis' }}>
-        {scrolling
-          ? <>{children}&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;{children}</>
-          : children}
-      </span>
-    </div>
-  );
-}
-
-// Map 0–100 slider value to a dB string for display (matches server toDb())
-function toVolumeDb(vol) {
-  if (vol <= 0) return '−∞';
-  const db = -60 * (1 - vol / 100);
-  return db === 0 ? '0.0' : db.toFixed(1);
-}
-
-// Sanitise track names that come from MPD ICY/stream metadata.
-// MPD can set %title% to the stream URL itself (common with HLS/AAC streams
-// that have no ICY metadata), or to raw XML from Dalet-based automation.
-function sanitizeTrackName(name) {
-  if (!name) return name;
-  // If the name IS a URL (MPD fallback for streams without ICY title), suppress it —
-  // showing a raw URL as a track title is worse than showing nothing.
-  if (name.startsWith('http://') || name.startsWith('https://')) return '';
-  if (!name.includes('<')) return name;
-  // RadioInfo XML (Portuguese/Spanish stations via Dalet automation systems)
-  const song   = name.match(/<DB_SONG_NAME>([^<]+)<\/DB_SONG_NAME>/)?.[1];
-  const artist = name.match(/<DB_LEAD_ARTIST_NAME>([^<]+)<\/DB_LEAD_ARTIST_NAME>/)?.[1];
-  if (song) return artist ? `${song} — ${artist}` : song;
-  // Generic fallback: strip all XML/HTML tags
-  const stripped = name.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
-  return stripped || name;
-}
+import AutoScroll from './AutoScroll';
+import { toVolumeDb, sanitizeTrackName } from '../lib/format';
 
 const PlayerDisplay = React.memo(function PlayerDisplay({
   theme = 'amber',
