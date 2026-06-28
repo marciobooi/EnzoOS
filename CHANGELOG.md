@@ -12,6 +12,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   routed straight to the hardware DAC via a dedicated "DSD Direct" MPD output
   (DoP), bypassing the PipeWire→loopback→CamillaDSP PCM chain so the DAC receives
   an untouched DSD bitstream. Toggle via Settings → DSP or `/api/player/dsd-bypass`.
+- **Dynamic peak pre-attenuation (auto-headroom)** — the pre-amp is now attenuated
+  by the EQ's computed peak magnitude response (RBJ biquad cascade) rather than a
+  static per-preset value, maximising SNR for gentle content while correctly
+  catching overlapping boosts. Applies to all presets + Custom EQ. Toggle via
+  Settings → DSP or `/api/player/auto-headroom`.
 
 ### Fixed
 - **MPD rate watcher now started at server boot** (`startMpdRateWatcher()` was

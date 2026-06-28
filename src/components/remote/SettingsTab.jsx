@@ -27,6 +27,8 @@ export default function SettingsTab() {
   const [phaseRight, setPhaseRight]   = useState(false);
   const [bitPerfect, setBitPerfect]   = useState(true);
   const [dsdBypass, setDsdBypass]     = useState(true);
+  const [autoHeadroom, setAutoHeadroom] = useState(true);
+  const [headroomDb, setHeadroomDb]   = useState(0);
 
   // Wi-Fi
   const [showWifi, setShowWifi]         = useState(false);
@@ -47,6 +49,7 @@ export default function SettingsTab() {
     api.getPhase().then(d => { setPhaseLeft(!!d.left); setPhaseRight(!!d.right); }).catch(() => {});
     api.getBitPerfect().then(d => setBitPerfect(d.enabled !== false)).catch(() => {});
     api.getDsdBypass().then(d => setDsdBypass(d.enabled !== false)).catch(() => {});
+    api.getAutoHeadroom().then(d => { setAutoHeadroom(d.enabled !== false); setHeadroomDb(d.headroomDb || 0); }).catch(() => {});
   }, []);
 
   const handleReplayGainChange = async (mode) => {
@@ -78,6 +81,16 @@ export default function SettingsTab() {
       await api.setBitPerfect(next);
       toast.success(next ? 'Bit-perfect on — reboot to apply' : 'Fixed 48 kHz mode — reboot to apply');
     } catch (e) { setBitPerfect(!next); toast.error(e.message); }
+  };
+
+  const handleAutoHeadroomToggle = async () => {
+    const next = !autoHeadroom;
+    setAutoHeadroom(next);
+    try {
+      const r = await api.setAutoHeadroom(next);
+      setHeadroomDb(r.headroomDb || 0);
+      toast.success(next ? 'Auto-headroom on' : 'Static preset headroom');
+    } catch (e) { setAutoHeadroom(!next); toast.error(e.message); }
   };
 
   const handleDsdBypassToggle = async () => {
@@ -274,6 +287,11 @@ export default function SettingsTab() {
           value={dsdBypass ? 'Native' : 'PCM'}
           chevron={false}
           onPress={handleDsdBypassToggle} />
+        <Row label="Auto-Headroom (peak attenuation)"
+          icon={<Scale className="h-4 w-4" style={{ color: autoHeadroom ? C.champagne : C.text4 }} />}
+          value={autoHeadroom ? `−${headroomDb} dB` : 'Static'}
+          chevron={false}
+          onPress={handleAutoHeadroomToggle} />
       </Section>
 
       {/* display */}

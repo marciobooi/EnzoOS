@@ -746,6 +746,17 @@ export const api = {
     });
     return r.json();
   },
+  async getAutoHeadroom() {
+    const r = await fetch('/api/player/auto-headroom');
+    return r.json();
+  },
+  async setAutoHeadroom(enabled) {
+    const r = await fetch('/api/player/auto-headroom', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ enabled }),
+    });
+    return r.json();
+  },
 
   // ── Queue editing ────────────────────────────────────────────────────────────
   async getDetailedQueue() {

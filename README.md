@@ -30,7 +30,7 @@ Resonance HiFi is an open-source, self-hosted audio streaming platform for Raspb
 - **Rate-following** — persistent MPD idle connection watches for song changes; when the audio format changes, CamillaDSP capture rate is reconfigured automatically via hot-reload with no audio gap
 - **Zero-lag volume** — volume applied post-buffer inside CamillaDSP via `SetVolume`, instant response on all sources regardless of buffer depth
 - **Pure Direct mode** — bypass all EQ and DSP filters entirely; signal passes through flat (mixer only), with volume control preserved. Selectable from the DSP wizard alongside Manual EQ and Room Correction
-- **Auto-headroom** — Custom EQ preset automatically subtracts the largest positive band boost from the pre-amp gain to prevent clipping
+- **Dynamic peak pre-attenuation (auto-headroom)** — instead of a static deduction, the server computes the active EQ's actual peak magnitude response (RBJ biquad cascade across the audible band) and attenuates the pre-amp by *exactly* that much, so peaks land just under 0 dBFS and gentle/neutral content keeps full resolution (max SNR). Applies to every preset *and* Custom EQ; correctly accounts for overlapping boosts that a single-band max would miss (e.g. Bass Boost's 45 Hz + 110 Hz layers peak at ~8.8 dB, not 5.5 dB). Saturation adds a safety margin. Deterministic (filter-derived, no level pumping). Toggle in Settings → DSP → **Auto-Headroom** (or `POST /api/player/auto-headroom`); the live computed value is reported as `headroomDb`. The global -1 dB safety margin still applies on top
 - **-1 dB safety headroom** — applied at Stage E (preamp gain) across all built-in and custom pipelines as a guard against multi-stage EQ filter gains summing above 0 dBFS
 - **Safe startup sequence** — CamillaDSP is pre-muted to -100 dB before config apply on startup, then volume is restored from the stored value. Prevents the 0 dB (full volume) window that occurs on every CamillaDSP process start
 - **DSD native bypass** — when a DSD file (`.dsf` / `.dff`) plays while **Pure Direct** is active, MPD's output is flipped from the CamillaDSP loopback to a dedicated DoP **"DSD Direct"** output wired straight to the hardware DAC (`hw:CARD=…`). The DSD bitstream reaches the DAC untouched — no PCM conversion, no DSP — so the DAC lights its native "DSD" indicator. PCM playback is unaffected and CamillaDSP is restored automatically on the next non-DSD track. Toggle in Settings → DSP → **DSD Native Bypass** (or `POST /api/player/dsd-bypass`); the MPD output flip is driven from `server/player.js` via the rate watcher (`mpc enable/disable`). *DSD output behaviour is DAC-dependent — validate DoP/native support with your specific DAC.*
@@ -391,6 +391,8 @@ On every startup, `detectDac()` scans `/proc/asound/card*/stream*` and returns:
 | `POST` | `/api/player/bitperfect` | Toggle bit-perfect rate-following vs fixed 48 kHz `{ enabled: bool }` (reboot to apply) |
 | `GET` | `/api/player/dsd-bypass` | DSD bypass setting + whether it is currently routing `{ enabled, active }` |
 | `POST` | `/api/player/dsd-bypass` | Toggle DSD native (DoP) bypass vs PCM decode `{ enabled: bool }` |
+| `GET` | `/api/player/auto-headroom` | Auto-headroom setting + last computed attenuation `{ enabled, headroomDb }` |
+| `POST` | `/api/player/auto-headroom` | Toggle dynamic peak pre-attenuation vs static preset headroom `{ enabled: bool }` |
 | `GET` | `/api/player/lyrics` | Fetch synced LRC lyrics from LRCLIB `?title=&artist=&album=&duration=` |
 
 ### Library & History
@@ -575,6 +577,7 @@ Tapping the now-playing cover inside the remote opens the [album metadata](#albu
 | Phase Inversion | Settings → **DSP** → Phase L / Phase R toggles |
 | Bit-Perfect | Settings → **DSP** → Bit-Perfect (rate-following ↔ fixed 48 kHz) |
 | DSD Native Bypass | Settings → **DSP** → DSD Native Bypass (DoP direct ↔ PCM decode) |
+| Auto-Headroom | Settings → **DSP** → Auto-Headroom (dynamic peak attenuation ↔ static) |
 | Theme | Settings → **Theme** card |
 | Remote access | Settings → **Remote** card |
 | Wi-Fi | Settings → **Wi-Fi** → scan and connect |

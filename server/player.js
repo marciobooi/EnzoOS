@@ -605,11 +605,70 @@ const presetDatabase = {
   }
 };
 
+// ── Dynamic peak pre-attenuation (auto-headroom) ──────────────────────────────
+// A static -1 dB (or a conservative per-preset) deduction wastes resolution on
+// gentle content while still risking clipping on aggressive EQ. Instead we
+// compute the EQ's actual peak magnitude response (RBJ biquad cascade) and
+// attenuate the pre-amp by *exactly* that — maximising SNR. Deterministic
+// (filter-derived, not a live audio-peak loop), so there is no level pumping.
+function _biquadCoeffs(band, fs) {
+  const f0 = Number(band.freq) || 1000, Q = Number(band.q) || 0.707, gain = Number(band.gain) || 0;
+  const w0 = 2 * Math.PI * f0 / fs, cw = Math.cos(w0), sw = Math.sin(w0);
+  const alpha = sw / (2 * Q), A = Math.pow(10, gain / 40);
+  let b0, b1, b2, a0, a1, a2;
+  switch (band.type) {
+    case 'Peaking':
+      b0 = 1 + alpha * A; b1 = -2 * cw; b2 = 1 - alpha * A;
+      a0 = 1 + alpha / A; a1 = -2 * cw; a2 = 1 - alpha / A; break;
+    case 'Lowshelf': {
+      const s = 2 * Math.sqrt(A) * alpha;
+      b0 = A * ((A + 1) - (A - 1) * cw + s); b1 = 2 * A * ((A - 1) - (A + 1) * cw); b2 = A * ((A + 1) - (A - 1) * cw - s);
+      a0 = (A + 1) + (A - 1) * cw + s; a1 = -2 * ((A - 1) + (A + 1) * cw); a2 = (A + 1) + (A - 1) * cw - s; break; }
+    case 'Highshelf': {
+      const s = 2 * Math.sqrt(A) * alpha;
+      b0 = A * ((A + 1) + (A - 1) * cw + s); b1 = -2 * A * ((A - 1) + (A + 1) * cw); b2 = A * ((A + 1) + (A - 1) * cw - s);
+      a0 = (A + 1) - (A - 1) * cw + s; a1 = 2 * ((A - 1) - (A + 1) * cw); a2 = (A + 1) - (A - 1) * cw - s; break; }
+    case 'Highpass':
+      b0 = (1 + cw) / 2; b1 = -(1 + cw); b2 = (1 + cw) / 2; a0 = 1 + alpha; a1 = -2 * cw; a2 = 1 - alpha; break;
+    case 'Lowpass':
+      b0 = (1 - cw) / 2; b1 = 1 - cw; b2 = (1 - cw) / 2; a0 = 1 + alpha; a1 = -2 * cw; a2 = 1 - alpha; break;
+    default: return null; // unknown / gainless → unity
+  }
+  return { b0: b0 / a0, b1: b1 / a0, b2: b2 / a0, a0: 1, a1: a1 / a0, a2: a2 / a0 };
+}
+function _biquadMagSq(c, w) {
+  const phi = Math.pow(Math.sin(w / 2), 2);
+  const num = Math.pow(c.b0 + c.b1 + c.b2, 2) - 4 * (c.b0 * c.b1 + 4 * c.b0 * c.b2 + c.b1 * c.b2) * phi + 16 * c.b0 * c.b2 * phi * phi;
+  const den = Math.pow(c.a0 + c.a1 + c.a2, 2) - 4 * (c.a0 * c.a1 + 4 * c.a0 * c.a2 + c.a1 * c.a2) * phi + 16 * c.a0 * c.a2 * phi * phi;
+  return den > 0 ? num / den : 0;
+}
+// Peak gain (dB, ≥ 0) of the cascaded filter chain across the audible band.
+function computeEqPeakDb(bands, fs = 48000) {
+  if (!Array.isArray(bands) || !bands.length) return 0;
+  const coeffs = bands.map(b => _biquadCoeffs(b, fs)).filter(Boolean);
+  if (!coeffs.length) return 0;
+  const nyq = fs / 2;
+  let maxDb = 0;
+  const N = 240;
+  for (let i = 0; i <= N; i++) {
+    const f = 10 * Math.pow(nyq / 10, i / N); // log-spaced 10 Hz → Nyquist
+    const w = 2 * Math.PI * f / fs;
+    let magSq = 1;
+    for (const c of coeffs) magSq *= _biquadMagSq(c, w);
+    const db = 10 * Math.log10(magSq);
+    if (db > maxDb) maxDb = db;
+  }
+  return maxDb;
+}
+let _lastHeadroomDb = 0;
+export function getLastHeadroomDb() { return _lastHeadroomDb; }
+
 // --- CamillaDSP Configuration Generator ---
 // pureDirect = true: bypass all EQ, output flat pipeline (volume control still active)
 // balance: -12..+12 dB. Positive = right louder (attenuate left). Negative = left louder (attenuate right).
 // phaseLeft/phaseRight: invert polarity of that channel
-function generateCamillaConfig(answers, eqSettings, dacInfo, { pureDirect = false, balance = 0, phaseLeft = false, phaseRight = false, bitPerfect = true } = {}) {
+// autoHeadroom = true: attenuate pre-amp by the computed EQ peak instead of the static preset value
+function generateCamillaConfig(answers, eqSettings, dacInfo, { pureDirect = false, balance = 0, phaseLeft = false, phaseRight = false, bitPerfect = true, autoHeadroom = true } = {}) {
   const isDspActive = answers && (answers[0] === 'dsp' || answers['0'] === 'dsp');
   const isSubwooferSetup = answers && answers.q1_setup === "2 Speakers + 1 Subwoofer";
 
@@ -837,10 +896,25 @@ function generateCamillaConfig(answers, eqSettings, dacInfo, { pureDirect = fals
   }
 
   // --- STAGE E: PREAMP GAIN + PHASE ---
-  // Extra -1 dB safety headroom is applied here for all pipelines.
-  // This prevents any multi-stage EQ summing from exceeding 0 dBFS,
-  // which would cause hard clipping and potential speaker damage.
-  const preampGainDb = Number(isDspActive ? (profile.preampGain - 6.0) : profile.preampGain) || 0;
+  // Base pre-amp attenuation. With auto-headroom ON, attenuate by exactly the
+  // EQ's computed peak magnitude (max SNR); saturation adds an extra margin
+  // because its harmonic gain isn't captured by the biquad response. With it
+  // OFF, fall back to the preset's manually-tuned preampGain. A global -1 dB
+  // safety margin is applied on top in every case as a guard against
+  // inter-sample peaks and multi-stage summing exceeding 0 dBFS.
+  let baseGainDb;
+  if (autoHeadroom) {
+    const fs = dacInfo?.samplerate || 48000;
+    let peak = computeEqPeakDb(profile.bands || [], fs);
+    if (profile.useSaturation) peak += 2.0;
+    const userPreAmp = (selectedPresetName === 'Custom') ? (Number(eqSettings?.preAmp) || 0) : 0;
+    baseGainDb = userPreAmp - peak;
+    _lastHeadroomDb = Math.round(peak * 10) / 10;
+  } else {
+    baseGainDb = Number(profile.preampGain) || 0;
+    _lastHeadroomDb = Math.max(0, -baseGainDb);
+  }
+  const preampGainDb = Number(isDspActive ? (baseGainDb - 6.0) : baseGainDb) || 0;
   config.filters.preamp_gain = { type: "Gain", parameters: { gain: preampGainDb - 1.0, inverted: false, mute: false } };
   leftPipeline.push("preamp_gain");
   rightPipeline.push("preamp_gain");
@@ -988,13 +1062,17 @@ router.get('/dsp-calibration', async (req, res) => {
 
 // Exportable helper to update configuration on any settings change
 export async function updateCamillaConfigFromSettings({ skipAlsa = false, samplerate = null, pureDirect = false } = {}) {
-  const [dspVal, eqVal, balanceVal, phaseVal, bitPerfectVal] = await Promise.all([
+  const [dspVal, eqVal, balanceVal, phaseVal, bitPerfectVal, headroomVal] = await Promise.all([
     getSetting('dsp_calibration'),
     getSetting('eq_settings'),
     getSetting('balance'),
     getSetting('phase'),
     getSetting('bitperfect'),
+    getSetting('auto_headroom'),
   ]);
+  // Dynamic peak pre-attenuation is the default — set to "false"/"0" to fall back
+  // to each preset's static manually-tuned headroom.
+  const autoHeadroom = !(headroomVal === 'false' || headroomVal === '0');
 
   const answers = dspVal ? JSON.parse(dspVal) : null;
   const eqSettings = eqVal ? JSON.parse(eqVal) : null;
@@ -1036,7 +1114,7 @@ export async function updateCamillaConfigFromSettings({ skipAlsa = false, sample
 
   // Generate CamillaDSP yaml configuration
   const configObj = generateCamillaConfig(answers, eqSettings, dacInfo, {
-    pureDirect, balance, phaseLeft: phase.left, phaseRight: phase.right, bitPerfect,
+    pureDirect, balance, phaseLeft: phase.left, phaseRight: phase.right, bitPerfect, autoHeadroom,
   });
   const yamlString = YAML.stringify(configObj, { indent: 2 });
 
@@ -1877,6 +1955,24 @@ router.post('/dsd-bypass', async (req, res) => {
     await setSetting('dsd_bypass', enabled ? 'true' : 'false');
     const active = await applyDsdRouting();
     res.json({ success: true, enabled, active });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// ── Dynamic peak pre-attenuation (auto-headroom) ──────────────────────────────
+// ON (default): pre-amp is attenuated by the EQ's computed peak gain so peaks
+// land just under 0 dBFS — maximising SNR. OFF: each preset's static manual
+// headroom is used. `headroomDb` reports the last computed attenuation.
+router.get('/auto-headroom', async (req, res) => {
+  const val = await getSetting('auto_headroom').catch(() => null);
+  res.json({ enabled: !(val === 'false' || val === '0'), headroomDb: getLastHeadroomDb() });
+});
+
+router.post('/auto-headroom', async (req, res) => {
+  const enabled = !(req.body.enabled === false || req.body.enabled === 'false');
+  try {
+    await setSetting('auto_headroom', enabled ? 'true' : 'false');
+    await updateCamillaConfigFromSettings({ skipAlsa: true });
+    res.json({ success: true, enabled, headroomDb: getLastHeadroomDb() });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
