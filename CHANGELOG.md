@@ -22,6 +22,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **MPD rate watcher now started at server boot** (`startMpdRateWatcher()` was
   defined but never invoked) — restores per-track sample-rate following for the
   bit-perfect path and drives the new DSD output flip.
+- **Privileged actions now in the sudoers allowlist** — Bluetooth start/stop
+  (`bluealsa`), reboot, shutdown, and `nmcli` (Wi-Fi) were called via `sudo` but
+  not whitelisted, so they silently failed from the PM2 backend. Bluetooth
+  source, reboot/shutdown from the UI, and Wi-Fi configuration now work.
+- **Factory reset no longer drifts** — it wipes ALL settings except the
+  remote-access credentials (denylist), instead of a hardcoded key list that
+  omitted newer settings (bit-perfect, DSD bypass, auto-headroom, pure-direct…).
+- **DSD bypass re-evaluates on Pure Direct toggle** — leaving Pure Direct during
+  a DSD track now restores the PCM chain immediately, not only on the next track.
+- **ESLint covers the backend** — `server/**` now lints with Node globals, so
+  `process`/`Buffer`/`__dirname` are no longer reported as undefined (the noise
+  was hiding real issues).
+
+### Security
+- **Wi-Fi command injection fixed** — `nmcli device wifi connect` built its
+  command by string-interpolating the SSID/password via `JSON.stringify` (which
+  is not shell-safe). All `nmcli`/`systemctl` calls in `server/system.js` now use
+  `execFile` with an argv array and no shell, so user input can never be executed.
 
 ## [1.0.0] — 2026-06-27
 

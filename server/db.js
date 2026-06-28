@@ -186,6 +186,25 @@ export const setSetting = (key, value) => {
 };
 
 /**
+ * Factory reset: delete every setting EXCEPT the protected keys. Using a
+ * denylist (not an allowlist) means settings added in the future are wiped
+ * automatically — no list to keep in sync.
+ * @param {string[]} protectedKeys keys to preserve (e.g. remote-access auth)
+ * @returns {Promise<void>}
+ */
+export const clearSettingsExcept = (protectedKeys = []) => {
+  return new Promise((resolve, reject) => {
+    const sql = protectedKeys.length
+      ? `DELETE FROM settings WHERE key NOT IN (${protectedKeys.map(() => '?').join(',')})`
+      : 'DELETE FROM settings';
+    db.run(sql, protectedKeys, (err) => {
+      if (err) { console.error('[Resonance DB] clearSettingsExcept Error:', err.message); reject(err); }
+      else resolve();
+    });
+  });
+};
+
+/**
  * Delete a setting by key.
  * @param {string} key
  * @returns {Promise<void>}

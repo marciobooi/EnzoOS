@@ -503,10 +503,13 @@ async function handleEvent(type, payload, excludeWs) {
       cachedPureDirect = !!payload.enabled;
       await setSetting('pure_direct', cachedPureDirect ? 'true' : 'false');
       broadcast({ type: 'SET_PURE_DIRECT', payload: { enabled: cachedPureDirect } }, excludeWs);
-      // Hot-reload CamillaDSP with or without EQ pipeline
-      import('./player.js').then(({ updateCamillaConfigFromSettings }) =>
-        updateCamillaConfigFromSettings({ skipAlsa: true, pureDirect: cachedPureDirect })
-      ).catch(err => console.error('[EventService] Pure Direct config update failed:', err));
+      // Hot-reload CamillaDSP with or without EQ pipeline, then re-evaluate DSD
+      // routing — leaving Pure Direct must pull a DSD track back onto the PCM
+      // chain immediately (the rate watcher only fires on track changes).
+      import('./player.js').then(({ updateCamillaConfigFromSettings, applyDsdRouting }) => {
+        updateCamillaConfigFromSettings({ skipAlsa: true, pureDirect: cachedPureDirect });
+        applyDsdRouting?.().catch(() => {});
+      }).catch(err => console.error('[EventService] Pure Direct config update failed:', err));
       break;
     }
 

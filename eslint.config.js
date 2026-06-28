@@ -18,4 +18,14 @@ export default defineConfig([
       parserOptions: { ecmaFeatures: { jsx: true } },
     },
   },
+  // Backend runs on Node — give it Node globals (process, Buffer, __dirname, …)
+  // and drop the React/browser rules so lint is meaningful for server code.
+  {
+    files: ['server/**/*.js', 'scripts/**/*.js', '*.config.js'],
+    extends: [js.configs.recommended],
+    languageOptions: {
+      globals: { ...globals.node },
+      sourceType: 'module',
+    },
+  },
 ])

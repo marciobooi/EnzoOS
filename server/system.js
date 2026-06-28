@@ -1,16 +1,19 @@
 import express from 'express';
-import { exec } from 'child_process';
+import { exec, execFile } from 'child_process';
 import { promisify } from 'util';
 import os from 'os';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { getSetting, setSetting } from './db.js';
+import { clearSettingsExcept } from './db.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname  = path.dirname(__filename);
 
 const execPromise = promisify(exec);
+// execFileP runs a binary with an explicit argv array and NO shell, so user
+// input (SSID, password, service name) can never be interpreted as shell.
+const execFileP = promisify(execFile);
 const router = express.Router();
 
 const ALLOWED_SERVICES = ['mpd', 'camilladsp', 'raspotify'];
@@ -46,7 +49,7 @@ router.post('/service/:name/restart', async (req, res) => {
     return res.status(400).json({ error: 'Service not allowed' });
   }
   try {
-    await execPromise(`sudo systemctl restart ${name}`);
+    await execFileP('sudo', ['systemctl', 'restart', name]);
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -56,13 +59,13 @@ router.post('/service/:name/restart', async (req, res) => {
 // POST /api/system/reboot
 router.post('/reboot', (req, res) => {
   res.json({ success: true, message: 'Rebooting...' });
-  setTimeout(() => execPromise('sudo systemctl reboot').catch(() => {}), 1500);
+  setTimeout(() => execFileP('sudo', ['systemctl', 'reboot']).catch(() => {}), 1500);
 });
 
 // POST /api/system/shutdown
 router.post('/shutdown', (req, res) => {
   res.json({ success: true, message: 'Shutting down...' });
-  setTimeout(() => execPromise('sudo systemctl poweroff').catch(() => {}), 1500);
+  setTimeout(() => execFileP('sudo', ['systemctl', 'poweroff']).catch(() => {}), 1500);
 });
 
 // ── Storage stats (#22) ───────────────────────────────────────────────────────
@@ -89,7 +92,8 @@ router.get('/storage', async (req, res) => {
 // ── Wi-Fi configuration (#21) ─────────────────────────────────────────────────
 router.get('/wifi', async (req, res) => {
   try {
-    const { stdout } = await execPromise('nmcli -t -f NAME,ACTIVE connection show --active');
+    // Read-only — no privileges needed.
+    const { stdout } = await execFileP('nmcli', ['-t', '-f', 'NAME,ACTIVE', 'connection', 'show', '--active']);
     const lines = stdout.trim().split('\n').filter(Boolean);
     const active = lines.map(l => { const [name, act] = l.split(':'); return { name, active: act === 'yes' }; });
     res.json({ connections: active });
@@ -98,8 +102,9 @@ router.get('/wifi', async (req, res) => {
 
 router.get('/wifi/scan', async (req, res) => {
   try {
-    await execPromise('nmcli device wifi rescan').catch(() => {});
-    const { stdout } = await execPromise('nmcli -t -f SSID,SIGNAL,SECURITY device wifi list');
+    // rescan needs root; the list read does not.
+    await execFileP('sudo', ['nmcli', 'device', 'wifi', 'rescan']).catch(() => {});
+    const { stdout } = await execFileP('nmcli', ['-t', '-f', 'SSID,SIGNAL,SECURITY', 'device', 'wifi', 'list']);
     const networks = stdout.trim().split('\n').filter(Boolean).map(line => {
       const parts = line.split(':');
       return { ssid: parts[0] || '', signal: parseInt(parts[1], 10) || 0, security: parts[2] || '' };
@@ -112,11 +117,11 @@ router.post('/wifi/connect', async (req, res) => {
   const { ssid, password } = req.body || {};
   if (!ssid) return res.status(400).json({ error: 'ssid required' });
   try {
-    if (password) {
-      await execPromise(`nmcli device wifi connect ${JSON.stringify(ssid)} password ${JSON.stringify(password)}`);
-    } else {
-      await execPromise(`nmcli device wifi connect ${JSON.stringify(ssid)}`);
-    }
+    // Argv array (no shell) — ssid/password are passed verbatim, never parsed
+    // by a shell, so a value like `$(reboot)` is just text. Needs root → sudo.
+    const args = ['nmcli', 'device', 'wifi', 'connect', ssid];
+    if (password) args.push('password', password);
+    await execFileP('sudo', args);
     res.json({ success: true });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
@@ -153,17 +158,15 @@ router.post('/restore', async (req, res) => {
 });
 
 // ── Factory Reset (#20) ───────────────────────────────────────────────────────
-const FACTORY_RESET_KEYS = [
-  'dsp_calibration', 'eq_settings', 'balance', 'phase',
-  'replaygain_mode', 'crossfade_seconds',
-  'tidal_session', 'qobuz_username', 'qobuz_password', 'qobuz_token',
-  'active_source', 'last_radio_url', 'last_radio_name', 'last_radio_favicon',
-];
+// Wipe ALL settings — DSP, EQ, sources, streaming sessions, theme, volume — so
+// new settings are covered automatically. Only the remote-access credentials are
+// preserved, so the user driving the reset from the remote isn't locked out.
+const FACTORY_RESET_PROTECTED = ['auth_secret', 'remote_access_enabled'];
 
 router.post('/factory-reset', async (req, res) => {
   try {
-    await Promise.all(FACTORY_RESET_KEYS.map(k => setSetting(k, '')));
-    res.json({ success: true, message: 'Settings reset to factory defaults.' });
+    await clearSettingsExcept(FACTORY_RESET_PROTECTED);
+    res.json({ success: true, message: 'Settings reset to factory defaults. Restart to apply.' });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
