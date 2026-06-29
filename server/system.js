@@ -6,7 +6,7 @@ import os from 'os';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { clearSettingsExcept } from './db.js';
+import { clearSettingsExcept, getSetting, setSetting } from './db.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname  = path.dirname(__filename);
@@ -23,6 +23,23 @@ const ALLOWED_SERVICES = ['mpd', 'camilladsp', 'raspotify'];
 // reset, service restart, Wi-Fi connect) — these are one-shot user actions, so a
 // low cap stops abuse without affecting the read-only status/storage polling.
 const sensitiveLimiter = rateLimit({ windowMs: 10 * 60 * 1000, max: 20, standardHeaders: true, legacyHeaders: false });
+
+// ── Onboarding (first-boot welcome wizard) ────────────────────────────────────
+// Persisted so the wizard only shows once. Unset (fresh install / factory reset)
+// reads as not complete → wizard shows. POST { complete:false } re-arms it so a
+// "Run setup again" button can re-display the wizard.
+router.get('/onboarding', async (req, res) => {
+  const v = await getSetting('onboarding_complete').catch(() => null);
+  res.json({ complete: v === 'true' });
+});
+
+router.post('/onboarding', async (req, res) => {
+  const complete = !(req.body.complete === false || req.body.complete === 'false');
+  try {
+    await setSetting('onboarding_complete', complete ? 'true' : 'false');
+    res.json({ success: true, complete });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
 
 // GET /api/system/lan-url — returns the LAN-accessible remote URL for QR code generation
 router.get('/lan-url', (req, res) => {

@@ -2,7 +2,7 @@ import React, { useContext, useState, useRef, useEffect } from 'react';
 import {
   Sliders, Cpu, Timer, Palette, Power, LogOut, Laptop,
   Music, RefreshCw, Smartphone, Disc3, Wifi, HardDrive,
-  RotateCcw, Download, Upload, FlipHorizontal, Scale,
+  RotateCcw, Download, Upload, FlipHorizontal, Scale, Sparkles,
 } from 'lucide-react';
 import { toast } from '../../lib/toast';
 import { Tk, Row, Section, SpotifyIcon } from './shared';
@@ -472,6 +472,9 @@ export default function SettingsTab() {
             </p>
           </div>
         )}
+        <Row label="Run Setup Wizard"
+          icon={<Sparkles className="h-4 w-4" style={{ color: C.champagne }} />}
+          onPress={() => window.dispatchEvent(new Event('resonance:show-welcome'))} />
         <Row label="Backup Settings"
           icon={<Download className="h-4 w-4" style={{ color: C.text4 }} />}
           onPress={() => { window.open('/api/system/backup', '_blank'); }} />
