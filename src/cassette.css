@@ -104,6 +104,10 @@ div[data-active-theme="cassette"] .music-player::before {
    with two toothed reels that spin while playing, and the C-90 type legend.
    Four corner screws finish the moulded shell.                                */
 div[data-active-theme="cassette"] .album-art--cassette {
+  /* a real cassette is landscape (~1.6:1); the base art box is a 220px square,
+     so override to a wide shell centred in the album column (deck shows around) */
+  width: 240px !important;
+  height: 152px !important;
   border-radius: 11px !important;
   border: 1px solid #000 !important;
   box-shadow:
@@ -178,9 +182,9 @@ div[data-active-theme="cassette"] .cass-window {
   position: absolute;
   left: 50%;
   transform: translateX(-50%);
-  top: 40%;
-  width: 60%;
-  height: 27%;
+  top: 41%;
+  width: 56%;
+  height: 33%;
   background: #0c0b0a;
   border-radius: 5px;
   box-shadow: inset 0 0 0 1px rgba(255,255,255,0.07), inset 0 2px 8px rgba(0,0,0,0.85);
