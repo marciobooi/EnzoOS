@@ -16,7 +16,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   "Run Setup Wizard" row in the remote Settings tab dispatches a
   `resonance:show-welcome` event to re-open it on demand. Rendered at the App
   level, fully decoupled from the kiosk/remote controllers, and sized for both
-  the 1480×320 kiosk and phones.
+  the 1480×320 kiosk and phones. Includes a **"Connect your music"** step that
+  performs the real account flows inline — Spotify (OAuth popup + status poll),
+  Tidal (OAuth2 device-code flow) and Qobuz (email/password) — each optional and
+  reflecting already-linked accounts as connected.
 
 ### Fixed
 - **Crossfade & ReplayGain now survive a reboot** (`server/player.js`,

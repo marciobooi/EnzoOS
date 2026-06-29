@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import {
-  Waves, Music2, Radio, Bluetooth, Cast, Disc3, Smartphone, Check, ChevronRight, ChevronLeft, Sparkles,
+  Waves, Music2, Smartphone, Check, ChevronRight, ChevronLeft, Sparkles,
+  Disc3, Loader2, ExternalLink,
 } from 'lucide-react';
 import { S, cardShadow } from '../styles/stone';
 import { api } from '../api';
@@ -10,36 +11,131 @@ import { api } from '../api';
 // calling onClose(). Rendered at the App level so it is decoupled from the kiosk
 // and remote controllers. Responsive: compact enough for the 1480x320 kiosk and
 // usable on a phone.
+//
+// The "Connect your music" step performs the real account flows used elsewhere
+// in the app: Spotify (OAuth, popup + status poll), Tidal (OAuth2 device flow)
+// and Qobuz (username/password). All three are optional — the user can skip and
+// connect later from Source.
 export default function WelcomeWizard({ onClose }) {
   const [step, setStep] = useState(0);
   const [lanUrl, setLanUrl] = useState('');
   const [saving, setSaving] = useState(false);
   const closedRef = useRef(false);
 
+  // ── Streaming-account connection state ──────────────────────────────────────
+  const [connected, setConnected] = useState({ spotify: false, tidal: false, qobuz: false });
+  const [busy, setBusy] = useState({ spotify: false, tidal: false, qobuz: false });
+  // Qobuz inline credential form
+  const [qobuzOpen, setQobuzOpen] = useState(false);
+  const [qUser, setQUser] = useState('');
+  const [qPass, setQPass] = useState('');
+  const [qErr, setQErr] = useState('');
+  // Tidal device-flow prompt: { userCode, verificationUri }
+  const [tidalAuth, setTidalAuth] = useState(null);
+
+  const spotifyPoll = useRef(null);
+  const tidalPoll = useRef(null);
+
+  // Initial LAN URL + current connection status (so already-linked accounts show
+  // as connected if the wizard is re-run later).
   useEffect(() => {
-    fetch('/api/system/lan-url')
-      .then(r => r.json())
-      .then(d => setLanUrl(d?.url || ''))
-      .catch(() => {});
+    fetch('/api/system/lan-url').then(r => r.json()).then(d => setLanUrl(d?.url || '')).catch(() => {});
+    (async () => {
+      try {
+        const [sp, t, q] = await Promise.all([
+          fetch('/auth/spotify/status').then(r => r.json()).catch(() => ({})),
+          api.getTidalStatus().catch(() => ({})),
+          api.getQobuzStatus().catch(() => ({})),
+        ]);
+        setConnected({ spotify: !!sp?.isConnected, tidal: !!t?.connected, qobuz: !!q?.connected });
+      } catch { /* best-effort */ }
+    })();
+    return () => { clearInterval(spotifyPoll.current); clearInterval(tidalPoll.current); };
   }, []);
+
+  // ── Spotify: open the OAuth login in a popup, poll status until authorised ───
+  const connectSpotify = () => {
+    setBusy(b => ({ ...b, spotify: true }));
+    const win = window.open('/auth/spotify/login?from=remote', 'spotify_login', 'width=480,height=720');
+    if (!win) { window.location.href = '/auth/spotify/login'; return; } // popup blocked → full redirect
+    clearInterval(spotifyPoll.current);
+    spotifyPoll.current = setInterval(async () => {
+      try {
+        const d = await fetch('/auth/spotify/status').then(r => r.json());
+        if (d?.isConnected) {
+          clearInterval(spotifyPoll.current);
+          setConnected(c => ({ ...c, spotify: true }));
+          setBusy(b => ({ ...b, spotify: false }));
+          try { win.close(); } catch { /* cross-origin close guard */ }
+        }
+      } catch { /* keep polling */ }
+      if (win.closed) { clearInterval(spotifyPoll.current); setBusy(b => ({ ...b, spotify: false })); }
+    }, 2000);
+  };
+
+  // ── Tidal: OAuth2 device flow — show the code, poll until linked ─────────────
+  const connectTidal = async () => {
+    setBusy(b => ({ ...b, tidal: true }));
+    try {
+      const info = await api.tidalDeviceAuth();
+      setTidalAuth({ userCode: info.userCode, verificationUri: info.verificationUri });
+      clearInterval(tidalPoll.current);
+      const deadline = Date.now() + (info.expiresIn || 300) * 1000;
+      tidalPoll.current = setInterval(async () => {
+        if (Date.now() > deadline) {
+          clearInterval(tidalPoll.current); setTidalAuth(null); setBusy(b => ({ ...b, tidal: false }));
+          return;
+        }
+        try {
+          const r = await api.tidalPoll(info.deviceCode);
+          if (r.connected) {
+            clearInterval(tidalPoll.current);
+            setConnected(c => ({ ...c, tidal: true }));
+            setTidalAuth(null);
+            setBusy(b => ({ ...b, tidal: false }));
+          }
+        } catch { /* keep polling until deadline */ }
+      }, (info.interval || 2) * 1000);
+    } catch {
+      setBusy(b => ({ ...b, tidal: false }));
+    }
+  };
+
+  const cancelTidal = () => { clearInterval(tidalPoll.current); setTidalAuth(null); setBusy(b => ({ ...b, tidal: false })); };
+
+  // ── Qobuz: username / password ──────────────────────────────────────────────
+  const submitQobuz = async (e) => {
+    e?.preventDefault();
+    if (!qUser.trim() || !qPass) { setQErr('Enter your email and password'); return; }
+    setBusy(b => ({ ...b, qobuz: true })); setQErr('');
+    try {
+      await api.qobuzAuth(qUser.trim(), qPass);
+      setConnected(c => ({ ...c, qobuz: true }));
+      setQobuzOpen(false); setQUser(''); setQPass('');
+    } catch (err) {
+      setQErr(err.message || 'Connection failed');
+    } finally {
+      setBusy(b => ({ ...b, qobuz: false }));
+    }
+  };
+
+  const services = [
+    { id: 'spotify', label: 'Spotify', icon: <Disc3 className="h-5 w-5" />, action: connectSpotify, hint: 'Spotify Connect + Web playback' },
+    { id: 'tidal',   label: 'Tidal',   icon: <Music2 className="h-5 w-5" />, action: connectTidal,   hint: 'Hi-Res FLAC · device login' },
+    { id: 'qobuz',   label: 'Qobuz',   icon: <Music2 className="h-5 w-5" />, action: () => { setQErr(''); setQobuzOpen(o => !o); }, hint: 'Hi-Res FLAC · email & password' },
+  ];
 
   const steps = [
     {
       icon: <Waves className="h-8 w-8" />,
       title: 'Welcome to Resonance HiFi',
-      body: 'Your Raspberry Pi is now a high-fidelity network streamer with real-time DSP. Let’s take a quick tour — it only takes a moment.',
+      body: 'Your Raspberry Pi is now a high-fidelity network streamer with real-time DSP. Let’s connect your music and get you listening — it only takes a moment.',
     },
     {
       icon: <Music2 className="h-8 w-8" />,
-      title: 'One system, every source',
-      body: 'Stream from Spotify, AirPlay, UPnP/DLNA, Bluetooth, web radio, your local library, Tidal and Qobuz — all through the same bit-perfect pipeline.',
-      chips: [
-        { icon: <Disc3 className="h-4 w-4" />, label: 'Spotify' },
-        { icon: <Cast className="h-4 w-4" />, label: 'AirPlay' },
-        { icon: <Bluetooth className="h-4 w-4" />, label: 'Bluetooth' },
-        { icon: <Radio className="h-4 w-4" />, label: 'Radio' },
-        { icon: <Music2 className="h-4 w-4" />, label: 'Local' },
-      ],
+      title: 'Connect your music',
+      body: 'Link your streaming accounts now, or skip and do it later from Source. AirPlay, Bluetooth, UPnP/DLNA, web radio and your local library need no setup.',
+      connect: true,
     },
     {
       icon: <Smartphone className="h-8 w-8" />,
@@ -101,15 +197,78 @@ export default function WelcomeWizard({ onClose }) {
             </div>
           )}
 
-          {s.chips && (
-            <div className="mt-4 flex flex-wrap gap-2">
-              {s.chips.map((c) => (
-                <span key={c.label}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[12px] font-semibold"
-                  style={{ background: S.surface, color: S.accent, border: `1px solid ${S.surfaceLo}` }}>
-                  {c.icon}{c.label}
-                </span>
-              ))}
+          {/* Connect-your-music step */}
+          {s.connect && (
+            <div className="mt-4 flex flex-col gap-2">
+              {services.map((svc) => {
+                const on = connected[svc.id];
+                const loading = busy[svc.id];
+                return (
+                  <div key={svc.id}>
+                    <button
+                      onClick={svc.action}
+                      disabled={on || loading}
+                      className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-left transition-all active:scale-[0.99]"
+                      style={{
+                        background: S.surface, border: `1px solid ${on ? '#1ed76055' : S.surfaceLo}`,
+                        opacity: on ? 0.85 : 1, cursor: on ? 'default' : 'pointer',
+                      }}>
+                      <span className="shrink-0" style={{ color: on ? '#1ed760' : S.accent }}>{svc.icon}</span>
+                      <span className="min-w-0 flex-1">
+                        <span className="block text-[14px] font-semibold" style={{ color: S.accent }}>{svc.label}</span>
+                        <span className="block text-[12px]" style={{ color: S.accent, opacity: 0.6 }}>{svc.hint}</span>
+                      </span>
+                      <span className="shrink-0 text-[13px] font-semibold flex items-center gap-1"
+                        style={{ color: on ? '#1ed760' : S.champagne }}>
+                        {on ? <><Check className="h-4 w-4" /> Connected</>
+                          : loading ? <Loader2 className="h-4 w-4 animate-spin" />
+                          : 'Connect'}
+                      </span>
+                    </button>
+
+                    {/* Qobuz inline credential form */}
+                    {svc.id === 'qobuz' && qobuzOpen && !on && (
+                      <form onSubmit={submitQobuz} className="mt-2 mb-1 flex flex-col gap-2 px-1">
+                        <input type="text" value={qUser} onChange={e => setQUser(e.target.value)}
+                          placeholder="Email / username" autoCapitalize="none" autoComplete="username"
+                          className="w-full rounded-xl px-3.5 py-2.5 text-[14px] focus:outline-none"
+                          style={{ background: S.bg, color: S.accent, border: `1px solid ${S.surfaceLo}` }} />
+                        <input type="password" value={qPass} onChange={e => setQPass(e.target.value)}
+                          placeholder="Password" autoComplete="current-password"
+                          className="w-full rounded-xl px-3.5 py-2.5 text-[14px] focus:outline-none"
+                          style={{ background: S.bg, color: S.accent, border: `1px solid ${S.surfaceLo}` }} />
+                        {qErr && <p className="text-[12px]" style={{ color: '#e0726b' }}>{qErr}</p>}
+                        <button type="submit" disabled={busy.qobuz}
+                          className="self-start px-4 py-2 rounded-full text-[13px] font-semibold active:scale-95 transition-all cursor-pointer"
+                          style={{ background: S.accent, color: S.accentFg, opacity: busy.qobuz ? 0.6 : 1 }}>
+                          {busy.qobuz ? 'Connecting…' : 'Sign in'}
+                        </button>
+                      </form>
+                    )}
+
+                    {/* Tidal device-flow prompt */}
+                    {svc.id === 'tidal' && tidalAuth && !on && (
+                      <div className="mt-2 mb-1 px-4 py-3 rounded-2xl flex flex-col items-center text-center gap-2"
+                        style={{ background: S.bg, border: `1px solid ${S.surfaceLo}` }}>
+                        <p className="text-[12px]" style={{ color: S.accent, opacity: 0.7 }}>
+                          Open <span style={{ color: S.champagne }}>{tidalAuth.verificationUri}</span> and enter:
+                        </p>
+                        <span className="text-[26px] font-bold tracking-[0.25em]" style={{ color: S.accent }}>
+                          {tidalAuth.userCode}
+                        </span>
+                        <a href={`https://${tidalAuth.verificationUri}`} target="_blank" rel="noreferrer"
+                          className="text-[12px] flex items-center gap-1" style={{ color: S.champagne }}>
+                          <ExternalLink className="h-3.5 w-3.5" /> Open link
+                        </a>
+                        <button onClick={cancelTidal}
+                          className="text-[12px] mt-1 cursor-pointer" style={{ color: S.accent, opacity: 0.55 }}>
+                          Cancel
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>
