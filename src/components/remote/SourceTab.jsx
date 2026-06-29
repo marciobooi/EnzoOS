@@ -110,13 +110,13 @@ export default function SourceTab() {
     } finally { setSearching(false); }
   };
 
-  const playTrack = async t => {
+  const playTrack = async track => {
     try {
       const fn = searchFor === 'tidal' ? api.tidalPlayTrack : api.qobuzPlayTrack;
-      await fn(t);
+      await fn(track);
       setSearchFor(null);
       setActiveTab('player');
-      toast.success('Playing');
+      toast.success(t('source.playing'));
     } catch (err) {
       toast.error(err.message || 'Playback failed');
     }
@@ -139,7 +139,7 @@ export default function SourceTab() {
     <div className="flex flex-col pt-5 pb-2">
       <div className="px-5 mb-5">
         <p className="text-[11px] font-semibold uppercase tracking-widest mb-1"
-          style={{ color: C.champagne, fontFamily: C.fontLabel }}>Signal Chain</p>
+          style={{ color: C.champagne, fontFamily: C.fontLabel }}>{t('source.signalChain')}</p>
         <h2 className="text-[24px] font-medium" style={{ color: C.text1, letterSpacing: '-0.01em' }}>{t('nav.source')}</h2>
       </div>
 
@@ -160,30 +160,30 @@ export default function SourceTab() {
 
       {(connected.tidal || connected.qobuz) && (
         <p className="px-5 mt-4 text-[11px]" style={{ color: C.text3 }}>
-          Tip: tap a connected hi-res source again to search and play.
+          {t('source.connectedTip')}
         </p>
       )}
 
       {/* Qobuz credentials */}
       {qobuzModal && (
-        <Sheet C={C} kicker="Hi-Res Source" title="Connect Qobuz" onBack={() => !busy && setQobuzModal(false)}>
+        <Sheet C={C} kicker={t('source.hiResSource')} title={t('source.connectQobuz')} onBack={() => !busy && setQobuzModal(false)}>
           <form onSubmit={submitQobuz} className="flex flex-col gap-3 w-full max-w-sm mx-auto">
-            <p className="text-[14px] mb-1" style={{ color: C.text4 }}>Sign in to stream Qobuz hi-res audio.</p>
-            <input type="text" value={username} onChange={e => setUsername(e.target.value)} placeholder="Email / username"
+            <p className="text-[14px] mb-1" style={{ color: C.text4 }}>{t('source.qobuzSignIn')}</p>
+            <input type="text" value={username} onChange={e => setUsername(e.target.value)} placeholder={t('wizard.connect.qobuzUser')}
               autoCapitalize="none" autoComplete="username" className="w-full rounded-xl px-4 py-3.5 text-[16px] focus:outline-none" style={inputStyle} />
-            <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="Password"
+            <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder={t('wizard.connect.qobuzPass')}
               autoComplete="current-password" className="w-full rounded-xl px-4 py-3.5 text-[16px] focus:outline-none" style={inputStyle} />
             <button type="submit" disabled={busy}
               className="w-full py-3.5 rounded-full text-[15px] font-semibold active:scale-95 transition-all cursor-pointer mt-1"
               style={{ background: C.champagne, color: '#1a1c1c', opacity: busy ? 0.6 : 1, fontFamily: C.font }}>
-              {busy ? 'Connecting…' : 'Connect'}</button>
+              {busy ? t('net.connecting') : t('net.connect')}</button>
           </form>
         </Sheet>
       )}
 
       {/* Tidal device flow */}
       {tidalAuth && (
-        <Sheet C={C} kicker="Hi-Res Source" title="Connect Tidal"
+        <Sheet C={C} kicker={t('source.hiResSource')} title={t('source.connectTidal')}
           onBack={() => { clearInterval(pollRef.current); setTidalAuth(null); }}>
           <div className="flex flex-col items-center text-center gap-5 w-full max-w-sm mx-auto pt-4">
             <div className="w-14 h-14 rounded-2xl flex items-center justify-center"
@@ -191,30 +191,32 @@ export default function SourceTab() {
               <Music2 className="h-7 w-7" style={{ color: C.champagne }} />
             </div>
             <p className="text-[14px] leading-relaxed" style={{ color: C.text4 }}>
-              On any device open<br /><span style={{ color: C.champagne }}>{tidalAuth.verificationUri}</span><br />and enter this code:
+              {t('source.tidalEnterCode').split('{url}')[0]}
+              <span style={{ color: C.champagne }}>{tidalAuth.verificationUri}</span>
+              {t('source.tidalEnterCode').split('{url}')[1]}
             </p>
             <div className="px-6 py-4 rounded-2xl" style={{ ...card }}>
               <span className="text-[32px] font-bold tracking-[0.3em]" style={{ color: C.text1 }}>{tidalAuth.userCode}</span>
             </div>
-            <p className="text-[12px]" style={{ color: C.text3 }}>Waiting for authorisation…</p>
+            <p className="text-[12px]" style={{ color: C.text3 }}>{t('source.waitingAuth')}</p>
           </div>
         </Sheet>
       )}
 
       {/* Search + play */}
       {searchFor && (
-        <Sheet C={C} kicker={searchFor === 'tidal' ? 'Tidal' : 'Qobuz'} title="Search" onBack={() => setSearchFor(null)}>
+        <Sheet C={C} kicker={searchFor === 'tidal' ? 'Tidal' : 'Qobuz'} title={t('source.search')} onBack={() => setSearchFor(null)}>
           <form onSubmit={doSearch} className="flex gap-2 mb-3">
-            <input value={query} onChange={e => setQuery(e.target.value)} placeholder="Search tracks…" autoFocus
+            <input value={query} onChange={e => setQuery(e.target.value)} placeholder={t('source.searchTracks')} autoFocus
               className="flex-1 rounded-xl px-4 py-3.5 text-[16px] focus:outline-none" style={inputStyle} />
-            <button type="submit" disabled={searching} aria-label="Search"
+            <button type="submit" disabled={searching} aria-label={t('source.search')}
               className="px-4 min-w-[44px] rounded-xl active:scale-95 cursor-pointer flex items-center justify-center" style={{ background: C.champagne }}>
               <Search className="h-5 w-5" style={{ color: '#1a1c1c' }} />
             </button>
           </form>
           <div className="flex flex-col gap-1.5">
-            {searching && <p className="text-[13px] py-4 text-center" style={{ color: C.text3 }}>Searching…</p>}
-            {!searching && results.length === 0 && <p className="text-[13px] py-4 text-center" style={{ color: C.text4 }}>No results yet.</p>}
+            {searching && <p className="text-[13px] py-4 text-center" style={{ color: C.text3 }}>{t('source.searching')}</p>}
+            {!searching && results.length === 0 && <p className="text-[13px] py-4 text-center" style={{ color: C.text4 }}>{t('source.noResults')}</p>}
             {results.map(t => (
               <button key={t.id} onClick={() => playTrack(t)}
                 className="flex items-center gap-3 p-2 rounded-xl active:scale-[0.98] cursor-pointer text-left" style={{ ...card }}>

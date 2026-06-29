@@ -3,10 +3,12 @@ import { Waves, ChevronLeft, Check, X, Cpu, AudioLines } from 'lucide-react';
 import { api } from '../../api';
 import { Tk } from './shared';
 import { QUESTIONS } from '../DspWizard';
+import { useI18n } from '../../i18n';
 
 // ─── shared header: title + close, on the remote palette ─────────────────────
 function Header({ subtitle, onClose }) {
   const { C } = useContext(Tk);
+  const { t } = useI18n();
   return (
     <div className="flex items-center justify-between px-5 pt-4 pb-4 shrink-0 sticky top-0 z-10"
       style={{ background: C.bg, borderBottom: `0.5px solid ${C.outline}` }}>
@@ -17,9 +19,9 @@ function Header({ subtitle, onClose }) {
         </span>
         <div className="min-w-0">
           <p className="text-[11px] font-semibold uppercase tracking-widest"
-            style={{ color: C.champagne, fontFamily: C.fontLabel }}>Room Calibration</p>
+            style={{ color: C.champagne, fontFamily: C.fontLabel }}>{t('dsp.calibration')}</p>
           <p className="text-[17px] font-medium truncate" style={{ color: C.text1, letterSpacing: '-0.01em' }}>
-            {subtitle || 'Acoustic Wizard'}
+            {subtitle || t('dsp.acousticWizard')}
           </p>
         </div>
       </div>
@@ -58,6 +60,7 @@ function Result({ icon, accent, kicker, title, children, footer, onClose }) {
 
 export default function RemoteDspWizard({ onClose, onCalibrationComplete, pureDirect = false, onPureDirectChange }) {
   const { C, card, cardWhite, btnInset } = useContext(Tk);
+  const { t } = useI18n();
   const [currentStep, setCurrentStep] = useState(0);
   const [answers, setAnswers] = useState({});
   const [isSaving, setIsSaving] = useState(false);
@@ -117,10 +120,10 @@ export default function RemoteDspWizard({ onClose, onCalibrationComplete, pureDi
   if (currentStep === 98) return (
     <Result onClose={onClose} accent="#0e9ab8" kicker="Pure Direct"
       icon={<AudioLines className="h-7 w-7" style={{ color: '#0e9ab8' }} />}
-      title="Pure Direct Active"
+      title={t('dsp.pureDirectActive')}
       footer={<>
         {ghostBtn('Switch to Manual EQ or DSP', () => setCurrentStep(0))}
-        {primaryBtn('Return to Player', onClose)}
+        {primaryBtn(t('dsp.returnToPlayer'), onClose)}
       </>}>
       <p className="text-[14px] leading-relaxed text-center" style={{ color: C.text4 }}>
         All EQ and DSP filters are bypassed — source audio passes straight through the
@@ -144,10 +147,10 @@ export default function RemoteDspWizard({ onClose, onCalibrationComplete, pureDi
   if (currentStep === 99) return (
     <Result onClose={onClose} accent={C.champagne} kicker="Equalizer Mode"
       icon={<Check className="h-7 w-7" style={{ color: C.champagne }} />}
-      title="Manual Equalizer Active"
+      title={t('dsp.manualEqActive')}
       footer={<>
         {ghostBtn('Configure Acoustic DSP instead', () => setCurrentStep(0))}
-        {primaryBtn('Return to Player', onClose)}
+        {primaryBtn(t('dsp.returnToPlayer'), onClose)}
       </>}>
       <p className="text-[14px] leading-relaxed text-center" style={{ color: C.text4 }}>
         Acoustic room correction filters are now bypassed. Adjust presets and frequency
@@ -170,10 +173,10 @@ export default function RemoteDspWizard({ onClose, onCalibrationComplete, pureDi
     return (
       <Result onClose={onClose} accent={C.champagne} kicker="Calibration Complete"
         icon={<Check className="h-7 w-7" style={{ color: C.champagne }} />}
-        title="Acoustic Profile Generated"
+        title={t('dsp.profileGenerated')}
         footer={<>
           {ghostBtn('Switch to Manual Equalizer', () => setCurrentStep(0))}
-          {primaryBtn('Return to Player', onClose)}
+          {primaryBtn(t('dsp.returnToPlayer'), onClose)}
         </>}>
         <p className="text-[14px] leading-relaxed text-center" style={{ color: C.text4 }}>
           DSP filters and biquad curves recalculated and hot-reloaded on the Resonance backend.

@@ -420,9 +420,9 @@ export default function SettingsTab() {
       {/* system */}
       <Section title={t('settings.system')}>
         <Row
-          label={updateStatus === 'updating' ? `Updating · ${otaPercent}%` : 'Check for Updates'}
+          label={updateStatus === 'updating' ? `${t('net.updating')} · ${otaPercent}%` : t('net.checkUpdates')}
           icon={<RefreshCw className={`h-4 w-4 ${updateStatus === 'checking' || updateStatus === 'updating' ? 'animate-spin' : ''}`} style={{ color: '#22c55e' }} />}
-          value={updateStatus === 'no-update' ? 'Up to date' : updateStatus === 'available' ? 'Available!' : ''}
+          value={updateStatus === 'no-update' ? t('net.upToDate') : updateStatus === 'available' ? t('net.available') : ''}
           onPress={updateStatus === 'available' ? triggerOtaUpdate : checkUpdates}
           chevron={updateStatus === 'available'} />
         {updateStatus === 'updating' && (
@@ -438,12 +438,12 @@ export default function SettingsTab() {
             </div>
           </div>
         )}
-        <Row label="Wi-Fi Network"
+        <Row label={t('net.wifi')}
           icon={<Wifi className="h-4 w-4" style={{ color: C.text4 }} />}
           onPress={() => { setShowWifi(v => !v); if (!showWifi) handleWifiScan(); }} />
         {showWifi && (
           <div className="px-4 pb-4 flex flex-col gap-2">
-            {wifiScanning && <p className="text-[12px]" style={{ color: C.text3 }}>Scanning…</p>}
+            {wifiScanning && <p className="text-[12px]" style={{ color: C.text3 }}>{t('net.scanning')}</p>}
             {wifiNetworks.slice(0, 8).map(n => (
               <button key={n.ssid} onClick={() => setWifiSsid(n.ssid)}
                 className="px-3 py-2 rounded-xl text-left text-[13px] transition-all"
@@ -453,27 +453,27 @@ export default function SettingsTab() {
                 {n.ssid} <span className="text-[11px]" style={{ opacity: 0.7 }}>({n.signal}dBm)</span>
               </button>
             ))}
-            <input type="text" placeholder="SSID" value={wifiSsid} onChange={e => setWifiSsid(e.target.value)}
+            <input type="text" placeholder={t('net.ssid')} value={wifiSsid} onChange={e => setWifiSsid(e.target.value)}
               className="px-3 py-2 rounded-xl text-[13px] focus:outline-none"
               style={{ background: C.containerLow, color: C.text1, border: `0.5px solid ${C.outline}` }} />
-            <input type="password" placeholder="Password" value={wifiPassword} onChange={e => setWifiPassword(e.target.value)}
+            <input type="password" placeholder={t('net.password')} value={wifiPassword} onChange={e => setWifiPassword(e.target.value)}
               className="px-3 py-2 rounded-xl text-[13px] focus:outline-none"
               style={{ background: C.containerLow, color: C.text1, border: `0.5px solid ${C.outline}` }} />
             <button onClick={handleWifiConnect} disabled={wifiConnecting || !wifiSsid}
               className="py-2.5 rounded-xl text-[13px] font-semibold active:scale-95 transition-all disabled:opacity-40"
               style={{ background: C.champagne, color: '#1a1c1c' }}>
-              {wifiConnecting ? 'Connecting…' : 'Connect'}
+              {wifiConnecting ? t('net.connecting') : t('net.connect')}
             </button>
           </div>
         )}
-        <Row label="Storage" sub="Library and disk usage"
+        <Row label={t('settings.storage')} sub="Library and disk usage"
           icon={<HardDrive className="h-4 w-4" style={{ color: C.text4 }} />}
           onPress={handleLoadStorage} />
         {showStorage && storage && (
           <div className="mx-4 mb-3 rounded-xl p-4 flex flex-col gap-3" style={cardWhite}>
             <div>
               <div className="flex justify-between text-[12px] mb-1" style={{ color: C.text3 }}>
-                <span>Disk used</span>
+                <span>{t('net.diskUsed')}</span>
                 <span>{storage.rootMb?.used} / {storage.rootMb?.size} MB</span>
               </div>
               <div className="h-1.5 rounded-full overflow-hidden" style={{ background: C.container }}>
@@ -481,7 +481,7 @@ export default function SettingsTab() {
               </div>
             </div>
             <p className="text-[12px]" style={{ color: C.text3 }}>
-              Music library: {storage.musicFiles} files · {storage.musicSizeMb} MB
+              {t('net.musicLibrary')}: {storage.musicFiles} files · {storage.musicSizeMb} MB
             </p>
           </div>
         )}

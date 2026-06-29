@@ -6,8 +6,10 @@ import {
 import { Tk, SpotifyIcon, fmt } from './shared';
 import AlbumInfoSheet from './AlbumInfoSheet';
 import LyricsSheet from './LyricsSheet';
+import { useI18n } from '../../i18n';
 
 export default function PlayerTab() {
+  const { t } = useI18n();
   const {
     C, card, cardWhite, btn, btnInset, darkMode,
     albumImage, trackName, trackArtist, source, spotify, token,
@@ -97,7 +99,7 @@ export default function PlayerTab() {
               <div className="flex flex-col items-center gap-3 p-8 text-center">
                 <Music className="h-14 w-14" style={{ color: C.outline }} />
                 <span className="text-[11px] uppercase tracking-widest font-semibold"
-                  style={{ color: C.text3, fontFamily: C.fontLabel }}>Nothing Playing</span>
+                  style={{ color: C.text3, fontFamily: C.fontLabel }}>{t('player.nothingPlaying')}</span>
               </div>
             )
           }
@@ -142,7 +144,7 @@ export default function PlayerTab() {
                   handleToggleFavorite({ source, uri: trackUri, title: trackName, artist: trackArtist, album: albumName, cover: albumImage });
                 }
               }}
-              aria-label={isFav ? 'Remove from favourites' : 'Add to favourites'}
+              aria-label={isFav ? t('player.removeFav') : t('player.addFav')}
               className="w-10 h-10 inline-flex items-center justify-center rounded-full active:scale-90 transition-all cursor-pointer"
               style={{ color: isFav ? C.error : C.text4 }}>
               <Heart className={`h-5 w-5 ${isFav ? 'fill-current' : ''}`} />
@@ -162,14 +164,14 @@ export default function PlayerTab() {
       {spotify && !token && (
         <div className="rounded-xl p-5 flex flex-col gap-4 mb-5 text-center" style={cardWhite}>
           <div>
-            <p className="text-[17px] font-medium" style={{ color: C.text1 }}>Connect Spotify</p>
-            <p className="text-[14px] mt-1" style={{ color: C.text4 }}>Sign in to control playback.</p>
+            <p className="text-[17px] font-medium" style={{ color: C.text1 }}>{t('settings.connectSpotify')}</p>
+            <p className="text-[14px] mt-1" style={{ color: C.text4 }}>{t('player.signInPlayback')}</p>
           </div>
           <a href="/auth/spotify/login?from=remote"
             className="w-full py-3.5 rounded-full flex items-center justify-center gap-2 text-[14px] font-semibold active:scale-95 transition-all"
             style={{ background: '#1ed760', color: '#000', display: 'flex', fontFamily: C.font }}>
             <SpotifyIcon className="h-5 w-5 fill-black shrink-0" />
-            Connect with Spotify
+            {t('settings.connectSpotify')}
           </a>
         </div>
       )}
@@ -199,7 +201,7 @@ export default function PlayerTab() {
       {/* transport controls */}
       <div className="flex items-center justify-between mb-6 px-1">
         {source !== 'radio' ? (
-          <button onClick={handleRepeat} disabled={spotify ? !token : true} aria-label="Repeat"
+          <button onClick={handleRepeat} disabled={spotify ? !token : true} aria-label={t('player.repeat')}
             className="w-11 h-11 rounded-full flex items-center justify-center cursor-pointer disabled:opacity-20 active:scale-90 transition-all"
             style={{ ...btn, color: repeatState !== 'off' ? C.champagne : C.text4 }}>
             <Repeat className="h-[18px] w-[18px]" />
@@ -207,14 +209,14 @@ export default function PlayerTab() {
         ) : <div className="w-11" />}
 
         {source !== 'radio' ? (
-          <button onClick={handlePrevious} disabled={spotify ? !token : false} aria-label="Previous track"
+          <button onClick={handlePrevious} disabled={spotify ? !token : false} aria-label={t('player.previous')}
             className="rounded-full flex items-center justify-center cursor-pointer disabled:opacity-20 active:scale-90 transition-all"
             style={{ ...btn, color: C.text1, width: 52, height: 52 }}>
             <SkipBack className="h-6 w-6 fill-current" />
           </button>
         ) : <div style={{ width: 52 }} />}
 
-        <button onClick={handlePlayPause} disabled={spotify ? !token : false} aria-label={isPlaying ? 'Pause' : 'Play'}
+        <button onClick={handlePlayPause} disabled={spotify ? !token : false} aria-label={isPlaying ? t('player.pause') : t('player.play')}
           className="rounded-full flex items-center justify-center cursor-pointer disabled:opacity-25 transition-all active:scale-95"
           style={{
             width: 80, height: 80,
@@ -231,7 +233,7 @@ export default function PlayerTab() {
         </button>
 
         {source !== 'radio' ? (
-          <button onClick={handleNext} disabled={spotify ? !token : false} aria-label="Next track"
+          <button onClick={handleNext} disabled={spotify ? !token : false} aria-label={t('player.next')}
             className="rounded-full flex items-center justify-center cursor-pointer disabled:opacity-20 active:scale-90 transition-all"
             style={{ ...btn, color: C.text1, width: 52, height: 52 }}>
             <SkipForward className="h-6 w-6 fill-current" />
@@ -245,7 +247,7 @@ export default function PlayerTab() {
         )}
 
         {source !== 'radio' ? (
-          <button onClick={handleShuffle} disabled={spotify ? !token : true} aria-label="Shuffle"
+          <button onClick={handleShuffle} disabled={spotify ? !token : true} aria-label={t('player.shuffle')}
             className="w-11 h-11 rounded-full flex items-center justify-center cursor-pointer disabled:opacity-20 active:scale-90 transition-all"
             style={{ ...btn, color: shuffleState ? C.champagne : C.text4 }}>
             <Shuffle className="h-[18px] w-[18px]" />
@@ -255,7 +257,7 @@ export default function PlayerTab() {
 
       {/* volume */}
       <div className="flex items-center gap-2">
-        <button onClick={handleMuteToggle} aria-label={isMuted ? 'Unmute' : 'Mute'}
+        <button onClick={handleMuteToggle} aria-label={isMuted ? t('player.unmute') : t('player.mute')}
           style={{ color: isMuted ? C.champagne : C.text3 }}
           className="w-11 h-11 flex items-center justify-center rounded-full active:scale-90 transition-all cursor-pointer shrink-0">
           <VolumeX className="h-[18px] w-[18px]" />
@@ -266,7 +268,7 @@ export default function PlayerTab() {
           <div className="absolute w-[18px] h-[18px] rounded-full top-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none"
             style={{ left: `${isMuted ? 0 : volume}%`, background: '#ffffff', border: `2px solid ${C.champagne}`, boxShadow: '0 1px 4px rgba(0,0,0,0.28)' }} />
           <input type="range" min="0" max="100" value={isMuted ? 0 : volume}
-            onChange={handleVolumeChange} aria-label="Volume"
+            onChange={handleVolumeChange} aria-label={t('player.volume')}
             disabled={spotify ? !token : false}
             className="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-default" />
         </div>

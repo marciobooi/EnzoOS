@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components -- provider + useI18n hook are intentionally co-located */
 import { createContext, useContext, useEffect, useMemo, useState, useCallback } from 'react';
 import { dictionaries, LANGS, DEFAULT_LANG } from './locales';
 import { api } from '../api';
