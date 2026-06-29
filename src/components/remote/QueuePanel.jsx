@@ -3,9 +3,11 @@ import { X, Music, ListMusic, Trash2 } from 'lucide-react';
 import { Tk } from './shared';
 import { api } from '../../api';
 import { toast } from '../../lib/toast';
+import { useI18n } from '../../i18n';
 
 export default function QueuePanel({ queue, queueLoading, onClose }) {
   const { C, cardWhite, darkMode, albumImage, trackName, trackArtist, source, spotify } = useContext(Tk);
+  const { t } = useI18n();
 
   const [localQueue, setLocalQueue] = useState([]);
   const [localLoading, setLocalLoading] = useState(false);
@@ -51,7 +53,7 @@ export default function QueuePanel({ queue, queueLoading, onClose }) {
         <div className="flex items-center justify-between px-5 py-3">
           <div className="flex items-center gap-2">
             <ListMusic className="h-5 w-5" style={{ color: C.champagne }} />
-            <span className="text-[17px] font-semibold" style={{ color: C.text1 }}>Up Next</span>
+            <span className="text-[17px] font-semibold" style={{ color: C.text1 }}>{t('queue.upNext')}</span>
           </div>
           <button onClick={onClose}
             className="w-8 h-8 rounded-full flex items-center justify-center active:scale-90 transition-all cursor-pointer"
@@ -71,7 +73,7 @@ export default function QueuePanel({ queue, queueLoading, onClose }) {
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-[11px] font-semibold uppercase tracking-widest mb-0.5"
-                style={{ color: C.champagne, fontFamily: 'Hanken Grotesk, system-ui' }}>Now Playing</p>
+                style={{ color: C.champagne, fontFamily: 'Hanken Grotesk, system-ui' }}>{t('queue.nowPlaying')}</p>
               <p className="text-[14px] font-medium truncate" style={{ color: C.text1 }}>{trackName}</p>
               <p className="text-[12px] truncate" style={{ color: C.text3 }}>{trackArtist}</p>
             </div>
@@ -89,7 +91,7 @@ export default function QueuePanel({ queue, queueLoading, onClose }) {
             localQueue.length === 0 ? (
               <div className="flex flex-col items-center gap-3 py-8 text-center">
                 <ListMusic className="h-8 w-8" style={{ color: C.outline }} />
-                <p className="text-[14px]" style={{ color: C.text3 }}>Queue is empty</p>
+                <p className="text-[14px]" style={{ color: C.text3 }}>{t('queue.empty')}</p>
               </div>
             ) : (
               <div className="rounded-xl overflow-hidden" style={cardWhite}>
@@ -122,7 +124,7 @@ export default function QueuePanel({ queue, queueLoading, onClose }) {
           ) : spotifyTracks.length === 0 ? (
             <div className="flex flex-col items-center gap-3 py-8 text-center">
               <ListMusic className="h-8 w-8" style={{ color: C.outline }} />
-              <p className="text-[14px]" style={{ color: C.text3 }}>Queue is empty</p>
+              <p className="text-[14px]" style={{ color: C.text3 }}>{t('queue.empty')}</p>
             </div>
           ) : (
             <div className="rounded-xl overflow-hidden" style={cardWhite}>

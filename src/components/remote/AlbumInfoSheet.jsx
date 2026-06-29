@@ -9,6 +9,7 @@ const fmtDur = (s) => (s ? `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '
 import { Tk } from './shared';
 import { api } from '../../api';
 import { toast } from '../../lib/toast';
+import { useI18n } from '../../i18n';
 
 // <img> that falls through a list of candidate sources, hiding itself if all fail.
 function SmartImg({ srcs = [], alt = '', className, style }) {
@@ -44,21 +45,22 @@ function Chip({ C, children, accent }) {
 
 export default function AlbumInfoSheet({ artist, album, albumImage, onClose }) {
   const { C, cardWhite, darkMode } = useContext(Tk);
+  const { lang, t } = useI18n();
   const [state, setState] = useState({ loading: true, error: null, data: null });
 
   useEffect(() => {
     let alive = true;
-    api.getAlbumMetadata(artist, album)
+    api.getAlbumMetadata(artist, album, lang)
       .then((d) => {
         if (!alive) return;
         setState({ loading: false, error: null, data: d });
         if (!d.lastfmConfigured && !d.biography && !d.review) {
-          toast.success('Tip: add a Last.fm key in Settings → Album Info for biographies & reviews', { duration: 5000 });
+          toast.success(t('meta.addKeyTip'), { duration: 5000 });
         }
       })
-      .catch(() => { if (alive) setState({ loading: false, error: 'Could not load album info.', data: null }); });
+      .catch(() => { if (alive) setState({ loading: false, error: t('meta.couldNotLoad'), data: null }); });
     return () => { alive = false; };
-  }, [artist, album]);
+  }, [artist, album, lang]);
 
   const d = state.data;
   const fmtNum = (n) => (n ? Number(n).toLocaleString() : null);

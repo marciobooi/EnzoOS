@@ -125,12 +125,15 @@ async function fromMusicBrainz(artist, album) {
   };
 }
 
-async function fromLastfm(artist, album, key) {
+async function fromLastfm(artist, album, key, lang = 'en') {
   if (!key) return null;
   const base = 'https://ws.audioscrobbler.com/2.0/';
+  // Last.fm returns the wiki/bio in `lang` (ISO 639-1) when a translation exists,
+  // otherwise it falls back to English on its side. Only append for non-English.
+  const langParam = lang && lang !== 'en' ? `&lang=${enc(lang)}` : '';
   const [al, ar] = await Promise.allSettled([
-    jget(`${base}?method=album.getinfo&api_key=${key}&artist=${enc(artist)}&album=${enc(album)}&format=json`),
-    jget(`${base}?method=artist.getinfo&api_key=${key}&artist=${enc(artist)}&format=json`),
+    jget(`${base}?method=album.getinfo&api_key=${key}&artist=${enc(artist)}&album=${enc(album)}${langParam}&format=json`),
+    jget(`${base}?method=artist.getinfo&api_key=${key}&artist=${enc(artist)}${langParam}&format=json`),
   ]);
   const album_ = al.status === 'fulfilled' ? al.value?.album : null;
   const artist_ = ar.status === 'fulfilled' ? ar.value?.artist : null;
@@ -153,7 +156,7 @@ async function fromLastfm(artist, album, key) {
   };
 }
 
-async function fromAudioDB(artist, album, key) {
+async function fromAudioDB(artist, album, key, lang = 'en') {
   const base = `https://www.theaudiodb.com/api/v1/json/${key || '2'}`;
   const [ar, al] = await Promise.allSettled([
     jget(`${base}/search.php?s=${enc(artist)}`),
@@ -162,9 +165,14 @@ async function fromAudioDB(artist, album, key) {
   const a = ar.status === 'fulfilled' ? ar.value?.artists?.[0] : null;
   const b = al.status === 'fulfilled' ? al.value?.album?.[0] : null;
   const num = (v) => (v != null && v !== '' && !isNaN(v) ? Number(v) : null);
+  // TheAudioDB stores per-language bios/reviews as strBiographyEN / strBiographyPT
+  // / strDescriptionEN / strDescriptionPT … Prefer the requested language, fall
+  // back to English when that translation is absent.
+  const LL = (lang || 'en').toUpperCase();
+  const localized = (obj, field) => obj?.[`${field}${LL}`] || obj?.[`${field}EN`] || null;
   return {
     // artist / band
-    artistBio: a?.strBiographyEN || null,
+    artistBio: localized(a, 'strBiography'),
     artistThumb: a?.strArtistThumb || null,
     artistBanner: a?.strArtistBanner || null,
     artistFanart: a?.strArtistFanart || a?.strArtistFanart2 || null,
@@ -180,7 +188,7 @@ async function fromAudioDB(artist, album, key) {
     gender: a?.strGender || null,
     website: a?.strWebsite || null,
     // album
-    albumReview: b?.strDescriptionEN || null,
+    albumReview: localized(b, 'strDescription'),
     albumThumb: b?.strAlbumThumb || null,
     albumYear: num(b?.intYearReleased),
     albumGenre: b?.strGenre || null,
@@ -191,11 +199,11 @@ async function fromAudioDB(artist, album, key) {
   };
 }
 
-async function aggregate(artist, album, keys) {
+async function aggregate(artist, album, keys, lang = 'en') {
   const [mb, lf, adb] = await Promise.allSettled([
     fromMusicBrainz(artist, album),
-    fromLastfm(artist, album, keys.lastfm),
-    fromAudioDB(artist, album, keys.audiodb),
+    fromLastfm(artist, album, keys.lastfm, lang),
+    fromAudioDB(artist, album, keys.audiodb, lang),
   ]);
   const MB = mb.status === 'fulfilled' ? mb.value : null;
   const LF = lf.status === 'fulfilled' ? lf.value : null;
@@ -269,9 +277,16 @@ router.get('/album', async (req, res) => {
   const album = (req.query.album || '').toString().trim();
   if (!artist || !album) return res.status(400).json({ error: 'artist and album are required' });
 
+  // Language for editorial text (bio/review). Only supported locales are honoured;
+  // anything else falls back to English. The cache key is namespaced by language so
+  // English and Portuguese results don't overwrite each other.
+  const SUPPORTED_META_LANGS = ['en', 'pt'];
+  const reqLang = (req.query.lang || 'en').toString().toLowerCase();
+  const lang = SUPPORTED_META_LANGS.includes(reqLang) ? reqLang : 'en';
+
   const keys = await resolveKeys();
   const lastfmConfigured = !!keys.lastfm;
-  const cacheKey = `album:${artist}|${album}`.toLowerCase();
+  const cacheKey = `album:${artist}|${album}|${lang}`.toLowerCase();
   try {
     // L1: in-memory.
     const mem = memGet(cacheKey);
@@ -282,7 +297,7 @@ router.get('/album', async (req, res) => {
       memSet(cacheKey, cached.data, cached.updatedAt);
       return res.json({ ...cached.data, lastfmConfigured, cached: true });
     }
-    const data = await aggregate(artist, album, keys);
+    const data = await aggregate(artist, album, keys, lang);
     // Only cache results that actually carry something useful.
     if (data.biography || data.review || data.label || data.genres.length || data.tracks.length) {
       memSet(cacheKey, data);

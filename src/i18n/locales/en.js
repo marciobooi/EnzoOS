@@ -25,6 +25,8 @@ export default {
     off: 'Off',
     openLink: 'Open link',
     recommended: 'Recommended',
+    go: 'Go',
+    resultsCount: '{n} results',
   },
 
   nav: {
@@ -138,6 +140,92 @@ export default {
     available: 'Available!',
     checkUpdates: 'Check for Updates',
     updating: 'Updating',
+  },
+
+  library: {
+    myMusic: 'My Music',
+    noHistory: 'No history yet',
+    historyCleared: 'History cleared',
+    clearAll: 'Clear all',
+    clear: 'Clear',
+    noFavorites: 'No favorites yet',
+    searchPlaceholder: 'Artists, songs, podcasts…',
+    tracks: 'Tracks',
+    artists: 'Artists',
+    albums: 'Albums',
+    recent: 'Recent',
+    exploreAll: 'Explore All',
+    localLibrary: 'Local Library',
+    noMusic: 'No Music Found',
+    addMusic: 'Add music to your MPD library.',
+    history: 'History',
+    favorites: 'Favorites',
+    tapHeart: 'Tap ♥ on any track to save it here',
+  },
+
+  radio: {
+    title: 'Web Radio',
+    placeholder: 'Station or genre…',
+    noFavorites: 'No favorites yet',
+    tryGenre: 'Try a genre to get started',
+    go: 'Go',
+    results: '{n} results',
+    favorites: '{n} favorites',
+  },
+
+  search: {
+    universal: 'Universal Search',
+    universalDesc: 'Search tracks, artists, albums and radio stations across Spotify, local library, Tidal, Qobuz and more — all at once.',
+    allSourcesPlaceholder: 'Search across all sources…',
+    noResults: 'No results',
+    nothingFound: 'Nothing found for "{q}" across any connected source.',
+    radioStations: 'Radio Stations',
+  },
+
+  spotifyTab: {
+    connect: 'Connect Spotify',
+    signInSearch: 'Sign in to search and play music.',
+    placeholder: 'Song, artist, album…',
+    findSomething: 'Find something to play',
+    searchBy: 'Search by song, artist or album',
+    noResultsFound: 'No results found',
+    searchFailed: 'Search failed',
+  },
+
+  queue: {
+    upNext: 'Up Next',
+    nowPlaying: 'Now Playing',
+    empty: 'Queue is empty',
+  },
+
+  lyrics: {
+    title: 'Lyrics',
+    notFound: 'No lyrics found',
+  },
+
+  meta: {
+    albumInfo: 'Album Info',
+    keysTitle: 'Metadata Keys',
+    intro: "Optional keys unlock richer album info when you tap a cover. They're stored on your device's database — MusicBrainz credits work with no key at all.",
+    lastfmLabel: 'Last.fm API Key',
+    lastfmHint: 'Artist biographies, tags, listeners & similar artists.',
+    lastfmLink: 'Get a free key',
+    audiodbLabel: 'TheAudioDB Key',
+    audiodbHint: 'Bios, album reviews & artwork. Leave blank to use the free dev key.',
+    audiodbLink: 'Patreon key (optional)',
+    discogsLabel: 'Discogs Token',
+    discogsHint: 'Optional — exact pressings & physical release credits.',
+    discogsLink: 'Generate a token',
+    loading: 'Loading…',
+    pasteKey: 'Paste key…',
+    saved: 'Metadata keys saved',
+    saveError: 'Could not save keys',
+    saveKeys: 'Save Keys',
+    saving: 'Saving…',
+    showKey: 'Show key',
+    hideKey: 'Hide key',
+    addKeyTip: 'Tip: add a Last.fm key in Settings → Album Info for biographies & reviews',
+    couldNotLoad: 'Could not load album info.',
   },
 
   settings: {

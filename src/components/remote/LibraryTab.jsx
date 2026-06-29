@@ -7,6 +7,7 @@ import { Tk, SpotifyIcon } from './shared';
 import { api } from '../../api';
 import { toast } from '../../lib/toast';
 import SkeletonList from '../ui/SkeletonList';
+import { useI18n } from '../../i18n';
 
 const GENRES = [
   { id: 'jazz',        label: 'Jazz',               bg: '#0e1a24', accent: '#d4a843' },
@@ -24,6 +25,7 @@ const saveRecent = arr => localStorage.setItem(RECENT_KEY, JSON.stringify(arr));
 const SOURCE_COLORS = { spotify: '#1ed760', local: '#f59e0b', radio: '#3b82f6', tidal: '#0078ff', qobuz: '#a855f7' };
 
 export default function LibraryTab() {
+  const { t } = useI18n();
   const {
     C, card, cardWhite, btn,
     libraryView, selectedArtist, selectedAlbum, libraryItems, libraryLoading,
@@ -164,8 +166,8 @@ export default function LibraryTab() {
       <div className="flex items-center gap-3 px-5 mb-3">
         <div className="flex-1 min-w-0">
           <p className="text-[11px] font-semibold uppercase tracking-widest mb-0.5"
-            style={{ color: C.champagne, fontFamily: C.fontLabel }}>My Music</p>
-          <h2 className="text-[24px] font-medium" style={{ color: C.text1, letterSpacing: '-0.01em' }}>Library</h2>
+            style={{ color: C.champagne, fontFamily: C.fontLabel }}>{t('library.myMusic')}</p>
+          <h2 className="text-[24px] font-medium" style={{ color: C.text1, letterSpacing: '-0.01em' }}>{t('nav.library')}</h2>
         </div>
         <button onClick={fetchLibraryArtists}
           className="w-9 h-9 rounded-full flex items-center justify-center active:scale-90 transition-all cursor-pointer shrink-0"
@@ -177,9 +179,9 @@ export default function LibraryTab() {
       {/* tab pills */}
       <div className="flex gap-2 px-5 mb-4">
         {[
-          { id: 'library', label: 'Library', Icon: Library },
-          { id: 'history', label: 'History', Icon: Clock },
-          { id: 'favorites', label: 'Favorites', Icon: Heart },
+          { id: 'library', label: t('nav.library'), Icon: Library },
+          { id: 'history', label: t('library.history'), Icon: Clock },
+          { id: 'favorites', label: t('library.favorites'), Icon: Heart },
         ].map(({ id, label, Icon }) => (
           <button key={id} onClick={() => setLibTab(id)}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-semibold active:scale-95 transition-all cursor-pointer"
@@ -200,14 +202,14 @@ export default function LibraryTab() {
               ? (
                 <div className="flex flex-col items-center gap-4 py-12 text-center">
                   <Clock className="h-10 w-10" style={{ color: C.outline }} />
-                  <p className="text-[15px]" style={{ color: C.text4 }}>No history yet</p>
+                  <p className="text-[15px]" style={{ color: C.text4 }}>{t('library.noHistory')}</p>
                 </div>
               ) : (
                 <>
                   <div className="flex justify-end mb-2">
-                    <button onClick={async () => { await api.clearHistory(); setHistory([]); toast.success('History cleared'); }}
+                    <button onClick={async () => { await api.clearHistory(); setHistory([]); toast.success(t('library.historyCleared')); }}
                       className="text-[11px] font-semibold active:opacity-60 cursor-pointer"
-                      style={{ color: C.text3, fontFamily: C.fontLabel }}>Clear all</button>
+                      style={{ color: C.text3, fontFamily: C.fontLabel }}>{t('library.clearAll')}</button>
                   </div>
                   <div className="rounded-xl overflow-hidden" style={cardWhite}>
                     {history.map((h, idx) => {
@@ -248,8 +250,8 @@ export default function LibraryTab() {
             ? (
               <div className="flex flex-col items-center gap-4 py-12 text-center">
                 <Heart className="h-10 w-10" style={{ color: C.outline }} />
-                <p className="text-[15px]" style={{ color: C.text4 }}>No favorites yet</p>
-                <p className="text-[13px]" style={{ color: C.text3 }}>Tap ♥ on any track to save it here</p>
+                <p className="text-[15px]" style={{ color: C.text4 }}>{t('library.noFavorites')}</p>
+                <p className="text-[13px]" style={{ color: C.text3 }}>{t('library.tapHeart')}</p>
               </div>
             ) : (
               <div className="rounded-xl overflow-hidden" style={cardWhite}>
@@ -299,7 +301,7 @@ export default function LibraryTab() {
               style={{ color: C.text3 }} />
             <input
               type="text"
-              placeholder="Artists, songs, podcasts…"
+              placeholder={t('library.searchPlaceholder')}
               value={query}
               onChange={e => setQuery(e.target.value)}
               className="w-full rounded-2xl pl-10 pr-10 py-3.5 text-[15px] focus:outline-none"
@@ -327,7 +329,7 @@ export default function LibraryTab() {
                 {(results.tracks?.items?.length > 0) && (
                   <>
                     <p className="text-[11px] font-semibold uppercase tracking-widest mb-2 px-1"
-                      style={{ color: C.text3, fontFamily: C.fontLabel }}>Tracks</p>
+                      style={{ color: C.text3, fontFamily: C.fontLabel }}>{t('library.tracks')}</p>
                     <div className="rounded-xl overflow-hidden mb-4" style={cardWhite}>
                       {results.tracks.items.slice(0, 6).map((t, idx) => (
                         <React.Fragment key={t.uri}>
@@ -364,7 +366,7 @@ export default function LibraryTab() {
                 {(results.artists?.items?.length > 0) && (
                   <>
                     <p className="text-[11px] font-semibold uppercase tracking-widest mb-2 px-1"
-                      style={{ color: C.text3, fontFamily: C.fontLabel }}>Artists</p>
+                      style={{ color: C.text3, fontFamily: C.fontLabel }}>{t('library.artists')}</p>
                     <div className="flex gap-3 overflow-x-auto pb-1 mb-4" style={{ scrollbarWidth: 'none' }}>
                       {results.artists.items.slice(0, 8).map(a => (
                         <button key={a.id}
@@ -388,7 +390,7 @@ export default function LibraryTab() {
                 {(results.albums?.items?.length > 0) && (
                   <>
                     <p className="text-[11px] font-semibold uppercase tracking-widest mb-2 px-1"
-                      style={{ color: C.text3, fontFamily: C.fontLabel }}>Albums</p>
+                      style={{ color: C.text3, fontFamily: C.fontLabel }}>{t('library.albums')}</p>
                     <div className="rounded-xl overflow-hidden mb-4" style={cardWhite}>
                       {results.albums.items.slice(0, 4).map((al, idx) => (
                         <React.Fragment key={al.id}>
@@ -427,10 +429,10 @@ export default function LibraryTab() {
             <div className="mb-5">
               <div className="flex items-center justify-between px-5 mb-3">
                 <p className="text-[11px] font-semibold uppercase tracking-widest"
-                  style={{ color: C.text3, fontFamily: C.fontLabel }}>Recent</p>
+                  style={{ color: C.text3, fontFamily: C.fontLabel }}>{t('library.recent')}</p>
                 <button onClick={clearRecent}
                   className="text-[11px] font-semibold active:opacity-60 transition-opacity cursor-pointer"
-                  style={{ color: C.champagne, fontFamily: C.fontLabel }}>Clear</button>
+                  style={{ color: C.champagne, fontFamily: C.fontLabel }}>{t('library.clear')}</button>
               </div>
               <div className="flex gap-4 px-5 overflow-x-auto pb-1" style={{ scrollbarWidth: 'none' }}>
                 {recent.map(r => (
@@ -460,7 +462,7 @@ export default function LibraryTab() {
           {spotify && token && (
             <div className="px-4 mb-5">
               <p className="text-[11px] font-semibold uppercase tracking-widest mb-3 px-1"
-                style={{ color: C.text3, fontFamily: C.fontLabel }}>Explore All</p>
+                style={{ color: C.text3, fontFamily: C.fontLabel }}>{t('library.exploreAll')}</p>
               <div className="grid grid-cols-2 gap-3">
                 {GENRES.map(g => (
                   <button key={g.id}
@@ -486,7 +488,7 @@ export default function LibraryTab() {
           {/* local library */}
           <div className="px-4">
             <p className="text-[11px] font-semibold uppercase tracking-widest mb-3 px-1"
-              style={{ color: C.text3, fontFamily: C.fontLabel }}>Local Library</p>
+              style={{ color: C.text3, fontFamily: C.fontLabel }}>{t('library.localLibrary')}</p>
             {libraryLoading
               ? <SkeletonList count={6} />
               : libraryItems.length === 0
@@ -494,8 +496,8 @@ export default function LibraryTab() {
                   <div className="flex flex-col items-center gap-4 py-8 text-center">
                     <Library className="h-10 w-10" style={{ color: C.outline }} />
                     <div>
-                      <p className="text-[17px] font-medium mb-1" style={{ color: C.text1 }}>No Music Found</p>
-                      <p className="text-[13px]" style={{ color: C.text4 }}>Add music to your MPD library.</p>
+                      <p className="text-[17px] font-medium mb-1" style={{ color: C.text1 }}>{t('library.noMusic')}</p>
+                      <p className="text-[13px]" style={{ color: C.text4 }}>{t('library.addMusic')}</p>
                     </div>
                   </div>
                 ) : (

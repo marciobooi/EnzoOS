@@ -2,6 +2,7 @@ import React, { useContext, useState, useEffect, useRef } from 'react';
 import { X, Mic2, Loader } from 'lucide-react';
 import { Tk } from './shared';
 import { api } from '../../api';
+import { useI18n } from '../../i18n';
 
 function parseSynced(lrc) {
   if (!lrc) return null;
@@ -18,6 +19,7 @@ function parseSynced(lrc) {
 
 export default function LyricsSheet({ title, artist, album, duration, position, onClose }) {
   const { C, cardWhite } = useContext(Tk);
+  const { t } = useI18n();
   const [loading, setLoading] = useState(true);
   const [plain, setPlain]     = useState(null);
   const [synced, setSynced]   = useState(null);
@@ -66,7 +68,7 @@ export default function LyricsSheet({ title, artist, album, duration, position, 
         <div className="flex items-center justify-between px-5 py-3 shrink-0">
           <div className="flex items-center gap-2">
             <Mic2 className="h-5 w-5" style={{ color: C.champagne }} />
-            <span className="text-[17px] font-semibold" style={{ color: C.text1 }}>Lyrics</span>
+            <span className="text-[17px] font-semibold" style={{ color: C.text1 }}>{t('lyrics.title')}</span>
           </div>
           <button onClick={onClose}
             className="w-8 h-8 rounded-full flex items-center justify-center active:scale-90 transition-all cursor-pointer"
@@ -89,7 +91,7 @@ export default function LyricsSheet({ title, artist, album, duration, position, 
           {!loading && error && (
             <div className="flex flex-col items-center gap-3 py-16 text-center">
               <Mic2 className="h-8 w-8" style={{ color: C.outline }} />
-              <p className="text-[14px]" style={{ color: C.text3 }}>No lyrics found</p>
+              <p className="text-[14px]" style={{ color: C.text3 }}>{t('lyrics.notFound')}</p>
             </div>
           )}
           {!loading && !error && synced && (

@@ -3,10 +3,12 @@ import { Search, Radio, Heart } from 'lucide-react';
 import { Tk } from './shared';
 import { api } from '../../api';
 import { toast } from '../../lib/toast';
+import { useI18n } from '../../i18n';
 
 const QUICK_GENRES = ['Jazz', 'Classical', 'Lo-Fi', 'Ambient', 'Electronic', 'Rock', 'News', 'Chill'];
 
 export default function RadioTab() {
+  const { t } = useI18n();
   const {
     C, card, cardWhite, fontLabel,
     radioSearch, setRadioSearch, stationsList, isSearching,
@@ -31,8 +33,8 @@ export default function RadioTab() {
       {/* header */}
       <div className="px-5 mb-5">
         <p className="text-[11px] font-semibold uppercase tracking-widest mb-1"
-          style={{ color: C.champagne, fontFamily: C.fontLabel }}>Web Radio</p>
-        <h2 className="text-[24px] font-medium" style={{ color: C.text1, letterSpacing: '-0.01em' }}>Search</h2>
+          style={{ color: C.champagne, fontFamily: C.fontLabel }}>{t('radio.title')}</p>
+        <h2 className="text-[24px] font-medium" style={{ color: C.text1, letterSpacing: '-0.01em' }}>{t('source.search')}</h2>
       </div>
 
       {/* search bar */}
@@ -42,7 +44,7 @@ export default function RadioTab() {
             style={{ color: C.text3 }} />
           <input
             type="text"
-            placeholder="Station or genre…"
+            placeholder={t('radio.placeholder')}
             value={radioSearch}
             onChange={e => setRadioSearch(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && handleRadioSearch()}
@@ -56,13 +58,13 @@ export default function RadioTab() {
           className="px-5 py-3 rounded-xl text-[14px] font-semibold active:scale-95 transition-all cursor-pointer disabled:opacity-50 shrink-0"
           style={{ background: C.champagne, color: '#1a1c1c', fontFamily: C.fontLabel }}
         >
-          {isSearching ? '…' : 'Go'}
+          {isSearching ? '…' : t('radio.go')}
         </button>
       </div>
 
       <p className="px-6 mb-2 text-[11px] font-semibold uppercase tracking-widest"
         style={{ color: C.text3, fontFamily: C.fontLabel }}>
-        {isSearchMode ? `${stationsList.length} results` : `${favoriteStations.length} favorites`}
+        {isSearchMode ? t('radio.results', { n: stationsList.length }) : t('radio.favorites', { n: favoriteStations.length })}
       </p>
 
       {/* station list */}
@@ -70,8 +72,8 @@ export default function RadioTab() {
         {stationsList.length === 0 ? (
           <div className="px-4 py-6 text-center">
             <Radio className="h-8 w-8 mx-auto mb-3" style={{ color: C.outline }} />
-            <p className="text-[15px] font-medium mb-1" style={{ color: C.text1 }}>No favorites yet</p>
-            <p className="text-[13px] mb-4" style={{ color: C.text4 }}>Try a genre to get started</p>
+            <p className="text-[15px] font-medium mb-1" style={{ color: C.text1 }}>{t('radio.noFavorites')}</p>
+            <p className="text-[13px] mb-4" style={{ color: C.text4 }}>{t('radio.tryGenre')}</p>
             <div className="flex flex-wrap gap-2 justify-center">
               {QUICK_GENRES.map(g => (
                 <button key={g}

@@ -5,8 +5,9 @@ export const metadataApi = {
    * TheAudioDB on the backend, cached. Called on demand when the user taps the
    * now-playing cover.
    */
-  async getAlbumMetadata(artist, album) {
-    const r = await fetch(`/api/metadata/album?artist=${encodeURIComponent(artist)}&album=${encodeURIComponent(album)}`);
+  async getAlbumMetadata(artist, album, lang) {
+    const langParam = lang ? `&lang=${encodeURIComponent(lang)}` : '';
+    const r = await fetch(`/api/metadata/album?artist=${encodeURIComponent(artist)}&album=${encodeURIComponent(album)}${langParam}`);
     if (!r.ok) throw new Error('Metadata unavailable');
     return r.json();
   },

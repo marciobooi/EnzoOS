@@ -23,6 +23,8 @@ export default {
     off: 'Desligado',
     openLink: 'Abrir ligação',
     recommended: 'Recomendado',
+    go: 'Ir',
+    resultsCount: '{n} resultados',
   },
 
   nav: {
@@ -136,6 +138,92 @@ export default {
     available: 'Disponível!',
     checkUpdates: 'Procurar Atualizações',
     updating: 'A atualizar',
+  },
+
+  library: {
+    myMusic: 'A Minha Música',
+    noHistory: 'Ainda sem histórico',
+    historyCleared: 'Histórico limpo',
+    clearAll: 'Limpar tudo',
+    clear: 'Limpar',
+    noFavorites: 'Ainda sem favoritos',
+    searchPlaceholder: 'Artistas, músicas, podcasts…',
+    tracks: 'Faixas',
+    artists: 'Artistas',
+    albums: 'Álbuns',
+    recent: 'Recente',
+    exploreAll: 'Explorar Tudo',
+    localLibrary: 'Biblioteca Local',
+    noMusic: 'Nenhuma Música Encontrada',
+    addMusic: 'Adicione música à sua biblioteca MPD.',
+    history: 'Histórico',
+    favorites: 'Favoritos',
+    tapHeart: 'Toque em ♥ em qualquer faixa para guardá-la aqui',
+  },
+
+  radio: {
+    title: 'Rádio Web',
+    placeholder: 'Estação ou género…',
+    noFavorites: 'Ainda sem favoritos',
+    tryGenre: 'Experimente um género para começar',
+    go: 'Ir',
+    results: '{n} resultados',
+    favorites: '{n} favoritos',
+  },
+
+  search: {
+    universal: 'Pesquisa Universal',
+    universalDesc: 'Pesquise faixas, artistas, álbuns e estações de rádio no Spotify, biblioteca local, Tidal, Qobuz e mais — tudo de uma vez.',
+    allSourcesPlaceholder: 'Pesquisar em todas as fontes…',
+    noResults: 'Sem resultados',
+    nothingFound: 'Nada encontrado para "{q}" em nenhuma fonte ligada.',
+    radioStations: 'Estações de Rádio',
+  },
+
+  spotifyTab: {
+    connect: 'Ligar o Spotify',
+    signInSearch: 'Inicie sessão para pesquisar e reproduzir música.',
+    placeholder: 'Música, artista, álbum…',
+    findSomething: 'Encontre algo para reproduzir',
+    searchBy: 'Pesquise por música, artista ou álbum',
+    noResultsFound: 'Nenhum resultado encontrado',
+    searchFailed: 'A pesquisa falhou',
+  },
+
+  queue: {
+    upNext: 'A Seguir',
+    nowPlaying: 'A Reproduzir Agora',
+    empty: 'A fila está vazia',
+  },
+
+  lyrics: {
+    title: 'Letras',
+    notFound: 'Nenhuma letra encontrada',
+  },
+
+  meta: {
+    albumInfo: 'Informação do Álbum',
+    keysTitle: 'Chaves de Metadados',
+    intro: 'As chaves opcionais desbloqueiam informação mais rica do álbum ao tocar numa capa. São guardadas na base de dados do seu dispositivo — os créditos do MusicBrainz funcionam sem qualquer chave.',
+    lastfmLabel: 'Chave API do Last.fm',
+    lastfmHint: 'Biografias de artistas, etiquetas, ouvintes e artistas semelhantes.',
+    lastfmLink: 'Obter uma chave grátis',
+    audiodbLabel: 'Chave do TheAudioDB',
+    audiodbHint: 'Biografias, críticas de álbuns e arte. Deixe em branco para usar a chave dev grátis.',
+    audiodbLink: 'Chave Patreon (opcional)',
+    discogsLabel: 'Token do Discogs',
+    discogsHint: 'Opcional — prensagens exatas e créditos de edições físicas.',
+    discogsLink: 'Gerar um token',
+    loading: 'A carregar…',
+    pasteKey: 'Colar chave…',
+    saved: 'Chaves de metadados guardadas',
+    saveError: 'Não foi possível guardar as chaves',
+    saveKeys: 'Guardar Chaves',
+    saving: 'A guardar…',
+    showKey: 'Mostrar chave',
+    hideKey: 'Ocultar chave',
+    addKeyTip: 'Dica: adicione uma chave do Last.fm em Definições → Informação do Álbum para biografias e críticas',
+    couldNotLoad: 'Não foi possível carregar a informação do álbum.',
   },
 
   settings: {

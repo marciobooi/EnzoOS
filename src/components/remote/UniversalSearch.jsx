@@ -3,6 +3,7 @@ import { Search, X, Disc3, Music2, Radio, Waves, Heart } from 'lucide-react';
 import { Tk } from './shared';
 import { api } from '../../api';
 import { toast } from '../../lib/toast';
+import { useI18n } from '../../i18n';
 
 function Section({ C, label, icon, children }) {
   return (
@@ -58,6 +59,7 @@ function StationRow({ C, station, onPlay, isFav, onToggleFav, divider }) {
 }
 
 export default function UniversalSearch() {
+  const { t } = useI18n();
   const {
     C, token, spotify,
     handlePlayTrack, handleLibraryPlayTrack, handleToggleSource, setActiveTab,
@@ -131,7 +133,7 @@ export default function UniversalSearch() {
             ref={inputRef}
             type="search" value={query}
             onChange={e => setQuery(e.target.value)}
-            placeholder="Search across all sources…"
+            placeholder={t('search.allSourcesPlaceholder')}
             autoComplete="off" autoCapitalize="none" spellCheck={false}
             className="w-full rounded-2xl pl-10 pr-10 py-3.5 text-[15px] focus:outline-none"
             style={{ background: C.containerLow, color: C.text1, border: `0.5px solid ${C.outline}`, fontFamily: C.font }}
@@ -155,9 +157,9 @@ export default function UniversalSearch() {
               <Search className="h-7 w-7" style={{ color: C.text3 }} />
             </div>
             <div>
-              <p className="text-[16px] font-semibold mb-1" style={{ color: C.text1 }}>Universal Search</p>
+              <p className="text-[16px] font-semibold mb-1" style={{ color: C.text1 }}>{t('search.universal')}</p>
               <p className="text-[13px] leading-relaxed" style={{ color: C.text3 }}>
-                Search tracks, artists, albums and radio stations across Spotify, local library, Tidal, Qobuz and more — all at once.
+                {t('search.universalDesc')}
               </p>
             </div>
           </div>
@@ -179,7 +181,7 @@ export default function UniversalSearch() {
             )}
 
             {results.local.length > 0 && (
-              <Section C={C} label="Local Library" icon={<Music2 className="h-3.5 w-3.5" />}>
+              <Section C={C} label={t('library.localLibrary')} icon={<Music2 className="h-3.5 w-3.5" />}>
                 {results.local.map((t, i) => (
                   <TrackRow key={i} C={C} divider={i > 0}
                     title={t.title || t.file?.split('/').pop()} artist={t.artist}
@@ -209,7 +211,7 @@ export default function UniversalSearch() {
             )}
 
             {results.radio.length > 0 && (
-              <Section C={C} label="Radio Stations" icon={<Radio className="h-3.5 w-3.5" />}>
+              <Section C={C} label={t('search.radioStations')} icon={<Radio className="h-3.5 w-3.5" />}>
                 {results.radio.map((s, i) => (
                   <StationRow key={i} C={C} divider={i > 0} station={s}
                     isFav={favoriteStations?.some(f => f.url === (s.url_resolved || s.url))}
@@ -221,8 +223,8 @@ export default function UniversalSearch() {
 
             {query.trim() && !hasResults && !loading && (
               <div className="flex flex-col items-center gap-2 py-10 text-center">
-                <p className="text-[15px] font-medium" style={{ color: C.text1 }}>No results</p>
-                <p className="text-[13px]" style={{ color: C.text3 }}>Nothing found for "{query}" across any connected source.</p>
+                <p className="text-[15px] font-medium" style={{ color: C.text1 }}>{t('search.noResults')}</p>
+                <p className="text-[13px]" style={{ color: C.text3 }}>{t('search.nothingFound', { q: query })}</p>
               </div>
             )}
           </div>

@@ -3,8 +3,10 @@ import { Search, Music } from 'lucide-react';
 import { Tk, SpotifyIcon } from './shared';
 import { api } from '../../api';
 import { toast } from '../../lib/toast';
+import { useI18n } from '../../i18n';
 
 export default function SpotifySearchTab() {
+  const { t } = useI18n();
   const {
     C, card, cardWhite,
     token, handlePlayTrack, setActiveTab,
@@ -25,7 +27,7 @@ export default function SpotifySearchTab() {
       setResults(data?.tracks?.items || []);
       setSearched(true);
     } catch (e) {
-      toast.error('Search failed');
+      toast.error(t('spotifyTab.searchFailed'));
     } finally {
       setSearching(false);
     }
@@ -47,18 +49,18 @@ export default function SpotifySearchTab() {
         <div className="px-0 mb-5">
           <p className="text-[11px] font-semibold uppercase tracking-widest mb-1"
             style={{ color: C.champagne, fontFamily: C.fontLabel }}>Spotify</p>
-          <h2 className="text-[24px] font-medium" style={{ color: C.text1, letterSpacing: '-0.01em' }}>Search</h2>
+          <h2 className="text-[24px] font-medium" style={{ color: C.text1, letterSpacing: '-0.01em' }}>{t('source.search')}</h2>
         </div>
         <div className="rounded-xl p-5 flex flex-col gap-4 text-center" style={cardWhite}>
           <div>
-            <p className="text-[17px] font-medium" style={{ color: C.text1 }}>Connect Spotify</p>
-            <p className="text-[14px] mt-1" style={{ color: C.text4 }}>Sign in to search and play music.</p>
+            <p className="text-[17px] font-medium" style={{ color: C.text1 }}>{t('spotifyTab.connect')}</p>
+            <p className="text-[14px] mt-1" style={{ color: C.text4 }}>{t('spotifyTab.signInSearch')}</p>
           </div>
           <a href="/auth/spotify/login?from=remote"
             className="w-full py-3.5 rounded-full flex items-center justify-center gap-2 text-[14px] font-semibold active:scale-95 transition-all"
             style={{ background: '#1ed760', color: '#000', display: 'flex', fontFamily: C.fontLabel }}>
             <SpotifyIcon className="h-5 w-5 fill-black shrink-0" />
-            Connect with Spotify
+            {t('settings.connectSpotify')}
           </a>
         </div>
       </div>
@@ -71,7 +73,7 @@ export default function SpotifySearchTab() {
       <div className="px-5 mb-5">
         <p className="text-[11px] font-semibold uppercase tracking-widest mb-1"
           style={{ color: C.champagne, fontFamily: C.fontLabel }}>Spotify</p>
-        <h2 className="text-[24px] font-medium" style={{ color: C.text1, letterSpacing: '-0.01em' }}>Search</h2>
+        <h2 className="text-[24px] font-medium" style={{ color: C.text1, letterSpacing: '-0.01em' }}>{t('source.search')}</h2>
       </div>
 
       {/* search bar */}
@@ -81,7 +83,7 @@ export default function SpotifySearchTab() {
             style={{ color: C.text3 }} />
           <input
             type="text"
-            placeholder="Song, artist, album…"
+            placeholder={t('spotifyTab.placeholder')}
             value={query}
             onChange={e => setQuery(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && doSearch()}
@@ -94,14 +96,14 @@ export default function SpotifySearchTab() {
           disabled={searching}
           className="px-5 py-3 rounded-xl text-[14px] font-semibold active:scale-95 transition-all cursor-pointer disabled:opacity-50 shrink-0"
           style={{ background: C.champagne, color: '#1a1c1c', fontFamily: C.fontLabel }}>
-          {searching ? '…' : 'Go'}
+          {searching ? '…' : t('common.go')}
         </button>
       </div>
 
       {searched && (
         <p className="px-6 mb-2 text-[11px] font-semibold uppercase tracking-widest"
           style={{ color: C.text3, fontFamily: C.fontLabel }}>
-          {results.length} result{results.length !== 1 ? 's' : ''}
+          {t('common.resultsCount', { n: results.length })}
         </p>
       )}
 

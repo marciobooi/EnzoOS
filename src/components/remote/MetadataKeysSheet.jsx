@@ -4,27 +4,26 @@ import { ChevronLeft, KeyRound, ExternalLink, Eye, EyeOff } from 'lucide-react';
 import { Tk } from './shared';
 import { api } from '../../api';
 import { toast } from '../../lib/toast';
-
-const FIELDS = [
-  {
-    id: 'lastfm', label: 'Last.fm API Key',
-    hint: 'Artist biographies, tags, listeners & similar artists.',
-    link: 'https://www.last.fm/api/account/create', linkLabel: 'Get a free key',
-  },
-  {
-    id: 'theaudiodb', label: 'TheAudioDB Key',
-    hint: 'Bios, album reviews & artwork. Leave blank to use the free dev key.',
-    link: 'https://www.theaudiodb.com/api_guide.php', linkLabel: 'Patreon key (optional)',
-  },
-  {
-    id: 'discogs', label: 'Discogs Token',
-    hint: 'Optional — exact pressings & physical release credits.',
-    link: 'https://www.discogs.com/settings/developers', linkLabel: 'Generate a token',
-  },
-];
+import { useI18n } from '../../i18n';
 
 export default function MetadataKeysSheet({ onClose }) {
   const { C, card } = useContext(Tk);
+  const { t } = useI18n();
+
+  const FIELDS = [
+    {
+      id: 'lastfm', label: t('meta.lastfmLabel'), hint: t('meta.lastfmHint'),
+      link: 'https://www.last.fm/api/account/create', linkLabel: t('meta.lastfmLink'),
+    },
+    {
+      id: 'theaudiodb', label: t('meta.audiodbLabel'), hint: t('meta.audiodbHint'),
+      link: 'https://www.theaudiodb.com/api_guide.php', linkLabel: t('meta.audiodbLink'),
+    },
+    {
+      id: 'discogs', label: t('meta.discogsLabel'), hint: t('meta.discogsHint'),
+      link: 'https://www.discogs.com/settings/developers', linkLabel: t('meta.discogsLink'),
+    },
+  ];
   const [vals, setVals] = useState({ lastfm: '', theaudiodb: '', discogs: '' });
   const [show, setShow] = useState({ lastfm: false, theaudiodb: false, discogs: false });
   const [loading, setLoading] = useState(true);
@@ -43,10 +42,10 @@ export default function MetadataKeysSheet({ onClose }) {
     setSaving(true);
     try {
       await api.setMetadataKeys(vals);
-      toast.success('Metadata keys saved');
+      toast.success(t('meta.saved'));
       onClose();
     } catch {
-      toast.error('Could not save keys');
+      toast.error(t('meta.saveError'));
     } finally { setSaving(false); }
   };
 
@@ -68,8 +67,8 @@ export default function MetadataKeysSheet({ onClose }) {
         </button>
         <div className="min-w-0">
           <p className="text-[11px] font-semibold uppercase tracking-widest"
-            style={{ color: C.champagne, fontFamily: C.fontLabel }}>Album Info</p>
-          <p className="text-[20px] font-medium truncate" style={{ color: C.text1, letterSpacing: '-0.01em' }}>Metadata Keys</p>
+            style={{ color: C.champagne, fontFamily: C.fontLabel }}>{t('meta.albumInfo')}</p>
+          <p className="text-[20px] font-medium truncate" style={{ color: C.text1, letterSpacing: '-0.01em' }}>{t('meta.keysTitle')}</p>
         </div>
       </div>
 
@@ -77,8 +76,7 @@ export default function MetadataKeysSheet({ onClose }) {
         <div className="flex items-start gap-3 rounded-xl p-4" style={{ background: C.containerLow, border: `0.5px solid ${C.outline}` }}>
           <KeyRound className="h-5 w-5 shrink-0 mt-0.5" style={{ color: C.champagne }} />
           <p className="text-[13px] leading-relaxed" style={{ color: C.text4 }}>
-            Optional keys unlock richer album info when you tap a cover. They're stored
-            on your device's database — MusicBrainz credits work with no key at all.
+            {t('meta.intro')}
           </p>
         </div>
 
@@ -90,11 +88,11 @@ export default function MetadataKeysSheet({ onClose }) {
               <input
                 type={show[f.id] ? 'text' : 'password'} value={vals[f.id]} disabled={loading}
                 onChange={(e) => setVals((v) => ({ ...v, [f.id]: e.target.value }))}
-                placeholder={loading ? 'Loading…' : 'Paste key…'}
+                placeholder={loading ? t('meta.loading') : t('meta.pasteKey')}
                 autoCapitalize="none" autoCorrect="off" autoComplete="off" spellCheck={false}
                 className="w-full rounded-xl pl-4 pr-12 py-3 text-[15px] focus:outline-none" style={inputStyle} />
               <button type="button" onClick={() => setShow((s) => ({ ...s, [f.id]: !s[f.id] }))}
-                aria-label={show[f.id] ? 'Hide key' : 'Show key'}
+                aria-label={show[f.id] ? t('meta.hideKey') : t('meta.showKey')}
                 className="absolute right-1.5 top-1/2 -translate-y-1/2 w-9 h-9 flex items-center justify-center rounded-full active:scale-90 transition-all cursor-pointer">
                 {show[f.id]
                   ? <EyeOff className="h-4 w-4" style={{ color: C.text3 }} />
@@ -112,7 +110,7 @@ export default function MetadataKeysSheet({ onClose }) {
         <button onClick={save} disabled={saving || loading}
           className="w-full py-3.5 rounded-full text-[15px] font-semibold active:scale-95 transition-all cursor-pointer mt-1"
           style={{ background: C.champagne, color: '#1a1c1c', opacity: saving || loading ? 0.6 : 1, fontFamily: C.font }}>
-          {saving ? 'Saving…' : 'Save Keys'}
+          {saving ? t('meta.saving') : t('meta.saveKeys')}
         </button>
       </div>
     </div>,
