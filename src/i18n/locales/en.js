@@ -67,7 +67,9 @@ export default {
     },
     skin: {
       title: 'Make it yours',
-      body: 'Pick an accent colour for your system. You can fine-tune the full theme any time in Settings → Display.',
+      body: 'Pick a look for your system. You can fine-tune everything any time in Settings → Display.',
+      accentLabel: 'Accent colour',
+      skinLabel: 'Skin',
     },
     phone: {
       title: 'Control from your phone',

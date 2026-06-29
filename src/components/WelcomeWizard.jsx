@@ -7,7 +7,7 @@ import { S, cardShadow } from '../styles/stone';
 import { api } from '../api';
 import { useI18n } from '../i18n';
 import LanguageChips from '../i18n/LanguageChips';
-import { THEME_COLORS } from './ThemeSettingsControl';
+import { THEME_COLORS, SCREEN_THEMES } from './ThemeSettingsControl';
 
 // First-boot welcome / setup wizard. Fully self-contained: it manages its own
 // step state and persists completion to the DB (onboarding_complete) before
@@ -53,6 +53,16 @@ export default function WelcomeWizard({ onClose }) {
     setThemeColor(name);
     try { localStorage.setItem('resonance_theme', name); } catch { /* ignore */ }
     window.dispatchEvent(new CustomEvent('resonance:set-theme', { detail: name }));
+  };
+
+  // ── Skin / screen theme ─────────────────────────────────────────────────────
+  const [skin, setSkin] = useState(() => {
+    try { return localStorage.getItem('resonance_theme_active') || 'dot-matrix'; } catch { return 'dot-matrix'; }
+  });
+  const pickSkin = (id) => {
+    setSkin(id);
+    try { localStorage.setItem('resonance_theme_active', id); } catch { /* ignore */ }
+    window.dispatchEvent(new CustomEvent('resonance:set-skin', { detail: id }));
   };
 
   const spotifyPoll = useRef(null);
@@ -392,28 +402,62 @@ export default function WelcomeWizard({ onClose }) {
             </div>
           )}
 
-          {/* Make-it-yours (accent colour / skin) step */}
+          {/* Make-it-yours (accent colour + skin) step */}
           {s.skin && (
-            <div className="mt-5 flex flex-wrap gap-3">
-              {THEME_COLORS.map((c) => {
-                const on = themeColor === c.name;
-                return (
-                  <button key={c.name} onClick={() => pickTheme(c.name)}
-                    className="flex flex-col items-center gap-1.5 active:scale-95 transition-all cursor-pointer"
-                    style={{ width: 72 }}>
-                    <span className="rounded-full flex items-center justify-center"
-                      style={{
-                        width: 48, height: 48, background: c.value,
-                        boxShadow: on ? `0 0 0 3px ${S.bg}, 0 0 0 5px ${c.value}` : 'none',
-                        border: `1px solid ${S.surfaceLo}`,
-                      }}>
-                      {on && <Check className="h-5 w-5" style={{ color: '#fff' }} />}
-                    </span>
-                    <span className="text-[10px] font-semibold text-center leading-tight"
-                      style={{ color: S.accent, opacity: on ? 1 : 0.6 }}>{c.label}</span>
-                  </button>
-                );
-              })}
+            <div className="mt-4 flex flex-col gap-4">
+              {/* accent colour */}
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-widest mb-2"
+                  style={{ color: S.champagne }}>{t('wizard.skin.accentLabel')}</p>
+                <div className="flex flex-wrap gap-3">
+                  {THEME_COLORS.map((c) => {
+                    const on = themeColor === c.name;
+                    return (
+                      <button key={c.name} onClick={() => pickTheme(c.name)}
+                        className="flex flex-col items-center gap-1.5 active:scale-95 transition-all cursor-pointer"
+                        style={{ width: 64 }}>
+                        <span className="rounded-full flex items-center justify-center"
+                          style={{
+                            width: 44, height: 44, background: c.value,
+                            boxShadow: on ? `0 0 0 3px ${S.bg}, 0 0 0 5px ${c.value}` : 'none',
+                            border: `1px solid ${S.surfaceLo}`,
+                          }}>
+                          {on && <Check className="h-5 w-5" style={{ color: '#fff' }} />}
+                        </span>
+                        <span className="text-[10px] font-semibold text-center leading-tight"
+                          style={{ color: S.accent, opacity: on ? 1 : 0.6 }}>{c.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* skin / screen theme */}
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-widest mb-2"
+                  style={{ color: S.champagne }}>{t('wizard.skin.skinLabel')}</p>
+                <div className="grid grid-cols-2 gap-2">
+                  {SCREEN_THEMES.map((sk) => {
+                    const on = skin === sk.id;
+                    return (
+                      <button key={sk.id} onClick={() => pickSkin(sk.id)}
+                        className="flex flex-col items-start text-left px-3 py-2.5 rounded-xl transition-all active:scale-[0.98]"
+                        style={{
+                          background: on ? S.accent : S.surface,
+                          border: `1px solid ${on ? S.accent : S.surfaceLo}`,
+                          cursor: 'pointer',
+                        }}>
+                        <span className="flex items-center gap-1.5 text-[13px] font-semibold"
+                          style={{ color: on ? S.accentFg : S.accent }}>
+                          {on && <Check className="h-3.5 w-3.5" />}{sk.name}
+                        </span>
+                        <span className="text-[11px] leading-tight"
+                          style={{ color: on ? S.accentFg : S.accent, opacity: on ? 0.8 : 0.55 }}>{sk.desc}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
             </div>
           )}
         </div>

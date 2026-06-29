@@ -65,7 +65,9 @@ export default {
     },
     skin: {
       title: 'Personalize',
-      body: 'Escolha uma cor de destaque para o seu sistema. Pode afinar o tema completo a qualquer momento em Definições → Ecrã.',
+      body: 'Escolha um visual para o seu sistema. Pode afinar tudo a qualquer momento em Definições → Ecrã.',
+      accentLabel: 'Cor de destaque',
+      skinLabel: 'Aparência',
     },
     phone: {
       title: 'Controle pelo seu telemóvel',
