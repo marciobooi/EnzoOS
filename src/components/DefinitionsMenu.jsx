@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Sliders, Music, Download, LogOut, Radio, Waves, Smartphone, Airplay, Network, Bluetooth, Music2, Languages } from 'lucide-react';
 import { api } from '../api';
 import { S } from '../styles/stone';
@@ -126,7 +126,7 @@ export default function DefinitionsMenu({
         }`}
         style={{ animationDelay: '0ms' }}
       >
-        <span className="text-sm font-light tracking-[0.25em] uppercase" style={{ color: S.label }}>stream service</span>
+        <span className="text-sm font-light tracking-[0.25em] uppercase" style={{ color: S.label }}>{t('kiosk.streamService')}</span>
         <div className="my-auto flex justify-center py-2">
           <svg viewBox="0 0 24 24" className="h-16 w-16 transition-all duration-300"
             style={{ fill: source === 'spotify' ? S.accent : S.track }}>
@@ -137,7 +137,7 @@ export default function DefinitionsMenu({
           <span className="text-lg font-black tracking-tight leading-none"
             style={{ color: source === 'spotify' ? S.strong : S.muted }}>Spotify</span>
           {source === 'spotify' && (
-            <span className="text-sm font-normal tracking-wide" style={{ color: S.accent }}>active</span>
+            <span className="text-sm font-normal tracking-wide" style={{ color: S.accent }}>{t('kiosk.active')}</span>
           )}
         </div>
       </button>
@@ -150,7 +150,7 @@ export default function DefinitionsMenu({
         }`}
         style={{ animationDelay: '30ms' }}
       >
-        <span className="text-sm font-light tracking-[0.25em] uppercase" style={{ color: S.label }}>local system</span>
+        <span className="text-sm font-light tracking-[0.25em] uppercase" style={{ color: S.label }}>{t('kiosk.localSystem')}</span>
         <div className="my-auto flex justify-center py-2">
           <Music strokeWidth={1} className="h-16 w-16 transition-all duration-300"
             style={{ color: source === 'local' ? S.accent : S.track }} />
@@ -159,7 +159,7 @@ export default function DefinitionsMenu({
           <span className="text-lg font-black tracking-tight leading-none"
             style={{ color: source === 'local' ? S.strong : S.muted }}>Local</span>
           {source === 'local' && (
-            <span className="text-sm font-normal tracking-wide" style={{ color: S.accent }}>active</span>
+            <span className="text-sm font-normal tracking-wide" style={{ color: S.accent }}>{t('kiosk.active')}</span>
           )}
         </div>
       </button>
@@ -172,7 +172,7 @@ export default function DefinitionsMenu({
         }`}
         style={{ animationDelay: '60ms' }}
       >
-        <span className="text-sm font-light tracking-[0.25em] uppercase" style={{ color: S.label }}>stream radio</span>
+        <span className="text-sm font-light tracking-[0.25em] uppercase" style={{ color: S.label }}>{t('kiosk.streamRadio')}</span>
         <div className="my-auto flex justify-center py-2">
           <Radio strokeWidth={1} className="h-16 w-16 transition-all duration-300"
             style={{ color: source === 'radio' ? S.accent : S.track }} />
@@ -181,7 +181,7 @@ export default function DefinitionsMenu({
           <span className="text-lg font-black tracking-tight leading-none"
             style={{ color: source === 'radio' ? S.strong : S.muted }}>Radio</span>
           {source === 'radio' && (
-            <span className="text-sm font-normal tracking-wide" style={{ color: S.accent }}>active</span>
+            <span className="text-sm font-normal tracking-wide" style={{ color: S.accent }}>{t('kiosk.active')}</span>
           )}
         </div>
       </button>
@@ -194,7 +194,7 @@ export default function DefinitionsMenu({
         }`}
         style={{ animationDelay: '90ms' }}
       >
-        <span className="text-sm font-light tracking-[0.25em] uppercase" style={{ color: S.label }}>apple airplay</span>
+        <span className="text-sm font-light tracking-[0.25em] uppercase" style={{ color: S.label }}>{t('kiosk.appleAirplay')}</span>
         <div className="my-auto flex justify-center py-2">
           <Airplay strokeWidth={1} className="h-16 w-16 transition-all duration-300"
             style={{ color: source === 'airplay' ? S.accent : S.track }} />
@@ -203,7 +203,7 @@ export default function DefinitionsMenu({
           <span className="text-lg font-black tracking-tight leading-none"
             style={{ color: source === 'airplay' ? S.strong : S.muted }}>AirPlay</span>
           {source === 'airplay' && (
-            <span className="text-sm font-normal tracking-wide" style={{ color: S.accent }}>active</span>
+            <span className="text-sm font-normal tracking-wide" style={{ color: S.accent }}>{t('kiosk.active')}</span>
           )}
         </div>
       </button>
@@ -216,7 +216,7 @@ export default function DefinitionsMenu({
         }`}
         style={{ animationDelay: '120ms' }}
       >
-        <span className="text-sm font-light tracking-[0.25em] uppercase" style={{ color: S.label }}>upnp / dlna</span>
+        <span className="text-sm font-light tracking-[0.25em] uppercase" style={{ color: S.label }}>{t('kiosk.upnpDlna')}</span>
         <div className="my-auto flex justify-center py-2">
           <Network strokeWidth={1} className="h-16 w-16 transition-all duration-300"
             style={{ color: source === 'upnp' ? S.accent : S.track }} />
@@ -225,7 +225,7 @@ export default function DefinitionsMenu({
           <span className="text-lg font-black tracking-tight leading-none"
             style={{ color: source === 'upnp' ? S.strong : S.muted }}>UPnP</span>
           {source === 'upnp' && (
-            <span className="text-sm font-normal tracking-wide" style={{ color: S.accent }}>active</span>
+            <span className="text-sm font-normal tracking-wide" style={{ color: S.accent }}>{t('kiosk.active')}</span>
           )}
         </div>
       </button>
@@ -238,7 +238,7 @@ export default function DefinitionsMenu({
         }`}
         style={{ animationDelay: '150ms' }}
       >
-        <span className="text-sm font-light tracking-[0.25em] uppercase" style={{ color: S.label }}>bluetooth a2dp</span>
+        <span className="text-sm font-light tracking-[0.25em] uppercase" style={{ color: S.label }}>{t('kiosk.bluetoothA2dp')}</span>
         <div className="my-auto flex justify-center py-2">
           <Bluetooth strokeWidth={1} className="h-16 w-16 transition-all duration-300"
             style={{ color: source === 'bluetooth' ? S.accent : S.track }} />
@@ -247,7 +247,7 @@ export default function DefinitionsMenu({
           <span className="text-lg font-black tracking-tight leading-none"
             style={{ color: source === 'bluetooth' ? S.strong : S.muted }}>Bluetooth</span>
           {source === 'bluetooth' && (
-            <span className="text-sm font-normal tracking-wide" style={{ color: S.accent }}>active</span>
+            <span className="text-sm font-normal tracking-wide" style={{ color: S.accent }}>{t('kiosk.active')}</span>
           )}
         </div>
       </button>
@@ -260,7 +260,7 @@ export default function DefinitionsMenu({
         }`}
         style={{ animationDelay: '180ms' }}
       >
-        <span className="text-sm font-light tracking-[0.25em] uppercase" style={{ color: S.label }}>hifi streaming</span>
+        <span className="text-sm font-light tracking-[0.25em] uppercase" style={{ color: S.label }}>{t('kiosk.hifiStreaming')}</span>
         <div className="my-auto flex justify-center py-2">
           <Music2 strokeWidth={1} className="h-16 w-16 transition-all duration-300"
             style={{ color: source === 'tidal' ? S.accent : S.track }} />
@@ -269,7 +269,7 @@ export default function DefinitionsMenu({
           <span className="text-lg font-black tracking-tight leading-none"
             style={{ color: source === 'tidal' ? S.strong : S.muted }}>Tidal</span>
           {source === 'tidal' && (
-            <span className="text-sm font-normal tracking-wide" style={{ color: S.accent }}>active</span>
+            <span className="text-sm font-normal tracking-wide" style={{ color: S.accent }}>{t('kiosk.active')}</span>
           )}
         </div>
       </button>
@@ -282,7 +282,7 @@ export default function DefinitionsMenu({
         }`}
         style={{ animationDelay: '210ms' }}
       >
-        <span className="text-sm font-light tracking-[0.25em] uppercase" style={{ color: S.label }}>lossless streaming</span>
+        <span className="text-sm font-light tracking-[0.25em] uppercase" style={{ color: S.label }}>{t('kiosk.losslessStreaming')}</span>
         <div className="my-auto flex justify-center py-2">
           <Music strokeWidth={1} className="h-16 w-16 transition-all duration-300"
             style={{ color: source === 'qobuz' ? S.accent : S.track }} />
@@ -291,7 +291,7 @@ export default function DefinitionsMenu({
           <span className="text-lg font-black tracking-tight leading-none"
             style={{ color: source === 'qobuz' ? S.strong : S.muted }}>Qobuz</span>
           {source === 'qobuz' && (
-            <span className="text-sm font-normal tracking-wide" style={{ color: S.accent }}>active</span>
+            <span className="text-sm font-normal tracking-wide" style={{ color: S.accent }}>{t('kiosk.active')}</span>
           )}
         </div>
       </button>
@@ -302,14 +302,14 @@ export default function DefinitionsMenu({
         className="w-[180px] shrink-0 p-2 rounded-2xl text-left flex flex-col justify-between transition-all duration-300 relative group overflow-hidden cursor-pointer menu-card menu-card-enter hover:scale-[1.01]"
         style={{ animationDelay: '240ms' }}
       >
-        <span className="text-sm font-light tracking-[0.25em] uppercase" style={{ color: S.label }}>appearance</span>
+        <span className="text-sm font-light tracking-[0.25em] uppercase" style={{ color: S.label }}>{t('kiosk.appearance')}</span>
         <div className="my-auto flex justify-center py-2">
           <Sliders strokeWidth={1} className="h-16 w-16 transition-colors duration-300"
             style={{ color: S.track }} />
         </div>
         <div className="flex items-baseline justify-between w-full">
-          <span className="text-lg font-black tracking-tight leading-none" style={{ color: S.muted }}>Theme</span>
-          <span className="text-sm font-normal tracking-wide" style={{ color: S.label }}>settings</span>
+          <span className="text-lg font-black tracking-tight leading-none" style={{ color: S.muted }}>{t('kiosk.theme')}</span>
+          <span className="text-sm font-normal tracking-wide" style={{ color: S.label }}>{t('kiosk.settings')}</span>
         </div>
       </button>
 
@@ -319,14 +319,14 @@ export default function DefinitionsMenu({
         className="w-[180px] shrink-0 p-2 rounded-2xl text-left flex flex-col justify-between transition-all duration-300 relative group overflow-hidden cursor-pointer menu-card menu-card-enter hover:scale-[1.01]"
         style={{ animationDelay: '120ms' }}
       >
-        <span className="text-sm font-light tracking-[0.25em] uppercase" style={{ color: S.label }}>acoustic profiler</span>
+        <span className="text-sm font-light tracking-[0.25em] uppercase" style={{ color: S.label }}>{t('kiosk.acousticProfiler')}</span>
         <div className="my-auto flex justify-center py-2">
           <Waves strokeWidth={1} className="h-16 w-16 transition-all duration-300"
             style={{ color: S.track }} />
         </div>
         <div className="flex items-baseline justify-between w-full">
-          <span className="text-lg font-black tracking-tight leading-none" style={{ color: S.muted }}>Acoustic</span>
-          <span className="text-sm font-normal tracking-wide" style={{ color: S.label }}>calibrate</span>
+          <span className="text-lg font-black tracking-tight leading-none" style={{ color: S.muted }}>{t('kiosk.acoustic')}</span>
+          <span className="text-sm font-normal tracking-wide" style={{ color: S.label }}>{t('kiosk.calibrate')}</span>
         </div>
       </button>
 
@@ -341,7 +341,7 @@ export default function DefinitionsMenu({
         }`}
         style={{ animationDelay: '150ms' }}
       >
-        <span className="text-sm font-light tracking-[0.25em] uppercase" style={{ color: S.label }}>access panel</span>
+        <span className="text-sm font-light tracking-[0.25em] uppercase" style={{ color: S.label }}>{t('kiosk.accessPanel')}</span>
         <div className="my-auto flex justify-center py-2">
           <Smartphone strokeWidth={1} className="h-16 w-16 transition-all duration-300"
             style={{ color: remoteAccessEnabled ? S.accent : S.track,
@@ -349,10 +349,10 @@ export default function DefinitionsMenu({
         </div>
         <div className="flex items-baseline justify-between w-full">
           <span className="text-lg font-black tracking-tight leading-none"
-            style={{ color: remoteAccessEnabled ? S.strong : S.muted }}>Remote</span>
+            style={{ color: remoteAccessEnabled ? S.strong : S.muted }}>{t('kiosk.remote')}</span>
           <span className="text-sm font-normal tracking-wide"
             style={{ color: remoteAccessEnabled ? S.accent : S.label }}>
-            {remoteAccessEnabled ? 'enabled' : 'off'}
+            {remoteAccessEnabled ? t('kiosk.enabled') : t('kiosk.off')}
           </span>
         </div>
       </button>
@@ -364,7 +364,7 @@ export default function DefinitionsMenu({
         className="w-[180px] shrink-0 p-2 rounded-2xl text-left flex flex-col justify-between transition-all duration-300 relative group overflow-hidden cursor-pointer menu-card menu-card-enter hover:scale-[1.01]"
         style={{ animationDelay: '180ms' }}
       >
-        <span className="text-sm font-light tracking-[0.25em] uppercase" style={{ color: S.label }}>system firmware</span>
+        <span className="text-sm font-light tracking-[0.25em] uppercase" style={{ color: S.label }}>{t('kiosk.systemFirmware')}</span>
         <div className="my-auto flex justify-center py-2 w-full">
           {updateStatus === 'updating' ? (
             <div className="flex flex-col items-center gap-1.5 w-full">
@@ -382,15 +382,15 @@ export default function DefinitionsMenu({
         </div>
         <div className="flex items-baseline justify-between w-full">
           <span className="text-lg font-black tracking-tight leading-none"
-            style={{ color: updateStatus === 'available' ? S.strong : S.muted }}>Update</span>
+            style={{ color: updateStatus === 'available' ? S.strong : S.muted }}>{t('kiosk.update')}</span>
           <span className="text-sm font-normal tracking-wide"
             style={{ color: updateStatus === 'available' ? S.accent : S.label }}>
-            {updateStatus === 'checking'  && 'checking'}
-            {updateStatus === 'updating'  && (otaPercent === 100 ? 'rebooting' : 'installing')}
-            {updateStatus === 'available' && 'deploy'}
-            {updateStatus === 'no-update' && 'up to date'}
-            {updateStatus === null        && 'check'}
-            {updateStatus === 'error'     && 'failed'}
+            {updateStatus === 'checking'  && t('kiosk.checking')}
+            {updateStatus === 'updating'  && (otaPercent === 100 ? t('kiosk.rebooting') : t('kiosk.installing'))}
+            {updateStatus === 'available' && t('kiosk.deploy')}
+            {updateStatus === 'no-update' && t('kiosk.upToDate')}
+            {updateStatus === null        && t('kiosk.check')}
+            {updateStatus === 'error'     && t('kiosk.failed')}
           </span>
         </div>
       </button>
@@ -398,11 +398,11 @@ export default function DefinitionsMenu({
       {/* 5b. SYSTEM HEALTH CARD */}
       <div className="w-[180px] shrink-0 p-2 rounded-2xl text-left flex flex-col justify-between transition-all duration-300 relative group overflow-hidden menu-card menu-card-enter"
         style={{ animationDelay: '210ms' }}>
-        <span className="text-sm font-light tracking-[0.25em] uppercase" style={{ color: S.label }}>system metrics</span>
+        <span className="text-sm font-light tracking-[0.25em] uppercase" style={{ color: S.label }}>{t('kiosk.systemMetrics')}</span>
         <div className="flex flex-col gap-3 my-auto w-full">
           <div className="flex flex-col gap-1 w-full">
             <div className="flex justify-between items-baseline">
-              <span className="text-xs font-light tracking-[0.2em]" style={{ color: S.label }}>cpu temp</span>
+              <span className="text-xs font-light tracking-[0.2em]" style={{ color: S.label }}>{t('kiosk.cpuTemp')}</span>
               <span className="text-xs font-bold"
                 style={{ color: healthData.cpuTemp > 65 ? S.errorHot : S.strong }}>
                 {healthData.cpuTemp}°
@@ -416,7 +416,7 @@ export default function DefinitionsMenu({
           </div>
           <div className="flex flex-col gap-1 w-full">
             <div className="flex justify-between items-baseline">
-              <span className="text-xs font-light tracking-[0.2em]" style={{ color: S.label }}>ram</span>
+              <span className="text-xs font-light tracking-[0.2em]" style={{ color: S.label }}>{t('kiosk.ram')}</span>
               <span className="text-xs font-bold" style={{ color: S.strong }}>{healthData.ramLoad}%</span>
             </div>
             <div className="w-full h-0.5 rounded-full overflow-hidden" style={{ background: S.track }}>
@@ -425,17 +425,17 @@ export default function DefinitionsMenu({
             </div>
           </div>
           <div className="flex justify-between items-baseline">
-            <span className="text-xs font-light tracking-[0.2em]" style={{ color: S.label }}>wi-fi</span>
+            <span className="text-xs font-light tracking-[0.2em]" style={{ color: S.label }}>{t('kiosk.wifi')}</span>
             <div className="flex items-center gap-1.5">
               <div className="w-1.5 h-1.5 rounded-full animate-pulse"
                 style={{ background: healthData.wifiSignal > -70 ? '#4a7c59' : S.muted }} />
               <span className="text-sm font-semibold" style={{ color: S.strong }}>
-                {healthData.wifiSignal > -50 ? 'Excellent' : healthData.wifiSignal > -70 ? 'Good' : 'Fair'}
+                {healthData.wifiSignal > -50 ? t('kiosk.excellent') : healthData.wifiSignal > -70 ? t('kiosk.good') : t('kiosk.fair')}
               </span>
             </div>
           </div>
         </div>
-        <span className="text-xs font-light tracking-[0.25em]" style={{ color: S.label }}>hardware health</span>
+        <span className="text-xs font-light tracking-[0.25em]" style={{ color: S.label }}>{t('kiosk.hardwareHealth')}</span>
       </div>
 
       {/* 6. SPOTIFY DISCONNECT CARD */}
@@ -445,14 +445,14 @@ export default function DefinitionsMenu({
           className="w-[180px] shrink-0 p-2 rounded-2xl text-left flex flex-col justify-between transition-all duration-300 relative group overflow-hidden cursor-pointer menu-card menu-card-enter hover:scale-[1.01]"
           style={{ animationDelay: '240ms' }}
         >
-          <span className="text-sm font-light tracking-[0.25em] uppercase" style={{ color: S.label }}>connections</span>
+          <span className="text-sm font-light tracking-[0.25em] uppercase" style={{ color: S.label }}>{t('kiosk.connections')}</span>
           <div className="my-auto flex justify-center py-2">
             <LogOut strokeWidth={1} className="h-16 w-16 transition-colors duration-300"
               style={{ color: S.track }} />
           </div>
           <div className="flex items-baseline justify-between w-full">
             <span className="text-lg font-black tracking-tight leading-none" style={{ color: S.muted }}>Spotify</span>
-            <span className="text-sm font-normal tracking-wide" style={{ color: S.label }}>sign out</span>
+            <span className="text-sm font-normal tracking-wide" style={{ color: S.label }}>{t('kiosk.signOut')}</span>
           </div>
         </button>
       )}
