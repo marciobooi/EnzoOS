@@ -2,7 +2,7 @@ import React, { useContext, useState, useEffect, useRef } from 'react';
 import { Search, X, Disc3, Music2, Radio, Waves, Heart } from 'lucide-react';
 import { Tk } from './shared';
 import { api } from '../../api';
-import { toast } from '../../lib/toast';
+import { reportError } from '../../lib/errors';
 import { useI18n } from '../../i18n';
 
 function Section({ C, label, icon, children }) {
@@ -106,21 +106,21 @@ export default function UniversalSearch() {
 
   const playLocal = async (file) => {
     try { wakeKiosk(); await api.clearQueue(); await api.addToQueue(file, true); handleToggleSource('local'); setActiveTab('player'); }
-    catch (e) { toast.error(e.message); }
+    catch (e) { reportError(e.message); }
   };
 
   const playRadio = async (station) => {
     const url = station.url_resolved || station.url;
     try { await api.localPlayRadio(url, station.name, station.favicon); handleToggleSource('radio'); setActiveTab('player'); }
-    catch (e) { toast.error(e.message); }
+    catch (e) { reportError(e.message); }
   };
 
   const playTidal = async (track) => {
-    try { await api.tidalPlayTrack(track); setActiveTab('player'); } catch (e) { toast.error(e.message); }
+    try { await api.tidalPlayTrack(track); setActiveTab('player'); } catch (e) { reportError(e.message); }
   };
 
   const playQobuz = async (track) => {
-    try { await api.qobuzPlayTrack(track); setActiveTab('player'); } catch (e) { toast.error(e.message); }
+    try { await api.qobuzPlayTrack(track); setActiveTab('player'); } catch (e) { reportError(e.message); }
   };
 
   return (

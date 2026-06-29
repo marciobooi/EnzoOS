@@ -2,7 +2,7 @@ import React, { useContext, useState } from 'react';
 import { Search, Music } from 'lucide-react';
 import { Tk, SpotifyIcon } from './shared';
 import { api } from '../../api';
-import { toast } from '../../lib/toast';
+import { reportError } from '../../lib/errors';
 import { useI18n } from '../../i18n';
 
 export default function SpotifySearchTab() {
@@ -27,7 +27,7 @@ export default function SpotifySearchTab() {
       setResults(data?.tracks?.items || []);
       setSearched(true);
     } catch (e) {
-      toast.error(t('spotifyTab.searchFailed'));
+      reportError(t('spotifyTab.searchFailed'));
     } finally {
       setSearching(false);
     }

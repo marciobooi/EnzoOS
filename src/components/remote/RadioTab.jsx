@@ -2,7 +2,7 @@ import React, { useContext } from 'react';
 import { Search, Radio, Heart } from 'lucide-react';
 import { Tk } from './shared';
 import { api } from '../../api';
-import { toast } from '../../lib/toast';
+import { reportError } from '../../lib/errors';
 import { useI18n } from '../../i18n';
 
 const QUICK_GENRES = ['Jazz', 'Classical', 'Lo-Fi', 'Ambient', 'Electronic', 'Rock', 'News', 'Chill'];
@@ -22,7 +22,7 @@ export default function RadioTab() {
       await api.localPlayRadio(station.url, station.name, station.favicon);
       setSource('radio');
       setActiveTab('player');
-    } catch (e) { toast.error(e.message); }
+    } catch (e) { reportError(e.message); }
   };
 
   const isSearchMode = radioSearch.trim().length > 0;

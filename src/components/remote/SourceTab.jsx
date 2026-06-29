@@ -4,6 +4,7 @@ import { Music, Radio, Airplay, Network, Bluetooth, Music2, Search, ChevronLeft 
 import { Tk, SpotifyIcon } from './shared';
 import { api } from '../../api';
 import { toast } from '../../lib/toast';
+import { reportError } from '../../lib/errors';
 import { useI18n } from '../../i18n';
 
 export default function SourceTab() {
@@ -61,7 +62,7 @@ export default function SourceTab() {
 
   const submitQobuz = async e => {
     e.preventDefault();
-    if (!username.trim() || !password.trim()) { toast.error(t('source.enterCreds')); return; }
+    if (!username.trim() || !password.trim()) { reportError(t('source.enterCreds')); return; }
     setBusy(true);
     try {
       await api.qobuzAuth(username.trim(), password);
@@ -70,7 +71,7 @@ export default function SourceTab() {
       setQobuzModal(false);
       openSearch('qobuz');
     } catch (err) {
-      toast.error(err.message || t('source.connectionFailed'));
+      reportError(err.message || t('source.connectionFailed'));
     } finally { setBusy(false); }
   };
 
@@ -81,7 +82,7 @@ export default function SourceTab() {
       clearInterval(pollRef.current);
       const deadline = Date.now() + (info.expiresIn || 300) * 1000;
       pollRef.current = setInterval(async () => {
-        if (Date.now() > deadline) { clearInterval(pollRef.current); setTidalAuth(null); toast.error(t('source.tidalExpired')); return; }
+        if (Date.now() > deadline) { clearInterval(pollRef.current); setTidalAuth(null); reportError(t('source.tidalExpired')); return; }
         try {
           const r = await api.tidalPoll(info.deviceCode);
           if (r.connected) {
@@ -94,7 +95,7 @@ export default function SourceTab() {
         } catch { /* keep polling until deadline */ }
       }, (info.interval || 2) * 1000);
     } catch (err) {
-      toast.error(err.message || t('source.tidalLoginFailed'));
+      reportError(err.message || t('source.tidalLoginFailed'));
     }
   };
 
@@ -106,7 +107,7 @@ export default function SourceTab() {
       const fn = searchFor === 'tidal' ? api.tidalSearch : api.qobuzSearch;
       setResults(await fn(query.trim()));
     } catch (err) {
-      toast.error(err.message || t('source.searchFailed'));
+      reportError(err.message || t('source.searchFailed'));
     } finally { setSearching(false); }
   };
 
@@ -118,7 +119,7 @@ export default function SourceTab() {
       setActiveTab('player');
       toast.success(t('source.playing'));
     } catch (err) {
-      toast.error(err.message || t('source.playbackFailed'));
+      reportError(err.message || t('source.playbackFailed'));
     }
   };
 

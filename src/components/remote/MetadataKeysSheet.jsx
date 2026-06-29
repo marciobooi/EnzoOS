@@ -4,6 +4,7 @@ import { ChevronLeft, KeyRound, ExternalLink, Eye, EyeOff } from 'lucide-react';
 import { Tk } from './shared';
 import { api } from '../../api';
 import { toast } from '../../lib/toast';
+import { reportError } from '../../lib/errors';
 import { useI18n } from '../../i18n';
 
 export default function MetadataKeysSheet({ onClose }) {
@@ -45,7 +46,7 @@ export default function MetadataKeysSheet({ onClose }) {
       toast.success(t('meta.saved'));
       onClose();
     } catch {
-      toast.error(t('meta.saveError'));
+      reportError(t('meta.saveError'));
     } finally { setSaving(false); }
   };
 

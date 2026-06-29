@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { toast } from '../lib/toast';
+import { reportError } from '../lib/errors';
 import { api } from '../api';
 import { useResonanceWS } from '../websocket';
 import { EQ_PRESETS } from '../components/EqualizerControl';
@@ -579,7 +580,7 @@ export default function Kiosk() {
       }
       await fetchFavorites();
     } catch (err) {
-      toast.error(`Favorite operation failed: ${err.message}`);
+      reportError(`Favorite operation failed: ${err.message}`);
     }
   };
 
@@ -596,9 +597,9 @@ export default function Kiosk() {
         country: s.country,
         tags: s.tags,
       }));
-      if (formatted.length === 0) toast.error('No stations found.');
+      if (formatted.length === 0) reportError('No stations found.');
       else setStationsList(formatted);
-    } catch { toast.error('Failed to scan stations.'); }
+    } catch { reportError('Failed to scan stations.'); }
     finally { setIsSearching(false); }
   };
 
@@ -609,7 +610,7 @@ export default function Kiosk() {
       // which broadcasts to all clients. Just update local source state — no WS send.
       if (source !== 'radio') setSource('radio');
     } catch (err) {
-      toast.error(`Failed to play radio: ${err.message}`);
+      reportError(`Failed to play radio: ${err.message}`);
     }
   };
 
@@ -823,7 +824,7 @@ export default function Kiosk() {
       await api.transferPlayback(token, targetId);
       setTimeout(fetchDevices, 500);
     } catch (err) {
-      toast.error(`Transfer error: ${err.message}`);
+      reportError(`Transfer error: ${err.message}`);
     }
   };
 
@@ -844,7 +845,7 @@ export default function Kiosk() {
           if (found) { setDevices(data.devices || []); onReady(found.id); return; }
         } catch {}
       }
-      toast.error('Resonance Connect did not come online. Check raspotify.');
+      reportError('Resonance Connect did not come online. Check raspotify.');
     } finally {
       raspotifyRestartInFlight.current = false;
     }
@@ -865,7 +866,7 @@ export default function Kiosk() {
       setIsSearchOpen(false);
       setTimeout(syncCurrentState, 800);
     } catch (err) {
-      toast.error(`Play error: ${err.message}`);
+      reportError(`Play error: ${err.message}`);
     }
   };
 
@@ -877,7 +878,7 @@ export default function Kiosk() {
       setIsSearchOpen(false);
       setTimeout(syncCurrentState, 800);
     } catch (err) {
-      toast.error(`Play error: ${err.message}`);
+      reportError(`Play error: ${err.message}`);
     }
   };
 
@@ -947,7 +948,7 @@ export default function Kiosk() {
           sendUpdate('BROADCAST_STATE', newState);
         }
       } catch (err) {
-        toast.error(`Local action failed: ${err.message}`);
+        reportError(`Local action failed: ${err.message}`);
       }
       return;
     }
@@ -965,7 +966,7 @@ export default function Kiosk() {
               // Transfer first so Spotify routes audio to our device, then play
               await api.transferPlayback(token, deviceId, true);
               setTimeout(syncCurrentState, 800);
-            } catch (err) { toast.error(`Action failed: ${err.message}`); }
+            } catch (err) { reportError(`Action failed: ${err.message}`); }
           });
           return;
         }
@@ -980,10 +981,10 @@ export default function Kiosk() {
     } catch (err) {
       // 404 on play = no active context yet; tell user to pick a track
       if (err.message?.includes('404') || err.message?.includes('Not Found') || err.message?.includes('No active')) {
-        toast.error('No track queued — pick a song in Spotify first.');
+        reportError('No track queued — pick a song in Spotify first.');
         syncCurrentState();
       } else {
-        toast.error(`Action failed: ${err.message}`);
+        reportError(`Action failed: ${err.message}`);
       }
     }
   };
@@ -994,7 +995,7 @@ export default function Kiosk() {
         await api.localNext();
         setTimeout(syncLocalState, 400);
       } catch (err) {
-        toast.error(`Local skip failed: ${err.message}`);
+        reportError(`Local skip failed: ${err.message}`);
       }
       return;
     }
@@ -1003,7 +1004,7 @@ export default function Kiosk() {
       await api.skipNext(token);
       setTimeout(syncCurrentState, 500);
     } catch (err) {
-      toast.error(`Skip next failed: ${err.message}`);
+      reportError(`Skip next failed: ${err.message}`);
     }
   };
 
@@ -1013,7 +1014,7 @@ export default function Kiosk() {
         await api.localPrevious();
         setTimeout(syncLocalState, 400);
       } catch (err) {
-        toast.error(`Local back failed: ${err.message}`);
+        reportError(`Local back failed: ${err.message}`);
       }
       return;
     }
@@ -1022,7 +1023,7 @@ export default function Kiosk() {
       await api.skipPrevious(token);
       setTimeout(syncCurrentState, 500);
     } catch (err) {
-      toast.error(`Skip back failed: ${err.message}`);
+      reportError(`Skip back failed: ${err.message}`);
     }
   };
 
@@ -1037,7 +1038,7 @@ export default function Kiosk() {
       setTimeout(syncCurrentState, 500);
     } catch (err) {
       setShuffleState(!nextShuffle);
-      toast.error(`Shuffle toggle failed: ${err.message}`);
+      reportError(`Shuffle toggle failed: ${err.message}`);
     }
   };
 
@@ -1057,7 +1058,7 @@ export default function Kiosk() {
       setTimeout(syncCurrentState, 500);
     } catch (err) {
       setRepeatState(repeatState);
-      toast.error(`Repeat toggle failed: ${err.message}`);
+      reportError(`Repeat toggle failed: ${err.message}`);
     }
   };
 

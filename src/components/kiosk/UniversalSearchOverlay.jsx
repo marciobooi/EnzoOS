@@ -3,7 +3,7 @@ import { Search, X, Disc3, Music2, Radio, Heart } from 'lucide-react';
 import { Kk } from './KioskContext';
 import { S } from '../../styles/stone';
 import { api } from '../../api';
-import { toast } from '../../lib/toast';
+import { reportError } from '../../lib/errors';
 
 const SOURCE_COLORS = {
   spotify: '#1ed760',
@@ -107,20 +107,20 @@ export default function UniversalSearchOverlay() {
 
   const playLocal = async (file) => {
     try { await api.clearQueue(); await api.addToQueue(file, true); handleToggleSource('local'); setIsSearchOpen(false); }
-    catch (e) { toast.error(e.message); }
+    catch (e) { reportError(e.message); }
   };
 
   const playRadio = async (station) => {
     try { await api.localPlayRadio(station.url_resolved || station.url, station.name, station.favicon); handleToggleSource('radio'); setIsSearchOpen(false); }
-    catch (e) { toast.error(e.message); }
+    catch (e) { reportError(e.message); }
   };
 
   const playTidal = async (track) => {
-    try { await api.tidalPlayTrack(track); setIsSearchOpen(false); } catch (e) { toast.error(e.message); }
+    try { await api.tidalPlayTrack(track); setIsSearchOpen(false); } catch (e) { reportError(e.message); }
   };
 
   const playQobuz = async (track) => {
-    try { await api.qobuzPlayTrack(track); setIsSearchOpen(false); } catch (e) { toast.error(e.message); }
+    try { await api.qobuzPlayTrack(track); setIsSearchOpen(false); } catch (e) { reportError(e.message); }
   };
 
   const flatResults = [

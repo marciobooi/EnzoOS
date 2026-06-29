@@ -5,6 +5,7 @@ import {
   RotateCcw, Download, FlipHorizontal, Scale, Sparkles,
 } from 'lucide-react';
 import { toast } from '../../lib/toast';
+import { reportError } from '../../lib/errors';
 import { Tk, Row, Section, SpotifyIcon } from './shared';
 import RemoteEqualizer from './RemoteEqualizer';
 import InstallGuide from './InstallGuide';
@@ -58,13 +59,13 @@ export default function SettingsTab() {
   const handleReplayGainChange = async (mode) => {
     setReplayGain(mode);
     try { await api.setReplayGain(mode); toast.success(`ReplayGain: ${mode}`); }
-    catch (e) { toast.error(e.message); }
+    catch (e) { reportError(e.message); }
   };
 
   const handleCrossfadeChange = async (secs) => {
     setCrossfade(secs);
     try { await api.setCrossfade(secs); }
-    catch (e) { toast.error(e.message); }
+    catch (e) { reportError(e.message); }
   };
 
   const balanceDebounce = useRef(null);
@@ -73,7 +74,7 @@ export default function SettingsTab() {
     clearTimeout(balanceDebounce.current);
     balanceDebounce.current = setTimeout(async () => {
       try { await api.setBalance(v); }
-      catch (e) { toast.error(e.message); }
+      catch (e) { reportError(e.message); }
     }, 400);
   };
 
@@ -83,7 +84,7 @@ export default function SettingsTab() {
     try {
       await api.setBitPerfect(next);
       toast.success(next ? 'Bit-perfect on — reboot to apply' : 'Fixed 48 kHz mode — reboot to apply');
-    } catch (e) { setBitPerfect(!next); toast.error(e.message); }
+    } catch (e) { setBitPerfect(!next); reportError(e.message); }
   };
 
   const handleAutoHeadroomToggle = async () => {
@@ -93,7 +94,7 @@ export default function SettingsTab() {
       const r = await api.setAutoHeadroom(next);
       setHeadroomDb(r.headroomDb || 0);
       toast.success(next ? 'Auto-headroom on' : 'Static preset headroom');
-    } catch (e) { setAutoHeadroom(!next); toast.error(e.message); }
+    } catch (e) { setAutoHeadroom(!next); reportError(e.message); }
   };
 
   const handleDsdBypassToggle = async () => {
@@ -102,19 +103,19 @@ export default function SettingsTab() {
     try {
       await api.setDsdBypass(next);
       toast.success(next ? 'DSD native bypass on' : 'DSD decoded to PCM');
-    } catch (e) { setDsdBypass(!next); toast.error(e.message); }
+    } catch (e) { setDsdBypass(!next); reportError(e.message); }
   };
 
   const handlePhaseChange = async (left, right) => {
     setPhaseLeft(left); setPhaseRight(right);
     try { await api.setPhase(left, right); toast.success(t('settings.phaseUpdated')); }
-    catch (e) { toast.error(e.message); }
+    catch (e) { reportError(e.message); }
   };
 
   const handleWifiScan = async () => {
     setWifiScanning(true);
     try { const d = await api.scanWifi(); setWifiNetworks(d.networks || []); }
-    catch (e) { toast.error(e.message); }
+    catch (e) { reportError(e.message); }
     finally { setWifiScanning(false); }
   };
 
@@ -122,13 +123,13 @@ export default function SettingsTab() {
     if (!wifiSsid) return;
     setWifiConnecting(true);
     try { await api.connectWifi(wifiSsid, wifiPassword); toast.success(`Connected to ${wifiSsid}`); setShowWifi(false); }
-    catch (e) { toast.error(e.message); }
+    catch (e) { reportError(e.message); }
     finally { setWifiConnecting(false); }
   };
 
   const handleLoadStorage = async () => {
     try { setStorage(await api.getStorage()); setShowStorage(true); }
-    catch (e) { toast.error(e.message); }
+    catch (e) { reportError(e.message); }
   };
 
   const withConfirm = (key, action) => () => {
@@ -353,7 +354,7 @@ export default function SettingsTab() {
               icon={<LogOut className="h-4 w-4" style={{ color: C.error }} />}
               onPress={withConfirm('spotify-disconnect', async () => {
                 try { await fetch('/auth/spotify/logout', { method: 'POST' }); toast.success(t('settings.disconnected')); }
-                catch { toast.error(t('settings.failed')); }
+                catch { reportError(t('settings.failed')); }
               })} />
           </>
         )}
@@ -493,7 +494,7 @@ export default function SettingsTab() {
           icon={<RotateCcw className="h-4 w-4" style={{ color: C.error }} />}
           onPress={withConfirm('factory-reset', async () => {
             try { await api.factoryReset(); toast.success(t('settings.settingsReset')); }
-            catch (e) { toast.error(e.message); }
+            catch (e) { reportError(e.message); }
           })} />
         <Row label={confirmPending === 'reboot' ? 'Tap again to reboot' : 'Reboot Kiosk'}
           icon={<RefreshCw className="h-4 w-4" style={{ color: confirmPending === 'reboot' ? '#f59e0b' : C.text4 }} />}

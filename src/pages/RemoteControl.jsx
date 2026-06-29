@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { Waves, Smartphone, X } from 'lucide-react';
 import { toast } from '../lib/toast';
+import { reportError } from '../lib/errors';
 import { api } from '../api';
 import { useResonanceWS } from '../websocket';
 import { EQ_PRESETS } from '../components/EqualizerControl';
@@ -385,14 +386,14 @@ export default function RemoteControl() {
   const handleLibraryBack      = () => { if (libraryView === 'tracks') { setLibraryView('albums'); fetchLibraryAlbums(selectedArtist); } else { setLibraryView('artists'); setSelectedArtist(null); fetchLibraryArtists(); } };
   const handleLibraryPlayTrack = async filePath => {
     try { wakeKiosk(); await api.clearQueue(); await api.addToQueue(filePath, true); handleToggleSource('local'); setActiveTab('player'); toast.success('Playing'); }
-    catch (e) { toast.error(e.message); }
+    catch (e) { reportError(e.message); }
   };
 
   // ── system handlers ───────────────────────────────────────────────────────
-  const handleRestartService  = async name => { setServiceLoading(p => ({ ...p, [name]: true })); try { await api.restartService(name); toast.success(`${name} restarting…`); setTimeout(fetchServices, 3000); } catch (e) { toast.error(e.message); } setServiceLoading(p => ({ ...p, [name]: false })); };
-  const handleReboot          = async () => { try { await api.rebootSystem(); toast.success('Rebooting kiosk…'); } catch (e) { toast.error(e.message); } };
-  const handleShutdown        = async () => { try { await api.shutdownSystem(); toast.success('Shutting down…'); } catch (e) { toast.error(e.message); } };
-  const handleTransferPlayback = async deviceId => { if (!token) return; try { await api.transferPlayback(token, deviceId); toast.success('Output transferred'); setTimeout(fetchDevices, 800); requestWSStateSync(); } catch (e) { toast.error(e.message); } };
+  const handleRestartService  = async name => { setServiceLoading(p => ({ ...p, [name]: true })); try { await api.restartService(name); toast.success(`${name} restarting…`); setTimeout(fetchServices, 3000); } catch (e) { reportError(e.message); } setServiceLoading(p => ({ ...p, [name]: false })); };
+  const handleReboot          = async () => { try { await api.rebootSystem(); toast.success('Rebooting kiosk…'); } catch (e) { reportError(e.message); } };
+  const handleShutdown        = async () => { try { await api.shutdownSystem(); toast.success('Shutting down…'); } catch (e) { reportError(e.message); } };
+  const handleTransferPlayback = async deviceId => { if (!token) return; try { await api.transferPlayback(token, deviceId); toast.success('Output transferred'); setTimeout(fetchDevices, 800); requestWSStateSync(); } catch (e) { reportError(e.message); } };
 
   // ── sleep timer ───────────────────────────────────────────────────────────
   const handleSetSleepTimer = minutes => { setSleepMinutes(minutes); setSleepRemaining(minutes * 60); if (!minutes) { setSleepRemaining(0); toast.success('Sleep timer off'); } else toast.success(`Sleep in ${minutes < 60 ? `${minutes}m` : `${minutes / 60}h`}`); };
@@ -403,11 +404,11 @@ export default function RemoteControl() {
 
   const handlePlayPause = async () => {
     if (!spotify) {
-      try { if (playbackState ? playbackState.paused : true) { wakeKiosk(); await api.localPlay(); setPlaybackState(p => ({ ...p, paused: false })); } else { await api.localPause(); setPlaybackState(p => ({ ...p, paused: true })); } } catch (e) { toast.error(e.message); }
+      try { if (playbackState ? playbackState.paused : true) { wakeKiosk(); await api.localPlay(); setPlaybackState(p => ({ ...p, paused: false })); } else { await api.localPause(); setPlaybackState(p => ({ ...p, paused: true })); } } catch (e) { reportError(e.message); }
       return;
     }
     if (!token) return;
-    try { if (isPlaying) await api.pause(token); else { wakeKiosk(); await api.play(token, activeDevice?.id || resonanceDevice?.id || null); } requestWSStateSync(); } catch (e) { toast.error(e.message); }
+    try { if (isPlaying) await api.pause(token); else { wakeKiosk(); await api.play(token, activeDevice?.id || resonanceDevice?.id || null); } requestWSStateSync(); } catch (e) { reportError(e.message); }
   };
   const handleNext     = async () => { if (!spotify) { try { await api.localNext(); } catch {} return; } if (!token) return; try { await api.skipNext(token); requestWSStateSync(); } catch {} };
   const handlePrevious = async () => { if (!spotify) { try { await api.localPrevious(); } catch {} return; } if (!token) return; try { await api.skipPrevious(token); requestWSStateSync(); } catch {} };
@@ -438,7 +439,7 @@ export default function RemoteControl() {
   };
   const handleToggleFavRadio = async station => {
     const isFav = favoriteStations.some(s => s.url === station.url);
-    try { if (isFav) await api.deleteFavoriteRadio(station.url); else await api.addFavoriteRadio({ name: station.name, url: station.url, favicon: station.favicon, country: station.country, tags: station.tags }); fetchFavorites(); } catch (e) { toast.error(e.message); }
+    try { if (isFav) await api.deleteFavoriteRadio(station.url); else await api.addFavoriteRadio({ name: station.name, url: station.url, favicon: station.favicon, country: station.country, tags: station.tags }); fetchFavorites(); } catch (e) { reportError(e.message); }
   };
   const handleToggleFavorite = async ({ source: src, uri, title, artist, album, cover }) => {
     const isFav = favorites.some(f => f.source === src && f.uri === uri);
@@ -451,15 +452,15 @@ export default function RemoteControl() {
         setFavorites(prev => [...prev, added]);
         toast.success('Added to favorites');
       }
-    } catch (e) { toast.error(e.message); }
+    } catch (e) { reportError(e.message); }
   };
   const handleRadioSearch = async () => {
     const q = radioSearch.trim(); if (!q) { setStationsList(favoriteStations); return; }
     setIsSearching(true);
-    try { const r = await fetch(`/api/player/radio-search?q=${encodeURIComponent(q)}&limit=25`); const d = await r.json(); const f = d.map(s => ({ name: s.name.length > 26 ? s.name.substring(0, 24) + '…' : s.name, url: s.url_resolved || s.url, favicon: s.favicon, country: s.country, tags: s.tags })); if (!f.length) toast.error('No stations found.'); else setStationsList(f); } catch { toast.error('Search failed.'); } finally { setIsSearching(false); }
+    try { const r = await fetch(`/api/player/radio-search?q=${encodeURIComponent(q)}&limit=25`); const d = await r.json(); const f = d.map(s => ({ name: s.name.length > 26 ? s.name.substring(0, 24) + '…' : s.name, url: s.url_resolved || s.url, favicon: s.favicon, country: s.country, tags: s.tags })); if (!f.length) reportError('No stations found.'); else setStationsList(f); } catch { reportError('Search failed.'); } finally { setIsSearching(false); }
   };
-  const handlePlayTrack   = async uri => { try { await api.play(token, activeDevice?.id || resonanceDevice?.id || null, null, [uri]); setActiveTab('player'); setTimeout(() => { localSync(); requestWSStateSync(); }, 800); } catch (e) { toast.error(e.message); } };
-  const handlePlayContext = async uri => { try { await api.play(token, activeDevice?.id || resonanceDevice?.id || null, uri); setActiveTab('player'); setTimeout(() => { localSync(); requestWSStateSync(); }, 800); } catch (e) { toast.error(e.message); } };
+  const handlePlayTrack   = async uri => { try { await api.play(token, activeDevice?.id || resonanceDevice?.id || null, null, [uri]); setActiveTab('player'); setTimeout(() => { localSync(); requestWSStateSync(); }, 800); } catch (e) { reportError(e.message); } };
+  const handlePlayContext = async uri => { try { await api.play(token, activeDevice?.id || resonanceDevice?.id || null, uri); setActiveTab('player'); setTimeout(() => { localSync(); requestWSStateSync(); }, 800); } catch (e) { reportError(e.message); } };
   const handleDeactivateDsp = async () => { try { const c = await api.getDspCalibration() || {}; c[0] = 'eq'; await api.saveDspCalibration(c); setDspActive(false); } catch {} };
 
   // ── context value ─────────────────────────────────────────────────────────

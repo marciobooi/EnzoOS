@@ -2,7 +2,7 @@ import React, { useContext, useEffect, useState } from 'react';
 import { X, Music, ListMusic, Trash2 } from 'lucide-react';
 import { Tk } from './shared';
 import { api } from '../../api';
-import { toast } from '../../lib/toast';
+import { reportError } from '../../lib/errors';
 import { useI18n } from '../../i18n';
 
 export default function QueuePanel({ queue, queueLoading, onClose }) {
@@ -27,7 +27,7 @@ export default function QueuePanel({ queue, queueLoading, onClose }) {
     try {
       await api.removeFromQueue(id);
       setLocalQueue(prev => prev.filter(t => t.id !== id));
-    } catch (e) { toast.error(e.message); }
+    } catch (e) { reportError(e.message); }
   };
 
   const panelBg = darkMode
