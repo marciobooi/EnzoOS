@@ -61,16 +61,16 @@ export default function SourceTab() {
 
   const submitQobuz = async e => {
     e.preventDefault();
-    if (!username.trim() || !password.trim()) { toast.error('Enter username and password'); return; }
+    if (!username.trim() || !password.trim()) { toast.error(t('source.enterCreds')); return; }
     setBusy(true);
     try {
       await api.qobuzAuth(username.trim(), password);
       setConnected(c => ({ ...c, qobuz: true }));
-      toast.success('Qobuz connected');
+      toast.success(t('source.qobuzConnected'));
       setQobuzModal(false);
       openSearch('qobuz');
     } catch (err) {
-      toast.error(err.message || 'Connection failed');
+      toast.error(err.message || t('source.connectionFailed'));
     } finally { setBusy(false); }
   };
 
@@ -81,20 +81,20 @@ export default function SourceTab() {
       clearInterval(pollRef.current);
       const deadline = Date.now() + (info.expiresIn || 300) * 1000;
       pollRef.current = setInterval(async () => {
-        if (Date.now() > deadline) { clearInterval(pollRef.current); setTidalAuth(null); toast.error('Tidal login expired'); return; }
+        if (Date.now() > deadline) { clearInterval(pollRef.current); setTidalAuth(null); toast.error(t('source.tidalExpired')); return; }
         try {
           const r = await api.tidalPoll(info.deviceCode);
           if (r.connected) {
             clearInterval(pollRef.current);
             setConnected(c => ({ ...c, tidal: true }));
             setTidalAuth(null);
-            toast.success('Tidal connected');
+            toast.success(t('source.tidalConnected'));
             openSearch('tidal');
           }
         } catch { /* keep polling until deadline */ }
       }, (info.interval || 2) * 1000);
     } catch (err) {
-      toast.error(err.message || 'Tidal login failed');
+      toast.error(err.message || t('source.tidalLoginFailed'));
     }
   };
 
@@ -106,7 +106,7 @@ export default function SourceTab() {
       const fn = searchFor === 'tidal' ? api.tidalSearch : api.qobuzSearch;
       setResults(await fn(query.trim()));
     } catch (err) {
-      toast.error(err.message || 'Search failed');
+      toast.error(err.message || t('source.searchFailed'));
     } finally { setSearching(false); }
   };
 
@@ -118,7 +118,7 @@ export default function SourceTab() {
       setActiveTab('player');
       toast.success(t('source.playing'));
     } catch (err) {
-      toast.error(err.message || 'Playback failed');
+      toast.error(err.message || t('source.playbackFailed'));
     }
   };
 

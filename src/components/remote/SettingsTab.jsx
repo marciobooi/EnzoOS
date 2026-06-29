@@ -1,8 +1,8 @@
-import React, { useContext, useState, useRef, useEffect } from 'react';
+import { useContext, useState, useRef, useEffect } from 'react';
 import {
   Sliders, Cpu, Timer, Palette, Power, LogOut, Laptop,
   Music, RefreshCw, Smartphone, Disc3, Wifi, HardDrive,
-  RotateCcw, Download, Upload, FlipHorizontal, Scale, Sparkles,
+  RotateCcw, Download, FlipHorizontal, Scale, Sparkles,
 } from 'lucide-react';
 import { toast } from '../../lib/toast';
 import { Tk, Row, Section, SpotifyIcon } from './shared';
@@ -107,7 +107,7 @@ export default function SettingsTab() {
 
   const handlePhaseChange = async (left, right) => {
     setPhaseLeft(left); setPhaseRight(right);
-    try { await api.setPhase(left, right); toast.success('Phase updated'); }
+    try { await api.setPhase(left, right); toast.success(t('settings.phaseUpdated')); }
     catch (e) { toast.error(e.message); }
   };
 
@@ -144,7 +144,7 @@ export default function SettingsTab() {
   };
 
   const {
-    C, card, cardWhite, btn, darkMode,
+    C, card, cardWhite, darkMode,
     eqPreset, eqBands, eqSaturation, eqNoiseFloor, eqPreAmp,
     dspActive, showEq, setShowEq,
     setIsDspWizardOpen, setIsThemeSettingsOpen,
@@ -154,8 +154,6 @@ export default function SettingsTab() {
     handleEqPresetChange, handleBandChange,
     handleSaturationChange, handleNoiseFloorChange, handlePreAmpChange,
     handleDeactivateDsp, handleSetSleepTimer,
-    handleThemeColorChange, handleActiveThemeChange,
-    handleBrightnessChange, handleVisualizerModeChange,
     handleToggleStandby, handleRestartService, handleReboot, handleShutdown,
     triggerOtaUpdate, checkUpdates,
     handleTransferPlayback, setIsAuthenticated, setActiveTab,
@@ -168,7 +166,7 @@ export default function SettingsTab() {
       {/* header */}
       <div className="px-5 mb-5">
         <p className="text-[11px] font-semibold uppercase tracking-widest mb-1"
-          style={{ color: C.champagne, fontFamily: C.fontLabel }}>Configuration</p>
+          style={{ color: C.champagne, fontFamily: C.fontLabel }}>{t('settings.configuration')}</p>
         <h2 className="text-[24px] font-medium" style={{ color: C.text1, letterSpacing: '-0.01em' }}>{t('nav.settings')}</h2>
       </div>
 
@@ -185,7 +183,7 @@ export default function SettingsTab() {
       {/* signal monitor */}
       <div className="mx-4 mb-4 rounded-xl overflow-hidden relative" style={{ ...cardWhite, height: 68 }}>
         <span className="absolute top-3 left-4 text-[10px] font-semibold uppercase tracking-widest"
-          style={{ color: C.text3, fontFamily: C.fontLabel }}>Signal Monitor</span>
+          style={{ color: C.text3, fontFamily: C.fontLabel }}>{t('settings.signalMonitor')}</span>
         <div className="absolute inset-x-4 bottom-3 flex items-end gap-px" style={{ height: 28 }}>
           {Array.from({ length: 24 }).map((_, i) => {
             const h = 30 + Math.sin(i * 0.7) * 20 + Math.cos(i * 1.3) * 15;
@@ -212,9 +210,9 @@ export default function SettingsTab() {
             dspActive={dspActive} onDeactivateDsp={handleDeactivateDsp}
           />
         )}
-        <Row label="Room Calibration"
+        <Row label={t('settings.roomCalibration')}
           icon={<Cpu className="h-4 w-4" style={{ color: '#f59e0b' }} />}
-          value={dspActive ? 'Active' : 'Off'}
+          value={dspActive ? t('common.on') : t('common.off')}
           onPress={() => setIsDspWizardOpen(true)} />
         <Row
           label={sleepRemaining > 0
@@ -238,7 +236,7 @@ export default function SettingsTab() {
             ))}
           </div>
         )}
-        <Row label="ReplayGain"
+        <Row label={t('settings.replayGain')}
           icon={<Scale className="h-4 w-4" style={{ color: C.text4 }} />}
           value={replayGain}
           chevron={false}
@@ -248,7 +246,7 @@ export default function SettingsTab() {
           }} />
         <Row label={`Crossfade · ${crossfade}s`}
           icon={<RefreshCw className="h-4 w-4" style={{ color: C.text4 }} />}
-          value={crossfade > 0 ? `${crossfade}s` : 'Off'}
+          value={crossfade > 0 ? `${crossfade}s` : t('common.off')}
           chevron={false}
           onPress={() => setShowCrossfade(v => !v)} />
         {showCrossfade && (
@@ -260,12 +258,12 @@ export default function SettingsTab() {
                 style={crossfade === s
                   ? { background: C.champagne, color: '#1a1c1c', fontFamily: C.fontLabel }
                   : { ...card, color: C.text4, fontFamily: C.fontLabel }}>
-                {s === 0 ? 'Off' : `${s}s`}
+                {s === 0 ? t('common.off') : `${s}s`}
               </button>
             ))}
           </div>
         )}
-        <Row label={`Balance · ${balance > 0 ? `R +${balance}` : balance < 0 ? `L +${Math.abs(balance)}` : 'Centre'}`}
+        <Row label={`Balance · ${balance > 0 ? `R +${balance}` : balance < 0 ? `L +${Math.abs(balance)}` : t('settings.centre')}`}
           icon={<FlipHorizontal className="h-4 w-4" style={{ color: Math.abs(balance) > 0 ? C.champagne : C.text4 }} />}
           value={`${balance > 0 ? '+' : ''}${balance} dB`}
           chevron={false}
@@ -276,13 +274,13 @@ export default function SettingsTab() {
               onChange={e => handleBalanceChange(parseFloat(e.target.value))}
               className="w-full" />
             <div className="flex justify-between text-[11px] mt-1" style={{ color: C.text3, fontFamily: C.fontLabel }}>
-              <span>L</span><span>Centre</span><span>R</span>
+              <span>L</span><span>{t('settings.centre')}</span><span>R</span>
             </div>
           </div>
         )}
-        <Row label="Phase Inversion"
+        <Row label={t('settings.phaseInversion')}
           icon={<RotateCcw className="h-4 w-4" style={{ color: (phaseLeft || phaseRight) ? C.champagne : C.text4 }} />}
-          value={phaseLeft && phaseRight ? 'L+R' : phaseLeft ? 'L' : phaseRight ? 'R' : 'Off'}
+          value={phaseLeft && phaseRight ? 'L+R' : phaseLeft ? 'L' : phaseRight ? 'R' : t('common.off')}
           chevron={false}
           onPress={() => {
             if (!phaseLeft && !phaseRight) handlePhaseChange(true, false);
@@ -290,17 +288,17 @@ export default function SettingsTab() {
             else if (!phaseLeft && phaseRight) handlePhaseChange(true, true);
             else handlePhaseChange(false, false);
           }} />
-        <Row label="Bit-Perfect (rate-following)"
+        <Row label={t('settings.bitPerfect')}
           icon={<Disc3 className="h-4 w-4" style={{ color: bitPerfect ? C.champagne : C.text4 }} />}
-          value={bitPerfect ? 'On' : 'Fixed 48k'}
+          value={bitPerfect ? t('common.on') : 'Fixed 48k'}
           chevron={false}
           onPress={handleBitPerfectToggle} />
-        <Row label="DSD Native Bypass"
+        <Row label={t('settings.dsdBypass')}
           icon={<Disc3 className="h-4 w-4" style={{ color: dsdBypass ? C.champagne : C.text4 }} />}
           value={dsdBypass ? 'Native' : 'PCM'}
           chevron={false}
           onPress={handleDsdBypassToggle} />
-        <Row label="Auto-Headroom (peak attenuation)"
+        <Row label={t('settings.autoHeadroom')}
           icon={<Scale className="h-4 w-4" style={{ color: autoHeadroom ? C.champagne : C.text4 }} />}
           value={autoHeadroom ? `−${headroomDb} dB` : 'Static'}
           chevron={false}
@@ -308,26 +306,26 @@ export default function SettingsTab() {
       </Section>
 
       {/* display */}
-      <Section title="Display">
-        <Row label="Theme & Appearance"
+      <Section title={t('settings.display')}>
+        <Row label={t('settings.themeAppearance')}
           icon={<Palette className="h-4 w-4" style={{ color: '#8b5cf6' }} />}
           onPress={() => setIsThemeSettingsOpen(true)} />
-        <Row label="Kiosk Standby"
+        <Row label={t('settings.kioskStandby')}
           icon={<Power className="h-4 w-4" style={{ color: standby ? C.error : C.text4 }} />}
-          value={standby ? 'On' : 'Off'} chevron={false}
+          value={standby ? t('common.on') : t('common.off')} chevron={false}
           onPress={() => handleToggleStandby(!standby)} />
       </Section>
 
       {/* album info */}
-      <Section title="Album Info">
-        <Row label="Metadata Keys" sub="Last.fm · TheAudioDB · Discogs"
+      <Section title={t('meta.albumInfo')}>
+        <Row label={t('settings.metadataKeys')} sub="Last.fm · TheAudioDB · Discogs"
           icon={<Disc3 className="h-4 w-4" style={{ color: C.champagne }} />}
           onPress={() => setShowKeys(true)} />
       </Section>
 
       {/* remote app */}
-      <Section title="Remote App">
-        <Row label="Add to Home Screen" sub="Install as a full-screen app"
+      <Section title={t('settings.remoteApp')}>
+        <Row label={t('settings.addToHome')} sub={t('settings.addToHomeSub')}
           icon={<Smartphone className="h-4 w-4" style={{ color: C.champagne }} />}
           onPress={() => setShowInstall(true)} />
       </Section>
@@ -354,8 +352,8 @@ export default function SettingsTab() {
             <Row label={confirmPending === 'spotify-disconnect' ? t('settings.confirm') : t('settings.disconnect')} destructive
               icon={<LogOut className="h-4 w-4" style={{ color: C.error }} />}
               onPress={withConfirm('spotify-disconnect', async () => {
-                try { await fetch('/auth/spotify/logout', { method: 'POST' }); toast.success('Disconnected'); }
-                catch { toast.error('Failed'); }
+                try { await fetch('/auth/spotify/logout', { method: 'POST' }); toast.success(t('settings.disconnected')); }
+                catch { toast.error(t('settings.failed')); }
               })} />
           </>
         )}
@@ -494,7 +492,7 @@ export default function SettingsTab() {
         <Row label={confirmPending === 'factory-reset' ? 'Tap again to reset everything' : t('settings.factoryReset')} destructive
           icon={<RotateCcw className="h-4 w-4" style={{ color: C.error }} />}
           onPress={withConfirm('factory-reset', async () => {
-            try { await api.factoryReset(); toast.success('Settings reset. Restart to apply.'); }
+            try { await api.factoryReset(); toast.success(t('settings.settingsReset')); }
             catch (e) { toast.error(e.message); }
           })} />
         <Row label={confirmPending === 'reboot' ? 'Tap again to reboot' : 'Reboot Kiosk'}
