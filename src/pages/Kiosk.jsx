@@ -92,6 +92,14 @@ export default function Kiosk() {
     });
   };
 
+  // The first-boot welcome wizard (App-level, no WS context) asks for the accent
+  // colour via this event; apply it through the normal theme path so it persists.
+  useEffect(() => {
+    const onSetTheme = (e) => { if (e.detail) handleThemeColorChange(e.detail); };
+    window.addEventListener('resonance:set-theme', onSetTheme);
+    return () => window.removeEventListener('resonance:set-theme', onSetTheme);
+  }, [activeTheme, brightness, visualizerMode]);
+
   const handleActiveThemeChange = (newTheme) => {
     setActiveTheme(newTheme);
     localStorage.setItem('resonance_theme_active', newTheme);

@@ -65,6 +65,10 @@ export default {
       pureHint: 'Flat, bit-perfect — no processing',
       roomTip: 'Tip: fine-tune room correction with the guided 8-question wizard in Settings → Acoustic.',
     },
+    skin: {
+      title: 'Make it yours',
+      body: 'Pick an accent colour for your system. You can fine-tune the full theme any time in Settings → Display.',
+    },
     phone: {
       title: 'Control from your phone',
       bodyUrl: 'Open this address on any phone or tablet on your network, or scan the QR code from the kiosk’s Remote card:',

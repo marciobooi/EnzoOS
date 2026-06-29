@@ -1,12 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
 import {
   Waves, Music2, Smartphone, Check, ChevronRight, ChevronLeft, Sparkles,
-  Disc3, Loader2, ExternalLink, Sliders, SlidersHorizontal, Zap,
+  Disc3, Loader2, ExternalLink, Sliders, SlidersHorizontal, Zap, Palette,
 } from 'lucide-react';
 import { S, cardShadow } from '../styles/stone';
 import { api } from '../api';
 import { useI18n } from '../i18n';
 import LanguageChips from '../i18n/LanguageChips';
+import { THEME_COLORS } from './ThemeSettingsControl';
 
 // First-boot welcome / setup wizard. Fully self-contained: it manages its own
 // step state and persists completion to the DB (onboarding_complete) before
@@ -40,6 +41,19 @@ export default function WelcomeWizard({ onClose }) {
   // 'eq' = Manual Equalizer · 'dsp' = Acoustic Room Correction · 'pure' = Pure Direct
   const [dspMode, setDspMode] = useState('eq');
   const [dspBusy, setDspBusy] = useState(null); // id being applied
+
+  // ── Accent colour / skin ────────────────────────────────────────────────────
+  const [themeColor, setThemeColor] = useState(() => {
+    try { return localStorage.getItem('resonance_theme') || 'amber'; } catch { return 'amber'; }
+  });
+  // Apply an accent colour: persist locally + ask the live page (kiosk/remote) to
+  // adopt and persist it through its existing theme path. Decoupled via an event
+  // so the wizard needs no WS/controller context.
+  const pickTheme = (name) => {
+    setThemeColor(name);
+    try { localStorage.setItem('resonance_theme', name); } catch { /* ignore */ }
+    window.dispatchEvent(new CustomEvent('resonance:set-theme', { detail: name }));
+  };
 
   const spotifyPoll = useRef(null);
   const tidalPoll = useRef(null);
@@ -179,6 +193,12 @@ export default function WelcomeWizard({ onClose }) {
       title: t('wizard.sound.title'),
       body: t('wizard.sound.body'),
       dsp: true,
+    },
+    {
+      icon: <Palette className="h-8 w-8" />,
+      title: t('wizard.skin.title'),
+      body: t('wizard.skin.body'),
+      skin: true,
     },
     {
       icon: <Smartphone className="h-8 w-8" />,
@@ -369,6 +389,31 @@ export default function WelcomeWizard({ onClose }) {
                   {t('wizard.sound.roomTip')}
                 </p>
               )}
+            </div>
+          )}
+
+          {/* Make-it-yours (accent colour / skin) step */}
+          {s.skin && (
+            <div className="mt-5 flex flex-wrap gap-3">
+              {THEME_COLORS.map((c) => {
+                const on = themeColor === c.name;
+                return (
+                  <button key={c.name} onClick={() => pickTheme(c.name)}
+                    className="flex flex-col items-center gap-1.5 active:scale-95 transition-all cursor-pointer"
+                    style={{ width: 72 }}>
+                    <span className="rounded-full flex items-center justify-center"
+                      style={{
+                        width: 48, height: 48, background: c.value,
+                        boxShadow: on ? `0 0 0 3px ${S.bg}, 0 0 0 5px ${c.value}` : 'none',
+                        border: `1px solid ${S.surfaceLo}`,
+                      }}>
+                      {on && <Check className="h-5 w-5" style={{ color: '#fff' }} />}
+                    </span>
+                    <span className="text-[10px] font-semibold text-center leading-tight"
+                      style={{ color: S.accent, opacity: on ? 1 : 0.6 }}>{c.label}</span>
+                  </button>
+                );
+              })}
             </div>
           )}
         </div>

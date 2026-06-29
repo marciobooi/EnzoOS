@@ -63,6 +63,10 @@ export default {
       pureHint: 'Plano, bit-perfect — sem processamento',
       roomTip: 'Dica: afine a correção de sala com o assistente guiado de 8 perguntas em Definições → Acústica.',
     },
+    skin: {
+      title: 'Personalize',
+      body: 'Escolha uma cor de destaque para o seu sistema. Pode afinar o tema completo a qualquer momento em Definições → Ecrã.',
+    },
     phone: {
       title: 'Controle pelo seu telemóvel',
       bodyUrl: 'Abra este endereço em qualquer telemóvel ou tablet na sua rede, ou leia o código QR no cartão Remoto do quiosque:',

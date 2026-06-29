@@ -8,6 +8,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Central error handling** (`server/lib/errors.js`, `src/lib/errors.js`) — a
+  shared backend `AppError` + factories, validation helpers, `sendError()` and an
+  Express `errorHandler` middleware give every API error a consistent
+  `{ error, code, details? }` shape (5xx masked). Every scattered
+  `res.status().json({ error })` across the backend now routes through it. On the
+  frontend, `reportError()`/`getErrorMessage()`/`toApiError()` centralize toast +
+  logging; all ~50 `toast.error` call sites were migrated.
+- **Welcome wizard accent-colour step** — a "Make it yours" step lets first-boot
+  users pick a system accent colour (live preview, persisted through the normal
+  theme path via a `resonance:set-theme` event).
 - **Internationalization (i18n)** — dependency-free locale system
   (`src/i18n/`) with English and Portuguese, easily extensible (add a
   `locales/xx.js` + registry entry). The chosen language is persisted in SQLite
