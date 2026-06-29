@@ -802,6 +802,7 @@ div[data-theme="ruby"] *::selection {
 @import "./minimalist.css";
 @import "./origami.css";
 @import "./sterling.css";
+@import "./brutalist.css";
 
 /* Optimize touch interaction latency and disable double-tap zooming on kiosk/mobile */
 button, 

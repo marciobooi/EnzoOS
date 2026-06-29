@@ -17,6 +17,7 @@ export const SCREEN_THEMES = [
   { id: 'minimalist',  name: 'Minimalist',        desc: 'Dynamic 2-column album color'   },
   { id: 'origami',     name: 'Origami',           desc: 'Kindle paper & ink luxury'              },
   { id: 'sterling',    name: 'Sterling',          desc: 'Brushed-silver hi-fi instrument'        },
+  { id: 'brutalist',   name: 'Brutalist',         desc: 'Raw concrete & exposed steel'           },
 ];
 
 export default function ThemeSettingsControl({

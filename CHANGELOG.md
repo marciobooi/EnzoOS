@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **New kiosk skin: Brutalist** (`src/brutalist.css`) — raw concrete & exposed
+  steel. Stencilled monospace (Space/JetBrains Mono), zero radii, hard offset
+  shadows (no blur), 2–3px structural borders, hazard-tape album corner,
+  registration ticks and a stencilled rack label. The user's accent colour
+  drives the single live hue. Registered in `SCREEN_THEMES`, so it appears in
+  the kiosk + remote theme pickers and the welcome-wizard skin step.
 - **Central error handling** (`server/lib/errors.js`, `src/lib/errors.js`) — a
   shared backend `AppError` + factories, validation helpers, `sendError()` and an
   Express `errorHandler` middleware give every API error a consistent

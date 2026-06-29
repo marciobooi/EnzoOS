@@ -1,0 +1,295 @@
+/* ==============================================================================
+   Brutalist — Raw Concrete & Exposed Steel
+
+   A studio-rack control surface poured in concrete. Nothing is decorated; every
+   element states its function in stencilled monospace. Hard offset shadows (no
+   blur), zero radii, 2–3px structural borders, hazard-tape accents, registration
+   marks at the corners. The user's accent colour drives the single "live" hue —
+   everything else is ink, concrete and steel.
+
+   Design pillars:
+   1. Concrete    — layered grey noise, faint structural grid, board-formed slab.
+   2. Stencil     — Space Mono / JetBrains Mono, UPPERCASE, wide tracking.
+   3. Hard shadow — solid offset blocks, never soft blur. Objects sit ON the panel.
+   4. Honest grid — exposed hairlines, bordered cells, corner ticks.
+   5. One signal  — the accent colour is the only chroma; reserve it for state.
+   ============================================================================= */
+
+div[data-active-theme="brutalist"] {
+  /* concrete + steel tones */
+  --con-0:    #0c0c0d;
+  --con-1:    #141416;
+  --con-2:    #1c1c1f;
+  --con-3:    #2a2a2e;
+  --steel:    #3a3a40;
+  --ink:      #ECEAE3;
+  --ink-2:    rgba(236, 234, 227, 0.62);
+  --ink-3:    rgba(236, 234, 227, 0.34);
+  --hair:     rgba(236, 234, 227, 0.14);
+  --hair-2:   rgba(236, 234, 227, 0.26);
+  --warn:     #ff3b30;
+
+  /* accent follows the user's chosen colour, with safe fallbacks */
+  --acc:      var(--theme-color, #ffb300);
+  --acc-dim:  var(--theme-color-dim, rgba(255,179,0,0.16));
+
+  --color-active: var(--ink);
+  --color-faded:  var(--ink-3);
+
+  font-family: 'Space Mono', 'JetBrains Mono', ui-monospace, monospace !important;
+  color: var(--ink) !important;
+
+  /* board-formed concrete: vertical pour lines + dark vignette */
+  background:
+    repeating-linear-gradient(90deg, rgba(0,0,0,0.18) 0 1px, transparent 1px 88px),
+    radial-gradient(ellipse 90% 60% at 50% -10%, rgba(255,255,255,0.04) 0%, transparent 55%),
+    linear-gradient(180deg, var(--con-1) 0%, var(--con-0) 100%) !important;
+}
+
+/* concrete grain over the whole page */
+div[data-active-theme="brutalist"]::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='400'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size: 200px 200px;
+  mix-blend-mode: overlay;
+  opacity: 0.07;
+}
+
+/* kill LED / glow / glass carry-overs */
+div[data-active-theme="brutalist"] .ambient-orb,
+div[data-active-theme="brutalist"] .dot-matrix-grid,
+div[data-active-theme="brutalist"] .crt-scanlines {
+  display: none !important;
+}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━ CONCRETE SLAB (chassis) ━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+div[data-active-theme="brutalist"] .music-player-container {
+  background:
+    linear-gradient(180deg, var(--con-3) 0%, var(--con-2) 4%, var(--con-1) 100%) !important;
+  border: 2px solid #000 !important;
+  border-top-color: var(--steel) !important;
+  border-radius: 0 !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.06),
+    inset 0 0 0 1px rgba(0,0,0,0.6),
+    10px 10px 0 0 rgba(0,0,0,0.55) !important;   /* HARD offset shadow */
+  overflow: hidden !important;
+  position: relative;
+  z-index: 2;
+  padding: 14px 16px !important;
+}
+
+/* stencilled rack label + corner registration ticks */
+div[data-active-theme="brutalist"] .music-player-container::before {
+  content: 'RESONANCE — SIGNAL OUTPUT / 01';
+  position: absolute;
+  top: 6px; left: 16px;
+  font-size: 8px;
+  letter-spacing: 0.32em;
+  color: var(--ink-3);
+  pointer-events: none;
+  z-index: 5;
+}
+div[data-active-theme="brutalist"] .music-player-container::after {
+  content: '';
+  position: absolute;
+  inset: 5px;
+  pointer-events: none;
+  z-index: 5;
+  /* L-shaped corner ticks via layered gradients */
+  background:
+    linear-gradient(var(--hair-2), var(--hair-2)) 0 0 / 12px 2px no-repeat,
+    linear-gradient(var(--hair-2), var(--hair-2)) 0 0 / 2px 12px no-repeat,
+    linear-gradient(var(--hair-2), var(--hair-2)) 100% 0 / 12px 2px no-repeat,
+    linear-gradient(var(--hair-2), var(--hair-2)) 100% 0 / 2px 12px no-repeat,
+    linear-gradient(var(--hair-2), var(--hair-2)) 0 100% / 12px 2px no-repeat,
+    linear-gradient(var(--hair-2), var(--hair-2)) 0 100% / 2px 12px no-repeat,
+    linear-gradient(var(--hair-2), var(--hair-2)) 100% 100% / 12px 2px no-repeat,
+    linear-gradient(var(--hair-2), var(--hair-2)) 100% 100% / 2px 12px no-repeat;
+}
+
+div[data-active-theme="brutalist"] .music-player { position: relative; z-index: 3; }
+
+/* ━━━━━━━━━━━━━━━━━━━━━━ ALBUM ART — framed slab ━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+div[data-active-theme="brutalist"] .album-art {
+  border-radius: 0 !important;
+  border: 3px solid #000 !important;
+  box-shadow:
+    0 0 0 1px var(--steel),
+    8px 8px 0 0 var(--acc) !important;          /* hard accent drop */
+  overflow: hidden !important;
+  position: relative;
+}
+div[data-active-theme="brutalist"] .album-art img {
+  border-radius: 0 !important;
+  filter: contrast(1.08) saturate(0.85) brightness(0.96) !important;
+}
+/* hazard corner tab */
+div[data-active-theme="brutalist"] .album-art::after {
+  content: '';
+  position: absolute;
+  top: 0; right: 0;
+  width: 22px; height: 22px;
+  background:
+    repeating-linear-gradient(45deg, var(--acc) 0 4px, #000 4px 8px);
+  clip-path: polygon(100% 0, 0 0, 100% 100%);
+  z-index: 4;
+}
+div[data-active-theme="brutalist"] .music-player.is-playing .album-art { animation: none !important; }
+
+/* ━━━━━━━━━━━━━━━━━━━━━━ STATUS PILL — bordered tag ━━━━━━━━━━━━━━━━━━━━━━━━ */
+div[data-active-theme="brutalist"] .status-pill {
+  border-radius: 0 !important;
+  border: 1.5px solid var(--ink-3) !important;
+  background: var(--con-0) !important;
+  color: var(--ink) !important;
+  font-family: 'Space Mono', monospace !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.18em !important;
+  font-size: 9px !important;
+  padding: 3px 8px !important;
+}
+div[data-active-theme="brutalist"] .status-dot {
+  border-radius: 0 !important;
+  background: var(--acc) !important;
+  box-shadow: none !important;
+}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━ TITLE / ARTIST — stencil ━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+div[data-active-theme="brutalist"] .track-title {
+  font-family: 'Space Mono', monospace !important;
+  font-weight: 700 !important;
+  text-transform: uppercase !important;
+  letter-spacing: -0.01em !important;
+  color: var(--ink) !important;
+  text-shadow: 2px 2px 0 rgba(0,0,0,0.6) !important;
+  line-height: 1.02 !important;
+}
+/* accent underline beneath the title block */
+div[data-active-theme="brutalist"] .title-container {
+  border-left: 3px solid var(--acc) !important;
+  padding-left: 10px !important;
+}
+div[data-active-theme="brutalist"] .track-artist {
+  font-family: 'JetBrains Mono', monospace !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.16em !important;
+  color: var(--acc) !important;
+  font-size: 11px !important;
+}
+div[data-active-theme="brutalist"] .track-album {
+  font-family: 'JetBrains Mono', monospace !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.12em !important;
+  color: var(--ink-2) !important;
+}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━ METADATA — bordered cells ━━━━━━━━━━━━━━━━━━━━━━━━━ */
+div[data-active-theme="brutalist"] .metadata-row {
+  font-family: 'JetBrains Mono', monospace !important;
+  border-top: 1px solid var(--hair) !important;
+  border-bottom: 1px solid var(--hair) !important;
+  padding: 6px 0 !important;
+}
+div[data-active-theme="brutalist"] .metadata-row [class*="border"][class*="rounded"] {
+  border-radius: 0 !important;
+  border-color: var(--hair-2) !important;
+  background: var(--con-0) !important;
+}
+div[data-active-theme="brutalist"] .metadata-row .font-mono {
+  font-family: 'JetBrains Mono', monospace !important;
+  letter-spacing: 0.04em !important;
+}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━ VU — steel gauge housings ━━━━━━━━━━━━━━━━━━━━━━━━━ */
+div[data-active-theme="brutalist"] .vu-channel-box {
+  border-radius: 0 !important;
+  border: 2px solid #000 !important;
+  background:
+    linear-gradient(180deg, var(--con-2), var(--con-0)) !important;
+  box-shadow: inset 0 0 0 1px var(--steel), 4px 4px 0 0 rgba(0,0,0,0.5) !important;
+}
+div[data-active-theme="brutalist"] .vu-title {
+  font-family: 'Space Mono', monospace !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.3em !important;
+  color: var(--ink-3) !important;
+}
+div[data-active-theme="brutalist"] .vu-needle {
+  background: var(--acc) !important;
+  box-shadow: 0 0 0 1px #000 !important;
+}
+div[data-active-theme="brutalist"] .vu-readout-line {
+  font-family: 'JetBrains Mono', monospace !important;
+  color: var(--acc) !important;
+}
+div[data-active-theme="brutalist"] .vu-glow-overlay { opacity: 0.25 !important; }
+
+/* ━━━━━━━━━━━━━━━━━━━━━━ CONTROLS — hard square keys ━━━━━━━━━━━━━━━━━━━━━━━ */
+div[data-active-theme="brutalist"] .icon-button {
+  border-radius: 0 !important;
+  border: 2px solid var(--ink-3) !important;
+  background: var(--con-2) !important;
+  color: var(--ink) !important;
+  box-shadow: 3px 3px 0 0 #000 !important;
+  transition: transform 0.05s linear, box-shadow 0.05s linear, background 0.1s !important;
+}
+div[data-active-theme="brutalist"] .icon-button svg { color: var(--ink) !important; }
+div[data-active-theme="brutalist"] .icon-button:active {
+  transform: translate(3px, 3px) !important;     /* press INTO the panel */
+  box-shadow: 0 0 0 0 #000 !important;
+}
+div[data-active-theme="brutalist"] .icon-button.active {
+  background: var(--acc) !important;
+  border-color: #000 !important;
+}
+div[data-active-theme="brutalist"] .icon-button.active svg { color: #000 !important; }
+div[data-active-theme="brutalist"] .icon-button.play {
+  background: var(--acc) !important;
+  border-color: #000 !important;
+  box-shadow: 4px 4px 0 0 #000 !important;
+}
+div[data-active-theme="brutalist"] .icon-button.play svg { color: #000 !important; }
+div[data-active-theme="brutalist"] .music-player.is-playing .icon-button.play {
+  background: var(--ink) !important;
+}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━ PROGRESS — stepped bar ━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+div[data-active-theme="brutalist"] .progress-bar-dots {
+  border-radius: 0 !important;
+  background: var(--con-0) !important;
+  border: 1.5px solid #000 !important;
+  box-shadow: inset 0 0 0 1px var(--hair) !important;
+  height: 10px !important;
+  overflow: hidden !important;
+}
+div[data-active-theme="brutalist"] .progress-fill-dots {
+  border-radius: 0 !important;
+  background:
+    repeating-linear-gradient(90deg, var(--acc) 0 6px, color-mix(in srgb, var(--acc) 70%, #000) 6px 8px) !important;
+  box-shadow: none !important;
+}
+div[data-active-theme="brutalist"] .progress-times,
+div[data-active-theme="brutalist"] .progress-area span {
+  font-family: 'JetBrains Mono', monospace !important;
+  letter-spacing: 0.08em !important;
+  color: var(--ink-2) !important;
+}
+
+/* hide stray rounded carry-overs anywhere in the player */
+div[data-active-theme="brutalist"] .music-player [class*="rounded"] { border-radius: 0 !important; }
+
+/* ━━━━━━━━━━━━━━━━━━━━━━ VOLUME POPUP ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+div[data-active-theme="brutalist"] .volume-popup,
+div[data-active-theme="brutalist"] .volume-feedback {
+  border-radius: 0 !important;
+  border: 2px solid #000 !important;
+  background: var(--con-1) !important;
+  box-shadow: 6px 6px 0 0 rgba(0,0,0,0.5) !important;
+  font-family: 'JetBrains Mono', monospace !important;
+}
