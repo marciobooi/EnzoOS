@@ -13,7 +13,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   faithful C-90: a cream J-card label across the top, a rainbow stripe, a black
   mechanism window with two toothed reels that spin while playing and rest when
   paused (`animation-play-state` bound to `.is-playing`), corner screws and a
-  C-90 / NORMAL POSITION legend. Surrounding deck: matte charcoal chassis with
+  C-90 / NORMAL POSITION legend. The reels double as the progress indicator —
+  the left (supply) reel starts full and empties while the right (take-up) reel
+  fills as the track plays, driven by the live `trackPosition/trackDuration` via
+  a `--cass-progress` CSS variable; in this skin the linear progress bar is
+  hidden (tap-to-seek still works) and the elapsed/total times read as a tape
+  counter. Surrounding deck: matte charcoal chassis with
   chrome trim, bevelled transport keys that depress on press, cream VU gauge
   faces with dark needles, monospace tape-counter readouts. Accent colour warms
   the needles, progress and active keys.

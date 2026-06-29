@@ -513,16 +513,17 @@ const PlayerDisplay = React.memo(function PlayerDisplay({
           // spin while playing (CSS animation paused unless .is-playing).
           <div className="album-art album-art--cassette" aria-label="Cassette album art">
             <img src={albumImage} alt="Album art" />
-            <div className="cassette" aria-hidden="true">
+            <div className="cassette" aria-hidden="true"
+              style={{ '--cass-progress': trackDuration ? Math.min(1, Math.max(0, (trackPosition || 0) / trackDuration)) : 0 }}>
               <span className="cass-screw cass-screw--tl" />
               <span className="cass-screw cass-screw--tr" />
               <span className="cass-screw cass-screw--bl" />
               <span className="cass-screw cass-screw--br" />
               <div className="cass-stripe" />
               <div className="cass-window">
-                <span className="cass-reel cass-reel--l" />
+                <span className="cass-reel cass-reel--l"><span className="cass-pack" /></span>
                 <span className="cass-tape" />
-                <span className="cass-reel cass-reel--r" />
+                <span className="cass-reel cass-reel--r"><span className="cass-pack" /></span>
               </div>
               <div className="cass-foot">
                 <span className="cass-type">C-90</span>
