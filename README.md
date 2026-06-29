@@ -81,6 +81,7 @@ Resonance HiFi is an open-source, self-hosted audio streaming platform for Raspb
 - **Dedicated mobile remote** — a phone-first UI (`/remote`) with its own design system (`src/remote.css`, scoped under `.remote-root`) so the kiosk skins never leak into its modals, sliders or sheets. HIG/Material-3 tuned touch targets, safe-area handling and accessible names
 - **Installable PWA** — "Add to Home Screen" turns the remote into a full-screen, app-like experience on iOS and Android (web manifest + apple-touch icons; in-app install guide in Settings)
 - **Premium album info** — tap the now-playing cover (kiosk or remote) to reveal an aggregated biography, album review, credits (label, catalog, country, tracks), genres, listeners and similar artists (see *Album Metadata* below)
+- **First-boot setup wizard** — a 4-step welcome overlay (`src/components/WelcomeWizard.jsx`) introduces the streamer on first launch (sources → phone control → all set). Completion is stored in SQLite (`onboarding_complete`) so it only appears once; re-runnable any time from **Settings → Run Setup Wizard**, and it reappears automatically after a factory reset
 - **Origami logo intro** — pure CSS/HTML kiosk welcome & goodbye animation (`src/components/ResonanceLogo.jsx`, `logo.html`) on the origami paper background — no video file
 - **QR code access** — tap the Remote card on the kiosk to display a scannable QR code
 - **Source-aware search** — search tab reflects the active source (Spotify search for Spotify, radio scanner for radio)
@@ -422,6 +423,8 @@ On every startup, `detectDac()` scans `/proc/asound/card*/stream*` and returns:
 | `GET` | `/api/system/backup` | Download all settings as a JSON backup file |
 | `POST` | `/api/system/restore` | Restore settings from a previously exported JSON backup |
 | `POST` | `/api/system/factory-reset` | Wipe all settings and favourites, reset to defaults |
+| `GET` | `/api/system/onboarding` | First-boot wizard state `{ complete }` |
+| `POST` | `/api/system/onboarding` | Set wizard state `{ complete }` (`false` re-arms it) |
 | `POST` | `/api/system/reboot` | Reboot the Pi |
 | `POST` | `/api/update` | Trigger OTA update |
 
