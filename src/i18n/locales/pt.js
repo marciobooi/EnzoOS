@@ -1,0 +1,92 @@
+// Portuguese (Portugal). Any key omitted here falls back to English automatically.
+export default {
+  lang: {
+    title: 'Idioma',
+    subtitle: 'Escolha o seu idioma',
+    english: 'English',
+    portuguese: 'Português',
+  },
+
+  common: {
+    back: 'Voltar',
+    next: 'Seguinte',
+    skip: 'Ignorar',
+    cancel: 'Cancelar',
+    close: 'Fechar',
+    save: 'Guardar',
+    done: 'Concluído',
+    connect: 'Ligar',
+    connected: 'Ligado',
+    connecting: 'A ligar…',
+    signIn: 'Entrar',
+    on: 'Ligado',
+    off: 'Desligado',
+    openLink: 'Abrir ligação',
+    recommended: 'Recomendado',
+  },
+
+  nav: {
+    player: 'Leitor',
+    source: 'Fonte',
+    library: 'Biblioteca',
+    radio: 'Rádio',
+    search: 'Pesquisar',
+    settings: 'Definições',
+  },
+
+  wizard: {
+    welcome: {
+      title: 'Bem-vindo ao Resonance HiFi',
+      body: 'O seu Raspberry Pi é agora um streamer de rede de alta-fidelidade com DSP em tempo real. Vamos ligar a sua música e começar a ouvir — demora só um instante.',
+    },
+    connect: {
+      title: 'Ligue a sua música',
+      body: 'Ligue as suas contas de streaming agora, ou ignore e faça-o mais tarde em Fonte. AirPlay, Bluetooth, UPnP/DLNA, rádio web e a sua biblioteca local não precisam de configuração.',
+      spotifyHint: 'Spotify Connect + reprodução Web',
+      tidalHint: 'FLAC Hi-Res · início de sessão no dispositivo',
+      qobuzHint: 'FLAC Hi-Res · email e palavra-passe',
+      qobuzUser: 'Email / utilizador',
+      qobuzPass: 'Palavra-passe',
+      qobuzError: 'Introduza o seu email e palavra-passe',
+      tidalPrompt: 'Abra {url} e introduza:',
+    },
+    sound: {
+      title: 'Molde o seu som',
+      body: 'Escolha como o áudio é processado. Pode alterar isto a qualquer momento e afinar tudo em Definições → Acústica.',
+      eq: 'Equalizador Manual',
+      eqHint: 'Predefinições + controlo de tom paramétrico',
+      room: 'Correção de Sala',
+      roomHint: 'Curva Harman + calibração de sala',
+      pure: 'Pure Direct',
+      pureHint: 'Plano, bit-perfect — sem processamento',
+      roomTip: 'Dica: afine a correção de sala com o assistente guiado de 8 perguntas em Definições → Acústica.',
+    },
+    phone: {
+      title: 'Controle pelo seu telemóvel',
+      bodyUrl: 'Abra este endereço em qualquer telemóvel ou tablet na sua rede, ou leia o código QR no cartão Remoto do quiosque:',
+      bodyNoUrl: 'No quiosque, toque no cartão Remoto para mostrar um código QR e controlar a reprodução a partir de qualquer telemóvel ou tablet na sua rede.',
+    },
+    done: {
+      title: 'Está tudo pronto',
+      body: 'Ajuste o som a qualquer momento em Definições — EQ, correção de sala, balanço, bit-perfect e mais. Aproveite a música.',
+      cta: 'Começar',
+    },
+  },
+
+  settings: {
+    runWizard: 'Executar Assistente',
+    language: 'Idioma',
+    sound: 'Som',
+    spotify: 'Spotify',
+    services: 'Serviços',
+    system: 'Sistema',
+    connectSpotify: 'Ligar com o Spotify',
+    disconnect: 'Desligar',
+    confirm: 'Toque novamente para confirmar',
+    backup: 'Cópia de Segurança',
+    restore: 'Restaurar Definições',
+    factoryReset: 'Reposição de Fábrica',
+    wifi: 'Wi-Fi',
+    storage: 'Armazenamento',
+  },
+};

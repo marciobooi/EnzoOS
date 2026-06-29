@@ -8,6 +8,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Internationalization (i18n)** — dependency-free locale system
+  (`src/i18n/`) with English and Portuguese, easily extensible (add a
+  `locales/xx.js` + registry entry). The chosen language is persisted in SQLite
+  (`language` setting) via `GET/POST /api/system/language` **and** localStorage,
+  so it survives restarts and is shared across the kiosk and every phone remote.
+  A `useI18n()` hook exposes `t(key, vars)` with English fallback + `{var}`
+  interpolation. Language selector cards added to the welcome wizard (step 1),
+  the remote Settings tab, and the kiosk settings menu. Translated surfaces so
+  far: the full welcome wizard, remote bottom-nav, and Settings/Source headings.
 - **First-boot welcome / setup wizard** (`src/components/WelcomeWizard.jsx`,
   `src/App.jsx`, `server/system.js`, `src/api/system.js`) — a 4-step onboarding
   overlay shown once on a fresh install (or after a factory reset). Completion is

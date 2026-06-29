@@ -4,8 +4,10 @@ import { Music, Radio, Airplay, Network, Bluetooth, Music2, Search, ChevronLeft 
 import { Tk, SpotifyIcon } from './shared';
 import { api } from '../../api';
 import { toast } from '../../lib/toast';
+import { useI18n } from '../../i18n';
 
 export default function SourceTab() {
+  const { t } = useI18n();
   const {
     C, card, btnInset,
     source, handleToggleSource, setActiveTab,
@@ -138,7 +140,7 @@ export default function SourceTab() {
       <div className="px-5 mb-5">
         <p className="text-[11px] font-semibold uppercase tracking-widest mb-1"
           style={{ color: C.champagne, fontFamily: C.fontLabel }}>Signal Chain</p>
-        <h2 className="text-[24px] font-medium" style={{ color: C.text1, letterSpacing: '-0.01em' }}>Source</h2>
+        <h2 className="text-[24px] font-medium" style={{ color: C.text1, letterSpacing: '-0.01em' }}>{t('nav.source')}</h2>
       </div>
 
       <div className="px-4 grid grid-cols-3 gap-3">

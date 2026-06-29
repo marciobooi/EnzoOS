@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Sliders, Music, Download, LogOut, Radio, Waves, Smartphone, Airplay, Network, Bluetooth, Music2 } from 'lucide-react';
+import { Sliders, Music, Download, LogOut, Radio, Waves, Smartphone, Airplay, Network, Bluetooth, Music2, Languages } from 'lucide-react';
 import { api } from '../api';
 import { S } from '../styles/stone';
+import { useI18n } from '../i18n';
 
 export default function DefinitionsMenu({
   token,
@@ -23,6 +24,7 @@ export default function DefinitionsMenu({
   onToggleRemoteAccess,
   onOpenRemoteAccess
 }) {
+  const { t, lang, setLang, langs } = useI18n();
   // Local health metrics state
   const [healthData, setHealthData] = useState({ cpuTemp: 40, ramLoad: 30, wifiSignal: -60 });
 
@@ -454,6 +456,32 @@ export default function DefinitionsMenu({
           </div>
         </button>
       )}
+
+      {/* LANGUAGE CARD */}
+      <div className="w-[180px] shrink-0 p-2 rounded-2xl text-left flex flex-col justify-between transition-all duration-300 relative overflow-hidden menu-card menu-card-enter"
+        style={{ animationDelay: '270ms' }}>
+        <span className="text-sm font-light tracking-[0.25em] uppercase" style={{ color: S.label }}>{t('lang.title')}</span>
+        <div className="my-auto flex flex-col gap-2 w-full">
+          {langs.map((l) => {
+            const active = l.code === lang;
+            return (
+              <button key={l.code} onClick={() => setLang(l.code)}
+                className="flex items-center gap-2 px-3 py-2 rounded-xl text-left transition-all active:scale-95 cursor-pointer"
+                style={{
+                  background: active ? S.accent : S.track,
+                  color: active ? '#f5f3ef' : S.muted,
+                }}>
+                <span aria-hidden="true" className="text-base">{l.flag}</span>
+                <span className="text-sm font-bold tracking-tight">{l.native}</span>
+              </button>
+            );
+          })}
+        </div>
+        <div className="flex items-center gap-1.5">
+          <Languages strokeWidth={1.5} className="h-4 w-4" style={{ color: S.label }} />
+          <span className="text-xs font-light tracking-[0.25em]" style={{ color: S.label }}>{t('lang.subtitle')}</span>
+        </div>
+      </div>
 
     </div>
   );

@@ -93,4 +93,17 @@ export const systemApi = {
     });
     return r.json();
   },
+
+  // ── Language / locale ─────────────────────────────────────────────────────────
+  async getLanguage() {
+    const r = await fetch('/api/system/language');
+    return r.json();
+  },
+  async setLanguage(language) {
+    const r = await fetch('/api/system/language', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ language }),
+    });
+    return r.json();
+  },
 };

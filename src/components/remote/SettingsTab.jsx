@@ -10,8 +10,11 @@ import RemoteEqualizer from './RemoteEqualizer';
 import InstallGuide from './InstallGuide';
 import MetadataKeysSheet from './MetadataKeysSheet';
 import { api } from '../../api';
+import { useI18n } from '../../i18n';
+import LanguageChips from '../../i18n/LanguageChips';
 
 export default function SettingsTab() {
+  const { t } = useI18n();
   const [confirmPending, setConfirmPending] = useState(null);
   const [showInstall, setShowInstall] = useState(false);
   const [showKeys, setShowKeys] = useState(false);
@@ -166,8 +169,18 @@ export default function SettingsTab() {
       <div className="px-5 mb-5">
         <p className="text-[11px] font-semibold uppercase tracking-widest mb-1"
           style={{ color: C.champagne, fontFamily: C.fontLabel }}>Configuration</p>
-        <h2 className="text-[24px] font-medium" style={{ color: C.text1, letterSpacing: '-0.01em' }}>Settings</h2>
+        <h2 className="text-[24px] font-medium" style={{ color: C.text1, letterSpacing: '-0.01em' }}>{t('nav.settings')}</h2>
       </div>
+
+      {/* language */}
+      <Section title={t('settings.language')}>
+        <div className="px-4 py-3">
+          <LanguageChips colors={{
+            bg: C.containerLow, fg: C.text4, border: C.outline,
+            activeBg: C.champagne, activeFg: '#1a1c1c',
+          }} />
+        </div>
+      </Section>
 
       {/* signal monitor */}
       <div className="mx-4 mb-4 rounded-xl overflow-hidden relative" style={{ ...cardWhite, height: 68 }}>
@@ -185,7 +198,7 @@ export default function SettingsTab() {
       </div>
 
       {/* sound */}
-      <Section title="Sound">
+      <Section title={t('settings.sound')}>
         <Row label={`Equalizer · ${eqPreset}`}
           icon={<Sliders className="h-4 w-4" style={{ color: C.champagne }} />}
           onPress={() => setShowEq(v => !v)} chevron={false} value={showEq ? '▲' : '▼'} />
@@ -323,22 +336,22 @@ export default function SettingsTab() {
       {showKeys && <MetadataKeysSheet onClose={() => setShowKeys(false)} />}
 
       {/* spotify */}
-      <Section title="Spotify">
+      <Section title={t('settings.spotify')}>
         {!token ? (
           <div className="px-4 py-4">
             <a href="/auth/spotify/login?from=remote"
               className="w-full py-3.5 rounded-full flex items-center justify-center gap-2 text-[14px] font-semibold active:scale-95 transition-all"
               style={{ background: '#1ed760', color: '#000', display: 'flex', fontFamily: C.font }}>
               <SpotifyIcon className="h-5 w-5 fill-black shrink-0" />
-              Connect with Spotify
+              {t('settings.connectSpotify')}
             </a>
           </div>
         ) : (
           <>
-            <Row label="Connected" value="✓" chevron={false}
+            <Row label={t('common.connected')} value="✓" chevron={false}
               icon={<SpotifyIcon className="h-4 w-4" style={{ fill: '#1ed760' }} />}
               onPress={() => {}} />
-            <Row label={confirmPending === 'spotify-disconnect' ? 'Tap again to confirm' : 'Disconnect'} destructive
+            <Row label={confirmPending === 'spotify-disconnect' ? t('settings.confirm') : t('settings.disconnect')} destructive
               icon={<LogOut className="h-4 w-4" style={{ color: C.error }} />}
               onPress={withConfirm('spotify-disconnect', async () => {
                 try { await fetch('/auth/spotify/logout', { method: 'POST' }); toast.success('Disconnected'); }
@@ -360,7 +373,7 @@ export default function SettingsTab() {
       )}
 
       {/* services */}
-      <Section title="Services">
+      <Section title={t('settings.services')}>
         {[
           { id: 'mpd',        label: 'MPD',        icon: <Music    className="h-4 w-4" style={{ color: C.text4 }} /> },
           { id: 'camilladsp', label: 'CamillaDSP', icon: <Sliders  className="h-4 w-4" style={{ color: C.text4 }} /> },
@@ -405,7 +418,7 @@ export default function SettingsTab() {
       )}
 
       {/* system */}
-      <Section title="System">
+      <Section title={t('settings.system')}>
         <Row
           label={updateStatus === 'updating' ? `Updating · ${otaPercent}%` : 'Check for Updates'}
           icon={<RefreshCw className={`h-4 w-4 ${updateStatus === 'checking' || updateStatus === 'updating' ? 'animate-spin' : ''}`} style={{ color: '#22c55e' }} />}
@@ -472,13 +485,13 @@ export default function SettingsTab() {
             </p>
           </div>
         )}
-        <Row label="Run Setup Wizard"
+        <Row label={t('settings.runWizard')}
           icon={<Sparkles className="h-4 w-4" style={{ color: C.champagne }} />}
           onPress={() => window.dispatchEvent(new Event('resonance:show-welcome'))} />
-        <Row label="Backup Settings"
+        <Row label={t('settings.backup')}
           icon={<Download className="h-4 w-4" style={{ color: C.text4 }} />}
           onPress={() => { window.open('/api/system/backup', '_blank'); }} />
-        <Row label={confirmPending === 'factory-reset' ? 'Tap again to reset everything' : 'Factory Reset'} destructive
+        <Row label={confirmPending === 'factory-reset' ? 'Tap again to reset everything' : t('settings.factoryReset')} destructive
           icon={<RotateCcw className="h-4 w-4" style={{ color: C.error }} />}
           onPress={withConfirm('factory-reset', async () => {
             try { await api.factoryReset(); toast.success('Settings reset. Restart to apply.'); }

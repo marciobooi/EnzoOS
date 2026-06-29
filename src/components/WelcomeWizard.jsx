@@ -5,6 +5,8 @@ import {
 } from 'lucide-react';
 import { S, cardShadow } from '../styles/stone';
 import { api } from '../api';
+import { useI18n } from '../i18n';
+import LanguageChips from '../i18n/LanguageChips';
 
 // First-boot welcome / setup wizard. Fully self-contained: it manages its own
 // step state and persists completion to the DB (onboarding_complete) before
@@ -17,6 +19,7 @@ import { api } from '../api';
 // and Qobuz (username/password). All three are optional — the user can skip and
 // connect later from Source.
 export default function WelcomeWizard({ onClose }) {
+  const { t } = useI18n();
   const [step, setStep] = useState(0);
   const [lanUrl, setLanUrl] = useState('');
   const [saving, setSaving] = useState(false);
@@ -139,7 +142,7 @@ export default function WelcomeWizard({ onClose }) {
   // ── Qobuz: username / password ──────────────────────────────────────────────
   const submitQobuz = async (e) => {
     e?.preventDefault();
-    if (!qUser.trim() || !qPass) { setQErr('Enter your email and password'); return; }
+    if (!qUser.trim() || !qPass) { setQErr(t('wizard.connect.qobuzError')); return; }
     setBusy(b => ({ ...b, qobuz: true })); setQErr('');
     try {
       await api.qobuzAuth(qUser.trim(), qPass);
@@ -153,41 +156,40 @@ export default function WelcomeWizard({ onClose }) {
   };
 
   const services = [
-    { id: 'spotify', label: 'Spotify', icon: <Disc3 className="h-5 w-5" />, action: connectSpotify, hint: 'Spotify Connect + Web playback' },
-    { id: 'tidal',   label: 'Tidal',   icon: <Music2 className="h-5 w-5" />, action: connectTidal,   hint: 'Hi-Res FLAC · device login' },
-    { id: 'qobuz',   label: 'Qobuz',   icon: <Music2 className="h-5 w-5" />, action: () => { setQErr(''); setQobuzOpen(o => !o); }, hint: 'Hi-Res FLAC · email & password' },
+    { id: 'spotify', label: 'Spotify', icon: <Disc3 className="h-5 w-5" />, action: connectSpotify, hint: t('wizard.connect.spotifyHint') },
+    { id: 'tidal',   label: 'Tidal',   icon: <Music2 className="h-5 w-5" />, action: connectTidal,   hint: t('wizard.connect.tidalHint') },
+    { id: 'qobuz',   label: 'Qobuz',   icon: <Music2 className="h-5 w-5" />, action: () => { setQErr(''); setQobuzOpen(o => !o); }, hint: t('wizard.connect.qobuzHint') },
   ];
 
   const steps = [
     {
       icon: <Waves className="h-8 w-8" />,
-      title: 'Welcome to Resonance HiFi',
-      body: 'Your Raspberry Pi is now a high-fidelity network streamer with real-time DSP. Let’s connect your music and get you listening — it only takes a moment.',
+      title: t('wizard.welcome.title'),
+      body: t('wizard.welcome.body'),
+      language: true,
     },
     {
       icon: <Music2 className="h-8 w-8" />,
-      title: 'Connect your music',
-      body: 'Link your streaming accounts now, or skip and do it later from Source. AirPlay, Bluetooth, UPnP/DLNA, web radio and your local library need no setup.',
+      title: t('wizard.connect.title'),
+      body: t('wizard.connect.body'),
       connect: true,
     },
     {
       icon: <SlidersHorizontal className="h-8 w-8" />,
-      title: 'Shape your sound',
-      body: 'Pick how audio is processed. You can change this any time and fine-tune everything in Settings → Acoustic.',
+      title: t('wizard.sound.title'),
+      body: t('wizard.sound.body'),
       dsp: true,
     },
     {
       icon: <Smartphone className="h-8 w-8" />,
-      title: 'Control from your phone',
-      body: lanUrl
-        ? 'Open this address on any phone or tablet on your network, or scan the QR code from the kiosk’s Remote card:'
-        : 'From the kiosk, tap the Remote card to show a QR code and control playback from any phone or tablet on your network.',
+      title: t('wizard.phone.title'),
+      body: lanUrl ? t('wizard.phone.bodyUrl') : t('wizard.phone.bodyNoUrl'),
       mono: lanUrl || null,
     },
     {
       icon: <Sparkles className="h-8 w-8" />,
-      title: 'You’re all set',
-      body: 'Tune the sound any time in Settings — EQ, room correction, balance, bit-perfect and more. Enjoy the music.',
+      title: t('wizard.done.title'),
+      body: t('wizard.done.body'),
     },
   ];
 
@@ -236,6 +238,18 @@ export default function WelcomeWizard({ onClose }) {
             </div>
           )}
 
+          {/* Language picker (welcome step) */}
+          {s.language && (
+            <div className="mt-4">
+              <p className="text-[11px] font-semibold uppercase tracking-widest mb-2"
+                style={{ color: S.champagne }}>{t('lang.subtitle')}</p>
+              <LanguageChips colors={{
+                bg: S.surface, fg: S.accent, border: S.surfaceLo,
+                activeBg: S.accent, activeFg: S.accentFg,
+              }} />
+            </div>
+          )}
+
           {/* Connect-your-music step */}
           {s.connect && (
             <div className="mt-4 flex flex-col gap-2">
@@ -259,9 +273,9 @@ export default function WelcomeWizard({ onClose }) {
                       </span>
                       <span className="shrink-0 text-[13px] font-semibold flex items-center gap-1"
                         style={{ color: on ? '#1ed760' : S.champagne }}>
-                        {on ? <><Check className="h-4 w-4" /> Connected</>
+                        {on ? <><Check className="h-4 w-4" /> {t('common.connected')}</>
                           : loading ? <Loader2 className="h-4 w-4 animate-spin" />
-                          : 'Connect'}
+                          : t('common.connect')}
                       </span>
                     </button>
 
@@ -269,18 +283,18 @@ export default function WelcomeWizard({ onClose }) {
                     {svc.id === 'qobuz' && qobuzOpen && !on && (
                       <form onSubmit={submitQobuz} className="mt-2 mb-1 flex flex-col gap-2 px-1">
                         <input type="text" value={qUser} onChange={e => setQUser(e.target.value)}
-                          placeholder="Email / username" autoCapitalize="none" autoComplete="username"
+                          placeholder={t('wizard.connect.qobuzUser')} autoCapitalize="none" autoComplete="username"
                           className="w-full rounded-xl px-3.5 py-2.5 text-[14px] focus:outline-none"
                           style={{ background: S.bg, color: S.accent, border: `1px solid ${S.surfaceLo}` }} />
                         <input type="password" value={qPass} onChange={e => setQPass(e.target.value)}
-                          placeholder="Password" autoComplete="current-password"
+                          placeholder={t('wizard.connect.qobuzPass')} autoComplete="current-password"
                           className="w-full rounded-xl px-3.5 py-2.5 text-[14px] focus:outline-none"
                           style={{ background: S.bg, color: S.accent, border: `1px solid ${S.surfaceLo}` }} />
                         {qErr && <p className="text-[12px]" style={{ color: '#e0726b' }}>{qErr}</p>}
                         <button type="submit" disabled={busy.qobuz}
                           className="self-start px-4 py-2 rounded-full text-[13px] font-semibold active:scale-95 transition-all cursor-pointer"
                           style={{ background: S.accent, color: S.accentFg, opacity: busy.qobuz ? 0.6 : 1 }}>
-                          {busy.qobuz ? 'Connecting…' : 'Sign in'}
+                          {busy.qobuz ? t('common.connecting') : t('common.signIn')}
                         </button>
                       </form>
                     )}
@@ -290,18 +304,20 @@ export default function WelcomeWizard({ onClose }) {
                       <div className="mt-2 mb-1 px-4 py-3 rounded-2xl flex flex-col items-center text-center gap-2"
                         style={{ background: S.bg, border: `1px solid ${S.surfaceLo}` }}>
                         <p className="text-[12px]" style={{ color: S.accent, opacity: 0.7 }}>
-                          Open <span style={{ color: S.champagne }}>{tidalAuth.verificationUri}</span> and enter:
+                          {t('wizard.connect.tidalPrompt').split('{url}')[0]}
+                          <span style={{ color: S.champagne }}>{tidalAuth.verificationUri}</span>
+                          {t('wizard.connect.tidalPrompt').split('{url}')[1]}
                         </p>
                         <span className="text-[26px] font-bold tracking-[0.25em]" style={{ color: S.accent }}>
                           {tidalAuth.userCode}
                         </span>
                         <a href={`https://${tidalAuth.verificationUri}`} target="_blank" rel="noreferrer"
                           className="text-[12px] flex items-center gap-1" style={{ color: S.champagne }}>
-                          <ExternalLink className="h-3.5 w-3.5" /> Open link
+                          <ExternalLink className="h-3.5 w-3.5" /> {t('common.openLink')}
                         </a>
                         <button onClick={cancelTidal}
                           className="text-[12px] mt-1 cursor-pointer" style={{ color: S.accent, opacity: 0.55 }}>
-                          Cancel
+                          {t('common.cancel')}
                         </button>
                       </div>
                     )}
@@ -315,9 +331,9 @@ export default function WelcomeWizard({ onClose }) {
           {s.dsp && (
             <div className="mt-4 flex flex-col gap-2">
               {[
-                { id: 'eq',   label: 'Manual Equalizer', rec: true,  icon: <Sliders className="h-5 w-5" />,           hint: 'Presets + parametric tone control' },
-                { id: 'dsp',  label: 'Room Correction',  rec: false, icon: <SlidersHorizontal className="h-5 w-5" />, hint: 'Harman curve + room calibration' },
-                { id: 'pure', label: 'Pure Direct',      rec: false, icon: <Zap className="h-5 w-5" />,                hint: 'Flat, bit-perfect — no processing' },
+                { id: 'eq',   label: t('wizard.sound.eq'),   rec: true,  icon: <Sliders className="h-5 w-5" />,           hint: t('wizard.sound.eqHint') },
+                { id: 'dsp',  label: t('wizard.sound.room'), rec: false, icon: <SlidersHorizontal className="h-5 w-5" />, hint: t('wizard.sound.roomHint') },
+                { id: 'pure', label: t('wizard.sound.pure'), rec: false, icon: <Zap className="h-5 w-5" />,                hint: t('wizard.sound.pureHint') },
               ].map((m) => {
                 const on = dspMode === m.id;
                 const loading = dspBusy === m.id;
@@ -336,7 +352,7 @@ export default function WelcomeWizard({ onClose }) {
                         {m.rec && (
                           <span className="px-1.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide"
                             style={{ background: on ? S.accentFg : S.champagne, color: on ? S.accent : S.accentFg, opacity: on ? 0.9 : 1 }}>
-                            Recommended
+                            {t('common.recommended')}
                           </span>
                         )}
                       </span>
@@ -350,7 +366,7 @@ export default function WelcomeWizard({ onClose }) {
               })}
               {dspMode === 'dsp' && (
                 <p className="text-[12px] mt-1 px-1" style={{ color: S.accent, opacity: 0.6 }}>
-                  Tip: fine-tune room correction with the guided 8-question wizard in Settings → Acoustic.
+                  {t('wizard.sound.roomTip')}
                 </p>
               )}
             </div>
@@ -374,18 +390,18 @@ export default function WelcomeWizard({ onClose }) {
             {step > 0 && (
               <button onClick={back} className={btnBase}
                 style={{ background: 'transparent', color: S.accent }}>
-                <ChevronLeft className="h-4 w-4" /> Back
+                <ChevronLeft className="h-4 w-4" /> {t('common.back')}
               </button>
             )}
             {!isLast && (
               <button onClick={finish} className={`${btnBase} hidden sm:flex`}
                 style={{ background: 'transparent', color: S.accent, opacity: 0.6 }}>
-                Skip
+                {t('common.skip')}
               </button>
             )}
             <button onClick={next} disabled={saving} className={btnBase}
               style={{ background: S.accent, color: S.accentFg, opacity: saving ? 0.6 : 1 }}>
-              {isLast ? <><Check className="h-4 w-4" /> Get Started</> : <>Next <ChevronRight className="h-4 w-4" /></>}
+              {isLast ? <><Check className="h-4 w-4" /> {t('wizard.done.cta')}</> : <>{t('common.next')} <ChevronRight className="h-4 w-4" /></>}
             </button>
           </div>
         </div>

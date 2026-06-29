@@ -1,19 +1,21 @@
 import React, { useContext } from 'react';
 import { Music, Library, Layers, Sliders, Search } from 'lucide-react';
 import { Tk } from './shared';
+import { useI18n } from '../../i18n';
 
 const BASE_TABS = [
-  { id: 'player',   Icon: Music,    label: 'Player'   },
-  { id: 'library',  Icon: Library,  label: 'Library'  },
-  { id: 'source',   Icon: Layers,   label: 'Source'   },
-  { id: 'radio',    Icon: Search,   label: 'Search'   },
-  { id: 'settings', Icon: Sliders,  label: 'Settings' },
+  { id: 'player',   Icon: Music,    labelKey: 'nav.player'   },
+  { id: 'library',  Icon: Library,  labelKey: 'nav.library'  },
+  { id: 'source',   Icon: Layers,   labelKey: 'nav.source'   },
+  { id: 'radio',    Icon: Search,   labelKey: 'nav.search'   },
+  { id: 'settings', Icon: Sliders,  labelKey: 'nav.settings' },
 ];
 
 const N = BASE_TABS.length;
 
 export default function BottomNav({ navH }) {
   const { C, activeTab, setActiveTab, darkMode } = useContext(Tk);
+  const { t } = useI18n();
 
   const activeIdx = BASE_TABS.findIndex(t => t.id === activeTab);
 
@@ -40,7 +42,7 @@ export default function BottomNav({ navH }) {
       />
 
       <div className="relative flex items-start justify-around pt-3 px-1">
-        {BASE_TABS.map(({ id, Icon, label }) => {
+        {BASE_TABS.map(({ id, Icon, labelKey }) => {
           const active = activeTab === id;
           return (
             <button key={id} onClick={() => setActiveTab(id)}
@@ -51,7 +53,7 @@ export default function BottomNav({ navH }) {
                 style={{ color: active ? C.champagne : C.text3, transition: 'color 0.2s ease' }} />
               <span className="text-[11px] font-semibold uppercase tracking-[0.08em]"
                 style={{ color: active ? C.champagne : C.text3, fontFamily: C.fontLabel, transition: 'color 0.2s ease' }}>
-                {label}
+                {t(labelKey)}
               </span>
             </button>
           );

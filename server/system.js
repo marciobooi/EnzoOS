@@ -41,6 +41,27 @@ router.post('/onboarding', async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+// ── Language / locale ─────────────────────────────────────────────────────────
+// Persisted so the UI language survives a restart and is shared across the kiosk
+// and every phone remote. Defaults to English when unset.
+const SUPPORTED_LANGS = ['en', 'pt'];
+
+router.get('/language', async (req, res) => {
+  const v = await getSetting('language').catch(() => null);
+  res.json({ language: SUPPORTED_LANGS.includes(v) ? v : 'en' });
+});
+
+router.post('/language', async (req, res) => {
+  const language = String(req.body?.language || '').toLowerCase();
+  if (!SUPPORTED_LANGS.includes(language)) {
+    return res.status(400).json({ error: 'Unsupported language' });
+  }
+  try {
+    await setSetting('language', language);
+    res.json({ success: true, language });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 // GET /api/system/lan-url — returns the LAN-accessible remote URL for QR code generation
 router.get('/lan-url', (req, res) => {
   const port = process.env.PORT || 5000;
