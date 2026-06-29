@@ -3,6 +3,7 @@ import { toast } from '../lib/toast';
 import { api } from '../api';
 import { useResonanceWS } from '../websocket';
 import { EQ_PRESETS } from '../components/EqualizerControl';
+import { getGreeting } from '../lib/format';
 
 // Subcomponents
 import PlayerDisplay from '../components/PlayerDisplay';
@@ -474,14 +475,6 @@ export default function Kiosk() {
       console.error('[Kiosk] Pure Direct toggle failed:', err);
     }
   }, []);
-
-  const getGreeting = () => {
-    const h = new Date().getHours();
-    if (h >= 5 && h < 12) return 'Good Morning';
-    if (h >= 12 && h < 17) return 'Good Afternoon';
-    if (h >= 17 && h < 21) return 'Good Evening';
-    return 'Good Night';
-  };
 
   const handleToggleStandby = (enabled) => {
     if (transitionScreen) return;

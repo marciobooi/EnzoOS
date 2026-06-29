@@ -7,6 +7,15 @@ export function toVolumeDb(vol) {
   return db === 0 ? '0.0' : db.toFixed(1);
 }
 
+// Time-of-day greeting for the kiosk welcome screen.
+export function getGreeting(date = new Date()) {
+  const h = date.getHours();
+  if (h >= 5 && h < 12) return 'Good Morning';
+  if (h >= 12 && h < 17) return 'Good Afternoon';
+  if (h >= 17 && h < 21) return 'Good Evening';
+  return 'Good Night';
+}
+
 // Sanitise track names that come from MPD ICY/stream metadata.
 // MPD can set %title% to the stream URL itself (common with HLS/AAC streams
 // that have no ICY metadata), or to raw XML from Dalet-based automation.
