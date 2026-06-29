@@ -67,8 +67,16 @@ div[data-active-theme="brutalist"] .crt-scanlines {
   display: none !important;
 }
 
-/* ━━━━━━━━━━━━━━━━━━━━━━ CONCRETE SLAB (chassis) ━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+/* ━━━━━━━━━━━━━━━━━━━━━━ CONCRETE SLAB (chassis) ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   The visible panel is .music-player (the base gives it a light stone bg that
+   we must override). .music-player-container is just a dark backer.            */
 div[data-active-theme="brutalist"] .music-player-container {
+  background: var(--con-0) !important;
+  border-radius: 0 !important;
+  z-index: 2;
+  position: relative;
+}
+div[data-active-theme="brutalist"] .music-player {
   background:
     linear-gradient(180deg, var(--con-3) 0%, var(--con-2) 4%, var(--con-1) 100%) !important;
   border: 2px solid #000 !important;
@@ -80,27 +88,26 @@ div[data-active-theme="brutalist"] .music-player-container {
     10px 10px 0 0 rgba(0,0,0,0.55) !important;   /* HARD offset shadow */
   overflow: hidden !important;
   position: relative;
-  z-index: 2;
-  padding: 14px 16px !important;
+  z-index: 3;
 }
 
 /* stencilled rack label + corner registration ticks */
-div[data-active-theme="brutalist"] .music-player-container::before {
+div[data-active-theme="brutalist"] .music-player::before {
   content: 'RESONANCE — SIGNAL OUTPUT / 01';
   position: absolute;
-  top: 6px; left: 16px;
+  top: 6px; right: 18px;
   font-size: 8px;
   letter-spacing: 0.32em;
   color: var(--ink-3);
   pointer-events: none;
-  z-index: 5;
+  z-index: 6;
 }
-div[data-active-theme="brutalist"] .music-player-container::after {
+div[data-active-theme="brutalist"] .music-player::after {
   content: '';
   position: absolute;
-  inset: 5px;
+  inset: 6px;
   pointer-events: none;
-  z-index: 5;
+  z-index: 6;
   /* L-shaped corner ticks via layered gradients */
   background:
     linear-gradient(var(--hair-2), var(--hair-2)) 0 0 / 12px 2px no-repeat,
@@ -112,8 +119,6 @@ div[data-active-theme="brutalist"] .music-player-container::after {
     linear-gradient(var(--hair-2), var(--hair-2)) 100% 100% / 12px 2px no-repeat,
     linear-gradient(var(--hair-2), var(--hair-2)) 100% 100% / 2px 12px no-repeat;
 }
-
-div[data-active-theme="brutalist"] .music-player { position: relative; z-index: 3; }
 
 /* ━━━━━━━━━━━━━━━━━━━━━━ ALBUM ART — framed slab ━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
 div[data-active-theme="brutalist"] .album-art {

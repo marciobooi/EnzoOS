@@ -63,8 +63,16 @@ div[data-active-theme="cassette"] .crt-scanlines {
   display: none !important;
 }
 
-/* ━━━━━━━━━━━━━━━━━━━━━━ DECK CHASSIS ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+/* ━━━━━━━━━━━━━━━━━━━━━━ DECK CHASSIS ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   The visible panel is .music-player (the base gives it a light stone bg that
+   we must override). .music-player-container is just a dark backer.            */
 div[data-active-theme="cassette"] .music-player-container {
+  background: var(--deck-0) !important;
+  border-radius: 8px !important;
+  z-index: 2;
+  position: relative;
+}
+div[data-active-theme="cassette"] .music-player {
   background: linear-gradient(180deg, var(--deck-3) 0%, var(--deck-2) 6%, var(--deck-1) 100%) !important;
   border: 1px solid #000 !important;
   border-top: 1px solid var(--chrome) !important;       /* chrome top rail */
@@ -75,14 +83,13 @@ div[data-active-theme="cassette"] .music-player-container {
     0 18px 44px rgba(0,0,0,0.46) !important;
   overflow: hidden !important;
   position: relative;
-  z-index: 2;
-  padding: 14px 16px !important;
+  z-index: 3;
 }
 /* engraved deck legend */
-div[data-active-theme="cassette"] .music-player-container::before {
+div[data-active-theme="cassette"] .music-player::before {
   content: 'RESONANCE · STEREO CASSETTE DECK · DOLBY HX';
   position: absolute;
-  top: 5px; right: 16px;
+  top: 6px; right: 18px;
   font-family: 'JetBrains Mono', monospace;
   font-size: 7.5px;
   letter-spacing: 0.22em;
@@ -90,8 +97,6 @@ div[data-active-theme="cassette"] .music-player-container::before {
   pointer-events: none;
   z-index: 6;
 }
-
-div[data-active-theme="cassette"] .music-player { position: relative; z-index: 3; }
 
 /* ━━━━━━━━━━━━━━━━━━━━━━ THE CASSETTE (album art = a C-90) ━━━━━━━━━━━━━━━━━
    The album-art box becomes the cassette shell. The cover image is the cream
