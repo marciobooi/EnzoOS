@@ -1,12 +1,13 @@
 import express from 'express';
 import { generateQrToken, redeemQrToken, requireAuth, isLoopback } from './auth.js';
+import { sendError, forbidden, unauthorized } from './lib/errors.js';
 
 const router = express.Router();
 
 // GET /api/auth/qr-token — kiosk only (loopback-trusted origin).
 // Returns a fresh short-lived token so the kiosk can build a QR URL.
 router.get('/qr-token', (req, res) => {
-  if (!isLoopback(req)) return res.status(403).json({ error: 'kiosk only' });
+  if (!isLoopback(req)) return sendError(res, forbidden('kiosk only'));
   res.json(generateQrToken());
 });
 
@@ -17,12 +18,11 @@ router.post('/qr-redeem', async (req, res) => {
   try {
     const bearer = await redeemQrToken(qrToken);
     if (!bearer) {
-      return res.status(401).json({ error: 'QR code is invalid or has expired — scan a fresh one from the kiosk.' });
+      return sendError(res, unauthorized('QR code is invalid or has expired — scan a fresh one from the kiosk.'));
     }
     res.json({ success: true, token: bearer });
   } catch (err) {
-    console.error('[Auth] qr-redeem failed:', err.message);
-    res.status(500).json({ error: 'Redeem failed' });
+    sendError(res, err, req);
   }
 });
 

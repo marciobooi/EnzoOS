@@ -19,6 +19,7 @@ import { loadStateFromDB } from './event-service.js';
 import { closeDB } from './db.js';
 import { stopTokenRefresh } from './spotify-auth.js';
 import { requireAuth, isWsAuthorized } from './auth.js';
+import { errorHandler } from './lib/errors.js';
 import { rateLimit } from 'express-rate-limit';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -82,6 +83,10 @@ app.use((req, res, next) => {
     next();
   }
 });
+
+// Central error handler — normalises anything thrown in a route (or passed to
+// next(err)) into a consistent JSON shape. Must be registered last.
+app.use(errorHandler);
 
 // Create HTTP server wrapping Express
 const server = http.createServer(app);

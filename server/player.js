@@ -15,6 +15,7 @@ import {
   qobuzLogin, qobuzSearch, qobuzTrackUrl, qobuzConnected, clearQobuz,
   tidalDeviceAuth, tidalPollToken, tidalSearch, tidalTrackUrl, tidalConnected, clearTidal,
 } from './streaming.js';
+import { sendError, badRequest, badGateway, unauthorized } from './lib/errors.js';
 
 // ── Streaming source helpers ──────────────────────────────────────────────────
 async function systemctlAction(action, service) {
@@ -102,7 +103,7 @@ function toDb(userVol) {
 router.post('/volume', async (req, res) => {
   const vol = parseInt(req.body.volume, 10);
   if (!Number.isFinite(vol) || vol < 0 || vol > 100) {
-    return res.status(400).json({ error: 'Invalid volume: must be 0–100' });
+    return sendError(res, badRequest('Invalid volume: must be 0–100'));
   }
   try {
     await setCamillaVolume(toDb(vol));
@@ -173,13 +174,13 @@ router.post('/seek', async (req, res) => {
   if (typeof raw === 'string' && /^\s*\d{1,3}\s*%\s*$/.test(raw)) {
     const pct = parseInt(raw, 10);
     if (!Number.isFinite(pct) || pct < 0 || pct > 100) {
-      return res.status(400).json({ error: 'Invalid percentage: must be 0–100' });
+      return sendError(res, badRequest('Invalid percentage: must be 0–100'));
     }
     arg = `${pct}%`;
   } else {
     const secs = parseInt(raw, 10);
     if (!Number.isFinite(secs) || secs < 0) {
-      return res.status(400).json({ error: 'Invalid position: percentage like "50%" or non-negative seconds' });
+      return sendError(res, badRequest('Invalid position: percentage like "50%" or non-negative seconds'));
     }
     arg = String(secs);
   }
@@ -245,7 +246,7 @@ router.get('/radios', async (req, res) => {
     const list = await getFavoriteRadios();
     res.json(list);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    sendError(res, err);
   }
 });
 
@@ -253,13 +254,13 @@ router.get('/radios', async (req, res) => {
 router.post('/radios', async (req, res) => {
   const { name, url, favicon, country, tags } = req.body;
   if (!name || !url) {
-    return res.status(400).json({ error: 'Name and URL are required' });
+    return sendError(res, badRequest('Name and URL are required'));
   }
   try {
     const saved = await addFavoriteRadio(name, url, favicon, country, tags);
     res.json(saved);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    sendError(res, err);
   }
 });
 
@@ -310,7 +311,7 @@ router.get('/status', async (req, res) => {
       file:   file   || '',
     });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    sendError(res, err);
   }
 });
 
@@ -318,13 +319,13 @@ router.get('/status', async (req, res) => {
 router.delete('/radios', async (req, res) => {
   const { url } = req.body;
   if (!url) {
-    return res.status(400).json({ error: 'URL is required' });
+    return sendError(res, badRequest('URL is required'));
   }
   try {
     await deleteFavoriteRadioByUrl(url);
     res.json({ success: true });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    sendError(res, err);
   }
 });
 
@@ -361,19 +362,19 @@ router.get('/signal-path', async (req, res) => {
       },
     });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    sendError(res, err);
   }
 });
 
 // POST /api/player/pure-direct → toggle DSP-bypass (flat pipeline, no EQ)
 router.post('/pure-direct', async (req, res) => {
   const { enabled } = req.body;
-  if (enabled === undefined) return res.status(400).json({ error: 'enabled required' });
+  if (enabled === undefined) return sendError(res, badRequest('enabled required'));
   try {
     await emit('SET_PURE_DIRECT', { enabled: !!enabled });
     res.json({ success: true });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    sendError(res, err);
   }
 });
 
@@ -1032,7 +1033,7 @@ ${rateLine}        format ${loopFormat}
 router.post('/dsp-calibration', async (req, res) => {
   const { answers } = req.body;
   if (!answers) {
-    return res.status(400).json({ error: 'Answers are required' });
+    return sendError(res, badRequest('Answers are required'));
   }
   try {
     await setSetting('dsp_calibration', JSON.stringify(answers));
@@ -1046,7 +1047,7 @@ router.post('/dsp-calibration', async (req, res) => {
     res.json({ success: true, dacInfo });
   } catch (err) {
     console.error('[CamillaDSP] Error compiling tuning configuration:', err);
-    res.status(500).json({ error: err.message });
+    sendError(res, err);
   }
 });
 
@@ -1056,7 +1057,7 @@ router.get('/dsp-calibration', async (req, res) => {
     const data = await getSetting('dsp_calibration');
     res.json(data ? JSON.parse(data) : null);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    sendError(res, err);
   }
 });
 
@@ -1431,7 +1432,7 @@ router.get('/library/artists', async (req, res) => {
 // GET /api/player/library/albums?artist=X
 router.get('/library/albums', async (req, res) => {
   const { artist } = req.query;
-  if (artist && artist.length > 500) return res.status(400).json({ error: 'Artist name too long' });
+  if (artist && artist.length > 500) return sendError(res, badRequest('Artist name too long'));
   try {
     const args = ['list', 'album'];
     if (artist) args.push('artist', artist);
@@ -1446,8 +1447,8 @@ router.get('/library/albums', async (req, res) => {
 // GET /api/player/library/tracks?album=X&artist=Y
 router.get('/library/tracks', async (req, res) => {
   const { album, artist } = req.query;
-  if (artist && artist.length > 500) return res.status(400).json({ error: 'Artist name too long' });
-  if (album && album.length > 500) return res.status(400).json({ error: 'Album name too long' });
+  if (artist && artist.length > 500) return sendError(res, badRequest('Artist name too long'));
+  if (album && album.length > 500) return sendError(res, badRequest('Album name too long'));
   try {
     const args = ['find'];
     if (artist) args.push('artist', artist);
@@ -1502,20 +1503,20 @@ router.post('/queue/clear', async (req, res) => {
     await execPromise('mpc clear');
     res.json({ success: true });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    sendError(res, err);
   }
 });
 
 // POST /api/player/queue/add
 router.post('/queue/add', async (req, res) => {
   const { path: filePath, play = false } = req.body;
-  if (!filePath) return res.status(400).json({ error: 'path required' });
+  if (!filePath) return sendError(res, badRequest('path required'));
   try {
     await execFilePromise('mpc', ['add', filePath]);
     if (play) await execPromise('mpc play');
     res.json({ success: true });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    sendError(res, err);
   }
 });
 
@@ -1523,14 +1524,14 @@ router.post('/queue/add', async (req, res) => {
 router.post('/standby', async (req, res) => {
   const { enabled } = req.body;
   if (enabled === undefined) {
-    return res.status(400).json({ error: 'enabled parameter is required' });
+    return sendError(res, badRequest('enabled parameter is required'));
   }
   try {
     await emit('SET_STANDBY', { enabled });
     res.json({ success: true });
   } catch (err) {
     console.error('[Player API] Standby toggle failed:', err);
-    res.status(500).json({ error: err.message });
+    sendError(res, err);
   }
 });
 
@@ -1590,7 +1591,7 @@ router.get('/radio-search', async (req, res) => {
     );
     res.json(data);
   } catch (err) {
-    res.status(502).json({ error: err.message });
+    sendError(res, badGateway(err.message));
   }
 });
 
@@ -1607,7 +1608,7 @@ router.get('/radio-bycountry', async (req, res) => {
     );
     res.json(data);
   } catch (err) {
-    res.status(502).json({ error: err.message });
+    sendError(res, badGateway(err.message));
   }
 });
 
@@ -1760,20 +1761,20 @@ router.post('/tidal/device-auth', async (req, res) => {
     res.json({ success: true, ...info });
   } catch (err) {
     console.error('[Tidal] Device auth failed:', err.message);
-    res.status(502).json({ error: err.message });
+    sendError(res, badGateway(err.message));
   }
 });
 
 // POST /api/player/tidal/poll {deviceCode} — poll until the user authorises
 router.post('/tidal/poll', async (req, res) => {
   const { deviceCode } = req.body || {};
-  if (!deviceCode) return res.status(400).json({ error: 'deviceCode required' });
+  if (!deviceCode) return sendError(res, badRequest('deviceCode required'));
   try {
     const result = await tidalPollToken(deviceCode);
     if (result.connected) await emit('SET_SOURCE', { spotify: false, source: 'tidal' });
     res.json({ success: true, ...result });
   } catch (err) {
-    res.status(401).json({ error: err.message });
+    sendError(res, unauthorized(err.message));
   }
 });
 
@@ -1784,21 +1785,21 @@ router.get('/tidal/search', async (req, res) => {
   try {
     res.json(await tidalSearch(q, Math.min(parseInt(req.query.limit, 10) || 25, 50)));
   } catch (err) {
-    res.status(502).json({ error: err.message });
+    sendError(res, badGateway(err.message));
   }
 });
 
 // POST /api/player/tidal/play-track {id, ...meta}
 router.post('/tidal/play-track', async (req, res) => {
   const { id } = req.body || {};
-  if (!id) return res.status(400).json({ error: 'track id required' });
+  if (!id) return sendError(res, badRequest('track id required'));
   try {
     const { url } = await tidalTrackUrl(id, req.body.quality || 'LOSSLESS');
     await playStreamUrl(url, req.body, 'tidal');
     res.json({ success: true });
   } catch (err) {
     console.error('[Tidal] Play track failed:', err.message);
-    res.status(502).json({ error: err.message });
+    sendError(res, badGateway(err.message));
   }
 });
 
@@ -1824,7 +1825,7 @@ router.delete('/tidal/disconnect', async (req, res) => {
 router.post('/qobuz/auth', async (req, res) => {
   const { username, password, app_id, app_secret } = req.body || {};
   if (!username || !password) {
-    return res.status(400).json({ error: 'username and password are required' });
+    return sendError(res, badRequest('username and password are required'));
   }
   try {
     if (app_id)     await setSetting('qobuz_app_id', app_id);
@@ -1837,7 +1838,7 @@ router.post('/qobuz/auth', async (req, res) => {
     res.json({ success: true });
   } catch (err) {
     console.error('[Qobuz] Auth failed:', err.message);
-    res.status(401).json({ error: err.message });
+    sendError(res, unauthorized(err.message));
   }
 });
 
@@ -1848,21 +1849,21 @@ router.get('/qobuz/search', async (req, res) => {
   try {
     res.json(await qobuzSearch(q, Math.min(parseInt(req.query.limit, 10) || 25, 50)));
   } catch (err) {
-    res.status(502).json({ error: err.message });
+    sendError(res, badGateway(err.message));
   }
 });
 
 // POST /api/player/qobuz/play-track {id, ...meta}
 router.post('/qobuz/play-track', async (req, res) => {
   const { id } = req.body || {};
-  if (!id) return res.status(400).json({ error: 'track id required' });
+  if (!id) return sendError(res, badRequest('track id required'));
   try {
     const { url } = await qobuzTrackUrl(id, req.body.formatId || 27);
     await playStreamUrl(url, req.body, 'qobuz');
     res.json({ success: true });
   } catch (err) {
     console.error('[Qobuz] Play track failed:', err.message);
-    res.status(502).json({ error: err.message });
+    sendError(res, badGateway(err.message));
   }
 });
 
@@ -1896,12 +1897,12 @@ router.get('/replaygain', async (req, res) => {
 router.post('/replaygain', async (req, res) => {
   const mode = (req.body.mode || 'off').toLowerCase();
   if (!['off', 'track', 'album', 'auto'].includes(mode))
-    return res.status(400).json({ error: 'mode must be off|track|album|auto' });
+    return sendError(res, badRequest('mode must be off|track|album|auto'));
   try {
     await execFilePromise('mpc', ['replaygain', mode]);
     await setSetting('replaygain_mode', mode);
     res.json({ success: true, mode });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { sendError(res, err); }
 });
 
 // ── Crossfade (#5) ────────────────────────────────────────────────────────────
@@ -1916,12 +1917,12 @@ router.get('/crossfade', async (req, res) => {
 router.post('/crossfade', async (req, res) => {
   const secs = parseInt(req.body.seconds ?? 0, 10);
   if (!Number.isFinite(secs) || secs < 0 || secs > 60)
-    return res.status(400).json({ error: 'seconds must be 0-60' });
+    return sendError(res, badRequest('seconds must be 0-60'));
   try {
     await execFilePromise('mpc', ['crossfade', String(secs)]);
     await setSetting('crossfade_seconds', secs);
     res.json({ success: true, seconds: secs });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { sendError(res, err); }
 });
 
 // ── Balance (#3) ──────────────────────────────────────────────────────────────
@@ -1933,12 +1934,12 @@ router.get('/balance', async (req, res) => {
 router.post('/balance', async (req, res) => {
   const bal = parseFloat(req.body.balance ?? 0);
   if (!Number.isFinite(bal) || bal < -12 || bal > 12)
-    return res.status(400).json({ error: 'balance must be -12..+12 dB' });
+    return sendError(res, badRequest('balance must be -12..+12 dB'));
   try {
     await setSetting('balance', bal);
     await updateCamillaConfigFromSettings({ skipAlsa: true });
     res.json({ success: true, balance: bal });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { sendError(res, err); }
 });
 
 // ── Phase inversion (#4) ──────────────────────────────────────────────────────
@@ -1954,7 +1955,7 @@ router.post('/phase', async (req, res) => {
     await setSetting('phase', JSON.stringify({ left, right }));
     await updateCamillaConfigFromSettings({ skipAlsa: true });
     res.json({ success: true, left, right });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { sendError(res, err); }
 });
 
 // ── Bit-perfect mode toggle ───────────────────────────────────────────────────
@@ -1976,7 +1977,7 @@ router.post('/bitperfect', async (req, res) => {
     // Full reconfig: rewrites asound.conf + PipeWire clock + CamillaDSP capture.
     await updateCamillaConfigFromSettings({ skipAlsa: false });
     res.json({ success: true, enabled, rebootRequired: true });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { sendError(res, err); }
 });
 
 // ── DSD Direct Bypass toggle ──────────────────────────────────────────────────
@@ -1994,7 +1995,7 @@ router.post('/dsd-bypass', async (req, res) => {
     await setSetting('dsd_bypass', enabled ? 'true' : 'false');
     const active = await applyDsdRouting();
     res.json({ success: true, enabled, active });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { sendError(res, err); }
 });
 
 // ── Dynamic peak pre-attenuation (auto-headroom) ──────────────────────────────
@@ -2012,7 +2013,7 @@ router.post('/auto-headroom', async (req, res) => {
     await setSetting('auto_headroom', enabled ? 'true' : 'false');
     await updateCamillaConfigFromSettings({ skipAlsa: true });
     res.json({ success: true, enabled, headroomDb: getLastHeadroomDb() });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { sendError(res, err); }
 });
 
 // ── Queue editing (#11) ───────────────────────────────────────────────────────
@@ -2031,11 +2032,11 @@ router.get('/queue/detailed', async (req, res) => {
 // DELETE /api/player/queue/:id — remove by MPD song id
 router.delete('/queue/:id', async (req, res) => {
   const id = parseInt(req.params.id, 10);
-  if (!Number.isFinite(id)) return res.status(400).json({ error: 'invalid id' });
+  if (!Number.isFinite(id)) return sendError(res, badRequest('invalid id'));
   try {
     await execFilePromise('mpc', ['deleteid', String(id)]);
     res.json({ success: true });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { sendError(res, err); }
 });
 
 // POST /api/player/queue/move {from, to} — reorder (0-based positions)
@@ -2043,11 +2044,11 @@ router.post('/queue/move', async (req, res) => {
   const from = parseInt(req.body.from, 10);
   const to   = parseInt(req.body.to,   10);
   if (!Number.isFinite(from) || !Number.isFinite(to))
-    return res.status(400).json({ error: 'from and to required' });
+    return sendError(res, badRequest('from and to required'));
   try {
     await execFilePromise('mpc', ['move', String(from + 1), String(to + 1)]);
     res.json({ success: true });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { sendError(res, err); }
 });
 
 // ── Lyrics (#7) via LRCLIB ───────────────────────────────────────────────────
@@ -2062,7 +2063,7 @@ router.get('/lyrics', async (req, res) => {
   const artist = (req.query.artist || '').trim();
   const album  = (req.query.album  || '').trim();
   const duration = parseInt(req.query.duration, 10) || 0;
-  if (!title || !artist) return res.status(400).json({ error: 'title and artist required' });
+  if (!title || !artist) return sendError(res, badRequest('title and artist required'));
   try {
     const fetch = await getLyricsFetch();
     const params = new URLSearchParams({ track_name: title, artist_name: artist });
@@ -2088,7 +2089,7 @@ router.get('/history', async (req, res) => {
 
 router.post('/history', async (req, res) => {
   const { source, title, artist, album, file, cover } = req.body || {};
-  if (!source) return res.status(400).json({ error: 'source required' });
+  if (!source) return sendError(res, badRequest('source required'));
   await addPlayHistory({ source, title, artist, album, file, cover });
   res.json({ success: true });
 });
@@ -2105,21 +2106,21 @@ router.get('/favorites', async (req, res) => {
 
 router.post('/favorites', async (req, res) => {
   const { source, uri, title, artist, album, file, cover } = req.body || {};
-  if (!source || !uri) return res.status(400).json({ error: 'source and uri required' });
+  if (!source || !uri) return sendError(res, badRequest('source and uri required'));
   const result = await addFavorite({ source, uri, title, artist, album, file, cover });
   res.json(result || { success: false, message: 'already favorited' });
 });
 
 router.delete('/favorites/:id', async (req, res) => {
   const id = parseInt(req.params.id, 10);
-  if (!Number.isFinite(id)) return res.status(400).json({ error: 'invalid id' });
+  if (!Number.isFinite(id)) return sendError(res, badRequest('invalid id'));
   await removeFavorite(id);
   res.json({ success: true });
 });
 
 router.delete('/favorites', async (req, res) => {
   const { source, uri } = req.body || {};
-  if (!source || !uri) return res.status(400).json({ error: 'source and uri required' });
+  if (!source || !uri) return sendError(res, badRequest('source and uri required'));
   await removeFavoriteByUri(source, uri);
   res.json({ success: true });
 });
@@ -2166,32 +2167,32 @@ router.get('/playlists', async (req, res) => {
 
 router.post('/playlists/:name/save', async (req, res) => {
   const name = req.params.name.replace(/[^\w\s\-_.]/g, '').trim();
-  if (!name) return res.status(400).json({ error: 'invalid playlist name' });
+  if (!name) return sendError(res, badRequest('invalid playlist name'));
   try {
     await execFilePromise('mpc', ['save', name]);
     res.json({ success: true });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { sendError(res, err); }
 });
 
 router.delete('/playlists/:name', async (req, res) => {
   const name = req.params.name.replace(/[^\w\s\-_.]/g, '').trim();
-  if (!name) return res.status(400).json({ error: 'invalid playlist name' });
+  if (!name) return sendError(res, badRequest('invalid playlist name'));
   try {
     await execFilePromise('mpc', ['rm', name]);
     res.json({ success: true });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { sendError(res, err); }
 });
 
 router.post('/playlists/:name/play', async (req, res) => {
   const name = req.params.name.replace(/[^\w\s\-_.]/g, '').trim();
-  if (!name) return res.status(400).json({ error: 'invalid playlist name' });
+  if (!name) return sendError(res, badRequest('invalid playlist name'));
   try {
     if (getStandbyState()) await emit('SET_STANDBY', { enabled: false });
     await execPromise('mpc clear');
     await execFilePromise('mpc', ['load', name]);
     await execPromise('mpc play');
     res.json({ success: true });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { sendError(res, err); }
 });
 
 // ── Listening Stats (#26) ─────────────────────────────────────────────────────
@@ -2211,7 +2212,7 @@ router.get('/stats', async (req, res) => {
     const topTracks  = Object.entries(byTitle).sort((a, b) => b[1] - a[1]).slice(0, 10).map(([name, count]) => ({ name, count }));
     const sourceBreakdown = Object.entries(bySource).map(([source, count]) => ({ source, count }));
     res.json({ totalPlays: history.length, totalMs, topArtists, topTracks, sourceBreakdown });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { sendError(res, err); }
 });
 
 export default router;

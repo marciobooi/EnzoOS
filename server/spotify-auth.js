@@ -2,6 +2,7 @@ import express from 'express';
 import fetch from 'node-fetch';
 import crypto from 'crypto';
 import { getSetting, setSetting, deleteSetting } from './db.js';
+import { sendError, unauthorized } from './lib/errors.js';
 import { emit } from './event-service.js';
 
 const router = express.Router();
@@ -299,7 +300,7 @@ router.get('/status', async (req, res) => {
 router.get('/token', async (req, res) => {
   const token = await getValidAccessToken();
   if (!token) {
-    return res.status(401).json({ error: 'Not authenticated' });
+    return sendError(res, unauthorized('Not authenticated'));
   }
   res.json({ token });
 });

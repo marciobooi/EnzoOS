@@ -7,6 +7,7 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { clearSettingsExcept, getSetting, setSetting } from './db.js';
+import { sendError, badRequest, notFound } from './lib/errors.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname  = path.dirname(__filename);
@@ -38,7 +39,7 @@ router.post('/onboarding', async (req, res) => {
   try {
     await setSetting('onboarding_complete', complete ? 'true' : 'false');
     res.json({ success: true, complete });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { sendError(res, err); }
 });
 
 // ── Language / locale ─────────────────────────────────────────────────────────
@@ -54,12 +55,12 @@ router.get('/language', async (req, res) => {
 router.post('/language', async (req, res) => {
   const language = String(req.body?.language || '').toLowerCase();
   if (!SUPPORTED_LANGS.includes(language)) {
-    return res.status(400).json({ error: 'Unsupported language' });
+    return sendError(res, badRequest('Unsupported language'));
   }
   try {
     await setSetting('language', language);
     res.json({ success: true, language });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { sendError(res, err); }
 });
 
 // GET /api/system/lan-url — returns the LAN-accessible remote URL for QR code generation
@@ -90,13 +91,13 @@ router.get('/services', async (req, res) => {
 router.post('/service/:name/restart', sensitiveLimiter, async (req, res) => {
   const { name } = req.params;
   if (!ALLOWED_SERVICES.includes(name)) {
-    return res.status(400).json({ error: 'Service not allowed' });
+    return sendError(res, badRequest('Service not allowed'));
   }
   try {
     await execFileP('sudo', ['systemctl', 'restart', name]);
     res.json({ success: true });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    sendError(res, err);
   }
 });
 
@@ -130,7 +131,7 @@ router.get('/storage', async (req, res) => {
     } catch {}
 
     res.json({ rootMb: { size, used, avail, pct: size ? Math.round((used / size) * 100) : 0 }, musicFiles, musicSizeMb: musicSize });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { sendError(res, err); }
 });
 
 // ── Wi-Fi configuration (#21) ─────────────────────────────────────────────────
@@ -154,12 +155,12 @@ router.get('/wifi/scan', async (req, res) => {
       return { ssid: parts[0] || '', signal: parseInt(parts[1], 10) || 0, security: parts[2] || '' };
     }).filter(n => n.ssid);
     res.json({ networks });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { sendError(res, err); }
 });
 
 router.post('/wifi/connect', sensitiveLimiter, async (req, res) => {
   const { ssid, password } = req.body || {};
-  if (!ssid) return res.status(400).json({ error: 'ssid required' });
+  if (!ssid) return sendError(res, badRequest('ssid required'));
   try {
     // Argv array (no shell) — ssid/password are passed verbatim, never parsed
     // by a shell, so a value like `$(reboot)` is just text. Needs root → sudo.
@@ -167,7 +168,7 @@ router.post('/wifi/connect', sensitiveLimiter, async (req, res) => {
     if (password) args.push('password', password);
     await execFileP('sudo', args);
     res.json({ success: true });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { sendError(res, err); }
 });
 
 // ── Backup / Restore (#19) ────────────────────────────────────────────────────
@@ -175,12 +176,12 @@ const DB_PATH = path.resolve(__dirname, '../resonance.db');
 
 router.get('/backup', async (req, res) => {
   try {
-    if (!fs.existsSync(DB_PATH)) return res.status(404).json({ error: 'Database not found' });
+    if (!fs.existsSync(DB_PATH)) return sendError(res, notFound('Database not found'));
     const filename = `resonance-backup-${new Date().toISOString().slice(0, 10)}.db`;
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
     res.setHeader('Content-Type', 'application/octet-stream');
     fs.createReadStream(DB_PATH).pipe(res);
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { sendError(res, err); }
 });
 
 router.post('/restore', async (req, res) => {
@@ -189,15 +190,15 @@ router.post('/restore', async (req, res) => {
   req.on('end', async () => {
     try {
       const buf = Buffer.concat(chunks);
-      if (!buf.length) return res.status(400).json({ error: 'Empty file' });
+      if (!buf.length) return sendError(res, badRequest('Empty file'));
       if (!buf.slice(0, 16).toString('ascii').startsWith('SQLite format 3')) {
-        return res.status(400).json({ error: 'Not a valid SQLite database' });
+        return sendError(res, badRequest('Not a valid SQLite database'));
       }
       const backupPath = DB_PATH + '.bak';
       fs.copyFileSync(DB_PATH, backupPath);
       fs.writeFileSync(DB_PATH, buf);
       res.json({ success: true, message: 'Database restored. Restart the server to apply.' });
-    } catch (err) { res.status(500).json({ error: err.message }); }
+    } catch (err) { sendError(res, err); }
   });
 });
 
@@ -211,7 +212,7 @@ router.post('/factory-reset', sensitiveLimiter, async (req, res) => {
   try {
     await clearSettingsExcept(FACTORY_RESET_PROTECTED);
     res.json({ success: true, message: 'Settings reset to factory defaults. Restart to apply.' });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { sendError(res, err); }
 });
 
 export default router;

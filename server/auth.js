@@ -1,5 +1,6 @@
 import crypto from 'crypto';
 import { getSetting, setSetting } from './db.js';
+import { sendError, unauthorized } from './lib/errors.js';
 
 // ─── Remote access authentication ─────────────────────────────────────────────
 //
@@ -83,7 +84,7 @@ export async function requireAuth(req, res, next) {
   } catch (err) {
     console.error('[Auth] requireAuth error:', err.message);
   }
-  return res.status(401).json({ error: 'Unauthorized' });
+  return sendError(res, unauthorized());
 }
 
 /**

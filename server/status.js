@@ -2,6 +2,7 @@ import express from 'express';
 import { exec } from 'child_process';
 import { promisify } from 'util';
 import { getFullStatus } from './event-service.js';
+import { sendError } from './lib/errors.js';
 
 const execP  = promisify(exec);
 const router = express.Router();
@@ -61,8 +62,7 @@ router.get('/', async (req, res) => {
 
     res.json(status);
   } catch (err) {
-    console.error('[Status] Failed to build status:', err);
-    res.status(500).json({ error: err.message });
+    sendError(res, err, req);
   }
 });
 

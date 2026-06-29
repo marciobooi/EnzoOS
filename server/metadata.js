@@ -18,6 +18,7 @@
 import express from 'express';
 import { MusicBrainzApi } from 'musicbrainz-api';
 import { getCachedMetadata, setCachedMetadata, getSetting, setSetting } from './db.js';
+import { sendError, badRequest } from './lib/errors.js';
 
 const router = express.Router();
 
@@ -275,7 +276,7 @@ async function aggregate(artist, album, keys, lang = 'en') {
 router.get('/album', async (req, res) => {
   const artist = (req.query.artist || '').toString().trim();
   const album = (req.query.album || '').toString().trim();
-  if (!artist || !album) return res.status(400).json({ error: 'artist and album are required' });
+  if (!artist || !album) return sendError(res, badRequest('artist and album are required'));
 
   // Language for editorial text (bio/review). Only supported locales are honoured;
   // anything else falls back to English. The cache key is namespaced by language so
@@ -305,8 +306,7 @@ router.get('/album', async (req, res) => {
     }
     res.json({ ...data, lastfmConfigured, cached: false });
   } catch (err) {
-    console.error('[Metadata] aggregate failed:', err.message);
-    res.status(500).json({ error: 'metadata lookup failed' });
+    sendError(res, err, req);
   }
 });
 
@@ -330,8 +330,7 @@ router.post('/keys', async (req, res) => {
     if (discogs !== undefined)    await setSetting('discogs_token', String(discogs).trim());
     res.json({ success: true });
   } catch (err) {
-    console.error('[Metadata] save keys failed:', err.message);
-    res.status(500).json({ error: 'could not save keys' });
+    sendError(res, err, req);
   }
 });
 
