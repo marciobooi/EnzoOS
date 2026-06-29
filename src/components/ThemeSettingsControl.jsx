@@ -18,6 +18,7 @@ export const SCREEN_THEMES = [
   { id: 'origami',     name: 'Origami',           desc: 'Kindle paper & ink luxury'              },
   { id: 'sterling',    name: 'Sterling',          desc: 'Brushed-silver hi-fi instrument'        },
   { id: 'brutalist',   name: 'Brutalist',         desc: 'Raw concrete & exposed steel'           },
+  { id: 'cassette',    name: 'Cassette',          desc: 'Analog tape deck · spinning reels'      },
 ];
 
 export default function ThemeSettingsControl({

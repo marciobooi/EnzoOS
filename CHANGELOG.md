@@ -8,6 +8,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **New kiosk skin: Cassette** (`src/cassette.css`) — a warm 1980s tape deck.
+  Matte charcoal chassis with chrome trim and a cream/amber instrument palette;
+  the album art is framed as a cassette with two toothed reels that spin while
+  playing and rest when paused (`animation-play-state` bound to `.is-playing`);
+  bevelled transport keys that depress on press; cream VU gauge faces with dark
+  needles; monospace tape-counter readouts. Accent colour warms the reels,
+  needles and active keys.
 - **New kiosk skin: Brutalist** (`src/brutalist.css`) — raw concrete & exposed
   steel. Stencilled monospace (Space/JetBrains Mono), zero radii, hard offset
   shadows (no blur), 2–3px structural borders, hazard-tape album corner,

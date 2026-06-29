@@ -1,0 +1,265 @@
+/* ==============================================================================
+   Cassette — Analog Tape Deck
+
+   A warm 1980s three-head cassette deck. Matte charcoal chassis, chrome trim,
+   cream-and-amber instrumentation. The album art becomes the cassette itself:
+   a J-card label seen through the deck window, with two reels that actually
+   spin while the track plays and rest when paused. The user's accent colour
+   warms the needles, the reel tape and the active keys.
+
+   Design pillars:
+   1. Warm deck   — matte charcoal with a fine brushed grain and a chrome rail.
+   2. The tape    — album art framed as a cassette; two toothed reels rotate
+                    on play (animation-play-state bound to .is-playing).
+   3. Mechanical  — chunky bevelled transport keys that depress when pressed.
+   4. Counter     — monospace tape-counter readouts; warm amber VU needles.
+   5. Restraint   — cream ink on charcoal; accent reserved for motion + state.
+   ============================================================================= */
+
+div[data-active-theme="cassette"] {
+  --deck-0:   #161311;
+  --deck-1:   #211d19;
+  --deck-2:   #2b2620;
+  --deck-3:   #352f28;
+  --chrome:   rgba(245, 240, 228, 0.55);
+  --chrome-2: rgba(245, 240, 228, 0.22);
+  --cream:    #EFE7D6;
+  --cream-2:  rgba(239, 231, 214, 0.66);
+  --cream-3:  rgba(239, 231, 214, 0.36);
+  --hair:     rgba(239, 231, 214, 0.12);
+
+  /* accent follows the user's colour; warm amber fallback */
+  --amber:    var(--theme-color, #E0A23C);
+
+  --color-active: var(--cream);
+  --color-faded:  var(--cream-3);
+
+  font-family: 'Outfit', 'Inter', system-ui, sans-serif !important;
+  color: var(--cream) !important;
+
+  background:
+    radial-gradient(ellipse 90% 55% at 50% -10%, rgba(255,240,210,0.05) 0%, transparent 55%),
+    linear-gradient(180deg, var(--deck-1) 0%, var(--deck-0) 100%) !important;
+}
+
+/* fine horizontal brushed grain on the deck face */
+div[data-active-theme="cassette"]::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='600' height='600'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.004 0.7' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)'/%3E%3C/svg%3E");
+  background-size: 100% 240px;
+  mix-blend-mode: overlay;
+  opacity: 0.10;
+}
+
+/* kill LED / glow / glass carry-overs */
+div[data-active-theme="cassette"] .ambient-orb,
+div[data-active-theme="cassette"] .dot-matrix-grid,
+div[data-active-theme="cassette"] .crt-scanlines {
+  display: none !important;
+}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━ DECK CHASSIS ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+div[data-active-theme="cassette"] .music-player-container {
+  background: linear-gradient(180deg, var(--deck-3) 0%, var(--deck-2) 6%, var(--deck-1) 100%) !important;
+  border: 1px solid #000 !important;
+  border-top: 1px solid var(--chrome) !important;       /* chrome top rail */
+  border-radius: 8px !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.10),
+    inset 0 -2px 6px rgba(0,0,0,0.5),
+    0 18px 44px rgba(0,0,0,0.46) !important;
+  overflow: hidden !important;
+  position: relative;
+  z-index: 2;
+  padding: 14px 16px !important;
+}
+/* engraved deck legend */
+div[data-active-theme="cassette"] .music-player-container::before {
+  content: 'RESONANCE · STEREO CASSETTE DECK · DOLBY HX';
+  position: absolute;
+  top: 5px; right: 16px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 7.5px;
+  letter-spacing: 0.22em;
+  color: var(--cream-3);
+  pointer-events: none;
+  z-index: 6;
+}
+
+div[data-active-theme="cassette"] .music-player { position: relative; z-index: 3; }
+
+/* ━━━━━━━━━━━━━━━━━━━━━━ THE CASSETTE (album art) ━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+div[data-active-theme="cassette"] .album-art {
+  border-radius: 9px !important;
+  border: 1px solid #000 !important;
+  box-shadow:
+    inset 0 0 0 1px var(--chrome-2),
+    inset 0 0 44px rgba(0,0,0,0.55),                     /* window vignette */
+    0 6px 16px rgba(0,0,0,0.4) !important;
+  overflow: hidden !important;
+  position: relative;
+  background: var(--deck-0) !important;
+}
+div[data-active-theme="cassette"] .album-art img {
+  border-radius: 9px !important;
+  filter: saturate(0.92) brightness(0.9) contrast(1.04) !important;
+}
+/* two reels — drawn as toothed hubs, rotating only while playing */
+div[data-active-theme="cassette"] .album-art::before,
+div[data-active-theme="cassette"] .album-art::after {
+  content: '';
+  position: absolute;
+  top: 20%;
+  width: 30%;
+  aspect-ratio: 1 / 1;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at center, #0d0b0a 0 17%, var(--cream) 17% 21%, rgba(20,18,16,0.0) 21%),
+    repeating-conic-gradient(from 0deg, rgba(20,18,16,0.92) 0 16deg, rgba(60,54,46,0.92) 16deg 32deg);
+  box-shadow:
+    0 0 0 2px rgba(0,0,0,0.8),
+    0 0 0 3px var(--chrome-2),
+    0 2px 6px rgba(0,0,0,0.5);
+  z-index: 4;
+  animation: cass-reel 4.2s linear infinite;
+  animation-play-state: paused;                          /* paused unless playing */
+}
+div[data-active-theme="cassette"] .album-art::before { left: 14%; }
+div[data-active-theme="cassette"] .album-art::after  { right: 14%; }
+div[data-active-theme="cassette"] .music-player.is-playing .album-art::before,
+div[data-active-theme="cassette"] .music-player.is-playing .album-art::after {
+  animation-play-state: running;
+}
+div[data-active-theme="cassette"] .music-player.is-playing .album-art { animation: none !important; }
+@keyframes cass-reel { to { transform: rotate(360deg); } }
+
+/* ━━━━━━━━━━━━━━━━━━━━━━ STATUS PILL ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+div[data-active-theme="cassette"] .status-pill {
+  border-radius: 4px !important;
+  border: 1px solid var(--chrome-2) !important;
+  background: linear-gradient(180deg, var(--deck-3), var(--deck-1)) !important;
+  color: var(--cream) !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.16em !important;
+  font-size: 9px !important;
+}
+div[data-active-theme="cassette"] .status-dot {
+  background: var(--amber) !important;
+  box-shadow: 0 0 6px var(--amber) !important;
+}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━ TITLE / ARTIST ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+div[data-active-theme="cassette"] .track-title {
+  font-family: 'Outfit', 'Inter', sans-serif !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.01em !important;
+  color: var(--cream) !important;
+  text-shadow: 0 1px 0 rgba(0,0,0,0.5) !important;
+}
+div[data-active-theme="cassette"] .track-artist {
+  font-family: 'JetBrains Mono', monospace !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.18em !important;
+  color: var(--amber) !important;
+  font-size: 11px !important;
+}
+div[data-active-theme="cassette"] .track-album {
+  text-transform: uppercase !important;
+  letter-spacing: 0.1em !important;
+  color: var(--cream-2) !important;
+}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━ METADATA ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+div[data-active-theme="cassette"] .metadata-row {
+  font-family: 'JetBrains Mono', monospace !important;
+  border-top: 1px solid var(--hair) !important;
+  border-bottom: 1px solid var(--hair) !important;
+}
+div[data-active-theme="cassette"] .metadata-row [class*="border"][class*="rounded"] {
+  border-radius: 4px !important;
+  border-color: var(--chrome-2) !important;
+  background: rgba(0,0,0,0.3) !important;
+}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━ VU — warm amber needles ━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+div[data-active-theme="cassette"] .vu-channel-box {
+  border-radius: 6px !important;
+  border: 1px solid #000 !important;
+  background: linear-gradient(180deg, #d9cfb6 0%, #c8bd9f 100%) !important;  /* cream gauge face */
+  box-shadow: inset 0 0 0 1px var(--chrome), inset 0 -2px 6px rgba(0,0,0,0.25) !important;
+}
+div[data-active-theme="cassette"] .vu-title {
+  text-transform: uppercase !important;
+  letter-spacing: 0.28em !important;
+  color: rgba(40,32,24,0.6) !important;
+}
+div[data-active-theme="cassette"] .vu-needle {
+  background: #2a1d10 !important;                        /* dark needle on cream */
+  box-shadow: 0 0 2px rgba(0,0,0,0.4) !important;
+}
+div[data-active-theme="cassette"] .vu-readout-line {
+  font-family: 'JetBrains Mono', monospace !important;
+  color: #4a3a26 !important;
+}
+div[data-active-theme="cassette"] .vu-glow-overlay { opacity: 0.15 !important; }
+
+/* ━━━━━━━━━━━━━━━━━━━━━━ TRANSPORT — bevelled deck keys ━━━━━━━━━━━━━━━━━━━━ */
+div[data-active-theme="cassette"] .icon-button {
+  border-radius: 5px !important;
+  border: 1px solid #000 !important;
+  background: linear-gradient(180deg, var(--deck-3) 0%, var(--deck-1) 100%) !important;
+  color: var(--cream) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.14),
+    inset 0 -2px 3px rgba(0,0,0,0.4),
+    0 2px 3px rgba(0,0,0,0.4) !important;
+  transition: transform 0.06s ease, box-shadow 0.06s ease, background 0.12s !important;
+}
+div[data-active-theme="cassette"] .icon-button svg { color: var(--cream) !important; }
+div[data-active-theme="cassette"] .icon-button:active {
+  transform: translateY(1.5px) !important;               /* key depresses */
+  box-shadow: inset 0 2px 4px rgba(0,0,0,0.55) !important;
+}
+div[data-active-theme="cassette"] .icon-button.active,
+div[data-active-theme="cassette"] .icon-button.play {
+  background: linear-gradient(180deg, color-mix(in srgb, var(--amber) 88%, #fff) 0%, var(--amber) 100%) !important;
+  border-color: #000 !important;
+}
+div[data-active-theme="cassette"] .icon-button.active svg,
+div[data-active-theme="cassette"] .icon-button.play svg { color: #2a1d0c !important; }
+
+/* ━━━━━━━━━━━━━━━━━━━━━━ PROGRESS — tape counter ━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+div[data-active-theme="cassette"] .progress-bar-dots {
+  border-radius: 3px !important;
+  background: rgba(0,0,0,0.45) !important;
+  border: 1px solid #000 !important;
+  box-shadow: inset 0 1px 2px rgba(0,0,0,0.6) !important;
+  height: 6px !important;
+  overflow: hidden !important;
+}
+div[data-active-theme="cassette"] .progress-fill-dots {
+  border-radius: 0 !important;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--amber) 85%, #fff), var(--amber)) !important;
+  box-shadow: 0 0 8px var(--amber) !important;
+}
+div[data-active-theme="cassette"] .progress-times,
+div[data-active-theme="cassette"] .progress-area span {
+  font-family: 'JetBrains Mono', monospace !important;
+  letter-spacing: 0.1em !important;
+  color: var(--cream-2) !important;
+}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━ VOLUME POPUP ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+div[data-active-theme="cassette"] .volume-popup,
+div[data-active-theme="cassette"] .volume-feedback {
+  border-radius: 6px !important;
+  border: 1px solid var(--chrome-2) !important;
+  background: linear-gradient(180deg, var(--deck-2), var(--deck-0)) !important;
+  box-shadow: 0 8px 20px rgba(0,0,0,0.5) !important;
+  font-family: 'JetBrains Mono', monospace !important;
+}
