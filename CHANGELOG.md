@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **First-boot welcome / setup wizard** (`src/components/WelcomeWizard.jsx`,
+  `src/App.jsx`, `server/system.js`, `src/api/system.js`) — a 4-step onboarding
+  overlay shown once on a fresh install (or after a factory reset). Completion is
+  persisted in the DB (`onboarding_complete` setting) via
+  `GET/POST /api/system/onboarding`, so it never re-appears automatically. A
+  "Run Setup Wizard" row in the remote Settings tab dispatches a
+  `resonance:show-welcome` event to re-open it on demand. Rendered at the App
+  level, fully decoupled from the kiosk/remote controllers, and sized for both
+  the 1480×320 kiosk and phones.
+
 ### Fixed
 - **Crossfade & ReplayGain now survive a reboot** (`server/player.js`,
   `server/index.js`) — both are saved to the DB but MPD doesn't persist them

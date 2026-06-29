@@ -80,4 +80,17 @@ export const systemApi = {
     const r = await fetch('/api/system/factory-reset', { method: 'POST' });
     return r.json();
   },
+
+  // ── Onboarding (first-boot welcome wizard) ────────────────────────────────────
+  async getOnboarding() {
+    const r = await fetch('/api/system/onboarding');
+    return r.json();
+  },
+  async setOnboarding(complete) {
+    const r = await fetch('/api/system/onboarding', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ complete }),
+    });
+    return r.json();
+  },
 };
