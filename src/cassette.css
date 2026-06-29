@@ -98,221 +98,36 @@ div[data-active-theme="cassette"] .music-player::before {
   z-index: 6;
 }
 
-/* ━━━━━━━━━━━━━━━━━━━━━━ THE CASSETTE (album art = a C-90) ━━━━━━━━━━━━━━━━━
-   The album-art box becomes the cassette shell. The cover image is the cream
-   J-card label across the top; below it sit the rainbow stripe, a black window
-   with two toothed reels that spin while playing, and the C-90 type legend.
-   Four corner screws finish the moulded shell.                                */
+/* ━━━━━━━━━━━━━━━━━━━━━━ THE CASSETTE (SVG C-90) ━━━━━━━━━━━━━━━
+   The whole cassette is drawn as an inline SVG in PlayerDisplay; the CSS here
+   just sizes the box (landscape, centred in the column) and spins the cogs. */
 div[data-active-theme="cassette"] .album-art--cassette {
-  /* a real cassette is landscape (~1.6:1); the base art box is a 220px square,
-     so override to a wide shell centred in the album column (deck shows around) */
   width: 240px !important;
   height: 152px !important;
-  border-radius: 11px !important;
-  border: 1px solid #000 !important;
-  box-shadow:
-    inset 0 1px 0 rgba(255,255,255,0.10),
-    inset 0 0 0 1px rgba(0,0,0,0.6),
-    0 8px 20px rgba(0,0,0,0.5) !important;
-  overflow: hidden !important;
-  position: relative;
-  /* moulded black plastic shell with a soft top sheen */
-  background:
-    radial-gradient(ellipse 120% 60% at 50% -10%, rgba(255,255,255,0.10) 0%, transparent 50%),
-    linear-gradient(165deg, #26241f 0%, #141210 55%, #0b0a09 100%) !important;
-}
-
-/* the cover, presented as the cream label across the top ~46% */
-div[data-active-theme="cassette"] .album-art--cassette img {
-  position: absolute !important;
-  top: 6%; left: 6%; right: 6%;
-  width: 88% !important;
-  height: 44% !important;
-  object-fit: cover !important;
-  border-radius: 3px !important;
-  border: 2px solid #efe7d6 !important;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.55), inset 0 0 0 1px rgba(0,0,0,0.25) !important;
-  filter: saturate(0.95) contrast(1.04) !important;
-  z-index: 1 !important;
-}
-
-div[data-active-theme="cassette"] .cassette {
-  position: absolute;
-  inset: 0;
-  z-index: 2;
-  pointer-events: none;
-  font-family: 'JetBrains Mono', monospace;
-}
-
-/* corner screws — subtle moulded-in recesses (barely there, like the reference):
-   a small dark pinhole sunk into the shell with the faintest rim, not a stud */
-div[data-active-theme="cassette"] .cass-screw {
-  position: absolute;
-  width: 3.4%;
-  aspect-ratio: 1 / 1;
-  border-radius: 50%;
-  background: radial-gradient(circle at 42% 38%, #2a251f 0%, #0e0c0a 70%);
-  box-shadow:
-    inset 0 1px 1px rgba(0,0,0,0.7),                 /* sunk depth */
-    0 1px 0 rgba(255,255,255,0.06);                  /* faint lower-edge catch */
-}
-div[data-active-theme="cassette"] .cass-screw--tl { top: 6%;  left: 5%;  }
-div[data-active-theme="cassette"] .cass-screw--tr { top: 6%;  right: 5%; }
-div[data-active-theme="cassette"] .cass-screw--bl { bottom: 6%; left: 5%; }
-div[data-active-theme="cassette"] .cass-screw--br { bottom: 6%; right: 5%; }
-
-/* rainbow stripe band (passes behind the window) */
-div[data-active-theme="cassette"] .cass-stripe {
-  position: absolute;
-  left: 6%; right: 6%;
-  top: 45%;
-  height: 9%;
-  background: linear-gradient(180deg,
-    #e96d8a 0 20%, #f0a04b 20% 40%, #f3d24e 40% 60%, #5bbf6a 60% 80%, #4a90d9 80% 100%);
-}
-
-/* the black mechanism window */
-div[data-active-theme="cassette"] .cass-window {
-  position: absolute;
-  left: 50%;
-  transform: translateX(-50%);
-  top: 41%;
-  width: 56%;
-  height: 33%;
-  /* dark glassy window (like the reference) — the white cog wheels pop against
-     it; kept slightly translucent so the cover shows faintly behind the glass */
-  background: linear-gradient(180deg, rgba(24,23,34,0.66) 0%, rgba(12,11,16,0.72) 100%);
-  border-radius: 5px;
-  box-shadow:
-    inset 0 0 0 1px rgba(255,255,255,0.10),
-    inset 0 2px 7px rgba(0,0,0,0.6);
+  background: none !important;
+  border: none !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  overflow: visible !important;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 0 6%;
+  justify-content: center;
 }
-
-/* the two reels. Each is a flange holding a wound tape pack (.cass-pack) whose
-   radius tracks playback: the supply reel (left) starts full and empties; the
-   take-up reel (right) starts empty and fills — so the song "winds" left→right.
-   A fixed white toothed clutch sits at the hub. Everything spins while playing. */
-div[data-active-theme="cassette"] .cass-reel {
-  position: relative;
-  width: 27%;
-  aspect-ratio: 1 / 1;
-  border-radius: 50%;
-  background: transparent;          /* empty area = the clear window shows through */
+div[data-active-theme="cassette"] .cassette-svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+  filter: drop-shadow(0 8px 18px rgba(0,0,0,0.5));
+}
+/* cog wheels spin only while playing */
+div[data-active-theme="cassette"] .cass-cog {
   animation: cass-spin 4s linear infinite;
   animation-play-state: paused;
 }
-/* fill fraction per reel (0..1), derived from --cass-progress on .cassette */
-div[data-active-theme="cassette"] .cass-reel--l { --fill: calc(1 - var(--cass-progress, 0)); }
-div[data-active-theme="cassette"] .cass-reel--r { --fill: var(--cass-progress, 0); }
-
-/* wound tape pack — a warm-brown spool that grows as a RING around the white
-   cog hub; radius grows with --fill (empty ≈ just the hub, full ≈ whole reel) */
-div[data-active-theme="cassette"] .cass-pack {
-  position: absolute;
-  top: 50%; left: 50%;
-  width:  calc(56% + var(--fill, 0) * 42%);
-  height: calc(56% + var(--fill, 0) * 42%);
-  transform: translate(-50%, -50%);
-  border-radius: 50%;
-  background:
-    radial-gradient(circle at 36% 30%, rgba(255,236,200,0.22) 0%, transparent 34%), /* sheen */
-    repeating-radial-gradient(circle at center, #8a5f34 0 1.5px, #5e3f20 1.5px 3.2px); /* tape layers */
-  box-shadow:
-    0 2px 5px rgba(0,0,0,0.55),           /* drop onto the window floor */
-    0 0 0 1px rgba(0,0,0,0.5),
-    inset 0 0 7px rgba(0,0,0,0.5);        /* tape pack depth */
-  transition: width 0.6s linear, height 0.6s linear;
-}
-/* the white cog/clutch wheel: a toothed rim, a ring of clutch holes and a
-   domed centre — sits fixed on top of the tape pack, like a real cassette hub */
-div[data-active-theme="cassette"] .cass-reel::after {
-  content: '';
-  position: absolute;
-  top: 50%; left: 50%;
-  width: 58%; height: 58%;
-  transform: translate(-50%, -50%);
-  border-radius: 50%;
-  background:
-    /* eight clutch holes around the centre */
-    radial-gradient(circle at 78% 50%,     #14131c 0 6%, transparent 7.5%),
-    radial-gradient(circle at 69.8% 69.8%, #14131c 0 6%, transparent 7.5%),
-    radial-gradient(circle at 50% 78%,     #14131c 0 6%, transparent 7.5%),
-    radial-gradient(circle at 30.2% 69.8%, #14131c 0 6%, transparent 7.5%),
-    radial-gradient(circle at 22% 50%,     #14131c 0 6%, transparent 7.5%),
-    radial-gradient(circle at 30.2% 30.2%, #14131c 0 6%, transparent 7.5%),
-    radial-gradient(circle at 50% 22%,     #14131c 0 6%, transparent 7.5%),
-    radial-gradient(circle at 69.8% 30.2%, #14131c 0 6%, transparent 7.5%),
-    /* solid domed white body (covers the toothed stripes' interior) */
-    radial-gradient(circle at 40% 34%, #ffffff 0 35%, #ece8dd 37%, transparent 39%),
-    /* gear teeth at the rim — transparent gaps let the dark window show through */
-    repeating-conic-gradient(from 9deg, #efe9dd 0 11deg, transparent 11deg 22deg);
-  box-shadow:
-    0 1px 2px rgba(0,0,0,0.55),
-    inset 0 1px 1px rgba(255,255,255,0.6);
-  z-index: 2;
-}
-/* the dark spindle hole at the very centre */
-div[data-active-theme="cassette"] .cass-reel::before {
-  content: '';
-  position: absolute;
-  top: 50%; left: 50%;
-  width: 13%; height: 13%;
-  transform: translate(-50%, -50%);
-  border-radius: 50%;
-  background: radial-gradient(circle, #0c0b12 0 55%, #2a2620 100%);
-  box-shadow: inset 0 0 2px rgba(0,0,0,0.85);
-  z-index: 3;
-}
-div[data-active-theme="cassette"] .music-player.is-playing .cass-reel {
+div[data-active-theme="cassette"] .music-player.is-playing .cass-cog {
   animation-play-state: running;
 }
 @keyframes cass-spin { to { transform: rotate(360deg); } }
-
-/* central tape bridge — the brown magnetic tape spanning between the reels,
-   a flat brown tape block with a curved tan tape window, like the reference */
-div[data-active-theme="cassette"] .cass-tape {
-  position: relative;
-  width: 22%;
-  height: 58%;
-  align-self: center;
-  border-radius: 2px;
-  background:
-    /* curved tan tape window bulging from the right edge */
-    radial-gradient(ellipse 62% 130% at 100% 50%, #c2a479 0 26%, rgba(194,164,121,0) 52%),
-    /* flat brown tape block */
-    linear-gradient(90deg, #32230f 0%, #4a3320 62%, #3a2817 100%);
-  box-shadow:
-    inset 0 0 0 1px rgba(0,0,0,0.45),
-    inset 0 1px 3px rgba(0,0,0,0.45);
-}
-
-/* C-90 / NORMAL POSITION legend on the lower shell */
-div[data-active-theme="cassette"] .cass-foot {
-  position: absolute;
-  left: 7%; right: 7%;
-  bottom: 8%;
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-}
-div[data-active-theme="cassette"] .cass-type {
-  font-family: 'Space Mono', monospace;
-  font-weight: 700;
-  font-size: 13px;
-  letter-spacing: 0.02em;
-  color: #efe7d6;
-}
-div[data-active-theme="cassette"] .cass-pos {
-  font-size: 6.5px;
-  line-height: 1.25;
-  letter-spacing: 0.12em;
-  text-align: right;
-  color: rgba(239, 231, 214, 0.66);
-}
 
 /* ━━━━━━━━━━━━━━━━━━━━━━ STATUS PILL ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
 div[data-active-theme="cassette"] .status-pill {
