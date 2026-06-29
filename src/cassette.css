@@ -144,28 +144,43 @@ div[data-active-theme="cassette"] .cassette {
   font-family: 'JetBrains Mono', monospace;
 }
 
-/* corner screws */
+/* corner screws — recessed wells with a brushed-steel head + Phillips cross */
 div[data-active-theme="cassette"] .cass-screw {
   position: absolute;
-  width: 7%;
+  width: 5.5%;
   aspect-ratio: 1 / 1;
   border-radius: 50%;
+  /* recessed moulding ring around a brushed head with a raking highlight */
   background:
-    radial-gradient(circle at 36% 30%, #c9c6bd 0%, #8a877e 42%, #4d4a44 100%);
-  box-shadow: inset 0 0 0 1px rgba(0,0,0,0.55), 0 1px 1px rgba(0,0,0,0.5);
+    radial-gradient(circle at 38% 32%, #d7d3c9 0%, #a6a299 30%, #6f6c64 62%, #45423c 100%);
+  box-shadow:
+    0 0 0 1.5px rgba(0,0,0,0.55),               /* dark recess wall */
+    0 0 0 2.5px rgba(255,255,255,0.05),          /* shell bevel highlight */
+    inset 0 1px 1px rgba(255,255,255,0.55),      /* top sheen on the head */
+    inset 0 -1px 2px rgba(0,0,0,0.5);            /* bottom shade */
 }
-div[data-active-theme="cassette"] .cass-screw::before {   /* slot */
+/* Phillips cross — two thin recessed slots */
+div[data-active-theme="cassette"] .cass-screw::before,
+div[data-active-theme="cassette"] .cass-screw::after {
   content: '';
   position: absolute;
-  inset: 38%;
-  background: rgba(0,0,0,0.45);
-  transform: rotate(35deg);
+  top: 50%; left: 50%;
+  background: rgba(0,0,0,0.5);
+  box-shadow: 0 1px 0 rgba(255,255,255,0.25);   /* etched edge */
   border-radius: 1px;
 }
-div[data-active-theme="cassette"] .cass-screw--tl { top: 3.5%;  left: 3.5%;  }
-div[data-active-theme="cassette"] .cass-screw--tr { top: 3.5%;  right: 3.5%; }
-div[data-active-theme="cassette"] .cass-screw--bl { bottom: 3.5%; left: 3.5%; }
-div[data-active-theme="cassette"] .cass-screw--br { bottom: 3.5%; right: 3.5%; }
+div[data-active-theme="cassette"] .cass-screw::before {
+  width: 52%; height: 12%;
+  transform: translate(-50%, -50%) rotate(38deg);
+}
+div[data-active-theme="cassette"] .cass-screw::after {
+  width: 52%; height: 12%;
+  transform: translate(-50%, -50%) rotate(128deg);
+}
+div[data-active-theme="cassette"] .cass-screw--tl { top: 5%;  left: 5%;  }
+div[data-active-theme="cassette"] .cass-screw--tr { top: 5%;  right: 5%; }
+div[data-active-theme="cassette"] .cass-screw--bl { bottom: 5%; left: 5%; }
+div[data-active-theme="cassette"] .cass-screw--br { bottom: 5%; right: 5%; }
 
 /* rainbow stripe band (passes behind the window) */
 div[data-active-theme="cassette"] .cass-stripe {
@@ -185,9 +200,13 @@ div[data-active-theme="cassette"] .cass-window {
   top: 41%;
   width: 56%;
   height: 33%;
-  background: #0c0b0a;
+  /* smoky CLEAR plastic window so the spinning tape spools are visible */
+  background: rgba(216, 208, 190, 0.12);
   border-radius: 5px;
-  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.07), inset 0 2px 8px rgba(0,0,0,0.85);
+  box-shadow:
+    inset 0 0 0 1px rgba(255,255,255,0.16),
+    inset 0 1px 5px rgba(0,0,0,0.4);
+  backdrop-filter: brightness(1.25);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -203,8 +222,7 @@ div[data-active-theme="cassette"] .cass-reel {
   width: 27%;
   aspect-ratio: 1 / 1;
   border-radius: 50%;
-  background: radial-gradient(circle at center, #211a15 0%, #15100c 100%); /* empty flange */
-  box-shadow: 0 0 0 2px #0c0b0a, inset 0 0 5px rgba(0,0,0,0.5);
+  background: transparent;          /* empty area = the clear window shows through */
   animation: cass-spin 4s linear infinite;
   animation-play-state: paused;
 }
@@ -212,17 +230,22 @@ div[data-active-theme="cassette"] .cass-reel {
 div[data-active-theme="cassette"] .cass-reel--l { --fill: calc(1 - var(--cass-progress, 0)); }
 div[data-active-theme="cassette"] .cass-reel--r { --fill: var(--cass-progress, 0); }
 
-/* wound tape pack — brown, radius grows with --fill */
+/* wound tape pack — a visible warm-brown spool; radius grows with --fill */
 div[data-active-theme="cassette"] .cass-pack {
   position: absolute;
   top: 50%; left: 50%;
-  width:  calc(40% + var(--fill, 0) * 58%);
-  height: calc(40% + var(--fill, 0) * 58%);
+  width:  calc(38% + var(--fill, 0) * 60%);
+  height: calc(38% + var(--fill, 0) * 60%);
   transform: translate(-50%, -50%);
   border-radius: 50%;
   background:
-    repeating-radial-gradient(circle at center, #3a2817 0 1.5px, #2a1d12 1.5px 3px); /* tape layers */
-  box-shadow: inset 0 0 4px rgba(0,0,0,0.6);
+    radial-gradient(circle at 36% 30%, rgba(255,236,200,0.28) 0%, transparent 32%), /* raking sheen */
+    repeating-radial-gradient(circle at center, #8a5f34 0 1.5px, #5e3f20 1.5px 3.2px); /* tape layers */
+  box-shadow:
+    0 2px 5px rgba(0,0,0,0.5),            /* drop onto the window floor */
+    0 0 0 1px rgba(0,0,0,0.45),
+    inset 0 0 7px rgba(0,0,0,0.45),       /* tape pack depth */
+    inset 0 2px 3px rgba(255,236,200,0.10);
   transition: width 0.6s linear, height 0.6s linear;
 }
 /* fixed white toothed clutch at the hub, on top of the pack */
@@ -234,24 +257,59 @@ div[data-active-theme="cassette"] .cass-reel::after {
   transform: translate(-50%, -50%);
   border-radius: 50%;
   background:
-    radial-gradient(circle at center, #0c0b0a 0 24%, #d8d4c8 24% 34%, rgba(0,0,0,0) 34%),
+    radial-gradient(circle at 38% 32%, #ffffff 0%, #e6e2d8 38%, #b6b2a8 100%),  /* domed hub */
     repeating-conic-gradient(from 0deg, #f3f0e8 0 18deg, #bdb9ae 18deg 36deg);
+  box-shadow:
+    0 1px 2px rgba(0,0,0,0.5),
+    inset 0 0 0 1px rgba(0,0,0,0.3),
+    inset 0 1px 1px rgba(255,255,255,0.7);
   z-index: 2;
+}
+/* the dark hub hole + spindle teeth at the very centre */
+div[data-active-theme="cassette"] .cass-reel::before {
+  content: '';
+  position: absolute;
+  top: 50%; left: 50%;
+  width: 17%; height: 17%;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background: radial-gradient(circle, #0c0b0a 0 55%, #2a2520 100%);
+  box-shadow: inset 0 0 2px rgba(0,0,0,0.8);
+  z-index: 3;
 }
 div[data-active-theme="cassette"] .music-player.is-playing .cass-reel {
   animation-play-state: running;
 }
 @keyframes cass-spin { to { transform: rotate(360deg); } }
 
-/* the tape window between the reels (dark spools, light tape) */
+/* central tape window: a silver pressure pad with the glossy magnetic tape
+   crossing it, recessed with top/bottom shadow for real depth */
 div[data-active-theme="cassette"] .cass-tape {
-  width: 26%;
-  height: 58%;
+  position: relative;
+  width: 20%;
+  height: 72%;
   align-self: center;
   border-radius: 2px;
-  background: linear-gradient(90deg,
-    #1c1714 0 16%, #efe7d6 30%, #efe7d6 70%, #1c1714 84% 100%);
-  opacity: 0.92;
+  background:
+    linear-gradient(180deg, rgba(0,0,0,0.4) 0%, transparent 22%, transparent 78%, rgba(0,0,0,0.4) 100%),
+    linear-gradient(90deg, #2a2320 0 14%, #cfcabb 30%, #efe9db 50%, #cfcabb 70%, #2a2320 86% 100%);
+  box-shadow:
+    inset 0 0 0 1px rgba(0,0,0,0.45),
+    inset 0 2px 4px rgba(0,0,0,0.45),
+    inset 0 -2px 4px rgba(0,0,0,0.35);
+}
+/* the magnetic tape itself, glossy and slightly raised, running across */
+div[data-active-theme="cassette"] .cass-tape::before {
+  content: '';
+  position: absolute;
+  top: 50%; left: 50%;
+  width: 100%; height: 30%;
+  transform: translate(-50%, -50%);
+  background: linear-gradient(180deg, #5a4632 0%, #2c2014 55%, #19110a 100%);
+  box-shadow:
+    0 1px 2px rgba(0,0,0,0.55),
+    inset 0 1px 0 rgba(255,236,200,0.22);   /* specular gloss line */
+  border-radius: 1px;
 }
 
 /* C-90 / NORMAL POSITION legend on the lower shell */
