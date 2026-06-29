@@ -17,6 +17,15 @@ export const dspApi = {
     return response.json();
   },
 
+  /** Toggle Pure Direct (flat, EQ/DSP-bypassed pipeline). */
+  async setPureDirect(enabled) {
+    const r = await fetch('/api/player/pure-direct', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ enabled }),
+    });
+    return r.json();
+  },
+
   // ── ReplayGain ──────────────────────────────────────────────────────────────
   async getReplayGain() {
     const r = await fetch('/api/player/replaygain');

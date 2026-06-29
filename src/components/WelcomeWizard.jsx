@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import {
   Waves, Music2, Smartphone, Check, ChevronRight, ChevronLeft, Sparkles,
-  Disc3, Loader2, ExternalLink,
+  Disc3, Loader2, ExternalLink, Sliders, SlidersHorizontal, Zap,
 } from 'lucide-react';
 import { S, cardShadow } from '../styles/stone';
 import { api } from '../api';
@@ -33,6 +33,11 @@ export default function WelcomeWizard({ onClose }) {
   // Tidal device-flow prompt: { userCode, verificationUri }
   const [tidalAuth, setTidalAuth] = useState(null);
 
+  // ── DSP / EQ mode state ─────────────────────────────────────────────────────
+  // 'eq' = Manual Equalizer · 'dsp' = Acoustic Room Correction · 'pure' = Pure Direct
+  const [dspMode, setDspMode] = useState('eq');
+  const [dspBusy, setDspBusy] = useState(null); // id being applied
+
   const spotifyPoll = useRef(null);
   const tidalPoll = useRef(null);
 
@@ -50,8 +55,36 @@ export default function WelcomeWizard({ onClose }) {
         setConnected({ spotify: !!sp?.isConnected, tidal: !!t?.connected, qobuz: !!q?.connected });
       } catch { /* best-effort */ }
     })();
+    // Pre-select the current DSP mode so re-running the wizard reflects reality.
+    (async () => {
+      try {
+        const [cal, status] = await Promise.all([
+          api.getDspCalibration().catch(() => ({})),
+          fetch('/api/status').then(r => r.json()).catch(() => ({})),
+        ]);
+        if (status?.pureDirect) setDspMode('pure');
+        else if (cal && (cal['0'] === 'dsp' || cal[0] === 'dsp')) setDspMode('dsp');
+        else setDspMode('eq');
+      } catch { /* default 'eq' */ }
+    })();
     return () => { clearInterval(spotifyPoll.current); clearInterval(tidalPoll.current); };
   }, []);
+
+  // ── Apply a DSP mode immediately (Pure Direct toggle + calibration mode) ─────
+  const applyDspMode = async (id) => {
+    setDspBusy(id);
+    try {
+      if (id === 'pure') {
+        await api.setPureDirect(true);
+      } else {
+        await api.setPureDirect(false);
+        const cal = (await api.getDspCalibration().catch(() => ({}))) || {};
+        await api.saveDspCalibration({ ...cal, 0: id }); // 'eq' | 'dsp'
+      }
+      setDspMode(id);
+    } catch { /* leave previous selection on failure */ }
+    finally { setDspBusy(null); }
+  };
 
   // ── Spotify: open the OAuth login in a popup, poll status until authorised ───
   const connectSpotify = () => {
@@ -136,6 +169,12 @@ export default function WelcomeWizard({ onClose }) {
       title: 'Connect your music',
       body: 'Link your streaming accounts now, or skip and do it later from Source. AirPlay, Bluetooth, UPnP/DLNA, web radio and your local library need no setup.',
       connect: true,
+    },
+    {
+      icon: <SlidersHorizontal className="h-8 w-8" />,
+      title: 'Shape your sound',
+      body: 'Pick how audio is processed. You can change this any time and fine-tune everything in Settings → Acoustic.',
+      dsp: true,
     },
     {
       icon: <Smartphone className="h-8 w-8" />,
@@ -269,6 +308,51 @@ export default function WelcomeWizard({ onClose }) {
                   </div>
                 );
               })}
+            </div>
+          )}
+
+          {/* Shape-your-sound (DSP / EQ) step */}
+          {s.dsp && (
+            <div className="mt-4 flex flex-col gap-2">
+              {[
+                { id: 'eq',   label: 'Manual Equalizer', rec: true,  icon: <Sliders className="h-5 w-5" />,           hint: 'Presets + parametric tone control' },
+                { id: 'dsp',  label: 'Room Correction',  rec: false, icon: <SlidersHorizontal className="h-5 w-5" />, hint: 'Harman curve + room calibration' },
+                { id: 'pure', label: 'Pure Direct',      rec: false, icon: <Zap className="h-5 w-5" />,                hint: 'Flat, bit-perfect — no processing' },
+              ].map((m) => {
+                const on = dspMode === m.id;
+                const loading = dspBusy === m.id;
+                return (
+                  <button key={m.id} onClick={() => applyDspMode(m.id)} disabled={loading}
+                    className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-left transition-all active:scale-[0.99]"
+                    style={{
+                      background: on ? S.accent : S.surface,
+                      border: `1px solid ${on ? S.accent : S.surfaceLo}`,
+                      cursor: loading ? 'default' : 'pointer',
+                    }}>
+                    <span className="shrink-0" style={{ color: on ? S.accentFg : S.accent }}>{m.icon}</span>
+                    <span className="min-w-0 flex-1">
+                      <span className="flex items-center gap-2 text-[14px] font-semibold" style={{ color: on ? S.accentFg : S.accent }}>
+                        {m.label}
+                        {m.rec && (
+                          <span className="px-1.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide"
+                            style={{ background: on ? S.accentFg : S.champagne, color: on ? S.accent : S.accentFg, opacity: on ? 0.9 : 1 }}>
+                            Recommended
+                          </span>
+                        )}
+                      </span>
+                      <span className="block text-[12px]" style={{ color: on ? S.accentFg : S.accent, opacity: on ? 0.8 : 0.6 }}>{m.hint}</span>
+                    </span>
+                    <span className="shrink-0" style={{ color: on ? S.accentFg : S.champagne }}>
+                      {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : on ? <Check className="h-5 w-5" /> : null}
+                    </span>
+                  </button>
+                );
+              })}
+              {dspMode === 'dsp' && (
+                <p className="text-[12px] mt-1 px-1" style={{ color: S.accent, opacity: 0.6 }}>
+                  Tip: fine-tune room correction with the guided 8-question wizard in Settings → Acoustic.
+                </p>
+              )}
             </div>
           )}
         </div>

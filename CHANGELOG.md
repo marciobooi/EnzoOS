@@ -19,7 +19,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the 1480×320 kiosk and phones. Includes a **"Connect your music"** step that
   performs the real account flows inline — Spotify (OAuth popup + status poll),
   Tidal (OAuth2 device-code flow) and Qobuz (email/password) — each optional and
-  reflecting already-linked accounts as connected.
+  reflecting already-linked accounts as connected. A **"Shape your sound"** step
+  applies a DSP/EQ mode in one tap — Manual Equalizer (recommended), Acoustic
+  Room Correction, or Pure Direct (flat / bit-perfect) — pre-selecting whatever
+  is currently active. New `api.setPureDirect()` wraps `POST /api/player/pure-direct`.
 
 ### Fixed
 - **Crossfade & ReplayGain now survive a reboot** (`server/player.js`,
