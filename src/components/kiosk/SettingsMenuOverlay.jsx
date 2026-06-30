@@ -33,6 +33,7 @@ export default function SettingsMenuOverlay() {
     sendUpdate,
     setIsRemoteAccessOpen,
     setRemoteUrl,
+    setIsWifiOpen,
   } = useContext(Kk);
 
   useEffect(() => {
@@ -130,6 +131,10 @@ export default function SettingsMenuOverlay() {
             } catch {
               setRemoteUrl(`http://${window.location.hostname}:5000/remote`);
             }
+          }}
+          onOpenWifi={() => {
+            setIsWifiOpen(true);
+            setIsMenuOpen(false);
           }}
         />
       </div>

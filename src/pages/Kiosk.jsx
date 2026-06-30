@@ -20,6 +20,7 @@ import ThemeSettingsOverlay from '../components/kiosk/ThemeSettingsOverlay';
 import RemoteAccessOverlay from '../components/kiosk/RemoteAccessOverlay';
 import DspWizardOverlay from '../components/kiosk/DspWizardOverlay';
 import RadioSearchOverlay from '../components/kiosk/RadioSearchOverlay';
+import WifiOverlay from '../components/kiosk/WifiOverlay';
 
 export default function Kiosk() {
   // Authentication state (server-managed, synchronized via WebSocket)
@@ -67,6 +68,7 @@ export default function Kiosk() {
   const [remoteAccessEnabled, setRemoteAccessEnabled] = useState(true);
   const [isRemoteAccessOpen, setIsRemoteAccessOpen] = useState(false);
   const [remoteUrl, setRemoteUrl] = useState('');
+  const [isWifiOpen, setIsWifiOpen] = useState(false);
 
   const themeSyncTimeout = useRef(null);
   const queueThemeSync = (themeColor, activeThemeVal, brightnessVal, visualizerModeVal) => {
@@ -1259,6 +1261,8 @@ export default function Kiosk() {
     visualizerMode, handleVisualizerModeChange,
     // remote access
     isRemoteAccessOpen, remoteUrl,
+    // wifi
+    isWifiOpen, setIsWifiOpen,
     // dsp wizard
     isDspWizardOpen, setDspActive,
     // welcome/goodbye transition
@@ -1283,6 +1287,7 @@ export default function Kiosk() {
     isThemeSettingsOpen, activeTheme, handleActiveThemeChange,
     brightness, handleBrightnessChange, visualizerMode, handleVisualizerModeChange,
     isRemoteAccessOpen, remoteUrl, isDspWizardOpen,
+    isWifiOpen, setIsWifiOpen,
     scale,
   ]);
 
@@ -1366,6 +1371,7 @@ export default function Kiosk() {
         {isSearchOpen && <UniversalSearchOverlay />}
         <ThemeSettingsOverlay />
         <RemoteAccessOverlay />
+        <WifiOverlay />
         {isDspWizardOpen && <DspWizardOverlay />}
         <RadioSearchOverlay />
       </div>
