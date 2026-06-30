@@ -343,8 +343,8 @@ export default function DspWizard({ onClose, onCalibrationComplete, pureDirect =
 
 
 
-      {/* Question layout — always row since wizard is full-screen wide */}
-      <div className="flex-grow flex flex-row gap-4 items-stretch min-h-0">
+      {/* Question layout */}
+      <div className="flex-grow flex flex-col lg:flex-row gap-4 items-stretch min-h-0">
 
         {/* Left — question details */}
         <div className="w-full lg:w-[65%] flex flex-col justify-between rounded-2xl p-4 min-h-0"

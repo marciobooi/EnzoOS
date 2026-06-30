@@ -1,7 +1,6 @@
 import { useContext } from 'react';
 import { Kk } from './KioskContext';
 import DspWizard from '../DspWizard';
-import { S } from '../../styles/stone';
 
 export default function DspWizardOverlay() {
   const {
@@ -12,11 +11,7 @@ export default function DspWizardOverlay() {
   } = useContext(Kk);
 
   return (
-    // Fixed full-screen — covers the player entirely, nothing bleeds through.
-    <div
-      className="fixed inset-0 z-[9998] flex flex-col"
-      style={{ background: S.bg }}
-    >
+    <div className="absolute inset-0 bg-[#070b13] border border-white/10 rounded-3xl shadow-2xl z-50 flex flex-col p-1.5 font-sans">
       <DspWizard
         onClose={() => setIsDspWizardOpen(false)}
         onCalibrationComplete={(active) => setDspActive(active)}

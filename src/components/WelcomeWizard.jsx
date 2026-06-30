@@ -242,10 +242,10 @@ export default function WelcomeWizard({ onClose }) {
   const btnBase = 'flex items-center gap-1.5 px-5 py-2.5 rounded-full text-[14px] font-semibold transition-all active:scale-95 cursor-pointer select-none';
 
   return (
-    <div className="fixed inset-0 z-[100000] flex items-center justify-center p-4"
-      style={{ background: 'rgba(20,19,18,0.55)', backdropFilter: 'blur(6px)' }}>
-      <div className="w-full max-w-[640px] max-h-full overflow-hidden rounded-3xl flex flex-col"
-        style={{ background: S.bg, boxShadow: cardShadow, border: `1px solid ${S.surfaceLo}` }}>
+    // True full-screen — solid background, nothing from the player/remote
+    // shows through. No modal card, no backdrop blur.
+    <div className="fixed inset-0 z-[100000] flex flex-col" style={{ background: S.bg }}>
+      <div className="w-full max-w-[640px] mx-auto h-full overflow-hidden flex flex-col">
 
         {/* content (scrolls if it must, e.g. the short kiosk) */}
         <div className="flex-1 overflow-y-auto px-7 pt-7 pb-4">
