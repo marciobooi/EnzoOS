@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Waves, ChevronLeft, Check, X, Cpu, AudioLines, Smartphone } from 'lucide-react';
-import { QRCodeSVG } from 'qrcode.react';
+import { Waves, ChevronLeft, Check, X, Cpu, AudioLines } from 'lucide-react';
 import { api } from '../api';
 import { S, cardShadow } from '../styles/stone';
 
@@ -94,28 +93,6 @@ export const QUESTIONS = [
   },
 ];
 
-// ── Phone QR panel — shown on every completion screen ───────────────────────
-function PhonePanel({ lanUrl }) {
-  if (!lanUrl) return null;
-  return (
-    <div className="flex flex-col items-center justify-center gap-3 rounded-2xl p-5 shrink-0"
-      style={{ background: S.surface, border: `1px solid ${S.border}`, minWidth: 160 }}>
-      <div className="flex items-center gap-1.5">
-        <Smartphone className="h-3.5 w-3.5" style={{ color: S.muted }} />
-        <p className="text-[9px] font-extrabold uppercase tracking-[0.18em]" style={{ color: S.muted }}>
-          Control from phone
-        </p>
-      </div>
-      <div className="p-2 rounded-xl" style={{ background: '#fff', boxShadow: cardShadow }}>
-        <QRCodeSVG value={`${lanUrl}/remote`} size={110} fgColor="#1a1918" bgColor="#ffffff" level="M" />
-      </div>
-      <p className="text-[8px] text-center break-all leading-snug" style={{ color: S.muted }}>
-        {lanUrl}/remote
-      </p>
-    </div>
-  );
-}
-
 // ── Shared header bar ────────────────────────────────────────────────────────
 function WizardHeader({ title, subtitle, onClose }) {
   return (
@@ -145,10 +122,6 @@ function WizardHeader({ title, subtitle, onClose }) {
 }
 
 export default function DspWizard({ onClose, onCalibrationComplete, pureDirect = false, onPureDirectChange }) {
-  const [lanUrl, setLanUrl] = useState('');
-  useEffect(() => {
-    fetch('/api/system/lan-url').then(r => r.json()).then(d => setLanUrl(d?.url || '')).catch(() => {});
-  }, []);
   const [currentStep, setCurrentStep] = useState(0);
   const [answers, setAnswers] = useState({});
   const [isSaving, setIsSaving] = useState(false);
@@ -205,7 +178,6 @@ export default function DspWizard({ onClose, onCalibrationComplete, pureDirect =
       <WizardHeader title="acoustic calibration wizard" subtitle="pure direct" onClose={onClose} />
 
       <div className="flex-grow flex flex-row gap-5 min-h-0">
-        <PhonePanel lanUrl={lanUrl} />
         <div className="w-[38%] flex flex-col justify-center items-center gap-4 text-center shrink-0 rounded-2xl p-6"
           style={{ background: S.surface, border: `1px solid ${S.border}` }}>
           <div className="w-16 h-16 rounded-full flex items-center justify-center"
@@ -257,7 +229,6 @@ export default function DspWizard({ onClose, onCalibrationComplete, pureDirect =
       <WizardHeader title="acoustic calibration wizard" subtitle="equalizer mode" onClose={onClose} />
 
       <div className="flex-grow flex flex-row gap-5 min-h-0">
-        <PhonePanel lanUrl={lanUrl} />
         {/* Left — status */}
         <div className="w-[38%] flex flex-col justify-center items-center gap-4 text-center shrink-0 rounded-2xl p-6"
           style={{ background: S.surface, border: `1px solid ${S.border}` }}>
@@ -300,7 +271,6 @@ export default function DspWizard({ onClose, onCalibrationComplete, pureDirect =
       <WizardHeader title="acoustic calibration wizard" subtitle="calibration complete" onClose={onClose} />
 
       <div className="flex-grow flex flex-row gap-5 min-h-0">
-        <PhonePanel lanUrl={lanUrl} />
         {/* Left — status */}
         <div className="w-[35%] flex flex-col justify-center items-center gap-4 text-center shrink-0 rounded-2xl p-6"
           style={{ background: S.surface, border: `1px solid ${S.border}` }}>

@@ -214,7 +214,8 @@ export default function SettingsTab() {
         <Row label={t('settings.roomCalibration')}
           icon={<Cpu className="h-4 w-4" style={{ color: '#f59e0b' }} />}
           value={dspActive ? t('common.on') : t('common.off')}
-          onPress={() => setIsDspWizardOpen(true)} />
+          chevron={false}
+          onPress={() => toast.error(t('settings.roomCalibrationKioskOnly') || 'Run room calibration from the kiosk — it needs you in the listening position.')} />
         <Row
           label={sleepRemaining > 0
             ? `Sleep · ${Math.floor(sleepRemaining / 60)}:${(sleepRemaining % 60).toString().padStart(2, '0')}`

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Sliders, Music, Download, LogOut, Radio, Waves, Smartphone, Airplay, Network, Bluetooth, Music2, Languages } from 'lucide-react';
+import { Sliders, Music, Download, LogOut, Radio, Waves, Smartphone, Airplay, Network, Bluetooth, Music2, Languages, Sparkles } from 'lucide-react';
 import { api } from '../api';
 import { S } from '../styles/stone';
 import { useI18n } from '../i18n';
@@ -327,6 +327,23 @@ export default function DefinitionsMenu({
         <div className="flex items-baseline justify-between w-full">
           <span className="text-lg font-black tracking-tight leading-none" style={{ color: S.muted }}>{t('kiosk.acoustic')}</span>
           <span className="text-sm font-normal tracking-wide" style={{ color: S.label }}>{t('kiosk.calibrate')}</span>
+        </div>
+      </button>
+
+      {/* 4b2. RUN SETUP WIZARD CARD — re-opens the first-boot WelcomeWizard on demand */}
+      <button
+        onClick={() => window.dispatchEvent(new Event('resonance:show-welcome'))}
+        className="w-[180px] shrink-0 p-2 rounded-2xl text-left flex flex-col justify-between transition-all duration-300 relative group overflow-hidden cursor-pointer menu-card menu-card-enter hover:scale-[1.01]"
+        style={{ animationDelay: '135ms' }}
+      >
+        <span className="text-sm font-light tracking-[0.25em] uppercase" style={{ color: S.label }}>{t('kiosk.setupWizard')}</span>
+        <div className="my-auto flex justify-center py-2">
+          <Sparkles strokeWidth={1} className="h-16 w-16 transition-all duration-300"
+            style={{ color: S.track }} />
+        </div>
+        <div className="flex items-baseline justify-between w-full">
+          <span className="text-lg font-black tracking-tight leading-none" style={{ color: S.muted }}>{t('kiosk.setup')}</span>
+          <span className="text-sm font-normal tracking-wide" style={{ color: S.label }}>{t('kiosk.run')}</span>
         </div>
       </button>
 

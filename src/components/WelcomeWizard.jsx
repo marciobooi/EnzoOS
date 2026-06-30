@@ -3,6 +3,7 @@ import {
   Waves, Music2, Smartphone, Check, ChevronRight, ChevronLeft, Sparkles,
   Disc3, Loader2, ExternalLink, Sliders, SlidersHorizontal, Zap, Palette,
 } from 'lucide-react';
+import { QRCodeSVG } from 'qrcode.react';
 import { S, cardShadow } from '../styles/stone';
 import { api } from '../api';
 import { useI18n } from '../i18n';
@@ -215,6 +216,7 @@ export default function WelcomeWizard({ onClose }) {
       title: t('wizard.phone.title'),
       body: lanUrl ? t('wizard.phone.bodyUrl') : t('wizard.phone.bodyNoUrl'),
       mono: lanUrl || null,
+      qr: !!lanUrl,
     },
     {
       icon: <Sparkles className="h-8 w-8" />,
@@ -260,6 +262,14 @@ export default function WelcomeWizard({ onClose }) {
           <p className="text-[14px] leading-relaxed" style={{ color: S.accent, opacity: 0.78 }}>
             {s.body}
           </p>
+
+          {s.qr && (
+            <div className="mt-3 flex justify-center">
+              <div className="p-3 rounded-xl" style={{ background: '#fff', boxShadow: cardShadow }}>
+                <QRCodeSVG value={`${lanUrl}/remote`} size={120} fgColor="#1a1918" bgColor="#ffffff" level="M" />
+              </div>
+            </div>
+          )}
 
           {s.mono && (
             <div className="mt-3 px-4 py-2.5 rounded-xl text-[14px] font-mono break-all"
