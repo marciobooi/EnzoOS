@@ -1,7 +1,8 @@
-import React, { useContext } from 'react';
+import React, { useContext, useMemo } from 'react';
 import { Monitor, Check, Sun } from 'lucide-react';
 import { Tk } from './shared';
-import { THEME_COLORS, SCREEN_THEMES } from '../ThemeSettingsControl';
+import { getThemeColors, getScreenThemes } from '../ThemeSettingsControl';
+import { useI18n } from '../../i18n';
 
 // ─── horizontal slider with the remote's champagne fill + invisible thumb ────
 function RcSlider({ value, min, max, step, onChange }) {
@@ -37,17 +38,20 @@ export default function RemoteThemeSettings({
   visualizerMode = 'vu', onVisualizerModeChange,
 }) {
   const { C, card, cardWhite, btnInset } = useContext(Tk);
+  const { t } = useI18n();
+  const themeColors = useMemo(() => getThemeColors(t), [t]);
+  const screenThemes = useMemo(() => getScreenThemes(t), [t]);
 
   return (
     <div style={{ fontFamily: C.font }}>
 
       {/* ── Screen theme ─────────────────────────────────────────────────── */}
-      <Group title="Display Screen">
+      <Group title={t('theme.remoteDisplayScreen')}>
         <div className="grid grid-cols-2 gap-3">
-          {SCREEN_THEMES.map(t => {
-            const active = activeTheme === t.id;
+          {screenThemes.map(s => {
+            const active = activeTheme === s.id;
             return (
-              <button key={t.id} disabled={t.disabled} onClick={() => onThemeChange?.(t.id)}
+              <button key={s.id} disabled={s.disabled} onClick={() => onThemeChange?.(s.id)}
                 className="p-4 rounded-xl flex flex-col text-left active:scale-[0.98] transition-all cursor-pointer disabled:opacity-40"
                 style={active ? { ...btnInset, border: `1px solid ${C.champagne}55` } : { ...card }}>
                 <div className="flex items-start justify-between mb-3">
@@ -55,8 +59,8 @@ export default function RemoteThemeSettings({
                   {active && <Check className="h-4 w-4" style={{ color: C.champagne }} />}
                 </div>
                 <span className="text-[14px] font-semibold leading-tight"
-                  style={{ color: active ? C.text1 : C.text2 }}>{t.name}</span>
-                <span className="text-[11px] mt-1 leading-snug" style={{ color: C.text3 }}>{t.desc}</span>
+                  style={{ color: active ? C.text1 : C.text2 }}>{s.name}</span>
+                <span className="text-[11px] mt-1 leading-snug" style={{ color: C.text3 }}>{s.desc}</span>
               </button>
             );
           })}
@@ -64,9 +68,9 @@ export default function RemoteThemeSettings({
       </Group>
 
       {/* ── Accent colour ────────────────────────────────────────────────── */}
-      <Group title="Matrix Emission Colour">
+      <Group title={t('theme.remoteMatrixColor')}>
         <div className="rounded-xl p-2 flex flex-col gap-1" style={cardWhite}>
-          {THEME_COLORS.map(c => {
+          {themeColors.map(c => {
             const active = themeColor === c.name;
             return (
               <button key={c.name} onClick={() => onColorChange?.(c.name)}
@@ -85,11 +89,11 @@ export default function RemoteThemeSettings({
       </Group>
 
       {/* ── Brightness ───────────────────────────────────────────────────── */}
-      <Group title="Screen Hardware">
+      <Group title={t('theme.remoteScreenHardware')}>
         <div className="rounded-xl p-4" style={cardWhite}>
           <div className="flex justify-between items-center mb-3">
             <span className="text-[13px] flex items-center gap-1.5" style={{ color: C.text4 }}>
-              <Sun className="h-3.5 w-3.5" style={{ color: C.champagne }} /> Backlight Brightness
+              <Sun className="h-3.5 w-3.5" style={{ color: C.champagne }} /> {t('theme.backlightBrightness')}
             </span>
             <span className="text-[16px] font-bold tabular-nums" style={{ color: C.text1 }}>
               {brightness}<span className="text-[11px] font-normal" style={{ color: C.text3 }}>%</span>
@@ -97,16 +101,16 @@ export default function RemoteThemeSettings({
           </div>
           <RcSlider value={brightness} min={10} max={100} step={5} onChange={onBrightnessChange} />
           <div className="flex justify-between mt-2 select-none">
-            <span className="text-[10px] uppercase tracking-widest" style={{ color: C.text3 }}>Dim</span>
-            <span className="text-[10px] uppercase tracking-widest" style={{ color: C.text3 }}>Full</span>
+            <span className="text-[10px] uppercase tracking-widest" style={{ color: C.text3 }}>{t('theme.dim')}</span>
+            <span className="text-[10px] uppercase tracking-widest" style={{ color: C.text3 }}>{t('theme.full')}</span>
           </div>
         </div>
       </Group>
 
       {/* ── Visualizer ───────────────────────────────────────────────────── */}
-      <Group title="Player Visualizer">
+      <Group title={t('theme.remotePlayerVisualizer')}>
         <div className="flex gap-2">
-          {[{ id: 'vu', label: 'VU Needles' }, { id: 'digital', label: '7-Band' }].map(m => {
+          {[{ id: 'vu', label: t('theme.vuNeedles') }, { id: 'digital', label: t('theme.sevenBand') }].map(m => {
             const active = visualizerMode === m.id;
             return (
               <button key={m.id} onClick={() => onVisualizerModeChange?.(m.id)}
@@ -122,7 +126,7 @@ export default function RemoteThemeSettings({
       </Group>
 
       <p className="text-[11px] text-center leading-relaxed px-2 pb-2" style={{ color: C.text3 }}>
-        Backlight dimming applies a software overlay to protect screen lifetime on the kiosk display.
+        {t('theme.remoteDimmingDisclaimer')}
       </p>
     </div>
   );

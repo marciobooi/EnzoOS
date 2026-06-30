@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Waves, Music2, Smartphone, Check, ChevronRight, ChevronLeft, Sparkles,
   Disc3, Loader2, ExternalLink, Sliders, SlidersHorizontal, Zap, Palette,
@@ -8,7 +8,7 @@ import { S, cardShadow } from '../styles/stone';
 import { api } from '../api';
 import { useI18n } from '../i18n';
 import LanguageChips from '../i18n/LanguageChips';
-import { THEME_COLORS, SCREEN_THEMES } from './ThemeSettingsControl';
+import { getThemeColors, getScreenThemes } from './ThemeSettingsControl';
 
 // First-boot welcome / setup wizard. Fully self-contained: it manages its own
 // step state and persists completion to the DB (onboarding_complete) before
@@ -22,6 +22,8 @@ import { THEME_COLORS, SCREEN_THEMES } from './ThemeSettingsControl';
 // connect later from Source.
 export default function WelcomeWizard({ onClose }) {
   const { t } = useI18n();
+  const themeColors = useMemo(() => getThemeColors(t), [t]);
+  const screenThemes = useMemo(() => getScreenThemes(t), [t]);
   const [step, setStep] = useState(0);
   const [lanUrl, setLanUrl] = useState('');
   const [saving, setSaving] = useState(false);
@@ -420,7 +422,7 @@ export default function WelcomeWizard({ onClose }) {
                 <p className="text-[11px] font-semibold uppercase tracking-widest mb-2"
                   style={{ color: S.champagne }}>{t('wizard.skin.accentLabel')}</p>
                 <div className="flex flex-wrap gap-3">
-                  {THEME_COLORS.map((c) => {
+                  {themeColors.map((c) => {
                     const on = themeColor === c.name;
                     return (
                       <button key={c.name} onClick={() => pickTheme(c.name)}
@@ -447,7 +449,7 @@ export default function WelcomeWizard({ onClose }) {
                 <p className="text-[11px] font-semibold uppercase tracking-widest mb-2"
                   style={{ color: S.champagne }}>{t('wizard.skin.skinLabel')}</p>
                 <div className="grid grid-cols-2 gap-2">
-                  {SCREEN_THEMES.map((sk) => {
+                  {screenThemes.map((sk) => {
                     const on = skin === sk.id;
                     return (
                       <button key={sk.id} onClick={() => pickSkin(sk.id)}
