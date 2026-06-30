@@ -1,100 +1,112 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Waves, ChevronLeft, Check, X, Cpu, AudioLines } from 'lucide-react';
 import { api } from '../api';
 import { S, cardShadow } from '../styles/stone';
+import { useI18n } from '../i18n';
 
-export const QUESTIONS = [
-  {
-    id: "0",
-    question: "Choose your Audio Processing Mode",
-    description: "Decide whether to use the manual parametric equalizer or let the Acoustic DSP profiler calibrate your audio output automatically.",
-    options: [
-      { label: "Manual Equalizer", sublabel: "Parametric EQ, presets, tone control", value: "eq" },
-      { label: "Acoustic Room Correction", sublabel: "Harman curve + room calibration filters", value: "dsp" },
-      { label: "Pure Direct", sublabel: "Flat signal — no EQ or DSP processing", value: "pure-direct" },
-    ],
-    action: "Manual EQ and Room Correction apply CamillaDSP filter chains. Pure Direct bypasses all filters — signal goes through the mixer only with volume control preserved.",
-  },
-  {
-    id: "1",
-    question: "What kind of speakers do you have?",
-    description: "Configures Acoustic DSP outputs for standard stereo or separates low frequencies to a subwoofer channel.",
-    options: [
-      { label: "2 Speakers", sublabel: "Stereo", value: "stereo" },
-      { label: "2 Speakers + 1 Subwoofer", sublabel: "2.1 crossover", value: "subwoofer" },
-    ],
-    action: "Configures audio pipeline to either 2.0 stereo output or 2.1 crossover routing, splitting low frequencies to a dedicated LFE sub channel.",
-  },
-  {
-    id: "2",
-    question: "How does your room sound when you clap?",
-    description: "Echoey rooms need soft roll-offs to sound natural, while dry rooms benefit from crisp highs.",
-    options: [
-      { label: "Echoey", sublabel: "Bare floors, high ceilings, lots of glass", value: "echoey" },
-      { label: "Normal", sublabel: "Rugs, curtains, or standard furniture", value: "normal" },
-      { label: "Quiet / Soft", sublabel: "Carpets, heavy couches, or wall panels", value: "quiet" },
-    ],
-    action: "For 'Echoey', applies a high-frequency roll-off shelf filter starting at 8kHz (−3dB). For 'Quiet', keeps high frequency response crisp (0dB shelf).",
-  },
-  {
-    id: "3",
-    question: "Where are you sitting relative to your speakers?",
-    description: "Applies precise delays to align the sound waves from both speakers at your seat.",
-    options: [
-      { label: "Right in the Middle", sublabel: "Equidistant from both speakers", value: "center" },
-      { label: "Closer to the Left", sublabel: "Off-centre left", value: "left" },
-      { label: "Closer to the Right", sublabel: "Off-centre right", value: "right" },
-    ],
-    action: "If off-centre, calculates and injects a 1.2ms time-delay filter to the closer channel, aligning sound arrivals at your listening position.",
-  },
-  {
-    id: "4",
-    question: "How do you like your music to sound?",
-    description: "Predefined parametric EQ voicing presets to suit your listening taste.",
-    options: [
-      { label: "Balanced & Natural", sublabel: "Studio style, as the artist intended", value: "balanced" },
-      { label: "Warm & Punchy", sublabel: "Deeper bass, smooth highs for easy listening", value: "warm" },
-      { label: "Clear & Detailed", sublabel: "Boosts vocals, instruments, and high notes", value: "clear" },
-    ],
-    action: "'Warm' boosts low-shelf at 120Hz (+3dB) and cuts 10kHz (−1dB). 'Clear' boosts vocals and treble presence at 3kHz (+2dB).",
-  },
-  {
-    id: "5",
-    question: "How big are your main speakers?",
-    description: "Protects smaller woofers from over-excursion by filtering out deep sub-bass.",
-    options: [
-      { label: "Small / Desktop", sublabel: "Computer speakers or small bookshelves", value: "small" },
-      { label: "Medium / Bookshelf", sublabel: "Standard size, fits on a stand or shelf", value: "medium" },
-      { label: "Large / Floor-standing", sublabel: "Big tower speakers on the floor", value: "large" },
-    ],
-    action: "'Small' applies a Butterworth high-pass at 80Hz (12dB/oct). 'Medium' high-passes at 45Hz. 'Large' allows full-range down to 20Hz.",
-  },
-  {
-    id: "6",
-    question: "At what volume do you usually listen?",
-    description: "Compensates for the human ear's reduced sensitivity to bass at lower levels (Equal Loudness).",
-    options: [
-      { label: "Quiet / Background", sublabel: "Late night, working, chatting", value: "quiet" },
-      { label: "Normal / Moderate", sublabel: "Comfortable everyday listening", value: "normal" },
-      { label: "Loud / Party", sublabel: "Filling the room", value: "loud" },
-    ],
-    action: "'Quiet' activates a dynamic loudness contour (Fletcher-Munson compensation) boosting sub-bass (+4dB) and highs (+2dB).",
-  },
-  {
-    id: "7",
-    question: "Where are your speakers placed?",
-    description: "Acoustic boundaries amplify bass, creating boomy or muddy sound.",
-    options: [
-      { label: "Out in the open", sublabel: "Away from walls, on stands", value: "open" },
-      { label: "Against a wall", sublabel: "On a console, desk, or near a back wall", value: "wall" },
-      { label: "In a corner / shelf", sublabel: "Enclosed space or corner of the room", value: "corner" },
-    ],
-    action: "'Wall' applies a low-shelf boundary filter at 180Hz (−2dB). 'Corner' applies the same at (−4dB).",
-  },
-];
+// Builds the translated questionnaire. `id`/`value` fields stay stable
+// (used as DB keys and answer matching) — only display text is translated.
+// Exported as a function (not a static array) because RemoteDspWizard.jsx
+// shares this same data and needs its own `t` from its own useI18n() call.
+export function getQuestions(t) {
+  return [
+    {
+      id: "0",
+      question: t('dsp.q0.question'),
+      description: t('dsp.q0.description'),
+      options: [
+        { label: t('dsp.q0.opt0Label'), sublabel: t('dsp.q0.opt0Sub'), value: "eq" },
+        { label: t('dsp.q0.opt1Label'), sublabel: t('dsp.q0.opt1Sub'), value: "dsp" },
+        { label: t('dsp.q0.opt2Label'), sublabel: t('dsp.q0.opt2Sub'), value: "pure-direct" },
+      ],
+      action: t('dsp.q0.action'),
+    },
+    {
+      id: "1",
+      question: t('dsp.q1.question'),
+      description: t('dsp.q1.description'),
+      options: [
+        { label: t('dsp.q1.opt0Label'), sublabel: t('dsp.q1.opt0Sub'), value: "stereo" },
+        { label: t('dsp.q1.opt1Label'), sublabel: t('dsp.q1.opt1Sub'), value: "subwoofer" },
+      ],
+      action: t('dsp.q1.action'),
+    },
+    {
+      id: "2",
+      question: t('dsp.q2.question'),
+      description: t('dsp.q2.description'),
+      options: [
+        { label: t('dsp.q2.opt0Label'), sublabel: t('dsp.q2.opt0Sub'), value: "echoey" },
+        { label: t('dsp.q2.opt1Label'), sublabel: t('dsp.q2.opt1Sub'), value: "normal" },
+        { label: t('dsp.q2.opt2Label'), sublabel: t('dsp.q2.opt2Sub'), value: "quiet" },
+      ],
+      action: t('dsp.q2.action'),
+    },
+    {
+      id: "3",
+      question: t('dsp.q3.question'),
+      description: t('dsp.q3.description'),
+      options: [
+        { label: t('dsp.q3.opt0Label'), sublabel: t('dsp.q3.opt0Sub'), value: "center" },
+        { label: t('dsp.q3.opt1Label'), sublabel: t('dsp.q3.opt1Sub'), value: "left" },
+        { label: t('dsp.q3.opt2Label'), sublabel: t('dsp.q3.opt2Sub'), value: "right" },
+      ],
+      action: t('dsp.q3.action'),
+    },
+    {
+      id: "4",
+      question: t('dsp.q4.question'),
+      description: t('dsp.q4.description'),
+      options: [
+        { label: t('dsp.q4.opt0Label'), sublabel: t('dsp.q4.opt0Sub'), value: "balanced" },
+        { label: t('dsp.q4.opt1Label'), sublabel: t('dsp.q4.opt1Sub'), value: "warm" },
+        { label: t('dsp.q4.opt2Label'), sublabel: t('dsp.q4.opt2Sub'), value: "clear" },
+      ],
+      action: t('dsp.q4.action'),
+    },
+    {
+      id: "5",
+      question: t('dsp.q5.question'),
+      description: t('dsp.q5.description'),
+      options: [
+        { label: t('dsp.q5.opt0Label'), sublabel: t('dsp.q5.opt0Sub'), value: "small" },
+        { label: t('dsp.q5.opt1Label'), sublabel: t('dsp.q5.opt1Sub'), value: "medium" },
+        { label: t('dsp.q5.opt2Label'), sublabel: t('dsp.q5.opt2Sub'), value: "large" },
+      ],
+      action: t('dsp.q5.action'),
+    },
+    {
+      id: "6",
+      question: t('dsp.q6.question'),
+      description: t('dsp.q6.description'),
+      options: [
+        { label: t('dsp.q6.opt0Label'), sublabel: t('dsp.q6.opt0Sub'), value: "quiet" },
+        { label: t('dsp.q6.opt1Label'), sublabel: t('dsp.q6.opt1Sub'), value: "normal" },
+        { label: t('dsp.q6.opt2Label'), sublabel: t('dsp.q6.opt2Sub'), value: "loud" },
+      ],
+      action: t('dsp.q6.action'),
+    },
+    {
+      id: "7",
+      question: t('dsp.q7.question'),
+      description: t('dsp.q7.description'),
+      options: [
+        { label: t('dsp.q7.opt0Label'), sublabel: t('dsp.q7.opt0Sub'), value: "open" },
+        { label: t('dsp.q7.opt1Label'), sublabel: t('dsp.q7.opt1Sub'), value: "wall" },
+        { label: t('dsp.q7.opt2Label'), sublabel: t('dsp.q7.opt2Sub'), value: "corner" },
+      ],
+      action: t('dsp.q7.action'),
+    },
+  ];
+}
+
+// Backwards-compat default (English) for any stray static import — prefer
+// getQuestions(t) in new code so the questionnaire is translated.
+export const QUESTIONS = getQuestions((k) => k);
 
 // ── Shared header bar ────────────────────────────────────────────────────────
 function WizardHeader({ title, subtitle, onClose }) {
+  const { t } = useI18n();
   return (
     <div className="flex items-center justify-between pb-3 mb-3 shrink-0"
       style={{ borderBottom: `1px solid ${S.border}` }}>
@@ -115,13 +127,16 @@ function WizardHeader({ title, subtitle, onClose }) {
       <button onClick={onClose}
         className="cursor-pointer px-4 py-1.5 rounded-full transition-all active:scale-95 active:opacity-80 text-sm font-extrabold"
         style={{ background: S.accent, color: S.accentFg, border: 'none' }}>
-        CLOSE
+        {t('dsp.close')}
       </button>
     </div>
   );
 }
 
 export default function DspWizard({ onClose, onCalibrationComplete, pureDirect = false, onPureDirectChange }) {
+  const { t } = useI18n();
+  const QUESTIONS = useMemo(() => getQuestions(t), [t]);
+
   const [currentStep, setCurrentStep] = useState(0);
   const [answers, setAnswers] = useState({});
   const [isSaving, setIsSaving] = useState(false);
@@ -175,7 +190,7 @@ export default function DspWizard({ onClose, onCalibrationComplete, pureDirect =
   if (currentStep === 98) return (
     <div className="flex flex-col h-full font-sans p-6 select-none"
       style={{ background: S.bg, color: S.strong }}>
-      <WizardHeader title="acoustic calibration wizard" subtitle="pure direct" onClose={onClose} />
+      <WizardHeader title={t('dsp.title')} subtitle={t('dsp.subtitlePureDirect')} onClose={onClose} />
 
       <div className="flex-grow flex flex-row gap-5 min-h-0">
         <div className="w-[38%] flex flex-col justify-center items-center gap-4 text-center shrink-0 rounded-2xl p-6"
@@ -185,36 +200,36 @@ export default function DspWizard({ onClose, onCalibrationComplete, pureDirect =
             <AudioLines className="h-7 w-7" strokeWidth={1.5} style={{ color: '#0e9ab8' }} />
           </div>
           <div>
-            <p className="text-sm font-light tracking-[0.25em] uppercase mb-1" style={{ color: S.label }}>activated</p>
-            <h2 className="text-xl font-bold" style={{ color: S.strong }}>Pure Direct Active</h2>
+            <p className="text-sm font-light tracking-[0.25em] uppercase mb-1" style={{ color: S.label }}>{t('dsp.activated')}</p>
+            <h2 className="text-xl font-bold" style={{ color: S.strong }}>{t('dsp.pureDirectActive')}</h2>
           </div>
           <p className="text-sm font-light leading-relaxed" style={{ color: S.muted }}>
-            All EQ and DSP filters are bypassed. Volume control via CamillaDSP remains active.
+            {t('dsp.pureDirectBody')}
           </p>
         </div>
 
         <div className="flex-grow flex flex-col justify-between min-h-0">
           <div className="space-y-3">
             <p className="text-sm font-light leading-relaxed" style={{ color: S.muted }}>
-              The signal path is flat — source audio passes through the CamillaDSP mixer directly to the DAC with no filtering or frequency adjustment.
+              {t('dsp.flatSignalPath')}
             </p>
             <div className="rounded-xl p-4 text-sm font-light space-y-1.5"
               style={{ background: S.surface, border: `1px solid ${S.border}`, color: S.muted }}>
-              <p><span className="font-semibold" style={{ color: S.text }}>Manual EQ</span> — disabled while Pure Direct is active</p>
-              <p><span className="font-semibold" style={{ color: S.text }}>Room Correction</span> — disabled while Pure Direct is active</p>
-              <p><span className="font-semibold" style={{ color: S.text }}>Presets & bands</span> — preserved, resume when you switch back</p>
+              <p><span className="font-semibold" style={{ color: S.text }}>{t('dsp.manualEqLabel')}</span> — {t('dsp.manualEqDisabledNote')}</p>
+              <p><span className="font-semibold" style={{ color: S.text }}>{t('dsp.roomCorrectionLabel')}</span> — {t('dsp.roomCorrectionDisabledNote')}</p>
+              <p><span className="font-semibold" style={{ color: S.text }}>{t('dsp.presetsBandsLabel')}</span> — {t('dsp.presetsPreservedNote')}</p>
             </div>
           </div>
           <div className="flex gap-3 mt-4 shrink-0">
             <button onClick={() => setCurrentStep(0)}
               className="flex-1 py-3 rounded-xl text-sm font-semibold transition-all active:scale-95 cursor-pointer"
               style={{ background: S.surfaceLo, border: `1px solid ${S.border}`, color: S.muted, boxShadow: cardShadow }}>
-              Switch to Manual EQ or DSP
+              {t('dsp.switchToEqDsp')}
             </button>
             <button onClick={onClose}
               className="flex-1 py-3 rounded-xl text-sm font-extrabold transition-all active:scale-95 cursor-pointer"
               style={{ background: S.accent, color: S.accentFg, border: 'none' }}>
-              Return to Player
+              {t('dsp.returnToPlayer')}
             </button>
           </div>
         </div>
@@ -226,7 +241,7 @@ export default function DspWizard({ onClose, onCalibrationComplete, pureDirect =
   if (currentStep === 99) return (
     <div className="flex flex-col h-full font-sans p-6 select-none"
       style={{ background: S.bg, color: S.strong }}>
-      <WizardHeader title="acoustic calibration wizard" subtitle="equalizer mode" onClose={onClose} />
+      <WizardHeader title={t('dsp.title')} subtitle={t('dsp.subtitleEqMode')} onClose={onClose} />
 
       <div className="flex-grow flex flex-row gap-5 min-h-0">
         {/* Left — status */}
@@ -237,26 +252,26 @@ export default function DspWizard({ onClose, onCalibrationComplete, pureDirect =
             <Check className="h-7 w-7" strokeWidth={1.5} style={{ color: S.accent }} />
           </div>
           <div>
-            <p className="text-sm font-light tracking-[0.25em] uppercase mb-1" style={{ color: S.label }}>activated</p>
-            <h2 className="text-xl font-bold" style={{ color: S.strong }}>Manual Equalizer Active</h2>
+            <p className="text-sm font-light tracking-[0.25em] uppercase mb-1" style={{ color: S.label }}>{t('dsp.activated')}</p>
+            <h2 className="text-xl font-bold" style={{ color: S.strong }}>{t('dsp.manualEqActive')}</h2>
           </div>
         </div>
 
         {/* Right — info + buttons */}
         <div className="flex-grow flex flex-col justify-between min-h-0">
           <p className="text-sm font-light leading-relaxed" style={{ color: S.muted }}>
-            Acoustic room correction filters are now bypassed. Adjust presets and frequency bands by tapping the VU dial on the main display.
+            {t('dsp.eqBypassInfo')}
           </p>
           <div className="flex gap-3 mt-4 shrink-0">
             <button onClick={() => setCurrentStep(0)}
               className="flex-1 py-3 rounded-xl text-sm font-semibold transition-all active:scale-95 cursor-pointer"
               style={{ background: S.surfaceLo, border: `1px solid ${S.border}`, color: S.muted, boxShadow: cardShadow }}>
-              Configure Acoustic DSP instead
+              {t('dsp.switchToEqDsp')}
             </button>
             <button onClick={onClose}
               className="flex-1 py-3 rounded-xl text-sm font-extrabold transition-all active:scale-95 cursor-pointer"
               style={{ background: S.accent, color: S.accentFg, border: 'none' }}>
-              Return to Player
+              {t('dsp.returnToPlayer')}
             </button>
           </div>
         </div>
@@ -268,7 +283,7 @@ export default function DspWizard({ onClose, onCalibrationComplete, pureDirect =
   if (currentStep === QUESTIONS.length) return (
     <div className="flex flex-col h-full font-sans p-6 select-none"
       style={{ background: S.bg, color: S.strong }}>
-      <WizardHeader title="acoustic calibration wizard" subtitle="calibration complete" onClose={onClose} />
+      <WizardHeader title={t('dsp.title')} subtitle={t('dsp.subtitleComplete')} onClose={onClose} />
 
       <div className="flex-grow flex flex-row gap-5 min-h-0">
         {/* Left — status */}
@@ -279,11 +294,11 @@ export default function DspWizard({ onClose, onCalibrationComplete, pureDirect =
             <Check className="h-7 w-7" strokeWidth={1.5} style={{ color: S.accent }} />
           </div>
           <div>
-            <p className="text-sm font-light tracking-[0.25em] uppercase mb-1" style={{ color: S.label }}>complete</p>
-            <h2 className="text-xl font-bold" style={{ color: S.strong }}>Acoustic Profile Generated</h2>
+            <p className="text-sm font-light tracking-[0.25em] uppercase mb-1" style={{ color: S.label }}>{t('dsp.completeLabel')}</p>
+            <h2 className="text-xl font-bold" style={{ color: S.strong }}>{t('dsp.profileGenerated')}</h2>
           </div>
           <p className="text-sm font-light leading-relaxed" style={{ color: S.muted }}>
-            DSP filters and biquad curves recalculated and hot-reloaded on the Resonance backend.
+            {t('dsp.profileBody')}
           </p>
         </div>
 
@@ -291,16 +306,16 @@ export default function DspWizard({ onClose, onCalibrationComplete, pureDirect =
         <div className="flex-grow flex flex-col gap-4 min-h-0">
           <div className="flex-grow rounded-xl p-4 text-sm font-light overflow-y-auto stone-scrollbar"
             style={{ background: S.surface, border: `1px solid ${S.border}` }}>
-            <p className="text-sm font-semibold mb-3 tracking-[0.15em] uppercase" style={{ color: S.label }}>Applied DSP Map</p>
+            <p className="text-sm font-semibold mb-3 tracking-[0.15em] uppercase" style={{ color: S.label }}>{t('dsp.appliedMap')}</p>
             <div className="space-y-2">
               {[
-                ['Channel Layout',    answers[1] === 'subwoofer' ? '2.1 Crossover — 80Hz Linkwitz-Riley' : '2.0 Stereo Pass-Through'],
-                ['Room Reflection',   answers[2] === 'echoey' ? 'HF Shelf −3dB @ 8kHz' : 'Flat HF Response'],
-                ['Speaker Delay',     answers[3] === 'left' ? 'Left +1.2ms' : answers[3] === 'right' ? 'Right +1.2ms' : '0.0ms — time-aligned'],
-                ['Voicing Target',    answers[4] ? answers[4].charAt(0).toUpperCase() + answers[4].slice(1) : 'Balanced'],
-                ['HPF Cutoff',        answers[5] === 'small' ? '80Hz protective cut' : answers[5] === 'medium' ? '45Hz infrasonic cut' : 'Full range — 20Hz'],
-                ['Loudness Mode',     answers[6] === 'quiet' ? 'Fletcher-Munson active' : 'Off — reference flat'],
-                ['Boundary EQ',       answers[7] === 'wall' ? 'Wall −2dB @ 180Hz' : answers[7] === 'corner' ? 'Corner −4dB @ 180Hz' : 'None — free space'],
+                [t('dsp.mapChannelLayout'), answers[1] === 'subwoofer' ? t('dsp.valCrossover21') : t('dsp.valStereoPassThrough')],
+                [t('dsp.mapRoomReflection'), answers[2] === 'echoey' ? t('dsp.valHfShelfCut') : t('dsp.valFlatHfResponse')],
+                [t('dsp.mapSpeakerDelay'), answers[3] === 'left' ? t('dsp.valDelayLeft') : answers[3] === 'right' ? t('dsp.valDelayRight') : t('dsp.valTimeAligned')],
+                [t('dsp.mapVoicingTarget'), answers[4] ? (QUESTIONS[4].options.find(o => o.value === answers[4])?.label ?? t('dsp.valBalanced')) : t('dsp.valBalanced')],
+                [t('dsp.mapHpfCutoff'), answers[5] === 'small' ? t('dsp.valHpfSmall') : answers[5] === 'medium' ? t('dsp.valHpfMedium') : t('dsp.valFullRange')],
+                [t('dsp.mapLoudnessMode'), answers[6] === 'quiet' ? t('dsp.valLoudnessActive') : t('dsp.valLoudnessOff')],
+                [t('dsp.mapBoundaryEq'), answers[7] === 'wall' ? t('dsp.valBoundaryWall') : answers[7] === 'corner' ? t('dsp.valBoundaryCorner') : t('dsp.valBoundaryNone')],
               ].map(([key, val]) => (
                 <div key={key} className="flex items-baseline justify-between gap-4 py-1.5"
                   style={{ borderBottom: `0.5px solid ${S.border}` }}>
@@ -315,12 +330,12 @@ export default function DspWizard({ onClose, onCalibrationComplete, pureDirect =
             <button onClick={() => setCurrentStep(0)}
               className="flex-1 py-3 rounded-xl text-sm font-semibold transition-all active:scale-95 cursor-pointer"
               style={{ background: S.surfaceLo, border: `1px solid ${S.border}`, color: S.muted, boxShadow: cardShadow }}>
-              Switch to Manual Equalizer
+              {t('dsp.switchToEq')}
             </button>
             <button onClick={onClose}
               className="flex-1 py-3 rounded-xl text-sm font-extrabold transition-all active:scale-95 cursor-pointer"
               style={{ background: S.accent, color: S.accentFg, border: 'none' }}>
-              Return to Player
+              {t('dsp.returnToPlayer')}
             </button>
           </div>
         </div>
@@ -339,7 +354,7 @@ export default function DspWizard({ onClose, onCalibrationComplete, pureDirect =
     <div className="flex flex-col h-full font-sans p-6 select-none"
       style={{ background: S.bg, color: S.strong }}>
 
-      <WizardHeader title="acoustic calibration wizard" onClose={onClose} />
+      <WizardHeader title={t('dsp.title')} onClose={onClose} />
 
 
 
@@ -430,7 +445,7 @@ export default function DspWizard({ onClose, onCalibrationComplete, pureDirect =
           className="flex items-center gap-1.5 text-sm font-semibold transition-colors cursor-pointer disabled:opacity-25 shrink-0"
           style={{ color: S.muted }}>
           <ChevronLeft className="h-4 w-4" strokeWidth={1.5} />
-          Previous
+          {t('dsp.previous')}
         </button>
 
       </div>}

@@ -1,8 +1,8 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect, useContext, useMemo } from 'react';
 import { Waves, ChevronLeft, Check, X, Cpu, AudioLines } from 'lucide-react';
 import { api } from '../../api';
 import { Tk } from './shared';
-import { QUESTIONS } from '../DspWizard';
+import { getQuestions } from '../DspWizard';
 import { useI18n } from '../../i18n';
 
 // ─── shared header: title + close, on the remote palette ─────────────────────
@@ -61,6 +61,7 @@ function Result({ icon, accent, kicker, title, children, footer, onClose }) {
 export default function RemoteDspWizard({ onClose, onCalibrationComplete, pureDirect = false, onPureDirectChange }) {
   const { C, card, cardWhite, btnInset } = useContext(Tk);
   const { t } = useI18n();
+  const QUESTIONS = useMemo(() => getQuestions(t), [t]);
   const [currentStep, setCurrentStep] = useState(0);
   const [answers, setAnswers] = useState({});
   const [isSaving, setIsSaving] = useState(false);
@@ -118,22 +119,21 @@ export default function RemoteDspWizard({ onClose, onCalibrationComplete, pureDi
 
   // ── Pure Direct success ────────────────────────────────────────────────────
   if (currentStep === 98) return (
-    <Result onClose={onClose} accent="#0e9ab8" kicker="Pure Direct"
+    <Result onClose={onClose} accent="#0e9ab8" kicker={t('dsp.subtitlePureDirect')}
       icon={<AudioLines className="h-7 w-7" style={{ color: '#0e9ab8' }} />}
       title={t('dsp.pureDirectActive')}
       footer={<>
-        {ghostBtn('Switch to Manual EQ or DSP', () => setCurrentStep(0))}
+        {ghostBtn(t('dsp.switchToEqDsp'), () => setCurrentStep(0))}
         {primaryBtn(t('dsp.returnToPlayer'), onClose)}
       </>}>
       <p className="text-[14px] leading-relaxed text-center" style={{ color: C.text4 }}>
-        All EQ and DSP filters are bypassed — source audio passes straight through the
-        CamillaDSP mixer to the DAC. Volume control stays active.
+        {t('dsp.flatSignalPath')}
       </p>
       <div className="rounded-xl p-4 flex flex-col gap-2 text-[13px]" style={cardWhite}>
         {[
-          ['Manual EQ', 'disabled while Pure Direct is active'],
-          ['Room Correction', 'disabled while Pure Direct is active'],
-          ['Presets & bands', 'preserved, resume when you switch back'],
+          [t('dsp.manualEqLabel'), t('dsp.manualEqDisabledNote')],
+          [t('dsp.roomCorrectionLabel'), t('dsp.roomCorrectionDisabledNote')],
+          [t('dsp.presetsBandsLabel'), t('dsp.presetsPreservedNote')],
         ].map(([k, v]) => (
           <p key={k} style={{ color: C.text4 }}>
             <span className="font-semibold" style={{ color: C.text2 }}>{k}</span> — {v}
@@ -145,16 +145,15 @@ export default function RemoteDspWizard({ onClose, onCalibrationComplete, pureDi
 
   // ── Manual EQ success ──────────────────────────────────────────────────────
   if (currentStep === 99) return (
-    <Result onClose={onClose} accent={C.champagne} kicker="Equalizer Mode"
+    <Result onClose={onClose} accent={C.champagne} kicker={t('dsp.subtitleEqMode')}
       icon={<Check className="h-7 w-7" style={{ color: C.champagne }} />}
       title={t('dsp.manualEqActive')}
       footer={<>
-        {ghostBtn('Configure Acoustic DSP instead', () => setCurrentStep(0))}
+        {ghostBtn(t('dsp.switchToEqDsp'), () => setCurrentStep(0))}
         {primaryBtn(t('dsp.returnToPlayer'), onClose)}
       </>}>
       <p className="text-[14px] leading-relaxed text-center" style={{ color: C.text4 }}>
-        Acoustic room correction filters are now bypassed. Adjust presets and frequency
-        bands from the Equalizer in Settings.
+        {t('dsp.eqBypassInfo')}
       </p>
     </Result>
   );
@@ -162,28 +161,28 @@ export default function RemoteDspWizard({ onClose, onCalibrationComplete, pureDi
   // ── DSP calibration complete ───────────────────────────────────────────────
   if (currentStep === QUESTIONS.length) {
     const dspMap = [
-      ['Channel Layout', answers[1] === 'subwoofer' ? '2.1 Crossover · 80Hz LR' : '2.0 Stereo'],
-      ['Room Reflection', answers[2] === 'echoey' ? 'HF Shelf −3dB @ 8kHz' : 'Flat HF'],
-      ['Speaker Delay', answers[3] === 'left' ? 'Left +1.2ms' : answers[3] === 'right' ? 'Right +1.2ms' : '0.0ms aligned'],
-      ['Voicing Target', answers[4] ? answers[4].charAt(0).toUpperCase() + answers[4].slice(1) : 'Balanced'],
-      ['HPF Cutoff', answers[5] === 'small' ? '80Hz cut' : answers[5] === 'medium' ? '45Hz cut' : 'Full range 20Hz'],
-      ['Loudness Mode', answers[6] === 'quiet' ? 'Fletcher-Munson' : 'Off · flat'],
-      ['Boundary EQ', answers[7] === 'wall' ? 'Wall −2dB @ 180Hz' : answers[7] === 'corner' ? 'Corner −4dB @ 180Hz' : 'Free space'],
+      [t('dsp.mapChannelLayout'), answers[1] === 'subwoofer' ? t('dsp.valCrossover21') : t('dsp.valStereoPassThrough')],
+      [t('dsp.mapRoomReflection'), answers[2] === 'echoey' ? t('dsp.valHfShelfCut') : t('dsp.valFlatHfResponse')],
+      [t('dsp.mapSpeakerDelay'), answers[3] === 'left' ? t('dsp.valDelayLeft') : answers[3] === 'right' ? t('dsp.valDelayRight') : t('dsp.valTimeAligned')],
+      [t('dsp.mapVoicingTarget'), answers[4] ? (QUESTIONS[4].options.find(o => o.value === answers[4])?.label ?? t('dsp.valBalanced')) : t('dsp.valBalanced')],
+      [t('dsp.mapHpfCutoff'), answers[5] === 'small' ? t('dsp.valHpfSmall') : answers[5] === 'medium' ? t('dsp.valHpfMedium') : t('dsp.valFullRange')],
+      [t('dsp.mapLoudnessMode'), answers[6] === 'quiet' ? t('dsp.valLoudnessActive') : t('dsp.valLoudnessOff')],
+      [t('dsp.mapBoundaryEq'), answers[7] === 'wall' ? t('dsp.valBoundaryWall') : answers[7] === 'corner' ? t('dsp.valBoundaryCorner') : t('dsp.valBoundaryNone')],
     ];
     return (
-      <Result onClose={onClose} accent={C.champagne} kicker="Calibration Complete"
+      <Result onClose={onClose} accent={C.champagne} kicker={t('dsp.subtitleComplete')}
         icon={<Check className="h-7 w-7" style={{ color: C.champagne }} />}
         title={t('dsp.profileGenerated')}
         footer={<>
-          {ghostBtn('Switch to Manual Equalizer', () => setCurrentStep(0))}
+          {ghostBtn(t('dsp.switchToEq'), () => setCurrentStep(0))}
           {primaryBtn(t('dsp.returnToPlayer'), onClose)}
         </>}>
         <p className="text-[14px] leading-relaxed text-center" style={{ color: C.text4 }}>
-          DSP filters and biquad curves recalculated and hot-reloaded on the Resonance backend.
+          {t('dsp.profileBody')}
         </p>
         <div className="rounded-xl p-4" style={cardWhite}>
           <p className="text-[11px] font-semibold uppercase tracking-widest mb-2"
-            style={{ color: C.text3, fontFamily: C.fontLabel }}>Applied DSP Map</p>
+            style={{ color: C.text3, fontFamily: C.fontLabel }}>{t('dsp.appliedMap')}</p>
           {dspMap.map(([k, v], i) => (
             <div key={k} className="flex items-baseline justify-between gap-4 py-2"
               style={{ borderBottom: i < dspMap.length - 1 ? `0.5px solid ${C.outline}` : 'none' }}>
@@ -266,7 +265,7 @@ export default function RemoteDspWizard({ onClose, onCalibrationComplete, pureDi
           <button onClick={() => currentStep > 0 && setCurrentStep(p => p - 1)} disabled={currentStep === 0}
             className="flex items-center gap-1 text-[13px] font-semibold active:scale-95 transition-all cursor-pointer disabled:opacity-25 shrink-0"
             style={{ color: C.text2 }}>
-            <ChevronLeft className="h-4 w-4" /> Back
+            <ChevronLeft className="h-4 w-4" /> {t('common.back')}
           </button>
         </div>
       )}
