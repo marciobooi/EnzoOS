@@ -127,11 +127,13 @@ export function startAudioLevelMonitor() {
   console.log('[Audio Monitor] Starting arecord VU meter (loop_dsnoop via PipeWire loopback)...');
 
   try {
+    // Use S32_LE — the ALSA Loopback kernel module exposes S32_LE on this system.
+    // Rate 48000 matches the fixed clock in asound.conf.
     arecordProcess = spawn('arecord', [
       '-D', 'loop_dsnoop',
-      '-f', 'S16_LE',
+      '-f', 'S32_LE',
       '-c', '2',
-      '-r', '44100',
+      '-r', '48000',
       '-t', 'raw',
       '-q',
     ]);
@@ -143,7 +145,8 @@ export function startAudioLevelMonitor() {
   }
 
   let bufferAccumulator = Buffer.alloc(0);
-  const CHUNK_SIZE = 8820; // 50ms at 44.1kHz stereo 16-bit
+  // 50 ms at 48 kHz stereo 32-bit = 48000 * 0.05 * 2ch * 4 bytes = 19200
+  const CHUNK_SIZE = 19200;
 
   arecordProcess.stdout.on('data', (chunk) => {
     arecordRetryCount = 0;
@@ -153,19 +156,20 @@ export function startAudioLevelMonitor() {
       const chunkToProcess = bufferAccumulator.subarray(0, CHUNK_SIZE);
       bufferAccumulator = bufferAccumulator.subarray(CHUNK_SIZE);
 
+      // S32_LE: 4 bytes per sample, 8 bytes per stereo frame
       let maxL = 0;
       let maxR = 0;
-      for (let i = 0; i < chunkToProcess.length; i += 4) {
-        if (i + 3 >= chunkToProcess.length) break;
-        const absL = Math.abs(chunkToProcess.readInt16LE(i));
-        const absR = Math.abs(chunkToProcess.readInt16LE(i + 2));
+      for (let i = 0; i < chunkToProcess.length; i += 8) {
+        if (i + 7 >= chunkToProcess.length) break;
+        const absL = Math.abs(chunkToProcess.readInt32LE(i));
+        const absR = Math.abs(chunkToProcess.readInt32LE(i + 4));
         if (absL > maxL) maxL = absL;
         if (absR > maxR) maxR = absR;
       }
 
       const calcDb = (val) => {
         if (val <= 0) return -45.0;
-        return Math.max(-45.0, Math.round(20 * Math.log10(val / 32767.0) * 10) / 10);
+        return Math.max(-45.0, Math.round(20 * Math.log10(val / 2147483647.0) * 10) / 10);
       };
 
       emit('AUDIO_LEVELS', { dbL: calcDb(maxL), dbR: calcDb(maxR) });
