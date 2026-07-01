@@ -810,6 +810,12 @@ export default function Kiosk() {
         setTrackPosition(prev => {
           if (prev + 1000 >= trackDuration) {
             clearInterval(progressInterval.current);
+            // Local ticker caps out here and stops until the next 3s poll
+            // picks up the new track — waiting for that made anything
+            // driven by trackPosition/trackDuration (seek bar, cassette
+            // reels) look frozen at the old song's numbers for up to 3s
+            // after it ended. Sync immediately instead of waiting.
+            syncCurrentState();
             return trackDuration;
           }
           return prev + 1000;
