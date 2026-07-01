@@ -207,6 +207,14 @@
             style="stroke:#808080;fill:#999999"
             transform="matrix(.97774 .20981 -.20981 .97774 131.08 30.975)"
           >
+            <circle 
+    cx="155" 
+    cy="158" 
+    r="35" 
+    fill="#e0e0e0" 
+    stroke="#808080" 
+    strokeWidth="2" 
+  />
           <rect
               id="rect5354"
               style="stroke:#808080;stroke-linecap:round;stroke-width:2;fill:#999999"
