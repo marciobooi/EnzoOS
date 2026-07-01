@@ -58,27 +58,51 @@ const PlayerDisplay = React.memo(function PlayerDisplay({
   // Cassette shell (public/cassette-audio.svg) is loaded via <object>, not
   // <img>, specifically so we can reach into its own internal DOM — its
   // built-in sprocket-hole cog decorations (#g5352 left reel, #g5366 right
-  // reel) get a spin animation injected here, layered on top of their
-  // existing baked-in transform (never rewritten), rather than redrawing a
+  // reel) get a spin animation injected here, rather than redrawing a
   // duplicate gear ourselves. The source file itself is never modified —
   // this only touches the live, in-memory SVG document after it loads.
+  //
+  // #g5352/#g5366 already carry their own matrix() transform attribute
+  // (positions the dot-ring in the shell). Animating that same element's
+  // CSS `transform` directly interpolates FROM that matrix TO rotate(360deg)
+  // — two very different transform functions, so the browser falls back to
+  // matrix decomposition, which does not preserve the translation smoothly
+  // and makes the whole cog swing across the shell instead of spinning in
+  // place. Fix: wrap each cog in its own <g> and animate the WRAPPER
+  // (identity → rotate(360deg), a clean same-function interpolation),
+  // leaving the original element and its matrix completely untouched.
   useEffect(() => {
     if (activeTheme !== 'cassette') { setCassetteShellReady(false); return; }
     const obj = cassetteObjRef.current;
     if (!obj) return;
+    const svgNS = 'http://www.w3.org/2000/svg';
+    const wrapForSpin = (doc, id) => {
+      const el = doc.getElementById(id);
+      if (!el) return;
+      if (el.parentNode?.dataset?.cogWrap === id) return; // already wrapped
+      const wrapper = doc.createElementNS(svgNS, 'g');
+      wrapper.dataset.cogWrap = id;
+      wrapper.id = `${id}-spin`;
+      el.parentNode.insertBefore(wrapper, el);
+      wrapper.appendChild(el);
+    };
     const inject = () => {
       try {
         const doc = obj.contentDocument;
-        if (!doc || doc.getElementById('resonance-cog-spin')) { if (doc) setCassetteShellReady(true); return; }
-        const style = doc.createElementNS('http://www.w3.org/2000/svg', 'style');
-        style.id = 'resonance-cog-spin';
-        style.textContent = `
-          #g5352, #g5366 { transform-box: fill-box; transform-origin: center; }
-          #g5352 { animation: resonance-cog-spin 3s linear infinite paused; }
-          #g5366 { animation: resonance-cog-spin 3s linear infinite paused reverse; }
-          @keyframes resonance-cog-spin { to { transform: rotate(360deg); } }
-        `;
-        doc.documentElement.appendChild(style);
+        if (!doc) return;
+        wrapForSpin(doc, 'g5352');
+        wrapForSpin(doc, 'g5366');
+        if (!doc.getElementById('resonance-cog-spin')) {
+          const style = doc.createElementNS(svgNS, 'style');
+          style.id = 'resonance-cog-spin';
+          style.textContent = `
+            #g5352-spin, #g5366-spin { transform-box: fill-box; transform-origin: center; }
+            #g5352-spin { animation: resonance-cog-spin 3s linear infinite paused; }
+            #g5366-spin { animation: resonance-cog-spin 3s linear infinite paused reverse; }
+            @keyframes resonance-cog-spin { to { transform: rotate(360deg); } }
+          `;
+          doc.documentElement.appendChild(style);
+        }
         setCassetteShellReady(true);
       } catch (err) {
         console.warn('[Cassette] Could not reach shell SVG internals:', err);
@@ -95,7 +119,7 @@ const PlayerDisplay = React.memo(function PlayerDisplay({
     if (!cassetteShellReady) return;
     const doc = cassetteObjRef.current?.contentDocument;
     if (!doc) return;
-    [doc.getElementById('g5352'), doc.getElementById('g5366')].forEach(el => {
+    [doc.getElementById('g5352-spin'), doc.getElementById('g5366-spin')].forEach(el => {
       if (el) el.style.animationPlayState = isPlaying ? 'running' : 'paused';
     });
   }, [isPlaying, cassetteShellReady]);
