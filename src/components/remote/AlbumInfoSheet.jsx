@@ -10,6 +10,7 @@ import { Tk } from './shared';
 import { api } from '../../api';
 import { toast } from '../../lib/toast';
 import { useI18n } from '../../i18n';
+import { primaryArtist } from '../../lib/format';
 
 // <img> that falls through a list of candidate sources, hiding itself if all fail.
 function SmartImg({ srcs = [], alt = '', className, style }) {
@@ -50,7 +51,10 @@ export default function AlbumInfoSheet({ artist, album, albumImage, onClose }) {
 
   useEffect(() => {
     let alive = true;
-    api.getAlbumMetadata(artist, album, lang)
+    // Look up by the lead artist only — "Seether, Amy Lee" (Spotify's joined
+    // feat.-artist credit) matches nothing in MusicBrainz/Last.fm/TheAudioDB,
+    // even though "Seether" alone is well documented.
+    api.getAlbumMetadata(primaryArtist(artist), album, lang)
       .then((d) => {
         if (!alive) return;
         setState({ loading: false, error: null, data: d });

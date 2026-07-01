@@ -3,6 +3,7 @@ import { X, Mic2, Loader } from 'lucide-react';
 import { Tk } from './shared';
 import { api } from '../../api';
 import { useI18n } from '../../i18n';
+import { primaryArtist } from '../../lib/format';
 
 function parseSynced(lrc) {
   if (!lrc) return null;
@@ -31,7 +32,9 @@ export default function LyricsSheet({ title, artist, album, duration, position, 
   useEffect(() => {
     let cancelled = false;
     setLoading(true); setError(false);
-    api.getLyrics(title, artist, album, Math.round(duration / 1000))
+    // LRCLIB matches by exact artist name — "Seether, Amy Lee" (Spotify's
+    // joined feat.-artist credit) fails to match its "Seether" entry.
+    api.getLyrics(title, primaryArtist(artist), album, Math.round(duration / 1000))
       .then(d => {
         if (cancelled) return;
         const parsed = parseSynced(d.synced);

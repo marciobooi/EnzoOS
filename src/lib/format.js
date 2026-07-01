@@ -16,6 +16,18 @@ export function getGreeting(date = new Date()) {
   return 'Good Night';
 }
 
+// Extract the primary (lead) artist from a display credit string like
+// "Seether, Amy Lee" (Spotify joins every track artist, features included,
+// with ", "). External metadata/lyrics APIs (MusicBrainz, Last.fm, TheAudioDB,
+// lyrics providers) key by a single canonical artist name — searching for the
+// full joined string fails to match even for well-documented lead artists,
+// since no database has an artist literally named "Seether, Amy Lee". Use
+// this for API lookups; keep the full joined string for on-screen credits.
+export function primaryArtist(displayArtist) {
+  if (!displayArtist) return displayArtist;
+  return displayArtist.split(',')[0].trim();
+}
+
 // Sanitise track names that come from MPD ICY/stream metadata.
 // MPD can set %title% to the stream URL itself (common with HLS/AAC streams
 // that have no ICY metadata), or to raw XML from Dalet-based automation.
