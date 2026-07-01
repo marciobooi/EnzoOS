@@ -86,9 +86,13 @@ export default function AlbumInfoOverlay() {
         <div className="relative w-[34%] flex flex-row gap-4 shrink-0 rounded-2xl p-4 overflow-hidden"
           style={{ border: `1px solid ${S.border}` }}>
           {heroBg && (
+            // Plain opacity only — no CSS `filter` here. The kiosk's Chromium runs
+            // software-rendered (QEMU, no GPU passthrough); `filter` on a full-bleed
+            // absolutely-positioned image reliably renders as a blank layer on that
+            // stack, same as the remote's AlbumInfoSheet hero (opacity-only, no filter).
             <SmartImg srcs={[d?.artistFanart, d?.artistBanner, cover]} alt="" aria-hidden="true"
               className="absolute inset-0 w-full h-full object-cover"
-              style={{ filter: 'saturate(1.15) brightness(0.9)', opacity: 0.6 }} />
+              style={{ opacity: 0.6 }} />
           )}
           <div className="absolute inset-0"
             style={{ background: heroBg ? 'rgba(20,18,16,0.30)' : S.surface }} />
