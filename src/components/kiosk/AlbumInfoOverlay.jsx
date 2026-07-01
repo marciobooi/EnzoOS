@@ -55,6 +55,9 @@ export default function AlbumInfoOverlay() {
   const d = ready ? res.data : null;
   const error = ready ? res.error : false;
   const cover = d?.coverArt || d?.albumImage || albumInfoImage;
+  // Wide artist fanart/banner reads far better as a hero background than a
+  // blurred-up square cover — matches the remote's AlbumInfoSheet hero.
+  const heroBg = d?.artistFanart || d?.artistBanner || cover;
   const fmtNum = (n) => n ? Number(n).toLocaleString() : null;
   const fmtDur = (s) => s ? `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}` : '';
 
@@ -82,13 +85,13 @@ export default function AlbumInfoOverlay() {
         {/* left — album cover as a blurred hero background, dark scrim for text contrast */}
         <div className="relative w-[34%] flex flex-row gap-4 shrink-0 rounded-2xl p-4 overflow-hidden"
           style={{ border: `1px solid ${S.border}` }}>
-          {cover && (
-            <SmartImg srcs={[d?.coverArt, d?.albumImage, albumInfoImage]} alt="" aria-hidden="true"
+          {heroBg && (
+            <SmartImg srcs={[d?.artistFanart, d?.artistBanner, cover]} alt="" aria-hidden="true"
               className="absolute inset-0 w-full h-full object-cover"
-              style={{ filter: 'blur(10px) saturate(1.15) brightness(0.9)', transform: 'scale(1.15)' }} />
+              style={{ filter: 'saturate(1.15) brightness(0.9)', opacity: 0.6 }} />
           )}
           <div className="absolute inset-0"
-            style={{ background: cover ? 'rgba(20,18,16,0.62)' : S.surface }} />
+            style={{ background: heroBg ? 'rgba(20,18,16,0.62)' : S.surface }} />
 
           <div className="relative z-10 w-[120px] h-[120px] rounded-xl overflow-hidden shrink-0 flex items-center justify-center"
             style={{ background: S.surfaceLo, border: '1px solid rgba(255,255,255,0.25)', boxShadow: '0 4px 16px rgba(0,0,0,0.4)' }}>
