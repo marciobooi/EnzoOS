@@ -1,7 +1,6 @@
 import React, { useContext, useEffect, useRef, useState } from 'react';
-import { createPortal } from 'react-dom';
-import { Music, Radio, Airplay, Network, Bluetooth, Music2, ChevronLeft } from 'lucide-react';
-import { Tk, SpotifyIcon } from './shared';
+import { Music, Radio, Airplay, Network, Bluetooth, Music2 } from 'lucide-react';
+import { Tk, SpotifyIcon, Sheet } from './shared';
 import { api } from '../../api';
 import { toast } from '../../lib/toast';
 import { reportError } from '../../lib/errors';
@@ -178,38 +177,5 @@ export default function SourceTab() {
         </Sheet>
       )}
     </div>
-  );
-}
-
-// Full-screen remote sheet — solid background (no dim), header with a back
-// button that returns to the Source view. Portaled to <body> so it escapes the
-// tab-slide transform (a transformed ancestor would otherwise trap the fixed
-// element inside the content area, leaving the nav/mini-player visible).
-// Module-scoped so the text inputs inside keep focus across re-renders.
-function Sheet({ C, kicker, title, onBack, children }) {
-  return createPortal(
-    <div className="remote-root remote-sheet-in fixed inset-0 z-[9999] flex flex-col"
-      style={{
-        '--rc-outline': C.outline, '--rc-champagne': C.champagne,
-        '--rc-container': C.container, '--rc-bg-white': C.bgWhite,
-        background: C.bg, fontFamily: C.font, paddingTop: 'env(safe-area-inset-top)',
-      }}>
-      <div className="flex items-center gap-3 px-5 pt-4 pb-4 shrink-0"
-        style={{ background: C.bg, borderBottom: `0.5px solid ${C.outline}` }}>
-        <button onClick={onBack} aria-label="Back to sources"
-          className="w-10 h-10 rounded-full flex items-center justify-center active:scale-90 transition-all cursor-pointer shrink-0"
-          style={{ background: C.containerLow, border: `0.5px solid ${C.outline}` }}>
-          <ChevronLeft className="h-5 w-5" style={{ color: C.text3 }} />
-        </button>
-        <div className="min-w-0">
-          <p className="text-[11px] font-semibold uppercase tracking-widest"
-            style={{ color: C.champagne, fontFamily: C.fontLabel }}>{kicker}</p>
-          <p className="text-[20px] font-medium truncate"
-            style={{ color: C.text1, letterSpacing: '-0.01em' }}>{title}</p>
-        </div>
-      </div>
-      <div className="flex-1 overflow-y-auto p-5">{children}</div>
-    </div>,
-    document.body,
   );
 }
