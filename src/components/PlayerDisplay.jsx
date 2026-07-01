@@ -484,30 +484,6 @@ const PlayerDisplay = React.memo(function PlayerDisplay({
     };
   }, [albumImage, activeTheme]);
 
-  // ── Cassette skin: progress winds the tape from the left (supply) reel to the
-  // right (take-up) reel; cog wheels are drawn as SVG and spin while playing.
-  // The shell art is the static cassette-audio.svg (public/); our reels + the
-  // album-art label are an overlay SVG stretched over the exact same box
-  // (preserveAspectRatio="none" on both layers keeps the coordinate systems
-  // in lockstep regardless of the shell's native aspect ratio). ──
-  const cassProg = trackDuration ? Math.min(1, Math.max(0, (trackPosition || 0) / trackDuration)) : 0;
-  const cassRL = 12 + (1 - cassProg) * 19;   // left tape-pack radius (full → empty)
-  const cassRR = 12 + cassProg * 19;          // right tape-pack radius (empty → full)
-  const cogHoles = (cx, cy) => [0, 45, 90, 135, 180, 225, 270, 315].map((deg, i) => {
-    const a = (deg * Math.PI) / 180;
-    return <circle key={i} cx={(cx + 15.5 * Math.cos(a)).toFixed(2)} cy={(cy + 15.5 * Math.sin(a)).toFixed(2)} r="3.4" fill="#2a2620" />;
-  });
-  const cog = (cx, cy) => (
-    <g className="cass-cog" style={{ transformBox: 'fill-box', transformOrigin: 'center' }}>
-      <circle cx={cx} cy={cy} r="30" fill="#ECE7DB" />
-      {/* dark notches at the rim read as gear teeth */}
-      <circle cx={cx} cy={cy} r="27" fill="none" stroke="#15131c" strokeWidth="5.7" strokeDasharray="3.6 6.1" />
-      {cogHoles(cx, cy)}
-      <circle cx={cx} cy={cy} r="6" fill="#cbc6ba" />
-      <circle cx={cx} cy={cy} r="2.5" fill="#15131c" />
-    </g>
-  );
-
   return (
     <article
       className={`music-player ${isPlaying ? 'is-playing' : ''}`}
@@ -533,43 +509,8 @@ const PlayerDisplay = React.memo(function PlayerDisplay({
             )}
           </div>
         ) : activeTheme === 'cassette' ? (
-          // Realistic C-90 shell (public/cassette-audio.svg, unmodified artist
-          // artwork) as the static base layer, with our album-art label and
-          // two spinning reels layered on top in a matching-stretched overlay
-          // SVG (same viewBox proportions, preserveAspectRatio="none" on both
-          // layers so overlay coordinates always land in the same spot on the
-          // shell regardless of the box's rendered aspect ratio).
           <div className="album-art album-art--cassette" aria-label="Cassette album art">
-            <img className="cassette-shell-img" src="/cassette-audio.svg" alt="" aria-hidden="true" />
-            {/* Overlay coordinates below come from the shell SVG's own explicit
-                rect/circle geometry (measured directly from cassette-audio.svg's
-                source, not guessed): the label window is rect x=310.2,y=475.34
-                w=126.07,h=85.357 in the artist's raw coordinate space, which is
-                offset by the #layer1 transform="translate(-108.01 -360)" — i.e.
-                final = (202,115,126,85). The two reel centers come from the
-                circle-describing paths at raw (263.41,518.04) and (483.06,518.04),
-                giving final centers ≈(155,158) and (375,158). First-pass fit —
-                nudge these four numbers if it drifts on your screen. */}
-            <svg className="cassette-svg" viewBox="0 0 534 344.72" preserveAspectRatio="none" aria-hidden="true">
-              <defs>
-                <clipPath id="cassLabel"><rect x="202" y="115" width="126" height="85" rx="3" /></clipPath>
-                <clipPath id="cassWin"><rect x="80" y="130" width="374" height="90" rx="4" /></clipPath>
-              </defs>
-
-              {/* album cover = the label window */}
-              <image href={albumImage} x="202" y="115" width="126" height="85"
-                preserveAspectRatio="xMidYMid slice" clipPath="url(#cassLabel)" />
-              <rect x="202" y="115" width="126" height="85" rx="3" fill="none" stroke="#ece5d4" strokeWidth="2" />
-
-              {/* two spinning reels */}
-              <g clipPath="url(#cassWin)">
-                {/* wound tape packs (sized by progress) */}
-                <circle cx="155" cy="158" r={cassRL.toFixed(2)} fill="#5a3d20" />
-                <circle cx="375" cy="158" r={cassRR.toFixed(2)} fill="#5a3d20" />
-                {cog(155, 158)}
-                {cog(375, 158)}
-              </g>
-            </svg>
+            <svg className="cassette-svg" aria-hidden="true" />
           </div>
         ) : (
           <div className="album-art" aria-label="Dot matrix album art">
