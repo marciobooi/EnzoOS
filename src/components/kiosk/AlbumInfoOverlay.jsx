@@ -91,7 +91,7 @@ export default function AlbumInfoOverlay() {
               style={{ filter: 'saturate(1.15) brightness(0.9)', opacity: 0.6 }} />
           )}
           <div className="absolute inset-0"
-            style={{ background: heroBg ? 'rgba(20,18,16,0.62)' : S.surface }} />
+            style={{ background: heroBg ? 'rgba(20,18,16,0.30)' : S.surface }} />
 
           <div className="relative z-10 w-[120px] h-[120px] rounded-xl overflow-hidden shrink-0 flex items-center justify-center"
             style={{ background: S.surfaceLo, border: '1px solid rgba(255,255,255,0.25)', boxShadow: '0 4px 16px rgba(0,0,0,0.4)' }}>
