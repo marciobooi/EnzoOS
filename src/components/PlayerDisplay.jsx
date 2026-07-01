@@ -52,6 +52,53 @@ const PlayerDisplay = React.memo(function PlayerDisplay({
   const needleLRef = useRef(null);
   const needleRRef = useRef(null);
   const canvasRef = useRef(null);
+  const cassetteObjRef = useRef(null);
+  const [cassetteShellReady, setCassetteShellReady] = useState(false);
+
+  // Cassette shell (public/cassette-audio.svg) is loaded via <object>, not
+  // <img>, specifically so we can reach into its own internal DOM — its
+  // built-in sprocket-hole cog decorations (#g5352 left reel, #g5366 right
+  // reel) get a spin animation injected here, layered on top of their
+  // existing baked-in transform (never rewritten), rather than redrawing a
+  // duplicate gear ourselves. The source file itself is never modified —
+  // this only touches the live, in-memory SVG document after it loads.
+  useEffect(() => {
+    if (activeTheme !== 'cassette') { setCassetteShellReady(false); return; }
+    const obj = cassetteObjRef.current;
+    if (!obj) return;
+    const inject = () => {
+      try {
+        const doc = obj.contentDocument;
+        if (!doc || doc.getElementById('resonance-cog-spin')) { if (doc) setCassetteShellReady(true); return; }
+        const style = doc.createElementNS('http://www.w3.org/2000/svg', 'style');
+        style.id = 'resonance-cog-spin';
+        style.textContent = `
+          #g5352, #g5366 { transform-box: fill-box; transform-origin: center; }
+          #g5352 { animation: resonance-cog-spin 3s linear infinite paused; }
+          #g5366 { animation: resonance-cog-spin 3s linear infinite paused reverse; }
+          @keyframes resonance-cog-spin { to { transform: rotate(360deg); } }
+        `;
+        doc.documentElement.appendChild(style);
+        setCassetteShellReady(true);
+      } catch (err) {
+        console.warn('[Cassette] Could not reach shell SVG internals:', err);
+      }
+    };
+    obj.addEventListener('load', inject);
+    if (obj.contentDocument?.readyState === 'complete') inject();
+    return () => obj.removeEventListener('load', inject);
+  }, [activeTheme]);
+
+  // Reels spin continuously while playing, independent of song position —
+  // same as a real deck. Wound-tape amount (radius) is driven by progress.
+  useEffect(() => {
+    if (!cassetteShellReady) return;
+    const doc = cassetteObjRef.current?.contentDocument;
+    if (!doc) return;
+    [doc.getElementById('g5352'), doc.getElementById('g5366')].forEach(el => {
+      if (el) el.style.animationPlayState = isPlaying ? 'running' : 'paused';
+    });
+  }, [isPlaying, cassetteShellReady]);
 
   useEffect(() => {
     function handleClickOutside(event) {
@@ -484,6 +531,14 @@ const PlayerDisplay = React.memo(function PlayerDisplay({
     };
   }, [albumImage, activeTheme]);
 
+  // Tape winds from the left (supply) reel to the right (take-up) reel as the
+  // track plays — left starts full and empties, right starts empty and fills,
+  // so it's full by the time the song ends. Radii match the shell's window
+  // clip geometry (viewBox 0 0 534 344.72, window rect x=80 y=130 w=374 h=90).
+  const cassProg = trackDuration ? Math.min(1, Math.max(0, (trackPosition || 0) / trackDuration)) : 0;
+  const cassRL = 12 + (1 - cassProg) * 19;
+  const cassRR = 12 + cassProg * 19;
+
   return (
     <article
       className={`music-player ${isPlaying ? 'is-playing' : ''} ${activeTheme === 'cassette' ? 'music-player--cassette' : ''}`}
@@ -510,7 +565,17 @@ const PlayerDisplay = React.memo(function PlayerDisplay({
           </div>
         ) : activeTheme === 'cassette' ? (
           <div className="album-art album-art--cassette" aria-label="Cassette album art">
-            <img src="/cassette-audio.svg" className="cassette-svg" alt="" aria-hidden="true" />
+            <object ref={cassetteObjRef} data="/cassette-audio.svg" type="image/svg+xml"
+              className="cassette-svg" aria-hidden="true" />
+            <svg className="cassette-reels" viewBox="0 0 534 344.72" preserveAspectRatio="none" aria-hidden="true">
+              <defs>
+                <clipPath id="cassWin"><rect x="80" y="130" width="374" height="90" rx="4" /></clipPath>
+              </defs>
+              <g clipPath="url(#cassWin)">
+                <circle cx="155" cy="158" r={cassRL.toFixed(2)} fill="#5a3d20" />
+                <circle cx="375" cy="158" r={cassRR.toFixed(2)} fill="#5a3d20" />
+              </g>
+            </svg>
           </div>
         ) : (
           <div className="album-art" aria-label="Dot matrix album art">

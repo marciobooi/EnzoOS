@@ -353,10 +353,24 @@ div[data-theme="ruby"] *::selection {
   display: none;
 }
 .album-art.album-art--cassette .cassette-svg {
+  display: block;
   width: 100%;
   height: 100%;
-  object-fit: contain;
   filter: none;
+}
+/* Reel-progress overlay — stretched exactly over the shell <object> so its
+   viewBox (0 0 534 344.72) coordinate space lines up 1:1 with the shell's. */
+.album-art.album-art--cassette .cassette-reels {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+/* The generic dotted progress bar is redundant here — the reels themselves
+   show playback progress (tape winding left → right). */
+div[data-active-theme="cassette"] .progress-bar-dots {
+  display: none !important;
 }
 
 .details-column {
