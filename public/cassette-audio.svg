@@ -43,10 +43,10 @@
     #path5344 { animation-name: tape-pack-fill; }
     @keyframes tape-pack-empty {
       from { transform: scale(1); }
-      to   { transform: scale(0); }
+      to   { transform: scale(0.359); }
     }
     @keyframes tape-pack-fill {
-      from { transform: scale(0); }
+      from { transform: scale(0.266); }
       to   { transform: scale(1); }
     }
   </style
