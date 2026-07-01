@@ -353,12 +353,15 @@ div[data-theme="ruby"] *::selection {
   display: none;
 }
 .album-art.album-art--cassette .cassette-svg {
-  display: block;
+  position: absolute;
+  inset: 0;
   width: 100%;
   height: 100%;
+  object-fit: fill;
   filter: none;
+  display: block;
 }
-/* Reel-progress overlay — stretched exactly over the shell <object> so its
+/* Reel-progress overlay — stretched exactly over the shell <img> so its
    viewBox (0 0 534 344.72) coordinate space lines up 1:1 with the shell's. */
 .album-art.album-art--cassette .cassette-reels {
   position: absolute;
@@ -367,6 +370,15 @@ div[data-theme="ruby"] *::selection {
   height: 100%;
   display: block;
 }
+/* Reel cogs spin while playing, rest when paused. */
+.album-art.album-art--cassette .cass-cog {
+  animation: cass-cog-spin 3s linear infinite;
+  animation-play-state: paused;
+}
+.music-player.is-playing .album-art.album-art--cassette .cass-cog {
+  animation-play-state: running;
+}
+@keyframes cass-cog-spin { to { transform: rotate(360deg); } }
 /* The generic dotted progress bar is redundant here — the reels themselves
    show playback progress (tape winding left → right). */
 div[data-active-theme="cassette"] .progress-bar-dots {

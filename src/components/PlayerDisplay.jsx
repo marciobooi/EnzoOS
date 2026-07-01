@@ -52,77 +52,6 @@ const PlayerDisplay = React.memo(function PlayerDisplay({
   const needleLRef = useRef(null);
   const needleRRef = useRef(null);
   const canvasRef = useRef(null);
-  const cassetteObjRef = useRef(null);
-  const [cassetteShellReady, setCassetteShellReady] = useState(false);
-
-  // Cassette shell (public/cassette-audio.svg) is loaded via <object>, not
-  // <img>, specifically so we can reach into its own internal DOM — its
-  // built-in sprocket-hole cog decorations (#g5352 left reel, #g5366 right
-  // reel) get a spin animation injected here, rather than redrawing a
-  // duplicate gear ourselves. The source file itself is never modified —
-  // this only touches the live, in-memory SVG document after it loads.
-  //
-  // #g5352/#g5366 already carry their own matrix() transform attribute
-  // (positions the dot-ring in the shell). Animating that same element's
-  // CSS `transform` directly interpolates FROM that matrix TO rotate(360deg)
-  // — two very different transform functions, so the browser falls back to
-  // matrix decomposition, which does not preserve the translation smoothly
-  // and makes the whole cog swing across the shell instead of spinning in
-  // place. Fix: wrap each cog in its own <g> and animate the WRAPPER
-  // (identity → rotate(360deg), a clean same-function interpolation),
-  // leaving the original element and its matrix completely untouched.
-  useEffect(() => {
-    if (activeTheme !== 'cassette') { setCassetteShellReady(false); return; }
-    const obj = cassetteObjRef.current;
-    if (!obj) return;
-    const svgNS = 'http://www.w3.org/2000/svg';
-    const wrapForSpin = (doc, id) => {
-      const el = doc.getElementById(id);
-      if (!el) return;
-      if (el.parentNode?.dataset?.cogWrap === id) return; // already wrapped
-      const wrapper = doc.createElementNS(svgNS, 'g');
-      wrapper.dataset.cogWrap = id;
-      wrapper.id = `${id}-spin`;
-      el.parentNode.insertBefore(wrapper, el);
-      wrapper.appendChild(el);
-    };
-    const inject = () => {
-      try {
-        const doc = obj.contentDocument;
-        if (!doc) return;
-        wrapForSpin(doc, 'g5352');
-        wrapForSpin(doc, 'g5366');
-        if (!doc.getElementById('resonance-cog-spin')) {
-          const style = doc.createElementNS(svgNS, 'style');
-          style.id = 'resonance-cog-spin';
-          style.textContent = `
-            #g5352-spin, #g5366-spin { transform-box: fill-box; transform-origin: center; }
-            #g5352-spin { animation: resonance-cog-spin 3s linear infinite paused; }
-            #g5366-spin { animation: resonance-cog-spin 3s linear infinite paused reverse; }
-            @keyframes resonance-cog-spin { to { transform: rotate(360deg); } }
-          `;
-          doc.documentElement.appendChild(style);
-        }
-        setCassetteShellReady(true);
-      } catch (err) {
-        console.warn('[Cassette] Could not reach shell SVG internals:', err);
-      }
-    };
-    obj.addEventListener('load', inject);
-    if (obj.contentDocument?.readyState === 'complete') inject();
-    return () => obj.removeEventListener('load', inject);
-  }, [activeTheme]);
-
-  // Reels spin continuously while playing, independent of song position —
-  // same as a real deck. Wound-tape amount (radius) is driven by progress.
-  useEffect(() => {
-    if (!cassetteShellReady) return;
-    const doc = cassetteObjRef.current?.contentDocument;
-    if (!doc) return;
-    [doc.getElementById('g5352-spin'), doc.getElementById('g5366-spin')].forEach(el => {
-      if (el) el.style.animationPlayState = isPlaying ? 'running' : 'paused';
-    });
-  }, [isPlaying, cassetteShellReady]);
 
   useEffect(() => {
     function handleClickOutside(event) {
@@ -555,13 +484,26 @@ const PlayerDisplay = React.memo(function PlayerDisplay({
     };
   }, [albumImage, activeTheme]);
 
-  // Tape winds from the left (supply) reel to the right (take-up) reel as the
-  // track plays — left starts full and empties, right starts empty and fills,
+  // Tape winds from the right reel to the left reel as the track plays —
+  // right starts full (100%) and empties, left starts empty (0%) and fills,
   // so it's full by the time the song ends. Radii match the shell's window
   // clip geometry (viewBox 0 0 534 344.72, window rect x=80 y=130 w=374 h=90).
   const cassProg = trackDuration ? Math.min(1, Math.max(0, (trackPosition || 0) / trackDuration)) : 0;
-  const cassRL = 12 + (1 - cassProg) * 19;
-  const cassRR = 12 + cassProg * 19;
+  const cassRL = 12 + cassProg * 19;
+  const cassRR = 12 + (1 - cassProg) * 19;
+  const cassCogHoles = (cx, cy) => [0, 45, 90, 135, 180, 225, 270, 315].map((deg, i) => {
+    const a = (deg * Math.PI) / 180;
+    return <circle key={i} cx={(cx + 15.5 * Math.cos(a)).toFixed(2)} cy={(cy + 15.5 * Math.sin(a)).toFixed(2)} r="3.4" fill="#2a2620" />;
+  });
+  const cassCog = (cx, cy) => (
+    <g className="cass-cog" style={{ transformBox: 'fill-box', transformOrigin: 'center' }}>
+      <circle cx={cx} cy={cy} r="30" fill="#ECE7DB" />
+      <circle cx={cx} cy={cy} r="27" fill="none" stroke="#15131c" strokeWidth="5.7" strokeDasharray="3.6 6.1" />
+      {cassCogHoles(cx, cy)}
+      <circle cx={cx} cy={cy} r="6" fill="#cbc6ba" />
+      <circle cx={cx} cy={cy} r="2.5" fill="#15131c" />
+    </g>
+  );
 
   return (
     <article
@@ -589,8 +531,12 @@ const PlayerDisplay = React.memo(function PlayerDisplay({
           </div>
         ) : activeTheme === 'cassette' ? (
           <div className="album-art album-art--cassette" aria-label="Cassette album art">
-            <object ref={cassetteObjRef} data="/cassette-audio.svg" type="image/svg+xml"
-              className="cassette-svg" aria-hidden="true" />
+            <img src="/cassette-audio.svg" className="cassette-svg" alt="" aria-hidden="true" />
+            {/* Drawn ourselves rather than animating the shell's own baked-in
+                cog decorations — those live inside an externally-loaded SVG
+                with a deep, non-trivial ancestor transform chain, which made
+                driving them reliably (both sides, symmetric) impractical.
+                This way both reels are guaranteed correct and consistent. */}
             <svg className="cassette-reels" viewBox="0 0 534 344.72" preserveAspectRatio="none" aria-hidden="true">
               <defs>
                 <clipPath id="cassWin"><rect x="80" y="130" width="374" height="90" rx="4" /></clipPath>
@@ -598,6 +544,8 @@ const PlayerDisplay = React.memo(function PlayerDisplay({
               <g clipPath="url(#cassWin)">
                 <circle cx="155" cy="158" r={cassRL.toFixed(2)} fill="#5a3d20" />
                 <circle cx="375" cy="158" r={cassRR.toFixed(2)} fill="#5a3d20" />
+                {cassCog(155, 158)}
+                {cassCog(375, 158)}
               </g>
             </svg>
           </div>
