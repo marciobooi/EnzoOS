@@ -1,5 +1,5 @@
 import React, { useContext, useState, useEffect, useRef } from 'react';
-import { Search, X, Disc3, Music2, Radio, Heart } from 'lucide-react';
+import { Search, X, Disc3, Music2, Radio, Heart, ListMusic } from 'lucide-react';
 import { Kk } from './KioskContext';
 import { S } from '../../styles/stone';
 import { api } from '../../api';
@@ -60,10 +60,39 @@ function ResultCard({ result }) {
   );
 }
 
+function PlaylistCard({ item }) {
+  const { title, subtitle, image, source, onPlay } = item;
+  const color = SOURCE_COLORS[source];
+
+  return (
+    <button onClick={onPlay}
+      className="shrink-0 flex flex-col rounded-xl overflow-hidden active:opacity-70 transition-opacity text-left"
+      style={{ width: 100, background: S.surface, border: `1px solid ${S.border}` }}>
+      <div className="relative shrink-0" style={{ height: 68, overflow: 'hidden' }}>
+        {image
+          ? <img src={image} alt="" className="w-full h-full object-cover"
+              onError={e => { e.target.style.display = 'none'; }} />
+          : <div className="w-full h-full flex items-center justify-center" style={{ background: S.border }}>
+              <ListMusic className="h-5 w-5" style={{ color: S.muted }} />
+            </div>}
+        <span className="absolute top-1 right-1 px-1.5 py-0.5 rounded text-[7px] font-bold uppercase"
+          style={{ background: color + '33', color, backdropFilter: 'blur(4px)' }}>
+          {SOURCE_LABELS[source]}
+        </span>
+      </div>
+      <div className="px-1.5 py-1 min-w-0">
+        <p className="text-[10px] font-medium truncate" style={{ color: S.text }}>{title}</p>
+        {subtitle && <p className="text-[9px] truncate" style={{ color: S.muted }}>{subtitle}</p>}
+      </div>
+    </button>
+  );
+}
+
 export default function UniversalSearchOverlay() {
   const {
     token,
     handlePlayTrack,
+    handlePlayContext,
     handleToggleSource,
     setIsSearchOpen,
     favoriteStations,
@@ -74,10 +103,32 @@ export default function UniversalSearchOverlay() {
   const [activeFilter, setFilter]   = useState('all');
   const [results, setResults]       = useState({ spotify: [], local: [], tidal: [], qobuz: [], radio: [] });
   const [loading, setLoading]       = useState(false);
+  const [playlists, setPlaylists]         = useState({ spotify: [], local: [] });
+  const [playlistsLoading, setPlaylistsLoading] = useState(true);
   const debounceRef                 = useRef(null);
   const inputRef                    = useRef(null);
 
   useEffect(() => { inputRef.current?.focus(); }, []);
+
+  // Playlists row is independent of the search query — loaded once on open,
+  // covering every source that has a notion of a "playlist" (Spotify library
+  // playlists, saved local MPD playlists, favorited radio stations).
+  useEffect(() => {
+    let alive = true;
+    setPlaylistsLoading(true);
+    Promise.allSettled([
+      token ? api.getUserPlaylists(token, 20) : Promise.resolve(null),
+      api.getPlaylists(),
+    ]).then(([spotifyR, localR]) => {
+      if (!alive) return;
+      setPlaylists({
+        spotify: spotifyR.value?.items || [],
+        local:   localR.value?.playlists || [],
+      });
+      setPlaylistsLoading(false);
+    });
+    return () => { alive = false; };
+  }, [token]);
 
   const doSearch = async (q) => {
     if (!q.trim()) { setResults({ spotify: [], local: [], tidal: [], qobuz: [], radio: [] }); setLoading(false); return; }
@@ -107,6 +158,11 @@ export default function UniversalSearchOverlay() {
 
   const playLocal = async (file) => {
     try { await api.clearQueue(); await api.addToQueue(file, true); handleToggleSource('local'); setIsSearchOpen(false); }
+    catch (e) { reportError(e.message); }
+  };
+
+  const playLocalPlaylist = async (name) => {
+    try { await api.playPlaylist(name); handleToggleSource('local'); setIsSearchOpen(false); }
     catch (e) { reportError(e.message); }
   };
 
@@ -149,6 +205,26 @@ export default function UniversalSearchOverlay() {
       onToggleFav: () => handleToggleFavoriteRadio(s),
     })),
   ].filter(r => activeFilter === 'all' || r.source === activeFilter);
+
+  // Combined "your playlists" row — Spotify library playlists, saved local
+  // MPD playlists, and favorited radio stations, shown regardless of query.
+  const myPlaylists = [
+    ...playlists.spotify.map(pl => ({
+      key: `sp-${pl.id}`, source: 'spotify', title: pl.name,
+      subtitle: pl.tracks?.total ? `${pl.tracks.total} tracks` : null,
+      image: pl.images?.[0]?.url,
+      onPlay: () => handlePlayContext(pl.uri),
+    })),
+    ...playlists.local.map(name => ({
+      key: `local-${name}`, source: 'local', title: name, subtitle: null, image: null,
+      onPlay: () => playLocalPlaylist(name),
+    })),
+    ...(favoriteStations || []).map(s => ({
+      key: `radio-${s.url_resolved || s.url}`, source: 'radio', title: s.name, subtitle: 'Favorite',
+      image: s.favicon,
+      onPlay: () => playRadio(s),
+    })),
+  ];
 
   // Sources that actually returned results
   const activeSources = Object.entries(results).filter(([, v]) => v.length > 0).map(([k]) => k);
@@ -215,7 +291,27 @@ export default function UniversalSearchOverlay() {
         )}
       </div>
 
-      {/* Results — horizontal scroll */}
+      {/* Playlists — always visible, independent of the search query */}
+      <div className="shrink-0 px-3 pb-2" style={{ borderBottom: `1px solid ${S.border}` }}>
+        <div className="flex items-center gap-1.5 mb-1.5">
+          <ListMusic className="h-3 w-3" style={{ color: S.label }} />
+          <span className="text-[9px] font-bold uppercase tracking-wider" style={{ color: S.label }}>
+            Your Playlists
+          </span>
+        </div>
+        {myPlaylists.length ? (
+          <div className="flex items-center gap-2 overflow-x-auto overflow-y-hidden pb-1"
+            style={{ scrollbarWidth: 'none' }}>
+            {myPlaylists.map(p => <PlaylistCard key={p.key} item={p} />)}
+          </div>
+        ) : (
+          <span className="text-[11px]" style={{ color: S.muted }}>
+            {playlistsLoading ? 'Loading playlists…' : 'No playlists yet'}
+          </span>
+        )}
+      </div>
+
+      {/* Search results — horizontal scroll, its own row below the playlists */}
       <div className="flex-1 min-h-0 overflow-hidden">
         {!query.trim() ? (
           <div className="flex items-center justify-center h-full gap-2">

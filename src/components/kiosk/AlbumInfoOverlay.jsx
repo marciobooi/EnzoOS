@@ -6,6 +6,17 @@ import { api } from '../../api';
 import { useI18n } from '../../i18n';
 import { primaryArtist } from '../../lib/format';
 
+// <img> that falls through a list of candidate sources on load failure — Cover
+// Art Archive URLs are guessed from an MBID and 404 for releases with no cover
+// uploaded, even when a working thumbnail exists from another provider.
+function SmartImg({ srcs = [], alt = '', className, style, ...rest }) {
+  const list = srcs.filter(Boolean);
+  const [i, setI] = useState(0);
+  if (!list.length || i >= list.length) return null;
+  return <img src={list[i]} alt={alt} className={className} style={style}
+    onError={() => setI((n) => n + 1)} {...rest} />;
+}
+
 function Credit({ icon, label, value }) {
   if (!value) return null;
   return (
@@ -72,7 +83,7 @@ export default function AlbumInfoOverlay() {
         <div className="relative w-[34%] flex flex-row gap-4 shrink-0 rounded-2xl p-4 overflow-hidden"
           style={{ border: `1px solid ${S.border}` }}>
           {cover && (
-            <img src={cover} alt="" aria-hidden="true"
+            <SmartImg srcs={[d?.coverArt, d?.albumImage, albumInfoImage]} alt="" aria-hidden="true"
               className="absolute inset-0 w-full h-full object-cover"
               style={{ filter: 'blur(10px) saturate(1.15) brightness(0.9)', transform: 'scale(1.15)' }} />
           )}
@@ -81,7 +92,9 @@ export default function AlbumInfoOverlay() {
 
           <div className="relative z-10 w-[120px] h-[120px] rounded-xl overflow-hidden shrink-0 flex items-center justify-center"
             style={{ background: S.surfaceLo, border: '1px solid rgba(255,255,255,0.25)', boxShadow: '0 4px 16px rgba(0,0,0,0.4)' }}>
-            {cover ? <img src={cover} alt="" className="w-full h-full object-cover" /> : <Disc3 className="w-8 h-8" style={{ color: S.label }} />}
+            {cover
+              ? <SmartImg srcs={[d?.coverArt, d?.albumImage, albumInfoImage]} alt="" className="w-full h-full object-cover" />
+              : <Disc3 className="w-8 h-8" style={{ color: S.label }} />}
           </div>
           <div className="relative z-10 min-w-0 flex flex-col">
             <h3 className="text-base font-bold leading-tight truncate" style={{ color: '#f5f3ef', textShadow: '0 1px 3px rgba(0,0,0,0.5)' }}>{d?.title || album}</h3>
