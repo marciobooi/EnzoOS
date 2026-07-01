@@ -1,23 +1,20 @@
 import { useContext, useState, useRef, useEffect } from 'react';
-import { Sliders, Cpu, Timer, Scale, RefreshCw, FlipHorizontal, RotateCcw, Disc3 } from 'lucide-react';
+import { Sliders, Cpu, Timer, Scale, RefreshCw, FlipHorizontal, RotateCcw, Disc3, SlidersHorizontal } from 'lucide-react';
 import { toast } from '../../../lib/toast';
 import { reportError } from '../../../lib/errors';
-import { Tk, Row, Section } from '../shared';
+import { Tk, Row, Section, Sheet } from '../shared';
 import RemoteEqualizer from '../RemoteEqualizer';
 import { api } from '../../../api';
 import { useI18n } from '../../../i18n';
 
-export default function SoundSettings() {
+// Fine-tuning knobs with no kiosk equivalent (ReplayGain, crossfade, balance,
+// phase inversion, bit-perfect, DSD bypass, auto-headroom) — real CamillaDSP
+// parameters, but demoted out of the primary Sound view into their own sheet
+// so that view mirrors the kiosk's actual mental model: Equalizer, Room
+// Calibration, Pure Direct.
+function AdvancedAudioSettings() {
   const { t } = useI18n();
-  const {
-    C, card,
-    eqPreset, eqBands, eqSaturation, eqNoiseFloor, eqPreAmp,
-    dspActive, showEq, setShowEq,
-    sleepMinutes, sleepRemaining, showSleepRow, setShowSleepRow,
-    handleEqPresetChange, handleBandChange,
-    handleSaturationChange, handleNoiseFloorChange, handlePreAmpChange,
-    handleDeactivateDsp, handleSetSleepTimer,
-  } = useContext(Tk);
+  const { C, card } = useContext(Tk);
 
   const [replayGain, setReplayGain]   = useState('off');
   const [crossfade, setCrossfade]     = useState(0);
@@ -99,47 +96,7 @@ export default function SoundSettings() {
 
   return (
     <div className="pt-1">
-      <Section title={t('settings.sound')}>
-        <Row label={`Equalizer · ${eqPreset}`}
-          icon={<Sliders className="h-4 w-4" style={{ color: C.champagne }} />}
-          onPress={() => setShowEq(v => !v)} chevron={false} value={showEq ? '▲' : '▼'} />
-        {showEq && (
-          <RemoteEqualizer
-            currentPreset={eqPreset} onPresetChange={handleEqPresetChange}
-            bands={eqBands} onBandChange={handleBandChange}
-            saturation={eqSaturation} onSaturationChange={handleSaturationChange}
-            noiseFloor={eqNoiseFloor} onNoiseFloorChange={handleNoiseFloorChange}
-            preAmp={eqPreAmp} onPreAmpChange={handlePreAmpChange}
-            dspActive={dspActive} onDeactivateDsp={handleDeactivateDsp}
-          />
-        )}
-        <Row label={t('settings.roomCalibration')}
-          icon={<Cpu className="h-4 w-4" style={{ color: '#f59e0b' }} />}
-          value={dspActive ? t('common.on') : t('common.off')}
-          chevron={false}
-          onPress={() => toast.error(t('settings.roomCalibrationKioskOnly') || 'Run room calibration from the kiosk — it needs you in the listening position.')} />
-        <Row
-          label={sleepRemaining > 0
-            ? `Sleep · ${Math.floor(sleepRemaining / 60)}:${(sleepRemaining % 60).toString().padStart(2, '0')}`
-            : 'Sleep Timer'}
-          icon={<Timer className="h-4 w-4" style={{ color: sleepRemaining > 0 ? C.champagne : C.text4 }} />}
-          value={sleepMinutes ? (sleepMinutes < 60 ? `${sleepMinutes}m` : `${sleepMinutes / 60}h`) : 'Off'}
-          chevron={false}
-          onPress={() => setShowSleepRow(v => !v)} />
-        {showSleepRow && (
-          <div className="px-4 pb-4 flex gap-2 flex-wrap">
-            {[0, 15, 30, 60, 120].map(m => (
-              <button key={m}
-                onClick={() => { handleSetSleepTimer(m); setShowSleepRow(false); }}
-                className="px-4 py-2 rounded-full text-[12px] font-semibold active:scale-95 transition-all cursor-pointer"
-                style={sleepMinutes === m
-                  ? { background: C.champagne, color: '#1a1c1c', fontFamily: C.fontLabel }
-                  : { ...card, color: C.text4, fontFamily: C.fontLabel }}>
-                {m === 0 ? 'Off' : m < 60 ? `${m}m` : `${m / 60}h`}
-              </button>
-            ))}
-          </div>
-        )}
+      <Section>
         <Row label={t('settings.replayGain')}
           icon={<Scale className="h-4 w-4" style={{ color: C.text4 }} />}
           value={replayGain}
@@ -208,6 +165,88 @@ export default function SoundSettings() {
           chevron={false}
           onPress={handleAutoHeadroomToggle} />
       </Section>
+    </div>
+  );
+}
+
+export default function SoundSettings() {
+  const { t } = useI18n();
+  const [showAdvanced, setShowAdvanced] = useState(false);
+  const {
+    C,
+    eqPreset, eqBands, eqSaturation, eqNoiseFloor, eqPreAmp,
+    dspActive, showEq, setShowEq,
+    pureDirect, handleTogglePureDirect,
+    sleepMinutes, sleepRemaining, showSleepRow, setShowSleepRow,
+    handleEqPresetChange, handleBandChange,
+    handleSaturationChange, handleNoiseFloorChange, handlePreAmpChange,
+    handleDeactivateDsp, handleSetSleepTimer,
+    setIsDspWizardOpen,
+  } = useContext(Tk);
+
+  return (
+    <div className="pt-1">
+      {/* Mirrors the kiosk's Sound surface exactly: Equalizer, Room
+          Calibration (DSP Wizard), Pure Direct, plus Sleep Timer (a
+          remote-only convenience with no kiosk equivalent). Everything
+          else lives one level down, under Advanced. */}
+      <Section title={t('settings.sound')}>
+        <Row label={`Equalizer · ${eqPreset}`}
+          icon={<Sliders className="h-4 w-4" style={{ color: C.champagne }} />}
+          onPress={() => setShowEq(v => !v)} chevron={false} value={showEq ? '▲' : '▼'} />
+        {showEq && (
+          <RemoteEqualizer
+            currentPreset={eqPreset} onPresetChange={handleEqPresetChange}
+            bands={eqBands} onBandChange={handleBandChange}
+            saturation={eqSaturation} onSaturationChange={handleSaturationChange}
+            noiseFloor={eqNoiseFloor} onNoiseFloorChange={handleNoiseFloorChange}
+            preAmp={eqPreAmp} onPreAmpChange={handlePreAmpChange}
+            dspActive={dspActive} onDeactivateDsp={handleDeactivateDsp}
+            pureDirect={pureDirect} onDisablePureDirect={() => handleTogglePureDirect(false)}
+          />
+        )}
+        <Row label={t('settings.roomCalibration')}
+          icon={<Cpu className="h-4 w-4" style={{ color: '#f59e0b' }} />}
+          value={dspActive ? t('common.on') : t('common.off')}
+          onPress={() => setIsDspWizardOpen(true)} />
+        <Row label="Pure Direct"
+          icon={<Cpu className="h-4 w-4" style={{ color: pureDirect ? '#0e9ab8' : C.text4 }} />}
+          value={pureDirect ? t('common.on') : t('common.off')}
+          chevron={false}
+          onPress={() => handleTogglePureDirect(!pureDirect)} />
+        <Row
+          label={sleepRemaining > 0
+            ? `Sleep · ${Math.floor(sleepRemaining / 60)}:${(sleepRemaining % 60).toString().padStart(2, '0')}`
+            : 'Sleep Timer'}
+          icon={<Timer className="h-4 w-4" style={{ color: sleepRemaining > 0 ? C.champagne : C.text4 }} />}
+          value={sleepMinutes ? (sleepMinutes < 60 ? `${sleepMinutes}m` : `${sleepMinutes / 60}h`) : 'Off'}
+          chevron={false}
+          onPress={() => setShowSleepRow(v => !v)} />
+        {showSleepRow && (
+          <div className="px-4 pb-4 flex gap-2 flex-wrap">
+            {[0, 15, 30, 60, 120].map(m => (
+              <button key={m}
+                onClick={() => { handleSetSleepTimer(m); setShowSleepRow(false); }}
+                className="px-4 py-2 rounded-full text-[12px] font-semibold active:scale-95 transition-all cursor-pointer"
+                style={sleepMinutes === m
+                  ? { background: C.champagne, color: '#1a1c1c', fontFamily: C.fontLabel }
+                  : { color: C.text4, fontFamily: C.fontLabel }}>
+                {m === 0 ? 'Off' : m < 60 ? `${m}m` : `${m / 60}h`}
+              </button>
+            ))}
+          </div>
+        )}
+        <Row label="Advanced"
+          icon={<SlidersHorizontal className="h-4 w-4" style={{ color: C.text4 }} />}
+          sub="ReplayGain, crossfade, balance, phase, bit-perfect…"
+          onPress={() => setShowAdvanced(true)} />
+      </Section>
+
+      {showAdvanced && (
+        <Sheet C={C} kicker={t('settings.sound')} title="Advanced" onBack={() => setShowAdvanced(false)} padded={false}>
+          <AdvancedAudioSettings />
+        </Sheet>
+      )}
     </div>
   );
 }

@@ -136,6 +136,7 @@ export default function RemoteControl() {
   const [isDspWizardOpen, setIsDspWizardOpen]   = useState(false);
   const [showEq, setShowEq]                     = useState(false);
   const [dspActive, setDspActive]               = useState(false);
+  const [pureDirect, setPureDirect]             = useState(false);
   const [eqPreset, setEqPreset]   = useState(() => localStorage.getItem('resonance_eq_preset') || 'Clinical Reference');
   const [eqBands, setEqBands]     = useState(() => { try { return JSON.parse(localStorage.getItem('resonance_eq_bands')) || [0,0,0,0,0]; } catch { return [0,0,0,0,0]; } });
   const [eqSaturation, setEqSaturation] = useState(() => Number(localStorage.getItem('resonance_eq_saturation')) || 0);
@@ -198,7 +199,7 @@ export default function RemoteControl() {
     onRequestSync: () => localSync(),
     isAuthenticated, isRemote: true,
     setStandby, setEqPreset, setEqBands, setEqSaturation, setEqNoiseFloor,
-    setEqPreAmp, setDspActive, setTheme, setActiveTheme, setBrightness,
+    setEqPreAmp, setDspActive, setPureDirect, setTheme, setActiveTheme, setBrightness,
     setRemoteAccessEnabled, setVisualizerMode,
   });
 
@@ -403,6 +404,10 @@ export default function RemoteControl() {
   // ── transport ─────────────────────────────────────────────────────────────
   const handleToggleSource  = src => { setSource(src); setPlaybackState(null); sendUpdate('SET_SOURCE', { spotify: src === 'spotify', source: src }); };
   const handleToggleStandby = en  => { setStandby(en); if (ws.current?.readyState === WebSocket.OPEN) ws.current.send(JSON.stringify({ type: 'SET_STANDBY', payload: { enabled: en } })); };
+  const handleTogglePureDirect = async enabled => {
+    try { await fetch('/api/player/pure-direct', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ enabled }) }); setPureDirect(enabled); }
+    catch (e) { reportError(e.message); }
+  };
 
   const handlePlayPause = async () => {
     if (!spotify) {
@@ -492,6 +497,7 @@ export default function RemoteControl() {
     eqPreset, eqBands, eqSaturation, eqNoiseFloor, eqPreAmp,
     dspActive, showEq, setShowEq,
     isDspWizardOpen, setIsDspWizardOpen,
+    pureDirect, handleTogglePureDirect,
     handleEqPresetChange, handleBandChange,
     handleSaturationChange, handleNoiseFloorChange, handlePreAmpChange,
     handleDeactivateDsp,
@@ -519,7 +525,7 @@ export default function RemoteControl() {
     libraryView, selectedArtist, selectedAlbum, libraryItems, libraryLoading,
     radioSearch, stationsList, isSearching,
     eqPreset, eqBands, eqSaturation, eqNoiseFloor, eqPreAmp,
-    dspActive, showEq, isDspWizardOpen,
+    dspActive, showEq, isDspWizardOpen, pureDirect,
     theme, activeTheme, brightness, visualizerMode, isThemeSettingsOpen,
     sleepMinutes, sleepRemaining, showSleepRow,
     systemHealth, services, serviceLoading,
@@ -619,6 +625,8 @@ export default function RemoteControl() {
             <RemoteDspWizard
               onClose={() => { setIsDspWizardOpen(false); api.getDspCalibration().then(c => setDspActive(c && c[0] === 'dsp')).catch(() => {}); }}
               onCalibrationComplete={active => setDspActive(active)}
+              pureDirect={pureDirect}
+              onPureDirectChange={handleTogglePureDirect}
             />
           </div>
         )}

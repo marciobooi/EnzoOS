@@ -35,8 +35,33 @@ export default function RemoteEqualizer({
   noiseFloor, onNoiseFloorChange,
   preAmp, onPreAmpChange,
   dspActive, onDeactivateDsp,
+  pureDirect = false, onDisablePureDirect,
 }) {
   const { C, card, cardWhite } = useContext(Tk);
+
+  // ── Pure Direct takeover — flat pipeline, EQ bypassed entirely ──
+  if (pureDirect) {
+    return (
+      <div className="mx-4 mb-2 rounded-xl p-5 flex flex-col items-center text-center gap-3"
+        style={{ ...cardWhite }}>
+        <span className="w-12 h-12 rounded-full flex items-center justify-center"
+          style={{ background: 'rgba(14,154,184,0.12)', border: '1px solid rgba(14,154,184,0.35)' }}>
+          <AudioLines className="h-5 w-5" style={{ color: '#0e9ab8' }} />
+        </span>
+        <p className="text-[11px] font-semibold uppercase tracking-widest"
+          style={{ color: C.text3, fontFamily: C.fontLabel }}>Pure Direct Active</p>
+        <p className="text-[14px] leading-relaxed" style={{ color: C.text4 }}>
+          The signal path is flat — no EQ or DSP is applied. Parameters are
+          preserved and resume when Pure Direct is disabled.
+        </p>
+        <button onClick={onDisablePureDirect}
+          className="mt-1 px-5 py-2.5 rounded-full text-[13px] font-semibold active:scale-95 transition-all cursor-pointer"
+          style={{ background: C.champagne, color: '#1a1c1c', fontFamily: C.font }}>
+          Use Manual EQ
+        </button>
+      </div>
+    );
+  }
 
   // ── Room-correction takeover — manual EQ is bypassed while DSP is active ──
   if (dspActive) {

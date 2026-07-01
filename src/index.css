@@ -271,24 +271,6 @@ div[data-theme="ruby"] *::selection {
   grid-template-columns: 340px minmax(0, 1fr) 124px;
 }
 
-.album-art--cassette {
-  width: 340px;
-  height: 220px;
-  border-radius: 0 !important;
-  border: none;
-  box-shadow: none;
-  background: transparent;
-}
-.album-art--cassette::after {
-  display: none;
-}
-.album-art--cassette .cassette-svg {
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-  filter: none;
-}
-
 .album-art {
   width: 220px;
   height: 220px;
@@ -352,6 +334,29 @@ div[data-theme="ruby"] *::selection {
   gap: 10px;
   color: var(--theme-color);
   opacity: 0.6;
+}
+
+/* Cassette mode: landscape shell art, not a circular vinyl disc. The
+   combined .album-art.album-art--cassette selector (specificity 0,0,2,0)
+   beats the base .album-art rule (0,0,1,0) regardless of source order —
+   .album-art--radio above relies on being declared later instead, which is
+   easy to break by accident when rules get reordered. */
+.album-art.album-art--cassette {
+  width: 340px;
+  height: 220px;
+  border-radius: 0;
+  border: none;
+  box-shadow: none;
+  background: transparent;
+}
+.album-art.album-art--cassette::after {
+  display: none;
+}
+.album-art.album-art--cassette .cassette-svg {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  filter: none;
 }
 
 .details-column {
