@@ -751,7 +751,21 @@ const PlayerDisplay = React.memo(function PlayerDisplay({
                 <Play className="h-5 w-5 fill-current translate-x-0.5" />
               )}
             </button>
-            
+
+            {/* Minimalist hides the whole .controls-column sidebar (incl. its menu
+                button), so give it its own reachable menu button next to play. */}
+            {activeTheme === 'minimalist' && (
+              <button
+                onClick={onToggleMenu}
+                className="icon-button menu"
+                type="button"
+                aria-label="System Definitions"
+                title="Open System Definitions Menu"
+              >
+                <Sliders className="h-5 w-5" />
+              </button>
+            )}
+
             {source !== 'radio' && (
               <button 
                 onClick={handleNext}
