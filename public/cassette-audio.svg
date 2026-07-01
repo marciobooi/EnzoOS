@@ -30,6 +30,25 @@
     @keyframes cassette-reel-spin {
       to { transform: rotate(360deg); }
     }
+
+    #path5342, #path5344 {
+      transform-box: fill-box;
+      transform-origin: center;
+      animation-duration: 20s;
+      animation-timing-function: ease-in-out;
+      animation-iteration-count: infinite;
+      animation-direction: alternate;
+    }
+    #path5342 { animation-name: tape-pack-empty; }
+    #path5344 { animation-name: tape-pack-fill; }
+    @keyframes tape-pack-empty {
+      from { transform: scale(1); }
+      to   { transform: scale(0); }
+    }
+    @keyframes tape-pack-fill {
+      from { transform: scale(0); }
+      to   { transform: scale(1); }
+    }
   </style
   >
   <defs
