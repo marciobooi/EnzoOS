@@ -53,15 +53,46 @@ const PlayerDisplay = React.memo(function PlayerDisplay({
   const needleRRef = useRef(null);
   const canvasRef = useRef(null);
   const cassetteObjRef = useRef(null);
+  const cassetteTrackKeyRef = useRef(null);
 
   const applyCassettePlaybackState = useCallback(() => {
     const svgRoot = cassetteObjRef.current?.contentDocument?.documentElement;
     if (svgRoot) svgRoot.classList.toggle('paused', !isPlaying);
   }, [isPlaying]);
 
+  const restartCassetteTapeTransfer = useCallback(() => {
+    const svgDoc = cassetteObjRef.current?.contentDocument;
+    const svgRoot = svgDoc?.documentElement;
+    if (!svgRoot) return;
+    const seconds = trackDuration > 0 ? trackDuration / 1000 : 180;
+    svgRoot.style.setProperty('--transfer-duration', `${seconds}s`);
+    // Animation is a single forwards-filled pass keyed to song length, so
+    // a new track needs a hard reset back to frame 0 (left full / right empty).
+    ['path5342', 'path5344'].forEach(id => {
+      const el = svgDoc.getElementById(id);
+      if (!el) return;
+      el.style.animation = 'none';
+      void el.getBoundingClientRect();
+      el.style.animation = '';
+    });
+  }, [trackDuration]);
+
+  const initCassetteSvg = useCallback(() => {
+    applyCassettePlaybackState();
+    restartCassetteTapeTransfer();
+  }, [applyCassettePlaybackState, restartCassetteTapeTransfer]);
+
   useEffect(() => {
     if (activeTheme === 'cassette') applyCassettePlaybackState();
   }, [activeTheme, applyCassettePlaybackState]);
+
+  useEffect(() => {
+    if (activeTheme !== 'cassette') return;
+    const key = `${trackName}::${trackArtist}`;
+    if (cassetteTrackKeyRef.current === key) return;
+    cassetteTrackKeyRef.current = key;
+    restartCassetteTapeTransfer();
+  }, [activeTheme, trackName, trackArtist, restartCassetteTapeTransfer]);
 
   useEffect(() => {
     function handleClickOutside(event) {
@@ -526,7 +557,7 @@ const PlayerDisplay = React.memo(function PlayerDisplay({
               data="/cassette-audio.svg"
               className="cassette-svg"
               aria-hidden="true"
-              onLoad={applyCassettePlaybackState}
+              onLoad={initCassetteSvg}
             />
           </div>
         ) : (
