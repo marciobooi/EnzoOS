@@ -32,7 +32,7 @@
       to { transform: rotate(360deg); }
     }
 
-    #path5348, #path5346 {
+    #path5342, #path5344 {
       transform-box: fill-box;
       transform-origin: center;
       animation-duration: var(--transfer-duration, 180s);
@@ -41,21 +41,21 @@
       animation-direction: normal;
       animation-fill-mode: forwards;
     }
-    #path5348 { animation-name: tape-pack-empty; }
-    #path5346 { animation-name: tape-pack-fill; }
+    #path5342 { animation-name: tape-pack-empty; }
+    #path5344 { animation-name: tape-pack-fill; }
     @keyframes tape-pack-empty {
       from { transform: scale(1); }
-      to   { transform: scale(0.545); }
+      to   { transform: scale(0.359); }
     }
     @keyframes tape-pack-fill {
-      from { transform: scale(0.545); }
+      from { transform: scale(0.266); }
       to   { transform: scale(1); }
     }
 
     svg.paused #reel-left,
     svg.paused #reel-right,
-    svg.paused #path5348,
-    svg.paused #path5346 {
+    svg.paused #path5342,
+    svg.paused #path5344 {
       animation-play-state: paused;
     }
   </style

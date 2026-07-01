@@ -68,7 +68,7 @@ const PlayerDisplay = React.memo(function PlayerDisplay({
     svgRoot.style.setProperty('--transfer-duration', `${seconds}s`);
     // Animation is a single forwards-filled pass keyed to song length, so
     // a new track needs a hard reset back to frame 0 (left full / right empty).
-    ['path5348', 'path5346'].forEach(id => {
+    ['path5342', 'path5344'].forEach(id => {
       const el = svgDoc.getElementById(id);
       if (!el) return;
       el.style.animation = 'none';
