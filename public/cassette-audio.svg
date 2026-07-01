@@ -12,6 +12,7 @@
     id="svg29911"
     sodipodi:docname="cassette_audio.svg"
     viewBox="0 0 534 344.72"
+    preserveAspectRatio="none"
     version="1.1"
     inkscape:version="0.48.2 r9819"
   >
@@ -48,6 +49,13 @@
     @keyframes tape-pack-fill {
       from { transform: scale(0.266); }
       to   { transform: scale(1); }
+    }
+
+    svg.paused #reel-left,
+    svg.paused #reel-right,
+    svg.paused #path5342,
+    svg.paused #path5344 {
+      animation-play-state: paused;
     }
   </style
   >

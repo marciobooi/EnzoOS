@@ -52,6 +52,16 @@ const PlayerDisplay = React.memo(function PlayerDisplay({
   const needleLRef = useRef(null);
   const needleRRef = useRef(null);
   const canvasRef = useRef(null);
+  const cassetteObjRef = useRef(null);
+
+  const applyCassettePlaybackState = useCallback(() => {
+    const svgRoot = cassetteObjRef.current?.contentDocument?.documentElement;
+    if (svgRoot) svgRoot.classList.toggle('paused', !isPlaying);
+  }, [isPlaying]);
+
+  useEffect(() => {
+    if (activeTheme === 'cassette') applyCassettePlaybackState();
+  }, [activeTheme, applyCassettePlaybackState]);
 
   useEffect(() => {
     function handleClickOutside(event) {
@@ -510,7 +520,14 @@ const PlayerDisplay = React.memo(function PlayerDisplay({
           </div>
         ) : activeTheme === 'cassette' ? (
           <div className="album-art album-art--cassette" aria-label="Cassette album art">
-            <img src="/cassette-audio.svg" className="cassette-svg" alt="" aria-hidden="true" />
+            <object
+              ref={cassetteObjRef}
+              type="image/svg+xml"
+              data="/cassette-audio.svg"
+              className="cassette-svg"
+              aria-hidden="true"
+              onLoad={applyCassettePlaybackState}
+            />
           </div>
         ) : (
           <div className="album-art" aria-label="Dot matrix album art">
