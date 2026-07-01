@@ -491,23 +491,23 @@ export default function SettingsTab() {
         <Row label={t('settings.backup')}
           icon={<Download className="h-4 w-4" style={{ color: C.text4 }} />}
           onPress={() => { window.open('/api/system/backup', '_blank'); }} />
-        <Row label={confirmPending === 'factory-reset' ? 'Tap again to reset everything' : t('settings.factoryReset')} destructive
+        <Row label={confirmPending === 'factory-reset' ? t('settings.confirmFactoryReset') : t('settings.factoryReset')} destructive
           icon={<RotateCcw className="h-4 w-4" style={{ color: C.error }} />}
           onPress={withConfirm('factory-reset', async () => {
             try { await api.factoryReset(); toast.success(t('settings.settingsReset')); }
             catch (e) { reportError(e.message); }
           })} />
-        <Row label={confirmPending === 'reboot' ? 'Tap again to reboot' : 'Reboot Kiosk'}
+        <Row label={confirmPending === 'reboot' ? t('settings.confirmReboot') : t('settings.reboot')}
           icon={<RefreshCw className="h-4 w-4" style={{ color: confirmPending === 'reboot' ? '#f59e0b' : C.text4 }} />}
           onPress={withConfirm('reboot', handleReboot)} />
-        <Row label={confirmPending === 'shutdown' ? 'Tap again to shut down' : 'Shut Down'} destructive
+        <Row label={confirmPending === 'shutdown' ? t('settings.confirmShutdown') : t('settings.shutdown')} destructive
           icon={<Power className="h-4 w-4" style={{ color: C.error }} />}
           onPress={withConfirm('shutdown', handleShutdown)} />
       </Section>
 
       {/* session */}
       <Section>
-        <Row label={confirmPending === 'signout' ? 'Tap again to disconnect' : 'Disconnect'} destructive chevron={false}
+        <Row label={confirmPending === 'signout' ? t('settings.confirmDisconnect') : t('settings.disconnect')} destructive chevron={false}
           icon={<LogOut className="h-4 w-4" style={{ color: C.error }} />}
           onPress={withConfirm('signout', () => { eraseCookie('remote_token'); setIsAuthenticated(false); setActiveTab('player'); })} />
       </Section>

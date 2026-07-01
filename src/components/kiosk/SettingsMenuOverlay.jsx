@@ -34,6 +34,7 @@ export default function SettingsMenuOverlay() {
     setIsRemoteAccessOpen,
     setRemoteUrl,
     setIsWifiOpen,
+    setIsSystemAdminOpen,
   } = useContext(Kk);
 
   useEffect(() => {
@@ -134,6 +135,10 @@ export default function SettingsMenuOverlay() {
           }}
           onOpenWifi={() => {
             setIsWifiOpen(true);
+            setIsMenuOpen(false);
+          }}
+          onOpenSystemAdmin={() => {
+            setIsSystemAdminOpen(true);
             setIsMenuOpen(false);
           }}
         />

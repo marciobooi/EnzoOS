@@ -8,6 +8,7 @@ import { EQ_PRESETS } from '../components/EqualizerControl';
 import RemoteDspWizard from '../components/remote/RemoteDspWizard';
 import RemoteThemeSettings from '../components/remote/RemoteThemeSettings';
 import '../remote.css';
+import { useI18n } from '../i18n';
 
 import { Tk } from '../components/remote/shared';
 import TopBar    from '../components/remote/TopBar';
@@ -25,6 +26,7 @@ const NAV_H = 72;
 
 // ══════════════════════════════════════════════════════════════════════════════
 export default function RemoteControl() {
+  const { t } = useI18n();
   // ── dark mode ─────────────────────────────────────────────────────────────
   const [darkMode, setDarkMode] = useState(() => localStorage.getItem('resonance_remote_dark') === 'true');
   useEffect(() => { localStorage.setItem('resonance_remote_dark', darkMode); }, [darkMode]);
@@ -391,8 +393,8 @@ export default function RemoteControl() {
 
   // ── system handlers ───────────────────────────────────────────────────────
   const handleRestartService  = async name => { setServiceLoading(p => ({ ...p, [name]: true })); try { await api.restartService(name); toast.success(`${name} restarting…`); setTimeout(fetchServices, 3000); } catch (e) { reportError(e.message); } setServiceLoading(p => ({ ...p, [name]: false })); };
-  const handleReboot          = async () => { try { await api.rebootSystem(); toast.success('Rebooting kiosk…'); } catch (e) { reportError(e.message); } };
-  const handleShutdown        = async () => { try { await api.shutdownSystem(); toast.success('Shutting down…'); } catch (e) { reportError(e.message); } };
+  const handleReboot          = async () => { try { await api.rebootSystem(); toast.success(t('settings.rebooting')); } catch (e) { reportError(e.message); } };
+  const handleShutdown        = async () => { try { await api.shutdownSystem(); toast.success(t('settings.shuttingDown')); } catch (e) { reportError(e.message); } };
   const handleTransferPlayback = async deviceId => { if (!token) return; try { await api.transferPlayback(token, deviceId); toast.success('Output transferred'); setTimeout(fetchDevices, 800); requestWSStateSync(); } catch (e) { reportError(e.message); } };
 
   // ── sleep timer ───────────────────────────────────────────────────────────
