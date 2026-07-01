@@ -239,7 +239,7 @@ export default function PlayerTab() {
             <SkipForward className="h-6 w-6 fill-current" />
           </button>
         ) : (
-          <button onClick={() => setActiveTab('radio')}
+          <button onClick={() => setActiveTab('search')}
             className="rounded-full flex items-center justify-center cursor-pointer active:scale-90 transition-all"
             style={{ ...btn, color: C.champagne, width: 52, height: 52 }}>
             <Radio className="h-5 w-5" />

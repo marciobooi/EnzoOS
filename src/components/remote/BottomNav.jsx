@@ -6,8 +6,8 @@ import { useI18n } from '../../i18n';
 const BASE_TABS = [
   { id: 'player',   Icon: Music,    labelKey: 'nav.player'   },
   { id: 'library',  Icon: Library,  labelKey: 'nav.library'  },
+  { id: 'search',   Icon: Search,   labelKey: 'nav.search'   },
   { id: 'source',   Icon: Layers,   labelKey: 'nav.source'   },
-  { id: 'radio',    Icon: Search,   labelKey: 'nav.search'   },
   { id: 'settings', Icon: Sliders,  labelKey: 'nav.settings' },
 ];
 

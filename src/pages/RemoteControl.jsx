@@ -95,7 +95,7 @@ export default function RemoteControl() {
   const activeTabRef = useRef('player');
   useEffect(() => { activeTabRef.current = activeTab; }, [activeTab]);
   const changeTab = useCallback((newTab) => {
-    const TAB_ORDER = ['player', 'library', 'source', 'settings'];
+    const TAB_ORDER = ['player', 'library', 'search', 'source', 'settings'];
     const dir = TAB_ORDER.indexOf(newTab) >= TAB_ORDER.indexOf(activeTabRef.current) ? 'right' : 'left';
     setTabDirection(dir);
     setActiveTab(newTab);
@@ -598,8 +598,8 @@ export default function RemoteControl() {
             <div key={activeTab} className={`animate-tab-${tabDirection}`}>
               {activeTab === 'player'   && <PlayerTab />}
               {activeTab === 'library'  && <LibraryTab />}
+              {activeTab === 'search'   && <UniversalSearch />}
               {activeTab === 'source'   && <SourceTab />}
-              {activeTab === 'radio'    && <UniversalSearch />}
               {activeTab === 'settings' && <SettingsTab />}
             </div>
           </div>

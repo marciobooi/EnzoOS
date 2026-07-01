@@ -1,6 +1,6 @@
 import React, { useContext, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Music, Radio, Airplay, Network, Bluetooth, Music2, Search, ChevronLeft } from 'lucide-react';
+import { Music, Radio, Airplay, Network, Bluetooth, Music2, ChevronLeft } from 'lucide-react';
 import { Tk, SpotifyIcon } from './shared';
 import { api } from '../../api';
 import { toast } from '../../lib/toast';
@@ -26,12 +26,6 @@ export default function SourceTab() {
   const [tidalAuth, setTidalAuth] = useState(null); // { userCode, verificationUri }
   const pollRef = useRef(null);
 
-  // Shared search modal
-  const [searchFor, setSearchFor] = useState(null); // 'tidal' | 'qobuz'
-  const [query, setQuery] = useState('');
-  const [results, setResults] = useState([]);
-  const [searching, setSearching] = useState(false);
-
   useEffect(() => {
     let alive = true;
     (async () => {
@@ -43,21 +37,25 @@ export default function SourceTab() {
     return () => { alive = false; clearInterval(pollRef.current); };
   }, []);
 
-  const openSearch = id => { setSearchFor(id); setQuery(''); setResults([]); };
+  // Selecting a source activates it, then — for the ones with no "resume last
+  // played" concept (Radio, Tidal, Qobuz once connected) — sends the user to
+  // Search to actually pick something, otherwise the switch just goes silent.
+  // Searching Tidal/Qobuz itself lives only in the unified Search tab now.
+  const activateAndSearch = id => { handleToggleSource(id); setActiveTab('search'); };
 
   const handleSelect = id => {
     if (id === 'qobuz') {
-      if (connected.qobuz) openSearch('qobuz');
+      if (connected.qobuz) activateAndSearch('qobuz');
       else { setUsername(''); setPassword(''); setQobuzModal(true); }
       return;
     }
     if (id === 'tidal') {
-      if (connected.tidal) openSearch('tidal');
+      if (connected.tidal) activateAndSearch('tidal');
       else startTidalAuth();
       return;
     }
     handleToggleSource(id);
-    if (id === 'radio') setActiveTab('radio');
+    if (id === 'radio') setActiveTab('search');
   };
 
   const submitQobuz = async e => {
@@ -69,7 +67,7 @@ export default function SourceTab() {
       setConnected(c => ({ ...c, qobuz: true }));
       toast.success(t('source.qobuzConnected'));
       setQobuzModal(false);
-      openSearch('qobuz');
+      activateAndSearch('qobuz');
     } catch (err) {
       reportError(err.message || t('source.connectionFailed'));
     } finally { setBusy(false); }
@@ -90,36 +88,12 @@ export default function SourceTab() {
             setConnected(c => ({ ...c, tidal: true }));
             setTidalAuth(null);
             toast.success(t('source.tidalConnected'));
-            openSearch('tidal');
+            activateAndSearch('tidal');
           }
         } catch { /* keep polling until deadline */ }
       }, (info.interval || 2) * 1000);
     } catch (err) {
       reportError(err.message || t('source.tidalLoginFailed'));
-    }
-  };
-
-  const doSearch = async e => {
-    e.preventDefault();
-    if (!query.trim()) return;
-    setSearching(true);
-    try {
-      const fn = searchFor === 'tidal' ? api.tidalSearch : api.qobuzSearch;
-      setResults(await fn(query.trim()));
-    } catch (err) {
-      reportError(err.message || t('source.searchFailed'));
-    } finally { setSearching(false); }
-  };
-
-  const playTrack = async track => {
-    try {
-      const fn = searchFor === 'tidal' ? api.tidalPlayTrack : api.qobuzPlayTrack;
-      await fn(track);
-      setSearchFor(null);
-      setActiveTab('player');
-      toast.success(t('source.playing'));
-    } catch (err) {
-      reportError(err.message || t('source.playbackFailed'));
     }
   };
 
@@ -200,36 +174,6 @@ export default function SourceTab() {
               <span className="text-[32px] font-bold tracking-[0.3em]" style={{ color: C.text1 }}>{tidalAuth.userCode}</span>
             </div>
             <p className="text-[12px]" style={{ color: C.text3 }}>{t('source.waitingAuth')}</p>
-          </div>
-        </Sheet>
-      )}
-
-      {/* Search + play */}
-      {searchFor && (
-        <Sheet C={C} kicker={searchFor === 'tidal' ? 'Tidal' : 'Qobuz'} title={t('source.search')} onBack={() => setSearchFor(null)}>
-          <form onSubmit={doSearch} className="flex gap-2 mb-3">
-            <input value={query} onChange={e => setQuery(e.target.value)} placeholder={t('source.searchTracks')} autoFocus
-              className="flex-1 rounded-xl px-4 py-3.5 text-[16px] focus:outline-none" style={inputStyle} />
-            <button type="submit" disabled={searching} aria-label={t('source.search')}
-              className="px-4 min-w-[44px] rounded-xl active:scale-95 cursor-pointer flex items-center justify-center" style={{ background: C.champagne }}>
-              <Search className="h-5 w-5" style={{ color: '#1a1c1c' }} />
-            </button>
-          </form>
-          <div className="flex flex-col gap-1.5">
-            {searching && <p className="text-[13px] py-4 text-center" style={{ color: C.text3 }}>{t('source.searching')}</p>}
-            {!searching && results.length === 0 && <p className="text-[13px] py-4 text-center" style={{ color: C.text4 }}>{t('source.noResults')}</p>}
-            {results.map(t => (
-              <button key={t.id} onClick={() => playTrack(t)}
-                className="flex items-center gap-3 p-2 rounded-xl active:scale-[0.98] cursor-pointer text-left" style={{ ...card }}>
-                {t.cover
-                  ? <img src={t.cover} alt="" className="h-11 w-11 rounded-md object-cover" />
-                  : <div className="h-11 w-11 rounded-md" style={{ background: C.containerLow }} />}
-                <div className="min-w-0 flex-1">
-                  <p className="text-[14px] truncate" style={{ color: C.text1 }}>{t.title}</p>
-                  <p className="text-[12px] truncate" style={{ color: C.text3 }}>{t.artist}</p>
-                </div>
-              </button>
-            ))}
           </div>
         </Sheet>
       )}

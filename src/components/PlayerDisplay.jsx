@@ -510,7 +510,13 @@ const PlayerDisplay = React.memo(function PlayerDisplay({
           </div>
         ) : activeTheme === 'cassette' ? (
           <div className="album-art album-art--cassette" aria-label="Cassette album art">
-            <svg className="cassette-svg" aria-hidden="true" />
+         
+              <img 
+    src="/cassette-audio.svg" 
+    className="cassette-svg" 
+    alt="" 
+    aria-hidden="true" 
+  />
           </div>
         ) : (
           <div className="album-art" aria-label="Dot matrix album art">
