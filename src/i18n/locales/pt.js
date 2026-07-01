@@ -485,7 +485,7 @@ export default {
       origami:       { name: 'Origami',                desc: 'Luxo de papel e tinta Kindle' },
       sterling:      { name: 'Sterling',               desc: 'Instrumento hi-fi em prata escovada' },
       brutalist:     { name: 'Brutalista',             desc: 'Betão bruto e aço exposto' },
-      cassette:      { name: 'Cassete',                desc: 'Leitor de cassetes analógico · bobines giratórias' },
+      cassette:      { name: 'Old School',                desc: 'Player retro' },
     },
   },
 };

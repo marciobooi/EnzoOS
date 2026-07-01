@@ -485,22 +485,26 @@ const PlayerDisplay = React.memo(function PlayerDisplay({
   }, [albumImage, activeTheme]);
 
   // ── Cassette skin: progress winds the tape from the left (supply) reel to the
-  // right (take-up) reel; cog wheels are drawn as SVG and spin while playing. ──
+  // right (take-up) reel; cog wheels are drawn as SVG and spin while playing.
+  // The shell art is the static cassette-audio.svg (public/); our reels + the
+  // album-art label are an overlay SVG stretched over the exact same box
+  // (preserveAspectRatio="none" on both layers keeps the coordinate systems
+  // in lockstep regardless of the shell's native aspect ratio). ──
   const cassProg = trackDuration ? Math.min(1, Math.max(0, (trackPosition || 0) / trackDuration)) : 0;
-  const cassRL = 6.5 + (1 - cassProg) * 10.5;   // left tape-pack radius (full → empty)
-  const cassRR = 6.5 + cassProg * 10.5;          // right tape-pack radius (empty → full)
+  const cassRL = 12 + (1 - cassProg) * 19;   // left tape-pack radius (full → empty)
+  const cassRR = 12 + cassProg * 19;          // right tape-pack radius (empty → full)
   const cogHoles = (cx, cy) => [0, 45, 90, 135, 180, 225, 270, 315].map((deg, i) => {
     const a = (deg * Math.PI) / 180;
-    return <circle key={i} cx={(cx + 8.6 * Math.cos(a)).toFixed(2)} cy={(cy + 8.6 * Math.sin(a)).toFixed(2)} r="1.9" fill="#2a2620" />;
+    return <circle key={i} cx={(cx + 15.5 * Math.cos(a)).toFixed(2)} cy={(cy + 15.5 * Math.sin(a)).toFixed(2)} r="3.4" fill="#2a2620" />;
   });
   const cog = (cx, cy) => (
     <g className="cass-cog" style={{ transformBox: 'fill-box', transformOrigin: 'center' }}>
-      <circle cx={cx} cy={cy} r="16.5" fill="#ECE7DB" />
+      <circle cx={cx} cy={cy} r="30" fill="#ECE7DB" />
       {/* dark notches at the rim read as gear teeth */}
-      <circle cx={cx} cy={cy} r="15" fill="none" stroke="#15131c" strokeWidth="3.2" strokeDasharray="2 3.4" />
+      <circle cx={cx} cy={cy} r="27" fill="none" stroke="#15131c" strokeWidth="5.7" strokeDasharray="3.6 6.1" />
       {cogHoles(cx, cy)}
-      <circle cx={cx} cy={cy} r="3.4" fill="#cbc6ba" />
-      <circle cx={cx} cy={cy} r="1.4" fill="#15131c" />
+      <circle cx={cx} cy={cy} r="6" fill="#cbc6ba" />
+      <circle cx={cx} cy={cy} r="2.5" fill="#15131c" />
     </g>
   );
 
@@ -529,66 +533,42 @@ const PlayerDisplay = React.memo(function PlayerDisplay({
             )}
           </div>
         ) : activeTheme === 'cassette' ? (
-          // Faithful flat C-90 drawn as SVG: brown shell, album-cover label, an
-          // accent-coloured band, a dark window with two spinning cog wheels and
-          // the tape winding left→right with progress.
+          // Realistic C-90 shell (public/cassette-audio.svg, unmodified artist
+          // artwork) as the static base layer, with our album-art label and
+          // two spinning reels layered on top in a matching-stretched overlay
+          // SVG (same viewBox proportions, preserveAspectRatio="none" on both
+          // layers so overlay coordinates always land in the same spot on the
+          // shell regardless of the box's rendered aspect ratio).
           <div className="album-art album-art--cassette" aria-label="Cassette album art">
-            <svg className="cassette-svg" viewBox="0 0 240 152" preserveAspectRatio="xMidYMid meet" aria-hidden="true">
+            <img className="cassette-shell-img" src="/cassette-audio.svg" alt="" aria-hidden="true" />
+            {/* Overlay coordinates below come from the shell SVG's own explicit
+                rect/circle geometry (measured directly from cassette-audio.svg's
+                source, not guessed): the label window is rect x=310.2,y=475.34
+                w=126.07,h=85.357 in the artist's raw coordinate space, which is
+                offset by the #layer1 transform="translate(-108.01 -360)" — i.e.
+                final = (202,115,126,85). The two reel centers come from the
+                circle-describing paths at raw (263.41,518.04) and (483.06,518.04),
+                giving final centers ≈(155,158) and (375,158). First-pass fit —
+                nudge these four numbers if it drifts on your screen. */}
+            <svg className="cassette-svg" viewBox="0 0 534 344.72" preserveAspectRatio="none" aria-hidden="true">
               <defs>
-                <clipPath id="cassLabel"><rect x="16" y="13" width="208" height="39" rx="3" /></clipPath>
-                <clipPath id="cassWin"><rect x="44" y="60" width="152" height="44" rx="3" /></clipPath>
-                <linearGradient id="cassShell" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0" stopColor="#52392650" /><stop offset="0" stopColor="#4b3422" />
-                  <stop offset="1" stopColor="#33241a" />
-                </linearGradient>
+                <clipPath id="cassLabel"><rect x="202" y="115" width="126" height="85" rx="3" /></clipPath>
+                <clipPath id="cassWin"><rect x="80" y="130" width="374" height="90" rx="4" /></clipPath>
               </defs>
 
-              {/* shell + bevel */}
-              <rect x="1.5" y="1.5" width="237" height="149" rx="11" fill="url(#cassShell)" stroke="#15100c" strokeWidth="1.5" />
-              <rect x="6" y="6" width="228" height="140" rx="8" fill="none" stroke="#5e4631" strokeOpacity="0.5" strokeWidth="1" />
-              {/* top write-protect tabs */}
-              <rect x="20" y="6.5" width="20" height="7" rx="1.5" fill="#2e2015" />
-              <rect x="200" y="6.5" width="20" height="7" rx="1.5" fill="#2e2015" />
-
-              {/* album cover = the label */}
-              <image href={albumImage} x="16" y="13" width="208" height="39"
+              {/* album cover = the label window */}
+              <image href={albumImage} x="202" y="115" width="126" height="85"
                 preserveAspectRatio="xMidYMid slice" clipPath="url(#cassLabel)" />
-              <rect x="16" y="13" width="208" height="39" rx="3" fill="none" stroke="#ece5d4" strokeWidth="2" />
+              <rect x="202" y="115" width="126" height="85" rx="3" fill="none" stroke="#ece5d4" strokeWidth="2" />
 
-              {/* accent band */}
-              <rect x="10" y="54" width="220" height="56" fill="var(--theme-color, #E0A23C)" />
-              {/* cream strip under the band */}
-              <rect x="10" y="110" width="220" height="7" fill="#e9e2d1" />
-
-              {/* dark mechanism window */}
-              <rect x="44" y="60" width="152" height="44" rx="3" fill="#16172a" stroke="#000" strokeWidth="1" />
+              {/* two spinning reels */}
               <g clipPath="url(#cassWin)">
                 {/* wound tape packs (sized by progress) */}
-                <circle cx="74" cy="82" r={cassRL.toFixed(2)} fill="#5a3d20" />
-                <circle cx="166" cy="82" r={cassRR.toFixed(2)} fill="#5a3d20" />
-                {/* centre tape: flat brown block + curved tan window */}
-                <rect x="104" y="68" width="16" height="28" rx="1" fill="#3a2817" />
-                <path d="M120 68 q10 14 0 28 q-6 -14 0 -28 Z" fill="#c2a479" />
-                {/* cog wheels */}
-                {cog(74, 82)}
-                {cog(166, 82)}
+                <circle cx="155" cy="158" r={cassRL.toFixed(2)} fill="#5a3d20" />
+                <circle cx="375" cy="158" r={cassRR.toFixed(2)} fill="#5a3d20" />
+                {cog(155, 158)}
+                {cog(375, 158)}
               </g>
-
-              {/* bottom shell: faint tape-path arc, transport holes, C-90 legend */}
-              <circle cx="86" cy="150" r="46" fill="none" stroke="#5e4631" strokeOpacity="0.35" strokeWidth="1.2" />
-              <rect x="96" y="132" width="48" height="11" rx="1.5" fill="#2c1e13" />
-              <circle cx="120" cy="124" r="2.4" fill="#241810" />
-              <rect x="80" y="135" width="5" height="5" rx="1" fill="#241810" />
-              <rect x="155" y="135" width="5" height="5" rx="1" fill="#241810" />
-              <circle cx="64" cy="137" r="2.1" fill="#241810" />
-              <circle cx="176" cy="137" r="2.1" fill="#241810" />
-              <text x="20" y="128" fontFamily="'Space Mono', monospace" fontSize="9" fontWeight="700" fill="#e9e2d1">C-90</text>
-              <text x="220" y="125" textAnchor="end" fontFamily="'JetBrains Mono', monospace" fontSize="5.5" letterSpacing="0.5" fill="#c9b9a6">NORMAL</text>
-              <text x="220" y="131" textAnchor="end" fontFamily="'JetBrains Mono', monospace" fontSize="5.5" letterSpacing="0.5" fill="#c9b9a6">POSITION (TYPE I)</text>
-
-              {/* corner screws — small, subtle */}
-              <circle cx="11" cy="11" r="2.4" fill="#1c130c" /><circle cx="229" cy="11" r="2.4" fill="#1c130c" />
-              <circle cx="11" cy="141" r="2.4" fill="#1c130c" /><circle cx="229" cy="141" r="2.4" fill="#1c130c" />
             </svg>
           </div>
         ) : (

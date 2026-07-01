@@ -98,26 +98,45 @@ div[data-active-theme="cassette"] .music-player::before {
   z-index: 6;
 }
 
-/* ━━━━━━━━━━━━━━━━━━━━━━ THE CASSETTE (SVG C-90) ━━━━━━━━━━━━━━━
-   The whole cassette is drawn as an inline SVG in PlayerDisplay; the CSS here
-   just sizes the box (landscape, centred in the column) and spins the cogs. */
+/* ━━━━━━━━━━━━━━━━━━━━━━ THE CASSETTE (shell art + live overlay) ━━━━━━━━━━━
+   The shell is the static cassette-audio.svg artwork (public/), rendered as
+   a plain <img>. The album-art label and spinning reels are a second SVG
+   stacked exactly on top — both layers fill the same box with no aspect-
+   ratio correction, so overlay coordinates always land in the same spot
+   on the shell regardless of the box's rendered proportions. */
 div[data-active-theme="cassette"] .album-art--cassette {
-  width: 240px !important;
-  height: 152px !important;
+  width: 260px !important;
+  height: 168px !important;
   background: none !important;
   border: none !important;
   border-radius: 0 !important;
   box-shadow: none !important;
   overflow: visible !important;
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
 }
+div[data-active-theme="cassette"] .cassette-shell-img {
+  position: absolute;
+  inset: 0;
+  width: 100% !important;
+  height: 100% !important;
+  /* Must match the overlay SVG's preserveAspectRatio="none" stretch exactly —
+     the global `.album-art img { object-fit: cover }` rule would otherwise
+     crop this non-uniformly, throwing the overlay's coordinates out of sync
+     with the shell artwork underneath. Also drop the global grayscale/desat
+     filter — this is shell art, not album art, and should show its own colour. */
+  object-fit: fill !important;
+  filter: drop-shadow(0 8px 18px rgba(0,0,0,0.5)) !important;
+  display: block;
+}
 div[data-active-theme="cassette"] .cassette-svg {
+  position: absolute;
+  inset: 0;
   width: 100%;
   height: 100%;
   display: block;
-  filter: drop-shadow(0 8px 18px rgba(0,0,0,0.5));
 }
 /* cog wheels spin only while playing */
 div[data-active-theme="cassette"] .cass-cog {
