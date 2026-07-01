@@ -1,20 +1,27 @@
 <?xml version="1.0" encoding="UTF-8" standalone="no"?>
-<!-- Created with Inkscape (http://www.inkscape.org/) -->
-<svg
-    xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
-    xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
-    xmlns="http://www.w3.org/2000/svg"
-    xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
-    xmlns:cc="http://creativecommons.org/ns#"
-    xmlns:xlink="http://www.w3.org/1999/xlink"
-    xmlns:dc="http://purl.org/dc/elements/1.1/"
-    xmlns:svg="http://www.w3.org/2000/svg"
-    xmlns:ns1="http://sozi.baierouge.fr"
+<svg  
     id="svg29911"
     sodipodi:docname="cassette_audio.svg"
     viewBox="0 0 534 344.72"
     version="1.1"
     inkscape:version="0.48.2 r9819"
+  >
+  <style
+      id="style-cassette-reels"
+    >
+    #reel-left, #reel-right {
+      transform-box: fill-box;
+      transform-origin: center;
+      animation-name: cassette-reel-spin;
+      animation-timing-function: linear;
+      animation-iteration-count: infinite;
+    }
+    #reel-left { animation-duration: 3.2s; }
+    #reel-right { animation-duration: 2.6s; }
+    @keyframes cassette-reel-spin {
+      to { transform: rotate(360deg); }
+    }
+  </style
   >
   <defs
       id="defs29913"
@@ -156,6 +163,9 @@
           transform="translate(-1479.6 -308.73)"
         >
         <g
+            id="reel-left"
+          >
+        <g
             id="g5352"
             style="stroke:#808080;fill:#999999"
             transform="matrix(.97774 .20981 -.20981 .97774 131.08 30.975)"
@@ -227,6 +237,10 @@
           />
         </g
         >
+        </g>
+        <g
+            id="reel-right"
+          >
         <g
             id="g5366"
             style="stroke:#808080;fill:#999999"
@@ -299,6 +313,7 @@
           />
         </g
         >
+        </g>
       </g
       >
       <path
@@ -3025,90 +3040,6 @@
     </g
     >
   </g
-  >
-  <metadata
-    >
-    <rdf:RDF
-      >
-      <cc:Work
-        >
-        <dc:format
-          >image/svg+xml</dc:format
-        >
-        <dc:type
-            rdf:resource="http://purl.org/dc/dcmitype/StillImage"
-        />
-        <cc:license
-            rdf:resource="http://creativecommons.org/licenses/publicdomain/"
-        />
-        <dc:publisher
-          >
-          <cc:Agent
-              rdf:about="http://openclipart.org/"
-            >
-            <dc:title
-              >Openclipart</dc:title
-            >
-          </cc:Agent
-          >
-        </dc:publisher
-        >
-        <dc:title
-          >Audio Tape</dc:title
-        >
-        <dc:date
-          >2012-01-09T10:38:31</dc:date
-        >
-        <dc:description
-          >An audio tape create with inkscape.</dc:description
-        >
-        <dc:source
-          >https://openclipart.org/detail/166945/audio-tape-by-proximcreation</dc:source
-        >
-        <dc:creator
-          >
-          <cc:Agent
-            >
-            <dc:title
-              >proximcreation</dc:title
-            >
-          </cc:Agent
-          >
-        </dc:creator
-        >
-        <dc:subject
-          >
-          <rdf:Bag
-            >
-            <rdf:li
-              >audio tape</rdf:li
-            >
-            <rdf:li
-              >photorealistic</rdf:li
-            >
-          </rdf:Bag
-          >
-        </dc:subject
-        >
-      </cc:Work
-      >
-      <cc:License
-          rdf:about="http://creativecommons.org/licenses/publicdomain/"
-        >
-        <cc:permits
-            rdf:resource="http://creativecommons.org/ns#Reproduction"
-        />
-        <cc:permits
-            rdf:resource="http://creativecommons.org/ns#Distribution"
-        />
-        <cc:permits
-            rdf:resource="http://creativecommons.org/ns#DerivativeWorks"
-        />
-      </cc:License
-      >
-    </rdf:RDF
-    >
-  </metadata
   >
 </svg
 >
