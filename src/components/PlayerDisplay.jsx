@@ -491,17 +491,21 @@ const PlayerDisplay = React.memo(function PlayerDisplay({
   const cassProg = trackDuration ? Math.min(1, Math.max(0, (trackPosition || 0) / trackDuration)) : 0;
   const cassRL = 12 + cassProg * 19;
   const cassRR = 12 + (1 - cassProg) * 19;
+  // Fixed hub, deliberately smaller than the tape pack's own 12–31 radius
+  // range (was 30 — nearly as big as the tape pack's max, so it sat on top
+  // and hid almost all of the growing/shrinking ring underneath). At r≈9 the
+  // wound-tape ring stays visible around it at every progress value.
   const cassCogHoles = (cx, cy) => [0, 45, 90, 135, 180, 225, 270, 315].map((deg, i) => {
     const a = (deg * Math.PI) / 180;
-    return <circle key={i} cx={(cx + 15.5 * Math.cos(a)).toFixed(2)} cy={(cy + 15.5 * Math.sin(a)).toFixed(2)} r="3.4" fill="#2a2620" />;
+    return <circle key={i} cx={(cx + 4.6 * Math.cos(a)).toFixed(2)} cy={(cy + 4.6 * Math.sin(a)).toFixed(2)} r="1" fill="#2a2620" />;
   });
   const cassCog = (cx, cy) => (
     <g className="cass-cog" style={{ transformBox: 'fill-box', transformOrigin: 'center' }}>
-      <circle cx={cx} cy={cy} r="30" fill="#ECE7DB" />
-      <circle cx={cx} cy={cy} r="27" fill="none" stroke="#15131c" strokeWidth="5.7" strokeDasharray="3.6 6.1" />
+      <circle cx={cx} cy={cy} r="9" fill="#ECE7DB" />
+      <circle cx={cx} cy={cy} r="8" fill="none" stroke="#15131c" strokeWidth="1.7" strokeDasharray="1.1 1.8" />
       {cassCogHoles(cx, cy)}
-      <circle cx={cx} cy={cy} r="6" fill="#cbc6ba" />
-      <circle cx={cx} cy={cy} r="2.5" fill="#15131c" />
+      <circle cx={cx} cy={cy} r="2" fill="#cbc6ba" />
+      <circle cx={cx} cy={cy} r="0.8" fill="#15131c" />
     </g>
   );
 
