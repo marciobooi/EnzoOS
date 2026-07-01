@@ -486,7 +486,7 @@ const PlayerDisplay = React.memo(function PlayerDisplay({
 
   return (
     <article
-      className={`music-player ${isPlaying ? 'is-playing' : ''}`}
+      className={`music-player ${isPlaying ? 'is-playing' : ''} ${activeTheme === 'cassette' ? 'music-player--cassette' : ''}`}
       aria-label="music-player"
       style={{ '--extracted-rgb': extractedRgb }}
     >
@@ -510,13 +510,7 @@ const PlayerDisplay = React.memo(function PlayerDisplay({
           </div>
         ) : activeTheme === 'cassette' ? (
           <div className="album-art album-art--cassette" aria-label="Cassette album art">
-         
-              <img 
-    src="/cassette-audio.svg" 
-    className="cassette-svg" 
-    alt="" 
-    aria-hidden="true" 
-  />
+            <img src="/cassette-audio.svg" className="cassette-svg" alt="" aria-hidden="true" />
           </div>
         ) : (
           <div className="album-art" aria-label="Dot matrix album art">

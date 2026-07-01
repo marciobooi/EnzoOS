@@ -265,6 +265,30 @@ div[data-theme="ruby"] *::selection {
   justify-content: center;
 }
 
+/* Cassette shell is landscape (~1.55:1), not square — give it a wider first
+   grid column instead of squeezing it into the circular-vinyl column width. */
+.music-player--cassette {
+  grid-template-columns: 340px minmax(0, 1fr) 124px;
+}
+
+.album-art--cassette {
+  width: 340px;
+  height: 220px;
+  border-radius: 0;
+  border: none;
+  box-shadow: none;
+  background: transparent;
+}
+.album-art--cassette::after {
+  display: none;
+}
+.album-art--cassette .cassette-svg {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  filter: none;
+}
+
 .album-art {
   width: 220px;
   height: 220px;
