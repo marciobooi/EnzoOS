@@ -163,6 +163,18 @@ div[data-active-theme="cassette"] .status-dot {
   box-shadow: 0 0 6px var(--amber) !important;
 }
 
+/* ━━━━━━━━━━━━━━━━━━━━━━ CODEC BADGE (OGG VORBIS / PCM / AAC…) ━━━━━━━━━━━━━━
+   The badge's inline style uses --theme-color / --theme-color-dim, tuned for
+   the light stone background elsewhere — a dark charcoal text on a near-
+   transparent dark tint reads as invisible on this deck's near-black
+   background. Force cream-on-amber-tint regardless of the inline style,
+   same treatment as .status-pill above (idle state included). */
+div[data-active-theme="cassette"] .codec-badge {
+  background: rgba(224, 162, 60, 0.16) !important;
+  color: var(--amber) !important;
+  border-color: rgba(224, 162, 60, 0.4) !important;
+}
+
 /* ━━━━━━━━━━━━━━━━━━━━━━ TITLE / ARTIST ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
 div[data-active-theme="cassette"] .track-title {
   font-family: 'Outfit', 'Inter', sans-serif !important;

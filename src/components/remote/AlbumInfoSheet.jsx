@@ -74,7 +74,7 @@ export default function AlbumInfoSheet({ artist, album, albumImage, onClose }) {
         background: C.bg, fontFamily: C.font, paddingTop: 'env(safe-area-inset-top)',
       }}>
       {/* floating back button (overlays the hero) */}
-      <button onClick={onClose} aria-label="Back"
+      <button onClick={onClose} aria-label={t('common.back')}
         className="absolute left-4 z-10 w-10 h-10 rounded-full flex items-center justify-center active:scale-90 transition-all cursor-pointer"
         style={{ top: 'calc(env(safe-area-inset-top) + 14px)', background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(8px)' }}>
         <ChevronLeft className="h-5 w-5" style={{ color: '#fff' }} />
@@ -117,7 +117,7 @@ export default function AlbumInfoSheet({ artist, album, albumImage, onClose }) {
           {state.loading && (
             <div className="flex flex-col items-center gap-3 py-10">
               <Disc3 className="h-8 w-8 animate-spin" style={{ color: C.champagne, animationDuration: '2.4s' }} />
-              <p className="text-[13px]" style={{ color: C.text3 }}>Gathering credits, facts & biography…</p>
+              <p className="text-[13px]" style={{ color: C.text3 }}>{t('meta.gatheringRemote')}</p>
             </div>
           )}
           {state.error && !state.loading && (
@@ -135,14 +135,14 @@ export default function AlbumInfoSheet({ artist, album, albumImage, onClose }) {
 
               {/* facts grid */}
               <div className="grid grid-cols-2 gap-2">
-                <Fact C={C} icon={<Calendar className="h-4 w-4" />} label="Released" value={d.releaseDate} />
-                <Fact C={C} icon={<Disc3 className="h-4 w-4" />} label="Format" value={d.format} />
-                <Fact C={C} icon={<Layers className="h-4 w-4" />} label="Type" value={d.albumType} />
-                <Fact C={C} icon={<Building2 className="h-4 w-4" />} label="Label" value={d.label} />
-                <Fact C={C} icon={<Globe className="h-4 w-4" />} label="Country" value={d.country} />
-                <Fact C={C} icon={<Music2 className="h-4 w-4" />} label="Tracks" value={d.trackCount} />
-                <Fact C={C} icon={<BarChart3 className="h-4 w-4" />} label="Listeners" value={fmtNum(d.listeners)} />
-                <Fact C={C} icon={<Calendar className="h-4 w-4" />} label="Originally"
+                <Fact C={C} icon={<Calendar className="h-4 w-4" />} label={t('meta.released')} value={d.releaseDate} />
+                <Fact C={C} icon={<Disc3 className="h-4 w-4" />} label={t('meta.format')} value={d.format} />
+                <Fact C={C} icon={<Layers className="h-4 w-4" />} label={t('meta.type')} value={d.albumType} />
+                <Fact C={C} icon={<Building2 className="h-4 w-4" />} label={t('meta.label')} value={d.label} />
+                <Fact C={C} icon={<Globe className="h-4 w-4" />} label={t('meta.country')} value={d.country} />
+                <Fact C={C} icon={<Music2 className="h-4 w-4" />} label={t('library.tracks')} value={d.trackCount} />
+                <Fact C={C} icon={<BarChart3 className="h-4 w-4" />} label={t('meta.listeners')} value={fmtNum(d.listeners)} />
+                <Fact C={C} icon={<Calendar className="h-4 w-4" />} label={t('meta.originally')}
                   value={d.originalDate && d.originalDate !== d.releaseDate ? d.originalDate : null} />
               </div>
 
@@ -150,7 +150,7 @@ export default function AlbumInfoSheet({ artist, album, albumImage, onClose }) {
               {d.tracks?.length > 0 && (
                 <div>
                   <p className="text-[11px] font-semibold uppercase tracking-widest mb-2 flex items-center gap-1.5" style={{ color: C.text3, fontFamily: C.fontLabel }}>
-                    <ListMusic className="h-3.5 w-3.5" /> Tracklist · {d.tracks.length}
+                    <ListMusic className="h-3.5 w-3.5" /> {t('meta.tracklist')} · {d.tracks.length}
                   </p>
                   <div className="rounded-2xl overflow-hidden" style={cardWhite}>
                     {d.tracks.map((t, i) => (
@@ -175,26 +175,26 @@ export default function AlbumInfoSheet({ artist, album, albumImage, onClose }) {
                       </div>
                     )}
                     <div className="min-w-0">
-                      <p className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: C.text3, fontFamily: C.fontLabel }}>Artist</p>
+                      <p className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: C.text3, fontFamily: C.fontLabel }}>{t('meta.artist')}</p>
                       <p className="text-[17px] font-semibold truncate" style={{ color: C.text1 }}>{artist}</p>
                     </div>
                     {d.onTour && (
                       <span className="ml-auto shrink-0 inline-flex items-center gap-1.5 text-[11px] font-semibold px-2.5 py-1 rounded-full"
                         style={{ background: `${C.champagne}18`, color: C.champagne, fontFamily: C.fontLabel }}>
-                        <span className="w-1.5 h-1.5 rounded-full" style={{ background: C.champagne }} /> On Tour
+                        <span className="w-1.5 h-1.5 rounded-full" style={{ background: C.champagne }} /> {t('meta.onTour')}
                       </span>
                     )}
                   </div>
                   <div className="flex flex-wrap gap-x-5 gap-y-1.5 mb-2">
-                    {d.formedYear && <span className="inline-flex items-center gap-1.5 text-[13px]" style={{ color: C.text2 }}><Calendar className="h-3.5 w-3.5" style={{ color: C.text4 }} /> Formed {d.formedYear}</span>}
+                    {d.formedYear && <span className="inline-flex items-center gap-1.5 text-[13px]" style={{ color: C.text2 }}><Calendar className="h-3.5 w-3.5" style={{ color: C.text4 }} /> {t('meta.formed', { year: d.formedYear })}</span>}
                     {d.origin && <span className="inline-flex items-center gap-1.5 text-[13px]" style={{ color: C.text2 }}><MapPin className="h-3.5 w-3.5" style={{ color: C.text4 }} /> {d.origin}</span>}
-                    {d.members && <span className="inline-flex items-center gap-1.5 text-[13px]" style={{ color: C.text2 }}><Users className="h-3.5 w-3.5" style={{ color: C.text4 }} /> {d.members} members</span>}
+                    {d.members && <span className="inline-flex items-center gap-1.5 text-[13px]" style={{ color: C.text2 }}><Users className="h-3.5 w-3.5" style={{ color: C.text4 }} /> {t('meta.members', { count: d.members })}</span>}
                   </div>
                   {d.biography && <p className="text-[14px] leading-relaxed" style={{ color: C.text2 }}>{d.biography}</p>}
                   {d.website && (
                     <a href={d.website.startsWith('http') ? d.website : `https://${d.website}`} target="_blank" rel="noreferrer"
                       className="inline-flex items-center gap-1 text-[13px] mt-2.5 active:opacity-60" style={{ color: C.champagne }}>
-                      Official site <ExternalLink className="h-3 w-3" />
+                      {t('meta.officialSite')} <ExternalLink className="h-3 w-3" />
                     </a>
                   )}
                 </div>
@@ -203,7 +203,7 @@ export default function AlbumInfoSheet({ artist, album, albumImage, onClose }) {
               {/* album review */}
               {d.review && (
                 <div>
-                  <p className="text-[11px] font-semibold uppercase tracking-widest mb-2" style={{ color: C.text3, fontFamily: C.fontLabel }}>About this album</p>
+                  <p className="text-[11px] font-semibold uppercase tracking-widest mb-2" style={{ color: C.text3, fontFamily: C.fontLabel }}>{t('meta.aboutAlbum')}</p>
                   <p className="text-[14px] leading-relaxed" style={{ color: C.text2 }}>{d.review}</p>
                 </div>
               )}
@@ -212,18 +212,18 @@ export default function AlbumInfoSheet({ artist, album, albumImage, onClose }) {
               {d.similar?.length > 0 && (
                 <div>
                   <p className="text-[11px] font-semibold uppercase tracking-widest mb-2 flex items-center gap-1.5" style={{ color: C.text3, fontFamily: C.fontLabel }}>
-                    <Users className="h-3.5 w-3.5" /> Fans also like
+                    <Users className="h-3.5 w-3.5" /> {t('meta.fansAlsoLike')}
                   </p>
                   <div className="flex flex-wrap gap-2">{d.similar.map((s) => <Chip key={s} C={C}>{s}</Chip>)}</div>
                 </div>
               )}
 
               {!d.biography && !d.review && !d.label && !d.genres?.length && (
-                <p className="text-[14px] text-center py-6" style={{ color: C.text4 }}>No extended info found for this album.</p>
+                <p className="text-[14px] text-center py-6" style={{ color: C.text4 }}>{t('meta.noInfo')}</p>
               )}
 
               {d.sources?.length > 0 && (
-                <p className="text-[11px] text-center pt-2" style={{ color: C.text3 }}>Powered by {d.sources.join(' · ')}</p>
+                <p className="text-[11px] text-center pt-2" style={{ color: C.text3 }}>{t('meta.poweredBy', { sources: d.sources.join(' · ') })}</p>
               )}
             </>
           )}

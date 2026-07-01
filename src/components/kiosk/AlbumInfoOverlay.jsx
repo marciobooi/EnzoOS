@@ -21,7 +21,7 @@ export default function AlbumInfoOverlay() {
     isAlbumInfoOpen, setIsAlbumInfoOpen,
     albumInfoArtist: artist, albumInfoAlbum: album, albumInfoImage,
   } = useContext(Kk);
-  const { lang } = useI18n();
+  const { lang, t } = useI18n();
 
   // Keyed result so we never call setState synchronously inside the effect.
   const [res, setRes] = useState({ album: null, data: null, error: false });
@@ -53,11 +53,11 @@ export default function AlbumInfoOverlay() {
       {/* header */}
       <div className="flex items-center justify-between pb-3 mb-3 shrink-0" style={{ borderBottom: `1px solid ${S.border}` }}>
         <span className="text-sm font-light tracking-[0.25em] uppercase" style={{ color: S.label }}>
-          album info & credits
+          {t('meta.albumCredits')}
         </span>
         <button onClick={() => setIsAlbumInfoOpen(false)}
           className="cursor-pointer w-8 h-8 rounded-full flex items-center justify-center transition-all active:scale-90"
-          style={{ background: S.accent, color: S.accentFg }} aria-label="Close">
+          style={{ background: S.accent, color: S.accentFg }} aria-label={t('common.close')}>
           <X className="w-4 h-4" />
         </button>
       </div>
@@ -95,12 +95,12 @@ export default function AlbumInfoOverlay() {
           {loading && (
             <div className="h-full flex flex-col items-center justify-center gap-2">
               <Disc3 className="w-7 h-7 animate-spin" style={{ color: S.accent, animationDuration: '2.4s' }} />
-              <p className="text-sm font-light" style={{ color: S.muted }}>Gathering credits & biography…</p>
+              <p className="text-sm font-light" style={{ color: S.muted }}>{t('meta.gatheringKiosk')}</p>
             </div>
           )}
           {error && !loading && (
             <div className="h-full flex items-center justify-center">
-              <p className="text-sm font-light" style={{ color: S.muted }}>Could not load album info.</p>
+              <p className="text-sm font-light" style={{ color: S.muted }}>{t('meta.couldNotLoad')}</p>
             </div>
           )}
           {d && !loading && (
@@ -109,20 +109,20 @@ export default function AlbumInfoOverlay() {
               <div className="flex-grow min-w-0 space-y-3">
                 {d.biography && (
                   <div>
-                    <p className="text-[11px] font-light uppercase tracking-[0.2em] mb-1" style={{ color: S.label }}>Artist</p>
+                    <p className="text-[11px] font-light uppercase tracking-[0.2em] mb-1" style={{ color: S.label }}>{t('meta.artist')}</p>
                     <p className="text-[13px] font-light leading-relaxed" style={{ color: S.text }}>{d.biography}</p>
                   </div>
                 )}
                 {d.review && (
                   <div>
-                    <p className="text-[11px] font-light uppercase tracking-[0.2em] mb-1" style={{ color: S.label }}>About this album</p>
+                    <p className="text-[11px] font-light uppercase tracking-[0.2em] mb-1" style={{ color: S.label }}>{t('meta.aboutAlbum')}</p>
                     <p className="text-[13px] font-light leading-relaxed" style={{ color: S.text }}>{d.review}</p>
                   </div>
                 )}
                 {d.similar?.length > 0 && (
                   <div>
                     <p className="text-[11px] font-light uppercase tracking-[0.2em] mb-1.5 flex items-center gap-1.5" style={{ color: S.label }}>
-                      <Users className="w-3 h-3" /> Similar Artists
+                      <Users className="w-3 h-3" /> {t('meta.similarArtists')}
                     </p>
                     <div className="flex flex-wrap gap-1.5">
                       {d.similar.map((s) => (
@@ -134,36 +134,36 @@ export default function AlbumInfoOverlay() {
                 {d.tracks?.length > 0 && (
                   <div>
                     <p className="text-[11px] font-light uppercase tracking-[0.2em] mb-1.5" style={{ color: S.label }}>
-                      Tracklist · {d.tracks.length}
+                      {t('meta.tracklist')} · {d.tracks.length}
                     </p>
                     <div className="space-y-0">
-                      {d.tracks.map((t, i) => (
+                      {d.tracks.map((tr, i) => (
                         <div key={i} className="flex items-center gap-2 py-1" style={{ borderBottom: `0.5px solid ${S.border}` }}>
                           <span className="text-[10px] w-4 text-right tabular-nums shrink-0" style={{ color: S.label }}>{i + 1}</span>
-                          <span className="flex-1 text-[12px] truncate" style={{ color: S.text }}>{t.name}</span>
-                          {t.duration ? <span className="text-[10px] tabular-nums shrink-0" style={{ color: S.label }}>{fmtDur(t.duration)}</span> : null}
+                          <span className="flex-1 text-[12px] truncate" style={{ color: S.text }}>{tr.name}</span>
+                          {tr.duration ? <span className="text-[10px] tabular-nums shrink-0" style={{ color: S.label }}>{fmtDur(tr.duration)}</span> : null}
                         </div>
                       ))}
                     </div>
                   </div>
                 )}
                 {!d.biography && !d.review && !d.tracks?.length && (
-                  <p className="text-sm font-light" style={{ color: S.muted }}>No extended editorial found for this album.</p>
+                  <p className="text-sm font-light" style={{ color: S.muted }}>{t('meta.noEditorial')}</p>
                 )}
                 {d.sources?.length > 0 && (
-                  <p className="text-[11px] font-light pt-1" style={{ color: S.label }}>Powered by {d.sources.join(' · ')}</p>
+                  <p className="text-[11px] font-light pt-1" style={{ color: S.label }}>{t('meta.poweredBy', { sources: d.sources.join(' · ') })}</p>
                 )}
               </div>
 
               {/* credits column */}
               <div className="w-[230px] shrink-0">
-                <p className="text-[11px] font-light uppercase tracking-[0.2em] mb-1" style={{ color: S.label }}>Release</p>
-                <Credit icon={<Tag className="w-3.5 h-3.5" style={{ color: S.label }} />} label="Type" value={d.albumType} />
-                <Credit icon={<Disc3 className="w-3.5 h-3.5" style={{ color: S.label }} />} label="Format" value={d.format} />
-                <Credit icon={<Building2 className="w-3.5 h-3.5" style={{ color: S.label }} />} label="Label" value={d.label} />
-                <Credit icon={<Globe className="w-3.5 h-3.5" style={{ color: S.label }} />} label="Country" value={d.country} />
-                <Credit icon={<Disc3 className="w-3.5 h-3.5" style={{ color: S.label }} />} label="Tracks" value={d.trackCount} />
-                <Credit icon={<BarChart3 className="w-3.5 h-3.5" style={{ color: S.label }} />} label="Listeners" value={fmtNum(d.listeners)} />
+                <p className="text-[11px] font-light uppercase tracking-[0.2em] mb-1" style={{ color: S.label }}>{t('meta.release')}</p>
+                <Credit icon={<Tag className="w-3.5 h-3.5" style={{ color: S.label }} />} label={t('meta.type')} value={d.albumType} />
+                <Credit icon={<Disc3 className="w-3.5 h-3.5" style={{ color: S.label }} />} label={t('meta.format')} value={d.format} />
+                <Credit icon={<Building2 className="w-3.5 h-3.5" style={{ color: S.label }} />} label={t('meta.label')} value={d.label} />
+                <Credit icon={<Globe className="w-3.5 h-3.5" style={{ color: S.label }} />} label={t('meta.country')} value={d.country} />
+                <Credit icon={<Disc3 className="w-3.5 h-3.5" style={{ color: S.label }} />} label={t('library.tracks')} value={d.trackCount} />
+                <Credit icon={<BarChart3 className="w-3.5 h-3.5" style={{ color: S.label }} />} label={t('meta.listeners')} value={fmtNum(d.listeners)} />
               </div>
             </div>
           )}

@@ -674,7 +674,7 @@ const PlayerDisplay = React.memo(function PlayerDisplay({
 
                   return (
                     <div className="flex items-center gap-1.5 mt-1 text-[8px] font-mono tracking-wider flex-wrap" style={{ color: '#9a9896' }}>
-                      <span className={`px-1 rounded-[3px] font-extrabold text-[7px] border ${codecColor}`} style={codecStyle}>
+                      <span className={`codec-badge px-1 rounded-[3px] font-extrabold text-[7px] border ${codecColor}`} style={codecStyle}>
                         {codecLabel}
                       </span>
                       <span>{rateLabel}</span>
