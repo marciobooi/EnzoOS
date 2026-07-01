@@ -207,13 +207,6 @@
             style="stroke:#808080;fill:#999999"
             transform="matrix(.97774 .20981 -.20981 .97774 131.08 30.975)"
           >
-          <circle
-              id="hub-cap-left"
-              style="fill:#999999"
-              cx="0"
-              cy="0"
-              r="20"
-          />
           <rect
               id="rect5354"
               style="stroke:#808080;stroke-linecap:round;stroke-width:2;fill:#999999"
@@ -290,13 +283,6 @@
             style="stroke:#808080;fill:#999999"
             transform="matrix(.99497 -.10013 .10013 .99497 184.36 563.62)"
           >
-          <circle
-              id="hub-cap-right"
-              style="fill:#999999"
-              cx="0"
-              cy="0"
-              r="20"
-          />
           <rect
               id="rect5368"
               style="stroke:#808080;stroke-linecap:round;stroke-width:2;fill:#999999"
