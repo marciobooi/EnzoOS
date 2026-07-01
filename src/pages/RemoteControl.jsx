@@ -621,7 +621,12 @@ export default function RemoteControl() {
 
         {/* ── Overlays ── */}
         {isDspWizardOpen && (
-          <div className="remote-root fixed inset-0 z-[9999] flex flex-col" style={{ ...rcVars, background: C.bg }}>
+          // z above 9999: Settings' own Sheet (Sound → Room Calibration lives
+          // inside it) is portaled to document.body at that same z-index, and
+          // since portals land after this non-portaled overlay in DOM order,
+          // equal z-index meant the still-open Sound sheet painted on top and
+          // swallowed clicks — the wizard was there, just hidden underneath.
+          <div className="remote-root fixed inset-0 z-[10010] flex flex-col" style={{ ...rcVars, background: C.bg }}>
             <RemoteDspWizard
               onClose={() => { setIsDspWizardOpen(false); api.getDspCalibration().then(c => setDspActive(c && c[0] === 'dsp')).catch(() => {}); }}
               onCalibrationComplete={active => setDspActive(active)}
