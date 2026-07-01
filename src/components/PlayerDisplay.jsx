@@ -484,31 +484,6 @@ const PlayerDisplay = React.memo(function PlayerDisplay({
     };
   }, [albumImage, activeTheme]);
 
-  // Tape winds from the right reel to the left reel as the track plays —
-  // right starts full (100%) and empties, left starts empty (0%) and fills,
-  // so it's full by the time the song ends. Radii match the shell's window
-  // clip geometry (viewBox 0 0 534 344.72, window rect x=80 y=130 w=374 h=90).
-  const cassProg = trackDuration ? Math.min(1, Math.max(0, (trackPosition || 0) / trackDuration)) : 0;
-  const cassRL = 12 + cassProg * 19;
-  const cassRR = 12 + (1 - cassProg) * 19;
-  // Fixed hub, deliberately smaller than the tape pack's own 12–31 radius
-  // range (was 30 — nearly as big as the tape pack's max, so it sat on top
-  // and hid almost all of the growing/shrinking ring underneath). At r≈9 the
-  // wound-tape ring stays visible around it at every progress value.
-  const cassCogHoles = (cx, cy) => [0, 45, 90, 135, 180, 225, 270, 315].map((deg, i) => {
-    const a = (deg * Math.PI) / 180;
-    return <circle key={i} cx={(cx + 4.6 * Math.cos(a)).toFixed(2)} cy={(cy + 4.6 * Math.sin(a)).toFixed(2)} r="1" fill="#2a2620" />;
-  });
-  const cassCog = (cx, cy) => (
-    <g className="cass-cog" style={{ transformBox: 'fill-box', transformOrigin: 'center' }}>
-      <circle cx={cx} cy={cy} r="9" fill="#ECE7DB" />
-      <circle cx={cx} cy={cy} r="8" fill="none" stroke="#15131c" strokeWidth="1.7" strokeDasharray="1.1 1.8" />
-      {cassCogHoles(cx, cy)}
-      <circle cx={cx} cy={cy} r="2" fill="#cbc6ba" />
-      <circle cx={cx} cy={cy} r="0.8" fill="#15131c" />
-    </g>
-  );
-
   return (
     <article
       className={`music-player ${isPlaying ? 'is-playing' : ''} ${activeTheme === 'cassette' ? 'music-player--cassette' : ''}`}
@@ -536,22 +511,6 @@ const PlayerDisplay = React.memo(function PlayerDisplay({
         ) : activeTheme === 'cassette' ? (
           <div className="album-art album-art--cassette" aria-label="Cassette album art">
             <img src="/cassette-audio.svg" className="cassette-svg" alt="" aria-hidden="true" />
-            {/* Drawn ourselves rather than animating the shell's own baked-in
-                cog decorations — those live inside an externally-loaded SVG
-                with a deep, non-trivial ancestor transform chain, which made
-                driving them reliably (both sides, symmetric) impractical.
-                This way both reels are guaranteed correct and consistent. */}
-            <svg className="cassette-reels" viewBox="0 0 534 344.72" preserveAspectRatio="none" aria-hidden="true">
-              <defs>
-                <clipPath id="cassWin"><rect x="80" y="130" width="374" height="90" rx="4" /></clipPath>
-              </defs>
-              <g clipPath="url(#cassWin)">
-                <circle cx="155" cy="158" r={cassRL.toFixed(2)} fill="#5a3d20" />
-                <circle cx="375" cy="158" r={cassRR.toFixed(2)} fill="#5a3d20" />
-                {cassCog(155, 158)}
-                {cassCog(375, 158)}
-              </g>
-            </svg>
           </div>
         ) : (
           <div className="album-art" aria-label="Dot matrix album art">
