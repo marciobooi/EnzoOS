@@ -43,6 +43,13 @@ export default {
       title: 'Welcome to Resonance HiFi',
       body: 'Your Raspberry Pi is now a high-fidelity network streamer with real-time DSP. Let’s connect your music and get you listening — it only takes a moment.',
     },
+    wifi: {
+      title: 'Connect to Wi-Fi',
+      body: 'Pick your home network so Resonance can stream Spotify, Tidal, Qobuz and web radio. Already wired via Ethernet? Skip this step.',
+      noNetworks: 'No networks found. Try scanning again.',
+      scan: 'Scan',
+      connectedTo: 'Connected to {ssid}',
+    },
     connect: {
       title: 'Connect your music',
       body: 'Link your streaming accounts now, or skip and do it later from Source. AirPlay, Bluetooth, UPnP/DLNA, web radio and your local library need no setup.',

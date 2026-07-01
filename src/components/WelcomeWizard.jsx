@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Waves, Music2, Smartphone, Check, ChevronRight, ChevronLeft, Sparkles,
   Disc3, Loader2, ExternalLink, Sliders, SlidersHorizontal, Zap, Palette,
+  Wifi, Lock, RefreshCw,
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { S, cardShadow } from '../styles/stone';
@@ -28,6 +29,35 @@ export default function WelcomeWizard({ onClose }) {
   const [lanUrl, setLanUrl] = useState('');
   const [saving, setSaving] = useState(false);
   const closedRef = useRef(false);
+
+  // ── Wi-Fi state ──────────────────────────────────────────────────────────────
+  const [wifiNetworks, setWifiNetworks]   = useState([]);
+  const [wifiScanning, setWifiScanning]   = useState(false);
+  const [wifiScanned, setWifiScanned]     = useState(false);
+  const [wifiSsid, setWifiSsid]           = useState('');
+  const [wifiPassword, setWifiPassword]   = useState('');
+  const [wifiConnecting, setWifiConnecting] = useState(false);
+  const [wifiConnectedTo, setWifiConnectedTo] = useState('');
+
+  const scanWifi = async () => {
+    setWifiScanning(true);
+    try {
+      const d = await api.scanWifi();
+      setWifiNetworks(d.networks || []);
+      setWifiScanned(true);
+    } catch { /* best-effort */ }
+    finally { setWifiScanning(false); }
+  };
+
+  const connectWifi = async () => {
+    if (!wifiSsid) return;
+    setWifiConnecting(true);
+    try {
+      await api.connectWifi(wifiSsid, wifiPassword);
+      setWifiConnectedTo(wifiSsid);
+    } catch { /* leave form in place so the user can retry */ }
+    finally { setWifiConnecting(false); }
+  };
 
   // ── Streaming-account connection state ──────────────────────────────────────
   const [connected, setConnected] = useState({ spotify: false, tidal: false, qobuz: false });
@@ -196,6 +226,12 @@ export default function WelcomeWizard({ onClose }) {
       language: true,
     },
     {
+      icon: <Wifi className="h-8 w-8" />,
+      title: t('wizard.wifi.title'),
+      body: t('wizard.wifi.body'),
+      wifi: true,
+    },
+    {
       icon: <Music2 className="h-8 w-8" />,
       title: t('wizard.connect.title'),
       body: t('wizard.connect.body'),
@@ -230,6 +266,11 @@ export default function WelcomeWizard({ onClose }) {
   const isLast = step === steps.length - 1;
   const s = steps[step];
 
+  // Scan for networks the first time the Wi-Fi step is shown.
+  useEffect(() => {
+    if (s?.wifi && !wifiScanned && !wifiScanning) scanWifi();
+  }, [s, wifiScanned, wifiScanning]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const finish = async () => {
     if (closedRef.current) return;
     closedRef.current = true;
@@ -243,52 +284,120 @@ export default function WelcomeWizard({ onClose }) {
 
   const btnBase = 'flex items-center gap-1.5 px-5 py-2.5 rounded-full text-[14px] font-semibold transition-all active:scale-95 cursor-pointer select-none';
 
+  // Steps with a real interactive body use the wide 2-column kiosk layout
+  // (info left, content right — same pattern as DspWizard/SystemAdminOverlay).
+  // Steps that are just a message (phone/QR, done) stay in a compact centred
+  // column since there's nothing to spread across 1400px.
+  const hasSideContent = s.language || s.wifi || s.connect || s.dsp || s.skin;
+
+  const header = (
+    <>
+      <div className="flex items-center gap-3 mb-3">
+        <div className="rounded-2xl p-3 shrink-0"
+          style={{ background: S.accent, color: S.accentFg }}>
+          {s.icon}
+        </div>
+        <h1 className="text-[22px] lg:text-[26px] font-bold leading-tight" style={{ color: S.accent }}>
+          {s.title}
+        </h1>
+      </div>
+      <p className="text-[14px] lg:text-[15px] leading-relaxed" style={{ color: S.accent, opacity: 0.78 }}>
+        {s.body}
+      </p>
+    </>
+  );
+
   return (
     // True full-screen — solid background, nothing from the player/remote
     // shows through. No modal card, no backdrop blur.
     <div className="fixed inset-0 z-[100000] flex flex-col" style={{ background: S.bg }}>
-      <div className="w-full max-w-[640px] mx-auto h-full overflow-hidden flex flex-col">
+      <div className={`w-full max-w-[640px] mx-auto h-full overflow-hidden flex flex-col ${hasSideContent ? 'lg:max-w-[1400px]' : ''}`}>
 
-        {/* content (scrolls if it must, e.g. the short kiosk) */}
-        <div className="flex-1 overflow-y-auto px-7 pt-7 pb-4">
-          <div className="flex items-center gap-3 mb-3">
-            <div className="rounded-2xl p-3 shrink-0"
-              style={{ background: S.accent, color: S.accentFg }}>
-              {s.icon}
+        {hasSideContent ? (
+          /* ── Wide 2-column layout (kiosk uses the full 1400px canvas) ── */
+          <div className="flex-1 min-h-0 flex flex-col lg:flex-row gap-4 lg:gap-10 px-7 lg:px-10 pt-7 lg:pt-0 pb-4 overflow-y-auto lg:overflow-hidden">
+            <div className="lg:w-[400px] lg:shrink-0 lg:flex lg:flex-col lg:justify-center">
+              {header}
             </div>
-            <h1 className="text-[22px] font-bold leading-tight" style={{ color: S.accent }}>
-              {s.title}
-            </h1>
-          </div>
-
-          <p className="text-[14px] leading-relaxed" style={{ color: S.accent, opacity: 0.78 }}>
-            {s.body}
-          </p>
-
-          {s.qr && (
-            <div className="mt-3 flex justify-center">
-              <div className="p-3 rounded-xl" style={{ background: '#fff', boxShadow: cardShadow }}>
-                <QRCodeSVG value={`${lanUrl}/remote`} size={120} fgColor="#1a1918" bgColor="#ffffff" level="M" />
-              </div>
-            </div>
-          )}
-
-          {s.mono && (
-            <div className="mt-3 px-4 py-2.5 rounded-xl text-[14px] font-mono break-all"
-              style={{ background: S.surface, color: S.accent, border: `1px solid ${S.surfaceLo}` }}>
-              {s.mono}
-            </div>
-          )}
+            <div className="flex-1 min-w-0 lg:overflow-y-auto lg:py-10 lg:pr-2 stone-scrollbar">
 
           {/* Language picker (welcome step) */}
           {s.language && (
-            <div className="mt-4">
+            <div className="mt-4 lg:mt-0">
               <p className="text-[11px] font-semibold uppercase tracking-widest mb-2"
                 style={{ color: S.champagne }}>{t('lang.subtitle')}</p>
               <LanguageChips colors={{
                 bg: S.surface, fg: S.accent, border: S.surfaceLo,
                 activeBg: S.accent, activeFg: S.accentFg,
               }} />
+            </div>
+          )}
+
+          {/* Wi-Fi step */}
+          {s.wifi && (
+            <div className="mt-4 lg:mt-0 grid grid-cols-1 lg:grid-cols-2 gap-4">
+              {/* Networks */}
+              <div className="flex flex-col gap-2 min-w-0">
+                <div className="flex items-center justify-between mb-1">
+                  <p className="text-[11px] font-semibold uppercase tracking-widest"
+                    style={{ color: S.champagne }}>{t('net.wifi')}</p>
+                  <button onClick={scanWifi} disabled={wifiScanning}
+                    className="flex items-center gap-1 text-[12px] font-semibold cursor-pointer active:scale-95 transition-all"
+                    style={{ color: S.accent, opacity: wifiScanning ? 0.5 : 1 }}>
+                    <RefreshCw className={`h-3.5 w-3.5 ${wifiScanning ? 'animate-spin' : ''}`} /> {t('wizard.wifi.scan')}
+                  </button>
+                </div>
+                <div className="flex flex-col gap-2 max-h-[240px] lg:max-h-none lg:h-full overflow-y-auto stone-scrollbar pr-1">
+                  {wifiScanning && wifiNetworks.length === 0 && (
+                    <p className="text-[13px]" style={{ color: S.accent, opacity: 0.6 }}>{t('net.scanning')}</p>
+                  )}
+                  {!wifiScanning && wifiScanned && wifiNetworks.length === 0 && (
+                    <p className="text-[13px]" style={{ color: S.accent, opacity: 0.6 }}>{t('wizard.wifi.noNetworks')}</p>
+                  )}
+                  {wifiNetworks.map(n => {
+                    const selected = wifiSsid === n.ssid;
+                    return (
+                      <button key={n.ssid} onClick={() => setWifiSsid(n.ssid)}
+                        className="w-full flex items-center justify-between gap-2 px-4 py-3 rounded-2xl text-left transition-all active:scale-[0.99] cursor-pointer"
+                        style={{
+                          background: selected ? S.accent : S.surface,
+                          border: `1px solid ${selected ? S.accent : S.surfaceLo}`,
+                        }}>
+                        <span className="flex items-center gap-2 min-w-0">
+                          {n.security && <Lock className="h-3.5 w-3.5 shrink-0" style={{ color: selected ? S.accentFg : S.accent, opacity: 0.7 }} />}
+                          <span className="text-[14px] font-semibold truncate" style={{ color: selected ? S.accentFg : S.accent }}>{n.ssid}</span>
+                        </span>
+                        <span className="flex items-center gap-2 shrink-0">
+                          <span className="text-[12px]" style={{ color: selected ? S.accentFg : S.accent, opacity: 0.6 }}>{n.signal}dBm</span>
+                          {selected && <Check className="h-4 w-4" style={{ color: S.accentFg }} />}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Connect form */}
+              <div className="flex flex-col gap-2.5">
+                <input type="text" value={wifiSsid} onChange={e => setWifiSsid(e.target.value)}
+                  placeholder={t('net.ssid')} autoCapitalize="none"
+                  className="w-full rounded-xl px-3.5 py-2.5 text-[14px] focus:outline-none"
+                  style={{ background: S.surface, color: S.accent, border: `1px solid ${S.surfaceLo}` }} />
+                <input type="password" value={wifiPassword} onChange={e => setWifiPassword(e.target.value)}
+                  placeholder={t('net.password')} autoComplete="current-password"
+                  className="w-full rounded-xl px-3.5 py-2.5 text-[14px] focus:outline-none"
+                  style={{ background: S.surface, color: S.accent, border: `1px solid ${S.surfaceLo}` }} />
+                <button onClick={connectWifi} disabled={wifiConnecting || !wifiSsid}
+                  className="self-start px-4 py-2.5 rounded-full text-[13px] font-semibold active:scale-95 transition-all cursor-pointer disabled:opacity-40"
+                  style={{ background: S.accent, color: S.accentFg }}>
+                  {wifiConnecting ? t('net.connecting') : t('net.connect')}
+                </button>
+                {wifiConnectedTo && (
+                  <p className="text-[12px] flex items-center gap-1.5" style={{ color: '#1ed760' }}>
+                    <Check className="h-3.5 w-3.5" /> {t('wizard.wifi.connectedTo', { ssid: wifiConnectedTo })}
+                  </p>
+                )}
+              </div>
             </div>
           )}
 
@@ -472,10 +581,34 @@ export default function WelcomeWizard({ onClose }) {
               </div>
             </div>
           )}
-        </div>
+
+            </div>
+          </div>
+        ) : (
+          /* ── Compact centred layout — phone/QR and done steps have no
+               interactive body, so there's nothing to spread across 1400px. ── */
+          <div className="flex-1 overflow-y-auto px-7 pt-7 pb-4 max-w-[640px] mx-auto w-full">
+            {header}
+
+            {s.qr && (
+              <div className="mt-3 flex justify-center">
+                <div className="p-3 rounded-xl" style={{ background: '#fff', boxShadow: cardShadow }}>
+                  <QRCodeSVG value={`${lanUrl}/remote`} size={120} fgColor="#1a1918" bgColor="#ffffff" level="M" />
+                </div>
+              </div>
+            )}
+
+            {s.mono && (
+              <div className="mt-3 px-4 py-2.5 rounded-xl text-[14px] font-mono break-all"
+                style={{ background: S.surface, color: S.accent, border: `1px solid ${S.surfaceLo}` }}>
+                {s.mono}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* footer: step dots + nav */}
-        <div className="flex items-center justify-between px-7 py-4"
+        <div className="flex items-center justify-between px-7 lg:px-10 py-4"
           style={{ borderTop: `1px solid ${S.surfaceLo}` }}>
           <div className="flex items-center gap-2">
             {steps.map((_, i) => (
