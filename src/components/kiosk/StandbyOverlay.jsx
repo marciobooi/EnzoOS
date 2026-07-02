@@ -4,8 +4,9 @@ import { Kk } from './KioskContext';
 import ResonanceLogo, { ResonanceWordmark } from '../ResonanceLogo';
 
 // How long the welcome intro plays before handing off to the player. The logo
-// loop is ~4.6s; we cut just after the "resonance" wordmark is fully shown.
-const WELCOME_MS = 4200;
+// cycle is ~5.2s: wordmark settled by ~2.4s, sheen sweep done by ~3.7s — we
+// cut during the calm hold that follows, before the loop's fold-away (~4.8s).
+const WELCOME_MS = 4600;
 
 // The origami theme's page background (warm Paperwhite paper + corner vignettes),
 // copied from origami.css so the welcome sits on the same surface as the skin.
