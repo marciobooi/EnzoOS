@@ -243,6 +243,10 @@ cat <<'ASOUNDEOF' > /etc/asound.conf
 # Bit-perfect default: 32-bit, rate-agnostic (no fixed rate) — the slaves
 # inherit whatever rate PipeWire opens the loopback at. The server rewrites
 # this file on startup to match the active bitperfect setting.
+# ipc_perm 0666 below is required for dmix/dsnoop sharing (any local process
+# opening these PCMs must attach to the same shared-memory ring buffer) —
+# accepted trade-off for a single-user appliance with no untrusted local
+# accounts; ALSA's dmix/dsnoop has no per-group IPC ownership option.
 
 pcm.camilla_input {
     type dmix
@@ -909,6 +913,44 @@ SystemMaxUse=100M
 RuntimeMaxUse=50M
 JOURNALDEOF
 systemctl restart systemd-journald 2>/dev/null || true
+
+# unattended-upgrades stays enabled (security patches matter more than they
+# hurt here), but scoped down for a kiosk appliance: security-origin
+# packages only, the audio-critical stack held back from ANY auto-upgrade
+# (a surprise kernel/PipeWire/bluez/mpd bump mid-playback is exactly the
+# kind of surprise this appliance shouldn't get — those should go through
+# scripts/update.sh, which health-checks and rolls back), and automatic
+# reboots disabled outright (a kiosk silently rebooting itself is worse than
+# a delayed security patch).
+echo -e "${YELLOW}Scoping unattended-upgrades to security-only + holding audio packages...${NC}"
+cat <<'UUEOF' > /etc/apt/apt.conf.d/51-resonance-unattended-upgrades.conf
+// This image's base 50unattended-upgrades ships with the full
+// "${distro_id}:${distro_codename}" (-updates, not just -security) pocket
+// uncommented — apt.conf lists APPEND across files, they don't override, so
+// without the #clear below this block would only ever add to that list, not
+// restrict it. Clear it first, then set security-only origins explicitly.
+#clear Unattended-Upgrade::Allowed-Origins;
+Unattended-Upgrade::Allowed-Origins {
+    "${distro_id}:${distro_codename}-security";
+    "${distro_id}ESMApps:${distro_codename}-apps-security";
+    "${distro_id}ESM:${distro_codename}-infra-security";
+};
+Unattended-Upgrade::Package-Blacklist {
+    "linux-image*";
+    "linux-modules*";
+    "linux-firmware";
+    "pipewire*";
+    "wireplumber*";
+    "mpd";
+    "bluez*";
+    "alsa-utils";
+    "raspotify";
+    "shairport-sync";
+    "nqptp";
+    "upmpdcli";
+};
+Unattended-Upgrade::Automatic-Reboot "false";
+UUEOF
 
 # ── RAM preloading execution engine (mlockall memory locking) ──────────────────
 # Lock the core audio daemons into physical RAM (LimitMEMLOCK + mlockall shim +

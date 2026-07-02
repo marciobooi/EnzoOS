@@ -1002,6 +1002,13 @@ async function ensureAsoundConf(bitPerfect = true) {
 # camilla_input: ALSA dmix — MPD/ALSA sources write directly to loopback
 # loop_dsnoop:   ALSA dsnoop — CamillaDSP reads from loopback
 ${modeComment}
+# ipc_perm 0666 is required for dmix/dsnoop sharing (any local process that
+# opens these PCMs must be able to attach to the same shared-memory ring
+# buffer) — it means any local user/process can inject into or snoop the
+# live audio stream via the loopback IPC segment. Accepted trade-off for a
+# single-user appliance with no untrusted local accounts; would need
+# per-group IPC ownership (not supported by ALSA's dmix/dsnoop) on a
+# multi-user box.
 
 pcm.camilla_input {
     type dmix

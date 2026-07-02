@@ -229,17 +229,24 @@ secondary path · **[LOW]** cosmetic/hygiene · **[SEC]** security.
   `style-src`, which would break rendering app-wide. Every other protective
   header (X-Frame-Options, X-Content-Type-Options, Referrer-Policy, HSTS on
   the HTTPS remote port, etc.) still applies.
-- [ ] **[LOW]** `server/streaming.js` Qobuz app-credential scraping (the
-  "spoofbuz" technique, `getQobuzApp()`) depends on the exact structure of
-  Qobuz's public web-player bundle. It has no fallback beyond throwing, so
-  it will break silently (until a user reports it) whenever Qobuz changes
-  their bundle format. Acceptable given there's no official API, but worth
-  a periodic sanity check.
-- [ ] **[LOW]** `install.sh` asound.conf sets `ipc_perm 0666` for the
-  `camilla_input`/`loop_dsnoop` shared memory — necessary for dmix/dsnoop
-  sharing, but means any local user/process can inject into or snoop the
-  live audio stream. Document as an accepted single-user-appliance
-  trade-off rather than leaving it silent.
+- [x] **[LOW]** ~~`server/streaming.js` Qobuz app-credential scraping has no
+  fallback beyond throwing, breaks silently until a user reports it~~ —
+  **fixed 2026-07-02**: scrape failures are now cached for a 5-minute
+  cooldown (`qobuzScrapeFailure`) so a broken bundle format fails fast
+  instead of re-hammering Qobuz's login page on every search/play attempt,
+  and logged via `console.error('[Qobuz] ...')` so it's visible in
+  `journalctl -u resonance-api` without waiting on a user report. Still no
+  official API and still ultimately throws (the manual app_id/app_secret
+  override in Settings remains the recovery path) — this makes the failure
+  *observable*, not unbreakable.
+- [x] **[LOW]** ~~`install.sh` asound.conf sets `ipc_perm 0666`~~ —
+  **fixed 2026-07-02**: documented as an accepted single-user-appliance
+  trade-off inline in both `install.sh`'s first-boot heredoc and
+  `server/player.js:ensureAsoundConf()` (the actual runtime source, which
+  rewrites `/etc/asound.conf` on every server start) — `ipc_perm 0666` is
+  required for dmix/dsnoop's shared-memory ring buffer and ALSA has no
+  per-group IPC ownership option, so this isn't fixable without dropping
+  dmix/dsnoop sharing entirely.
 
 ---
 
@@ -326,17 +333,19 @@ Everything below is what didn't.
   ranges like `100..900`, some non-variable requiring per-weight files).
   Not fixed in this pass; tracked as a follow-up below.
 
-- [ ] **[LOW]** **`src/index.css:1-4` — 9 more Google Fonts families loaded
-  the same unpinned way, found while fixing the item above.** Same offline-
-  install fallback risk as the now-fixed `index.html` link, but a bigger
-  job: `Doto:wght@100..900`, `JetBrains+Mono:ital,wght@0,100..800;1,100..800`,
-  `Outfit:wght@100..900`, `Inter:wght@400;500;600;700;800` +
-  `Inter:wght@100;200;300`, `Space+Mono:wght@400;700`,
-  `Syne:wght@700;800`, `Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400;1,600`
-  — used across the theme CSS files (`dot-matrix.css`, `dreamplayer.css`,
-  `minimalist.css`, `origami.css`, `sterling.css`, `brutalist.css`). Check
-  per-family whether Google serves a single variable woff2 (like Manrope/
-  Hanken Grotesk did) before assuming this needs per-weight files.
+- [x] **[LOW]** ~~`src/index.css:1-4` — 9 more Google Fonts families loaded
+  the same unpinned way~~ — **fixed 2026-07-02**: vendored all 9 (Doto,
+  JetBrains Mono ×2 styles, Outfit, Inter, Space Mono ×2 weights, Syne,
+  Cormorant Garamond ×2 styles) into `public/fonts/` and appended their
+  `@font-face` rules to the existing `fonts.css`, then deleted all 4
+  `@import url(fonts.googleapis.com/...)` lines from `src/index.css`.
+  Turned out 7 of the 9 families are themselves variable fonts (Google
+  served the *same* underlying woff2 file across every discrete weight the
+  CSS requested — confirmed by diffing the resolved URLs per weight), so
+  only Space Mono (400/700) and Cormorant Garamond's italic/normal axes
+  needed more than one file each — 11 files total, not one-per-weight.
+  `npm run build` verified clean with zero remaining
+  `fonts.googleapis.com`/`fonts.gstatic.com` references anywhere in `src/`.
 
 ### 8.2 Security (verified live)
 
@@ -373,11 +382,23 @@ Everything below is what didn't.
   `|| true` so whichever form isn't present is silently skipped. Verified:
   port 631 fully closed.
 
-- [ ] **[LOW]** `unattended-upgrades` is left enabled — good for security
-  patches, but a surprise `mpd`/`bluez`/kernel upgrade can restart audio
-  daemons mid-playback or change behavior under the pinned CamillaDSP.
-  Decide deliberately: keep it (document the trade-off) or restrict it to
-  security-only with audio packages held.
+- [x] **[LOW]** ~~`unattended-upgrades` is left enabled with no deliberate
+  policy~~ — **fixed and live-verified 2026-07-02**: kept it enabled
+  (security patches matter more than they hurt) but scoped it down via a new
+  `/etc/apt/apt.conf.d/51-resonance-unattended-upgrades.conf`:
+  security-origins only (`#clear`-ed the base config's `Allowed-Origins`
+  first — this VM's stock `50unattended-upgrades` ships with the full
+  `-updates` pocket uncommented, not just `-security`, so without the
+  `#clear` this would only have **added** to that list, not restricted it),
+  a package blacklist covering the whole audio-critical stack (kernel,
+  `pipewire*`, `wireplumber*`, `mpd`, `bluez*`, `alsa-utils`, `raspotify`,
+  `shairport-sync`, `nqptp`, `upmpdcli` — these should only ever move via
+  `scripts/update.sh`'s health-checked/rollback-capable path), and
+  `Automatic-Reboot "false"` (a kiosk silently rebooting itself mid-session
+  is worse than a delayed patch). Verified live: `unattended-upgrade
+  --dry-run -d` on the VM shows `Allowed origins are:` limited to the three
+  security origins and `pkgs that look like they should be upgraded:` empty
+  even though several non-security updates were pending.
 
 ### 8.3 Backend bugs found while auditing the VM
 

@@ -36,6 +36,15 @@ const QOBUZ_API = 'https://www.qobuz.com/api.json/0.2';
 let qobuzApp = null;   // { app_id, app_secret }
 let qobuzToken = null; // user_auth_token
 
+// If Google/Qobuz change their bundle format, every search/play attempt would
+// otherwise re-scrape (and re-fail) individually with no operator-visible
+// signal until a user reports playback is broken. Cache a failed scrape for a
+// cooldown window so repeated calls fail fast instead of hammering Qobuz's
+// login page, and log once per cooldown so `journalctl -u resonance-api` /
+// `verify-install.sh` can surface it without waiting on a user report.
+let qobuzScrapeFailure = null; // { message, at }
+const SCRAPE_RETRY_COOLDOWN_MS = 5 * 60 * 1000;
+
 // Qobuz signs getFileUrl requests with an app_secret. Advanced users can paste
 // app_id/app_secret in the UI; otherwise we scrape them from the public web
 // player bundle (the well-known "spoofbuz" technique).
@@ -49,47 +58,58 @@ async function getQobuzApp() {
     return qobuzApp;
   }
 
-  // Scrape the login page → bundle.js → app_id + secret seeds.
-  const login = await fetch('https://play.qobuz.com/login').then(r => r.text());
-  const bundleMatch = login.match(/<script src="(\/resources\/[^"]+\/bundle\.js)"/);
-  if (!bundleMatch) throw new Error('Qobuz: could not locate web-player bundle (provide app_id/app_secret manually)');
-  const bundle = await fetch(`https://play.qobuz.com${bundleMatch[1]}`).then(r => r.text());
-
-  const idMatch = bundle.match(/production:\{api:\{appId:"(\d+)",appSecret:"(\w+)"/);
-  let app_id = idMatch?.[1] || bundle.match(/appId:"(\d+)"/)?.[1];
-  let app_secret = idMatch?.[2];
-
-  if (!app_secret) {
-    // Seed/timezone secret reconstruction.
-    const seedRe = /([a-z]\.initialSeed\(")(\w+)("\s*,\s*window\.utimezone\.)([a-z]+)\)/g;
-    const seeds = {};
-    for (const m of bundle.matchAll(seedRe)) {
-      seeds[m[4]] = m[2];
-    }
-    const infoRe = /name:"\w+\/(Login|Default)",info:"(\w+)",extras:"(\w+)"/g;
-    const infos = {};
-    for (const m of bundle.matchAll(infoRe)) {
-      infos[m[1].toLowerCase()] = { info: m[2], extras: m[3] };
-    }
-    // Try each timezone seed until one base64-decodes to a usable secret.
-    for (const tz of Object.keys(seeds)) {
-      const pair = infos[tz] || Object.values(infos)[0];
-      if (!pair) continue;
-      const base = seeds[tz] + pair.info + pair.extras;
-      try {
-        const candidate = Buffer.from(base.slice(0, -44), 'base64').toString('utf8');
-        if (candidate && candidate.length >= 20) { app_secret = candidate; break; }
-      } catch { /* try next */ }
-    }
+  if (qobuzScrapeFailure && Date.now() - qobuzScrapeFailure.at < SCRAPE_RETRY_COOLDOWN_MS) {
+    throw new Error(qobuzScrapeFailure.message);
   }
 
-  if (!app_id || !app_secret) {
-    throw new Error('Qobuz: failed to derive app credentials — paste app_id/app_secret in settings');
+  try {
+    // Scrape the login page → bundle.js → app_id + secret seeds.
+    const login = await fetch('https://play.qobuz.com/login').then(r => r.text());
+    const bundleMatch = login.match(/<script src="(\/resources\/[^"]+\/bundle\.js)"/);
+    if (!bundleMatch) throw new Error('Qobuz: could not locate web-player bundle (provide app_id/app_secret manually)');
+    const bundle = await fetch(`https://play.qobuz.com${bundleMatch[1]}`).then(r => r.text());
+
+    const idMatch = bundle.match(/production:\{api:\{appId:"(\d+)",appSecret:"(\w+)"/);
+    let app_id = idMatch?.[1] || bundle.match(/appId:"(\d+)"/)?.[1];
+    let app_secret = idMatch?.[2];
+
+    if (!app_secret) {
+      // Seed/timezone secret reconstruction.
+      const seedRe = /([a-z]\.initialSeed\(")(\w+)("\s*,\s*window\.utimezone\.)([a-z]+)\)/g;
+      const seeds = {};
+      for (const m of bundle.matchAll(seedRe)) {
+        seeds[m[4]] = m[2];
+      }
+      const infoRe = /name:"\w+\/(Login|Default)",info:"(\w+)",extras:"(\w+)"/g;
+      const infos = {};
+      for (const m of bundle.matchAll(infoRe)) {
+        infos[m[1].toLowerCase()] = { info: m[2], extras: m[3] };
+      }
+      // Try each timezone seed until one base64-decodes to a usable secret.
+      for (const tz of Object.keys(seeds)) {
+        const pair = infos[tz] || Object.values(infos)[0];
+        if (!pair) continue;
+        const base = seeds[tz] + pair.info + pair.extras;
+        try {
+          const candidate = Buffer.from(base.slice(0, -44), 'base64').toString('utf8');
+          if (candidate && candidate.length >= 20) { app_secret = candidate; break; }
+        } catch { /* try next */ }
+      }
+    }
+
+    if (!app_id || !app_secret) {
+      throw new Error('Qobuz: failed to derive app credentials — paste app_id/app_secret in settings');
+    }
+    await setSetting('qobuz_app_id', app_id);
+    await setSetting('qobuz_app_secret', app_secret);
+    qobuzApp = { app_id, app_secret };
+    qobuzScrapeFailure = null;
+    return qobuzApp;
+  } catch (err) {
+    qobuzScrapeFailure = { message: err.message, at: Date.now() };
+    console.error(`[Qobuz] app-credential scrape failed (Qobuz likely changed their web-player bundle format — paste app_id/app_secret manually in Settings as a workaround): ${err.message}`);
+    throw err;
   }
-  await setSetting('qobuz_app_id', app_id);
-  await setSetting('qobuz_app_secret', app_secret);
-  qobuzApp = { app_id, app_secret };
-  return qobuzApp;
 }
 
 export async function qobuzLogin(username, password) {
