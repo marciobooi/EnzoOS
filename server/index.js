@@ -48,6 +48,11 @@ app.use('/api', apiLimiter);
 const authLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 40, standardHeaders: true, legacyHeaders: false });
 app.use('/api/auth', authLimiter);
 
+// Unauthenticated by design — used by scripts/update.sh's post-restart
+// health check and anything else that just needs to confirm the API layer
+// (not just the TCP port) is actually serving.
+app.get('/api/health', (req, res) => res.json({ status: 'ok' }));
+
 // Remote-access auth (login / check). Unauthenticated by design — this is how
 // LAN clients obtain a token. Loopback (kiosk) is always trusted.
 app.use('/api/auth', authRouter);
@@ -75,13 +80,15 @@ app.use('/api/status', requireAuth, statusRouter);
 // Premium album/artist metadata aggregator (on-demand, cached)
 app.use('/api/metadata', requireAuth, metadataRouter);
 
-// Fallback all non-API requests to index.html for Single Page App client routing
+// Fallback all non-API GET requests to index.html for Single Page App client
+// routing. /api/* is deliberately excluded — it used to fall through to this
+// handler too, so a typo'd/removed API endpoint returned the SPA shell with
+// a 200 instead of a 404, which client code checking response.ok treated as
+// success.
 app.use((req, res, next) => {
-  if (req.method === 'GET') {
-    res.sendFile(path.join(__dirname, '../dist/index.html'));
-  } else {
-    next();
-  }
+  if (req.method !== 'GET') return next();
+  if (req.path.startsWith('/api')) return res.status(404).json({ error: 'Not found' });
+  res.sendFile(path.join(__dirname, '../dist/index.html'));
 });
 
 // Central error handler — normalises anything thrown in a route (or passed to

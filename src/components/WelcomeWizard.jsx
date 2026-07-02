@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Waves, Music2, Smartphone, Check, ChevronRight, ChevronLeft, Sparkles,
   Disc3, Loader2, ExternalLink, Sliders, SlidersHorizontal, Zap, Palette,
-  Wifi, Lock, RefreshCw,
+  Wifi, Lock, RefreshCw, Clock,
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { S, cardShadow } from '../styles/stone';
@@ -29,6 +29,11 @@ export default function WelcomeWizard({ onClose }) {
   const [lanUrl, setLanUrl] = useState('');
   const [qrToken, setQrToken] = useState('');
   const [saving, setSaving] = useState(false);
+  const [tzApplied, setTzApplied] = useState(false);
+  const detectedTz = useMemo(() => {
+    try { return Intl.DateTimeFormat().resolvedOptions().timeZone || ''; }
+    catch { return ''; }
+  }, []);
   const closedRef = useRef(false);
 
   // ── Wi-Fi state ──────────────────────────────────────────────────────────────
@@ -233,6 +238,12 @@ export default function WelcomeWizard({ onClose }) {
       wifi: true,
     },
     {
+      icon: <Clock className="h-8 w-8" />,
+      title: t('wizard.timezone.title'),
+      body: t('wizard.timezone.body'),
+      timezone: true,
+    },
+    {
       icon: <Music2 className="h-8 w-8" />,
       title: t('wizard.connect.title'),
       body: t('wizard.connect.body'),
@@ -271,6 +282,16 @@ export default function WelcomeWizard({ onClose }) {
   useEffect(() => {
     if (s?.wifi && !wifiScanned && !wifiScanning) scanWifi();
   }, [s, wifiScanned, wifiScanning]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Apply the setup browser's detected timezone once, the first time the
+  // timezone step is shown — fresh installs boot on UTC with nothing else
+  // to prompt for one, so the kiosk clock and play-history timestamps would
+  // otherwise stay wrong indefinitely.
+  useEffect(() => {
+    if (!s?.timezone || tzApplied || !detectedTz) return;
+    setTzApplied(true);
+    api.setTimezone(detectedTz).catch(() => {});
+  }, [s, tzApplied, detectedTz]);
 
   // Fetch a one-time QR auth token while the phone/QR step is showing — mirrors
   // RemoteAccessOverlay.jsx. Without it the QR just links to the remote's login
@@ -628,6 +649,16 @@ export default function WelcomeWizard({ onClose }) {
               <div className="mt-3 px-4 py-2.5 rounded-xl text-[14px] font-mono break-all"
                 style={{ background: S.surface, color: S.accent, border: `1px solid ${S.surfaceLo}` }}>
                 {s.mono}
+              </div>
+            )}
+
+            {s.timezone && (
+              <div className="mt-3 flex justify-center">
+                <div className="px-4 py-2.5 rounded-xl text-[14px] font-mono flex items-center gap-2"
+                  style={{ background: S.surface, color: S.accent, border: `1px solid ${S.surfaceLo}` }}>
+                  {tzApplied ? <Check className="h-4 w-4 shrink-0" /> : <Loader2 className="h-4 w-4 shrink-0 animate-spin" />}
+                  {detectedTz ? t('wizard.timezone.detected', { tz: detectedTz }) : t('wizard.timezone.failed')}
+                </div>
               </div>
             )}
           </div>

@@ -54,7 +54,10 @@ let standbyEnteredAt    = 0;
 // (starts the daemon on selection) and applyStandby (restarts it on wake —
 // entering standby unconditionally stops all three, so whichever one was
 // actually serving the active source needs to come back up on its own).
-const SOURCE_DAEMON = { airplay: 'shairport-sync', upnp: 'upmpdcli', bluetooth: 'bluealsa' };
+// Bluetooth has no daemon of its own — PipeWire/WirePlumber handle A2DP
+// natively — so it's handled separately (adapter power/discoverable/pairable)
+// wherever this map is consulted, rather than listed here.
+const SOURCE_DAEMON = { airplay: 'shairport-sync', upnp: 'upmpdcli' };
 // Debounce timer for volume persistence — avoid a DB write on every slider tick
 let volumeSaveTimer     = null;
 
@@ -255,7 +258,10 @@ async function applyStandby(enabled) {
       // Stop streaming passthrough services
       exec('sudo systemctl stop shairport-sync 2>/dev/null || true');
       exec('sudo systemctl stop upmpdcli 2>/dev/null || true');
-      exec('sudo systemctl stop bluealsa 2>/dev/null || true');
+      // No bluealsa unit (PipeWire/WirePlumber handle A2DP natively) — just
+      // close the Bluetooth pairing window so nothing connects mid-standby.
+      exec('bluetoothctl discoverable off 2>/dev/null || true');
+      exec('bluetoothctl pairable off 2>/dev/null || true');
 
       // Pause Spotify if a valid token is available
       try {
@@ -282,14 +288,19 @@ async function applyStandby(enabled) {
         console.warn('[Standby] Volume re-apply on wake failed (non-fatal):', err.message);
       }
       // Restart whichever passthrough daemon was serving the active source —
-      // entering standby stopped shairport-sync/upmpdcli/bluealsa unconditionally,
-      // so an AirPlay/UPnP/Bluetooth session would otherwise stay dead until the
-      // user manually reselects the source from the picker.
+      // entering standby stopped shairport-sync/upmpdcli unconditionally, so
+      // an AirPlay/UPnP session would otherwise stay dead until the user
+      // manually reselects the source from the picker.
       const daemon = SOURCE_DAEMON[cachedSourceState.source];
       if (daemon) {
         exec(`sudo systemctl start ${daemon}`, (err) => {
           if (err) console.error(`[Standby] Failed to restart ${daemon} on wake:`, err.message);
           else console.log(`[Standby] Restarted ${daemon} on wake (active source: ${cachedSourceState.source})`);
+        });
+      } else if (cachedSourceState.source === 'bluetooth') {
+        exec('bluetoothctl discoverable on; bluetoothctl pairable on', (err) => {
+          if (err) console.error('[Standby] Failed to reopen Bluetooth pairing window on wake:', err.message);
+          else console.log('[Standby] Reopened Bluetooth pairing window on wake');
         });
       }
     }
@@ -369,10 +380,12 @@ async function handleEvent(type, payload, excludeWs) {
           exec('sudo systemctl stop upmpdcli');
           console.log('[SET_SOURCE] Stopped upmpdcli (was UPnP)');
         }
-        // Stop bluealsa when leaving Bluetooth
+        // Leaving Bluetooth — there's no bluealsa unit to stop (PipeWire/
+        // WirePlumber handle A2DP natively); just close the pairing window.
         if (previousSource === 'bluetooth') {
-          exec('sudo systemctl stop bluealsa');
-          console.log('[SET_SOURCE] Stopped bluealsa (was Bluetooth)');
+          exec('bluetoothctl discoverable off');
+          exec('bluetoothctl pairable off');
+          console.log('[SET_SOURCE] Closed Bluetooth pairing window (was Bluetooth)');
         }
       } catch (err) {
         console.error('[SET_SOURCE] Failed to stop previous source services:', err);
@@ -510,6 +523,18 @@ async function handleEvent(type, payload, excludeWs) {
               });
             } catch (err) {
               console.error(`[SET_SOURCE] Could not start daemon for ${newSource}:`, err);
+            }
+          } else if (newSource === 'bluetooth') {
+            // No daemon — power the adapter on and open the pairing window
+            // (PipeWire/WirePlumber take over automatically once a device connects).
+            try {
+              const { exec } = await import('child_process');
+              exec('bluetoothctl power on; bluetoothctl discoverable on; bluetoothctl pairable on', (err) => {
+                if (err) console.error('[SET_SOURCE] Failed to open Bluetooth pairing window:', err.message);
+                else console.log('[SET_SOURCE] Bluetooth adapter powered on and discoverable');
+              });
+            } catch (err) {
+              console.error('[SET_SOURCE] Could not start Bluetooth:', err);
             }
           }
         }

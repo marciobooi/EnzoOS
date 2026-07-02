@@ -195,7 +195,7 @@ echo -e "${YELLOW}Scheduling backend restart in 4 seconds (${RESTART_CMD})...${N
   HEALTHY=0
   for _ in $(seq 1 15); do
     sleep 2
-    if curl -sf -o /dev/null http://127.0.0.1:5000/; then
+    if curl -sf -o /dev/null http://127.0.0.1:5000/api/health; then
       HEALTHY=1
       break
     fi

@@ -90,4 +90,17 @@ export const systemApi = {
     });
     return handleJson(r);
   },
+
+  // ── Timezone ───────────────────────────────────────────────────────────────────
+  async getTimezone() {
+    const r = await fetch('/api/system/timezone');
+    return handleJson(r);
+  },
+  async setTimezone(timezone) {
+    const r = await fetch('/api/system/timezone', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ timezone }),
+    });
+    return handleJson(r);
+  },
 };

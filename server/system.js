@@ -42,6 +42,31 @@ router.post('/onboarding', async (req, res) => {
   } catch (err) { sendError(res, err); }
 });
 
+// ── Timezone ───────────────────────────────────────────────────────────────────
+// Fresh installs boot on UTC — nothing prompts for a real timezone, so the
+// kiosk clock and play-history timestamps are wrong for any non-UTC user.
+// The welcome wizard auto-detects the setup browser's timezone and applies it.
+router.get('/timezone', async (req, res) => {
+  try {
+    const { stdout } = await execPromise('timedatectl show -p Timezone --value');
+    res.json({ timezone: stdout.trim() });
+  } catch (err) { sendError(res, err); }
+});
+
+router.post('/timezone', sensitiveLimiter, async (req, res) => {
+  const { timezone } = req.body || {};
+  // IANA zone names are Region/City (+ a few legacy Etc/GMT+N forms) — this
+  // also matters defensively even though execFileP passes it as a single
+  // argv element with no shell involved.
+  if (!timezone || typeof timezone !== 'string' || !/^[A-Za-z0-9_+\-/]+$/.test(timezone)) {
+    return sendError(res, badRequest('Invalid timezone'));
+  }
+  try {
+    await execFileP('sudo', ['timedatectl', 'set-timezone', timezone]);
+    res.json({ success: true, timezone });
+  } catch (err) { sendError(res, err); }
+});
+
 // ── Language / locale ─────────────────────────────────────────────────────────
 // Persisted so the UI language survives a restart and is shared across the kiosk
 // and every phone remote. Defaults to English when unset.

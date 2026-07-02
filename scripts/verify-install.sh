@@ -33,6 +33,8 @@ svc_active()  { systemctl is-active  --quiet "$1" 2>/dev/null; }
 svc_enabled() { systemctl is-enabled --quiet "$1" 2>/dev/null; }
 
 CORES="$(nproc 2>/dev/null || echo 1)"
+PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+TARGET_USER="$(stat -c '%U' "$PROJECT_DIR" 2>/dev/null || echo "$USER")"
 
 echo -e "\n${BLUE}════════════════════════════════════════════════════════════════════${NC}"
 echo -e "${GREEN}            Resonance HiFi — Install Verification Report             ${NC}"
@@ -77,6 +79,34 @@ echo -e "\n${BLUE}RAM preloading (setup-ram-preload.sh)${NC}"
 
 echo -e "\n${BLUE}Connectivity${NC}"
 command -v nmcli >/dev/null 2>&1 && ok "network-manager (Wi-Fi UI)" || skip "network-manager" "nmcli missing"
+
+echo -e "\n${BLUE}Streaming credentials${NC}"
+if [ -f "$PROJECT_DIR/.env" ] && grep -q "^TIDAL_CLIENT_ID=" "$PROJECT_DIR/.env"; then
+  ok "Tidal credentials present in .env"
+else
+  bad "Tidal credentials in .env" "TIDAL_CLIENT_ID missing — device-flow login will fail"
+fi
+
+echo -e "\n${BLUE}Kiosk input / display-wake${NC}"
+if id -nG "$TARGET_USER" 2>/dev/null | grep -qw input; then
+  ok "$TARGET_USER is in the 'input' group"
+else
+  bad "$TARGET_USER in 'input' group" "missing — touch/keyboard display-wake needs it"
+fi
+if pgrep -f "kiosk-wake-monitor.sh" >/dev/null 2>&1; then
+  ok "kiosk-wake-monitor.sh running"
+else
+  skip "kiosk-wake-monitor.sh" "not running yet (expected before first reboot / outside the kiosk X session)"
+fi
+
+echo -e "\n${BLUE}Bluetooth (PipeWire-native, NOT bluealsa)${NC}"
+if systemctl list-unit-files bluealsa.service >/dev/null 2>&1; then
+  bad "bluealsa" "installed — conflicts with PipeWire's native A2DP handling"
+else
+  ok "bluealsa not installed (PipeWire handles A2DP natively)"
+fi
+command -v bluetoothctl >/dev/null 2>&1 && ok "bluetoothctl available" || bad "bluetoothctl" "not installed"
+svc_active bluetooth && ok "bluetooth.service running" || bad "bluetooth.service" "not active"
 
 echo -e "\n${BLUE}════════════════════════════════════════════════════════════════════${NC}"
 printf "  ${GREEN}%d active${NC}   ${YELLOW}%d skipped${NC}   ${RED}%d failed${NC}\n" "$PASS" "$WARN" "$FAIL"

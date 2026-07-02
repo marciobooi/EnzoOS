@@ -1,0 +1,21 @@
+/* Resonance HiFi — self-hosted UI fonts (offline-safe kiosk appliance).
+   Vendored from Google Fonts (Manrope v20, Hanken Grotesk v12), latin subset
+   only (covers the English/Portuguese UI — Latin-1 accented characters like
+   ã/ç/õ/é fall within U+0000-00FF). Both are variable-weight woff2 files, so
+   one file each covers every weight this app actually requests. */
+@font-face {
+  font-family: 'Manrope';
+  font-style: normal;
+  font-weight: 300 800;
+  font-display: swap;
+  src: url('/fonts/manrope-latin-variable.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: 'Hanken Grotesk';
+  font-style: normal;
+  font-weight: 400 600;
+  font-display: swap;
+  src: url('/fonts/hanken-grotesk-latin-variable.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}

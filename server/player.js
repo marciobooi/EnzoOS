@@ -344,7 +344,7 @@ router.get('/signal-path', async (req, res) => {
       spotify:   'Spotify → raspotify → PipeWire → CamillaDSP → DAC',
       airplay:   'AirPlay → shairport-sync → PipeWire → CamillaDSP → DAC',
       upnp:      'UPnP → upmpdcli/MPD → PipeWire → CamillaDSP → DAC',
-      bluetooth: 'Bluetooth → bluealsa → PipeWire → CamillaDSP → DAC',
+      bluetooth: 'Bluetooth → PipeWire (A2DP) → CamillaDSP → DAC',
       tidal:     'Tidal → PipeWire → CamillaDSP → DAC',
       qobuz:     'Qobuz → PipeWire → CamillaDSP → DAC',
     };
@@ -1676,15 +1676,33 @@ router.get('/upnp/status', async (req, res) => {
   res.json({ active });
 });
 
-// ── Bluetooth A2DP (bluealsa) ─────────────────────────────────────────────────
+// ── Bluetooth A2DP (native PipeWire/WirePlumber — NOT bluealsa) ───────────────
+// install.sh deliberately does not install bluealsa: PipeWire + WirePlumber
+// handle A2DP natively (including LDAC/AAC/aptX) and bluealsa conflicts with
+// that stack. There is no "bluealsa" systemd unit to start/stop — the
+// adapter itself just needs to be powered + discoverable + pairable so a
+// phone can connect; WirePlumber then creates the PipeWire node for the
+// negotiated A2DP sink automatically (routed into ResonanceInput by the
+// monitor.bluez.rules in /etc/wireplumber/wireplumber.conf.d/).
+
+async function isBluetoothPowered() {
+  try {
+    const { stdout } = await execPromise('bluetoothctl show');
+    return /Powered:\s*yes/i.test(stdout);
+  } catch {
+    return false;
+  }
+}
 
 // POST /api/player/bluetooth/start
 router.post('/bluetooth/start', async (req, res) => {
   try {
     if (getStandbyState()) await emit('SET_STANDBY', { enabled: false });
     await emit('SET_SOURCE', { spotify: false, source: 'bluetooth' });
-    const ok = await systemctlAction('start', 'bluealsa');
-    res.json({ success: ok });
+    await execPromise('bluetoothctl power on');
+    await execPromise('bluetoothctl discoverable on');
+    await execPromise('bluetoothctl pairable on');
+    res.json({ success: true });
   } catch (err) {
     console.error('[Bluetooth] Start failed:', err);
     res.status(500).json({ success: false, error: err.message });
@@ -1694,8 +1712,9 @@ router.post('/bluetooth/start', async (req, res) => {
 // POST /api/player/bluetooth/stop
 router.post('/bluetooth/stop', async (req, res) => {
   try {
-    const ok = await systemctlAction('stop', 'bluealsa');
-    res.json({ success: ok });
+    await execPromise('bluetoothctl discoverable off');
+    await execPromise('bluetoothctl pairable off');
+    res.json({ success: true });
   } catch (err) {
     console.error('[Bluetooth] Stop failed:', err);
     res.status(500).json({ success: false, error: err.message });
@@ -1717,7 +1736,7 @@ router.post('/bluetooth/discoverable', async (req, res) => {
 
 // GET /api/player/bluetooth/status
 router.get('/bluetooth/status', async (req, res) => {
-  const active = await isServiceActive('bluealsa');
+  const active = await isBluetoothPowered();
   res.json({ active });
 });
 

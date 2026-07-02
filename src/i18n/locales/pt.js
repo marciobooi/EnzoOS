@@ -81,6 +81,13 @@ export default {
       bodyUrl: 'Abra este endereço em qualquer telemóvel ou tablet na sua rede, ou leia o código QR no cartão Remoto do quiosque:',
       bodyNoUrl: 'No quiosque, toque no cartão Remoto para mostrar um código QR e controlar a reprodução a partir de qualquer telemóvel ou tablet na sua rede.',
     },
+    timezone: {
+      title: 'Defina o seu fuso horário',
+      body: 'Mantém o relógio do quiosque e o seu histórico de audição corretos.',
+      detected: 'Detetado: {tz}',
+      applied: 'Fuso horário definido',
+      failed: 'Não foi possível definir o fuso horário — pode alterá-lo mais tarde via SSH com timedatectl.',
+    },
     done: {
       title: 'Está tudo pronto',
       body: 'Ajuste o som a qualquer momento em Definições — EQ, correção de sala, balanço, bit-perfect e mais. Aproveite a música.',

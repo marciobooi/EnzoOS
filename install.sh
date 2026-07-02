@@ -210,6 +210,14 @@ apt_install install -y \
   evtest \
   network-manager
 
+# cups is frequently pulled in as a recommended dependency of the desktop/
+# display packages above, and listens on 0.0.0.0:631 by default — pure
+# attack surface on a HiFi appliance with no printer. Disable rather than
+# apt-remove (removing it risks cascading removal of packages that merely
+# recommend it).
+systemctl disable --now cups 2>/dev/null || true
+systemctl disable --now cups-browsed 2>/dev/null || true
+
 # Enable ALSA Loopback kernel module immediately and on boot.
 # CamillaDSP (ALSA-only build) still captures from this loopback via dsnoop.
 # PipeWire loopback module bridges: ResonanceInput virtual sink → hw:Loopback,0,0
@@ -395,7 +403,11 @@ db_file                 "/var/lib/mpd/tag_cache"
 state_file              "/var/lib/mpd/state"
 sticker_file            "/var/lib/mpd/sticker.sql"
 
-bind_to_address         "any"
+# Loopback only — nothing off-box needs MPD (upmpdcli connects to
+# 127.0.0.1, the server and kiosk are local, mpc defaults to localhost).
+# MPD has no built-in auth, so "any" would let any LAN device control
+# playback and browse the library, bypassing the app's bearer-token auth.
+bind_to_address         "127.0.0.1"
 port                    "6600"
 
 audio_output {
@@ -544,7 +556,13 @@ Requires=sound.target
 
 [Service]
 Type=simple
-User=root
+# Runs as the kiosk user, not root — CamillaDSP only needs ALSA device access
+# (covered by the audio group, already granted above) and no realtime
+# scheduling capability is requested by this unit. Its unauthenticated
+# localhost control WebSocket (-p 1234) is bound to loopback only, but
+# running it as root was still unnecessary privilege for a process that
+# accepts reconfiguration commands over that socket.
+User=$TARGET_USER
 WorkingDirectory=$PROJECT_DIR
 ExecStart=/usr/bin/camilladsp $PROJECT_DIR/camilladsp.yml -p 1234
 Restart=always
@@ -559,8 +577,23 @@ systemctl enable camilladsp
 systemctl restart camilladsp
 
 echo -e "${YELLOW}Installing Raspotify repository and precompiled Librespot daemon...${NC}"
-# Install Raspotify repository and package (contains the precompiled /usr/bin/librespot binary)
-curl -sL https://dtcooper.github.io/raspotify/install.sh | sh
+# Install Raspotify repository and package (contains the precompiled /usr/bin/librespot binary).
+#
+# Vendored inline instead of `curl -sL .../install.sh | sh`: piping a remote
+# script straight into a root shell means a compromised endpoint or a MITM
+# on this one HTTP(S) request is instant root code execution, with nothing
+# to verify beforehand. This does exactly what that script does — fetch the
+# raspotify GPG key over HTTPS, register it as an apt-signed repo, install
+# via apt — but apt then verifies every package signature against that key
+# on every subsequent update, the same trust model the upstream script sets
+# up, without ever executing an unreviewed remote script as root.
+mkdir -p /usr/share/keyrings
+curl -fsSL https://dtcooper.github.io/raspotify/key.asc -o /usr/share/keyrings/raspotify_key.asc
+chmod 644 /usr/share/keyrings/raspotify_key.asc
+echo "deb [signed-by=/usr/share/keyrings/raspotify_key.asc] https://dtcooper.github.io/raspotify raspotify main" \
+  > /etc/apt/sources.list.d/raspotify.list
+apt_install update
+apt_install install -y raspotify
 
 # Assign hardware permissions to the target user. `input` is required for
 # scripts/kiosk-wake-monitor.sh to read /dev/input/event* (root:input, mode
@@ -583,21 +616,43 @@ if [ -f "/etc/systemd/system/librespot.service" ]; then
   systemctl daemon-reload
 fi
 
-# Configure Raspotify system settings in its standard Linux configuration file
+# Configure Raspotify system settings in its standard Linux configuration file.
+# Appends a clearly-marked managed block instead of sed-patching commented
+# defaults in the shipped template: those sed patterns silently no-op'd
+# entirely once raspotify's template format drifted from what they expected
+# (verified live — zero active LIBRESPOT_* lines after install). This file is
+# read as a systemd EnvironmentFile, which takes the LAST occurrence of a
+# duplicate key, so an appended block always wins regardless of what (if
+# anything) is already set above it — no pattern-matching required.
 echo -e "${YELLOW}Configuring Raspotify settings in /etc/raspotify/conf...${NC}"
-sed -i 's/#LIBRESPOT_NAME="Librespot"/LIBRESPOT_NAME="Resonance Connect"/g' /etc/raspotify/conf
-sed -i 's/#LIBRESPOT_BITRATE=160/LIBRESPOT_BITRATE=320/g' /etc/raspotify/conf
-sed -i 's/LIBRESPOT_DISABLE_CREDENTIAL_CACHE=/#LIBRESPOT_DISABLE_CREDENTIAL_CACHE=/g' /etc/raspotify/conf
-sed -i 's/#LIBRESPOT_INITIAL_VOLUME=50/LIBRESPOT_INITIAL_VOLUME=50/g' /etc/raspotify/conf
-sed -i 's/#LIBRESPOT_BACKEND=/LIBRESPOT_BACKEND=alsa/g' /etc/raspotify/conf
+sed -i '/# --- Resonance HiFi managed block ---/,/# --- end Resonance HiFi managed block ---/d' /etc/raspotify/conf
+cat <<'RASPOEOF' >> /etc/raspotify/conf
+
+# --- Resonance HiFi managed block ---
+LIBRESPOT_NAME="Resonance Connect"
+LIBRESPOT_BITRATE=320
+LIBRESPOT_INITIAL_VOLUME=50
+LIBRESPOT_BACKEND=alsa
 # Route Spotify Connect to PipeWire via ALSA "default" device.
 # /usr/share/alsa/alsa.conf.d/99-pipewire-default.conf (from pipewire-alsa)
 # makes "default" route to PipeWire → ResonanceInput virtual sink → CamillaDSP.
-if grep -q "LIBRESPOT_DEVICE=" /etc/raspotify/conf; then
-  sed -i 's/.*LIBRESPOT_DEVICE=.*/LIBRESPOT_DEVICE="default"/g' /etc/raspotify/conf
-else
-  echo 'LIBRESPOT_DEVICE="default"' >> /etc/raspotify/conf
-fi
+LIBRESPOT_DEVICE="default"
+# --- end Resonance HiFi managed block ---
+RASPOEOF
+
+# Run as the kiosk user, not root. The stock unit has no User= (defaults to
+# root) — as root, librespot has no user PipeWire session to reach
+# (/run/user/0 doesn't exist), so ALSA "default" → PipeWire routing above
+# would only work by accident. Matches the pattern MPD already uses.
+TARGET_UID=$(id -u "$TARGET_USER")
+mkdir -p /etc/systemd/system/raspotify.service.d
+cat > /etc/systemd/system/raspotify.service.d/10-resonance-run-as-user.conf <<RASPOUSEREOF
+[Service]
+User=$TARGET_USER
+Group=$TARGET_USER
+Environment="XDG_RUNTIME_DIR=/run/user/$TARGET_UID"
+Environment="PIPEWIRE_REMOTE=/run/user/$TARGET_UID/pipewire-0"
+RASPOUSEREOF
 
 # Enable and start native Raspotify systemd daemon
 echo -e "${YELLOW}Enabling and starting Raspotify service...${NC}"
@@ -607,11 +662,32 @@ systemctl restart raspotify
 echo -e "${GREEN}Raspotify Spotify Connect service configured and started.${NC}"
 
 # Configure passwordless sudo for service management (CamillaDSP, Spotify, AirPlay, etc.)
+# Split into multiple lines (one grant category per line) instead of one long
+# line — easier to audit, and each entry is scoped to a specific file path or
+# an exact systemctl action+unit rather than a blanket binary grant. nmcli is
+# narrowed to the two subcommands server/system.js actually invokes with sudo
+# (wifi rescan, wifi connect) — everything else nmcli can do (deleting
+# connections, disabling radios, changing hostname, etc.) is NOT granted.
+# bluealsa is intentionally absent: PipeWire/WirePlumber handle A2DP
+# natively and there is no such systemd unit to grant control over.
 echo -e "${YELLOW}Configuring sudo permissions for service management...${NC}"
 cat <<EOF > /etc/sudoers.d/resonance
-$TARGET_USER ALL=(ALL) NOPASSWD: /usr/bin/tee /etc/raspotify/conf, /bin/tee /etc/raspotify/conf, /usr/bin/tee /etc/asound.conf, /bin/tee /etc/asound.conf, /usr/bin/tee /etc/pipewire/pipewire.conf.d/52-resonance-bitperfect.conf, /bin/tee /etc/pipewire/pipewire.conf.d/52-resonance-bitperfect.conf, /usr/bin/systemctl restart raspotify, /bin/systemctl restart raspotify, /usr/bin/systemctl restart camilladsp, /bin/systemctl restart camilladsp, /usr/bin/systemctl reload camilladsp, /bin/systemctl reload camilladsp, /usr/local/bin/kiosk-power.sh, /usr/local/bin/kiosk-brightness.sh, /usr/bin/systemctl start shairport-sync, /bin/systemctl start shairport-sync, /usr/bin/systemctl stop shairport-sync, /bin/systemctl stop shairport-sync, /usr/bin/systemctl start upmpdcli, /bin/systemctl start upmpdcli, /usr/bin/systemctl stop upmpdcli, /bin/systemctl stop upmpdcli, /usr/bin/systemctl restart mpd, /bin/systemctl restart mpd, /usr/bin/systemctl start bluealsa, /bin/systemctl start bluealsa, /usr/bin/systemctl stop bluealsa, /bin/systemctl stop bluealsa, /usr/bin/systemctl reboot, /bin/systemctl reboot, /usr/bin/systemctl poweroff, /bin/systemctl poweroff, /usr/bin/nmcli, /bin/nmcli, /usr/bin/systemctl restart resonance-api, /bin/systemctl restart resonance-api, /usr/bin/systemctl start resonance-api, /bin/systemctl start resonance-api, /usr/bin/systemctl stop resonance-api, /bin/systemctl stop resonance-api
+$TARGET_USER ALL=(ALL) NOPASSWD: /usr/bin/tee /etc/raspotify/conf, /bin/tee /etc/raspotify/conf
+$TARGET_USER ALL=(ALL) NOPASSWD: /usr/bin/tee /etc/asound.conf, /bin/tee /etc/asound.conf
+$TARGET_USER ALL=(ALL) NOPASSWD: /usr/bin/tee /etc/pipewire/pipewire.conf.d/52-resonance-bitperfect.conf, /bin/tee /etc/pipewire/pipewire.conf.d/52-resonance-bitperfect.conf
+$TARGET_USER ALL=(ALL) NOPASSWD: /usr/bin/systemctl restart raspotify, /bin/systemctl restart raspotify
+$TARGET_USER ALL=(ALL) NOPASSWD: /usr/bin/systemctl restart camilladsp, /bin/systemctl restart camilladsp, /usr/bin/systemctl reload camilladsp, /bin/systemctl reload camilladsp
+$TARGET_USER ALL=(ALL) NOPASSWD: /usr/local/bin/kiosk-power.sh, /usr/local/bin/kiosk-brightness.sh
+$TARGET_USER ALL=(ALL) NOPASSWD: /usr/bin/systemctl start shairport-sync, /bin/systemctl start shairport-sync, /usr/bin/systemctl stop shairport-sync, /bin/systemctl stop shairport-sync
+$TARGET_USER ALL=(ALL) NOPASSWD: /usr/bin/systemctl start upmpdcli, /bin/systemctl start upmpdcli, /usr/bin/systemctl stop upmpdcli, /bin/systemctl stop upmpdcli
+$TARGET_USER ALL=(ALL) NOPASSWD: /usr/bin/systemctl restart mpd, /bin/systemctl restart mpd
+$TARGET_USER ALL=(ALL) NOPASSWD: /usr/bin/systemctl reboot, /bin/systemctl reboot, /usr/bin/systemctl poweroff, /bin/systemctl poweroff
+$TARGET_USER ALL=(ALL) NOPASSWD: /usr/bin/nmcli device wifi rescan, /bin/nmcli device wifi rescan, /usr/bin/nmcli device wifi connect *, /bin/nmcli device wifi connect *
+$TARGET_USER ALL=(ALL) NOPASSWD: /usr/bin/timedatectl set-timezone *, /bin/timedatectl set-timezone *
+$TARGET_USER ALL=(ALL) NOPASSWD: /usr/bin/systemctl restart resonance-api, /bin/systemctl restart resonance-api, /usr/bin/systemctl start resonance-api, /bin/systemctl start resonance-api, /usr/bin/systemctl stop resonance-api, /bin/systemctl stop resonance-api
 EOF
 chmod 440 /etc/sudoers.d/resonance
+visudo -cf /etc/sudoers.d/resonance || echo -e "${RED}WARNING: /etc/sudoers.d/resonance failed validation — review it manually.${NC}"
 
 # Configure Xwrapper to run X server without root restrictions
 echo -e "${YELLOW}Configuring Xwrapper...${NC}"
@@ -716,6 +792,20 @@ chmod +x "$PROJECT_DIR/scripts/setup-storage-silence.sh"
 bash "$PROJECT_DIR/scripts/setup-storage-silence.sh" || \
   echo -e "${YELLOW}  Storage silence reported an issue — continuing install.${NC}"
 
+# Cap journald unconditionally, regardless of whether log2ram installed —
+# without this, /var/log/journal grows unbounded, and if log2ram isn't
+# available on this system (it currently doesn't package for Ubuntu 24.04
+# ARM64), that growth lands directly on the SD card/SSD: the exact wear
+# this whole section exists to prevent.
+echo -e "${YELLOW}Capping journald log size...${NC}"
+mkdir -p /etc/systemd/journald.conf.d
+cat <<'JOURNALDEOF' > /etc/systemd/journald.conf.d/resonance-size-cap.conf
+[Journal]
+SystemMaxUse=100M
+RuntimeMaxUse=50M
+JOURNALDEOF
+systemctl restart systemd-journald 2>/dev/null || true
+
 # ── RAM preloading execution engine (mlockall memory locking) ──────────────────
 # Lock the core audio daemons into physical RAM (LimitMEMLOCK + mlockall shim +
 # PipeWire native mlock) so the decoding/DSP engine and its audio chunks never
@@ -789,6 +879,19 @@ if ! grep -q "Autostart X Server on TTY1 Boot" "$PROFILE_FILE"; then
 else
   echo -e "${YELLOW}Autostart loop already present in $PROFILE_FILE.${NC}"
 fi
+
+# Remove the block from its old location(s) — older installer versions wrote
+# it to .profile/.bash_profile before .bashrc became the canonical target
+# (Ubuntu's automated tty1 agetty login ignores .bash_profile). Left in
+# place, it's harmless dead code today, but a stale marker there also makes
+# the idempotence check above meaningless on a re-install (it only greps
+# .bashrc), so clean it up rather than leave both copies to drift.
+for LEGACY_PROFILE in "$USER_HOME/.profile" "$USER_HOME/.bash_profile"; do
+  if [ -f "$LEGACY_PROFILE" ] && grep -q "Autostart X Server on TTY1 Boot" "$LEGACY_PROFILE"; then
+    echo -e "${YELLOW}Removing legacy autostart block from $LEGACY_PROFILE...${NC}"
+    sed -i '/# Resonance HiFi - Autostart X Server on TTY1 Boot/,/^fi$/d' "$LEGACY_PROFILE"
+  fi
+done
 
 # ── [6b/7] Streaming Sources: AirPlay, UPnP/DLNA, Bluetooth A2DP ────────────
 echo -e "\n${GREEN}[6b/7] Installing streaming source services (AirPlay, UPnP, Bluetooth)...${NC}"
@@ -890,6 +993,23 @@ sessioncontrol = {
 };
 SSEOF
 
+# Run as the kiosk user, not the dedicated "shairport-sync" system user the
+# upstream build creates. That user has no PipeWire session
+# (/run/user/<its-uid> doesn't exist), so `alsa.output_device = "default"`
+# above (→ the PipeWire ALSA plugin) would have nothing to reach — AirPlay
+# would stay silent even with the loopback bridge itself working. Matches
+# the pattern MPD and raspotify already use.
+TARGET_UID=$(id -u "$TARGET_USER")
+mkdir -p /etc/systemd/system/shairport-sync.service.d
+cat > /etc/systemd/system/shairport-sync.service.d/10-resonance-run-as-user.conf <<SSUSEREOF
+[Service]
+User=$TARGET_USER
+Group=$TARGET_USER
+Environment="XDG_RUNTIME_DIR=/run/user/$TARGET_UID"
+Environment="PIPEWIRE_REMOTE=/run/user/$TARGET_UID/pipewire-0"
+SSUSEREOF
+systemctl daemon-reload
+
 # Do NOT enable shairport-sync at boot — the kiosk activates it on demand.
 # NQPTP must always run (it's a timing server that shairport-sync depends on).
 systemctl disable shairport-sync 2>/dev/null || true
@@ -989,6 +1109,31 @@ systemctl disable --now bluealsa 2>/dev/null || true
 systemctl disable --now bluealsa-aplay 2>/dev/null || true
 # Remove bluealsa packages if present
 apt_install remove -y bluealsa bluealsa-utils 2>/dev/null || true
+
+# Route Bluetooth A2DP audio into our chain. When a phone connects, BlueZ
+# negotiates the Pi's adapter as an A2DP sink and WirePlumber creates a
+# matching PipeWire sink node (bluez_output.<MAC>.a2dp-sink) — but nothing
+# routes that node's monitor anywhere audible by default. This targets any
+# such node at ResonanceInput, the same null sink every other source
+# (MPD/Spotify/AirPlay) feeds into, so Bluetooth reaches the loopback →
+# CamillaDSP → DAC chain the same way.
+mkdir -p /etc/wireplumber/wireplumber.conf.d
+cat <<'BTROUTEEOF' > /etc/wireplumber/wireplumber.conf.d/52-resonance-bluetooth-route.conf
+# Resonance HiFi — route incoming Bluetooth A2DP audio into ResonanceInput
+monitor.bluez.rules = [
+  {
+    matches = [
+      { node.name = "~bluez_output.*" }
+    ]
+    actions = {
+      update-props = {
+        node.target = "ResonanceInput"
+        node.dont-remix = true
+      }
+    }
+  }
+]
+BTROUTEEOF
 
 echo -e "${GREEN}Bluetooth configured: PipeWire handles A2DP sink natively via WirePlumber.${NC}"
 

@@ -16,27 +16,29 @@ secondary path · **[LOW]** cosmetic/hygiene · **[SEC]** security.
 
 ## 1. Security — highest priority
 
-- [ ] **[SEC/HIGH]** `install.sh:547` — raspotify is installed via
-  `curl -sL https://dtcooper.github.io/raspotify/install.sh | sh` run as
-  root, with no checksum/signature verification. A compromised endpoint or
-  MITM on first install is instant root code execution. Pin a release
-  tarball + checksum, or vendor the script.
+- [x] **[SEC/HIGH]** ~~raspotify installed via unverified `curl | sh`~~ —
+  **fixed 2026-07-02**: vendored the three commands that upstream
+  `install.sh` actually runs (fetch the GPG key over HTTPS to
+  `/usr/share/keyrings/raspotify_key.asc`, write a `signed-by=` apt source,
+  `apt-get install raspotify`) directly into our `install.sh`, instead of
+  piping an unreviewed remote script into a root shell. apt still verifies
+  every package signature against that key on every future update — same
+  trust model, no arbitrary remote code execution during install.
 
-- [ ] **[SEC/MED]** CamillaDSP's service runs as `root` (`install.sh` writes
-  the unit with `User=root`). *Corrected after live check (2026-07-02):* the
-  original claim that `-p 1234` listens on all interfaces is **wrong** —
-  verified on the VM (`ss -tlnp`) that CamillaDSP without `-a` binds
-  `127.0.0.1` only, so there is no LAN exposure. The remaining concern is an
-  unauthenticated localhost WS controlling a root-owned process; run
-  CamillaDSP as the app user (it only needs `audio` group access), not root.
+- [x] **[SEC/MED]** ~~CamillaDSP's service runs as `root`~~ — **fixed
+  2026-07-02**: `User=$TARGET_USER` (it only needs `audio` group access,
+  already granted). *(Note: the `-p 1234` listens-on-all-interfaces claim in
+  the original wording of this item was itself wrong — corrected 2026-07-02,
+  see below.)*
 
-- [ ] **[SEC/HIGH]** `/etc/sudoers.d/resonance` (written by `install.sh`)
-  grants the app user NOPASSWD `sudo tee` to system config files, fully
-  unrestricted `nmcli`, and `systemctl reboot/poweroff` — and this is the
-  *same* user the network-facing `resonance-api` Node process runs as. Any
-  command-injection or arbitrary-write bug in the API inherits near-root
-  capability. Tighten the sudoers entries to specific file paths / `nmcli`
-  subcommands instead of blanket access.
+- [x] **[SEC/HIGH]** ~~`/etc/sudoers.d/resonance` grants — fully unrestricted
+  `nmcli`~~ — **fixed 2026-07-02**: split into one grant line per category
+  (file-path-scoped `tee`s and exact `systemctl <action> <unit>` pairs were
+  already appropriately narrow); `nmcli` — the one genuinely blanket
+  grant — is now scoped to exactly the two invocations
+  `server/system.js` makes with sudo: `nmcli device wifi rescan` and
+  `nmcli device wifi connect *`. `visudo -cf` validates the file at install
+  time.
 
 - [x] **[SEC/HIGH]** ~~`server/system.js` `POST /restore` — no size cap,
   not rate-limited, WAL corruption risk~~ — **fixed 2026-07-02**: added a
@@ -266,90 +268,89 @@ Everything below is what didn't.
 
 ### 8.1 First-run blockers (install.sh)
 
-- [ ] **[HIGH]** **Tidal credentials never survive the install.**
-  `install.sh:1028-1036` appends `TIDAL_CLIENT_ID`/`TIDAL_CLIENT_SECRET` to
-  `.env` only if `.env` already exists — but step 9 (`install.sh:1051-1058`)
-  later does `rm -f .env` and rewrites it with *only* `SPOTIFY_CLIENT_ID` and
-  `PORT`. So on a fresh install the Tidal block is a no-op, and on a
-  re-install the appended creds are wiped minutes later. Verified live: the
-  VM's `.env` has no `TIDAL_*` keys. `server/streaming.js:159-164` has no
-  fallback and throws "Tidal is not configured" — **Tidal device-flow login
-  fails on every fresh install**, including from the welcome wizard. Fix:
-  put the TIDAL vars into the step-9 heredoc (or move the append after it).
+- [x] **[HIGH]** ~~Tidal credentials never survive the install~~ — **fixed
+  2026-07-02**: the `TIDAL_CLIENT_ID`/`SECRET` vars are now written directly
+  into the step-9 `.env` heredoc instead of being appended earlier and then
+  wiped by that heredoc's `rm -f .env` + rewrite.
 
-- [ ] **[HIGH]** **Bluetooth source: code and installer contradict each
-  other.** `install.sh:952-970` deliberately *removes* bluealsa ("PipeWire
-  handles A2DP natively via WirePlumber") — but `server/player.js:1679-1720`
-  still does `systemctl start/stop bluealsa` and gates status on
-  `isServiceActive('bluealsa')`, and `server/event-service.js:211,310-313`
-  stops bluealsa on standby/source-switch. Verified live: the `bluealsa`
-  unit is `not-found` on the VM, so selecting the Bluetooth source runs a
-  failing start and the status check always reports it dead. Rewrite the
-  server's BT flow for the PipeWire stack (bluetoothctl
-  discoverable/pairable on-demand + the installed `bt-agent`), and drop the
-  now-pointless bluealsa entries from the sudoers file (`install.sh:593`).
+- [x] **[HIGH]** ~~Bluetooth: code and installer contradict each other~~ —
+  **fixed 2026-07-02**: rewrote the server's BT flow
+  (`server/player.js` bluetooth routes, `server/event-service.js` SET_SOURCE
+  + standby paths) to use `bluetoothctl power/discoverable/pairable`
+  instead of a nonexistent `bluealsa` unit, removed the bluealsa grants from
+  sudoers, and added a `monitor.bluez.rules` WirePlumber config
+  (`52-resonance-bluetooth-route.conf`) that targets any `bluez_output.*`
+  node at ResonanceInput so incoming A2DP audio reaches the CamillaDSP
+  chain the same way every other source does. **Caveat**: the WirePlumber
+  routing rule is unverified against a real paired phone (no Bluetooth
+  hardware reachable over this SSH-only session) — the `bluetoothctl`
+  adapter-control fix is high-confidence, the audio-routing rule should get
+  a live pairing test before being trusted blind.
 
-- [ ] **[MED]** **install.sh dirties the git checkout it manages.** Verified
-  live — `git status` on the VM shows 5 tracked files modified right after a
-  fresh install: (a) `install.sh:1051-1084` rewrites tracked `.env.example`
-  from an embedded heredoc copy that has already drifted from the repo
-  version (two diverging sources of truth); (b) `install.sh:1121`
-  `npm install yaml` mutates `package.json`/`package-lock.json` at install
-  time — make `yaml` a normal committed dependency; (c) `chmod +x` on
-  tracked scripts (`install.sh:687,696,705,733,1136,1145`) shows up as git
-  mode changes — commit the exec bits (`git update-index --chmod=+x`)
-  instead. Knock-on effect: every re-install `git stash`es the installer's
-  own noise (`install.sh:131`), so the already-flagged silent-stash issue
-  (§4) triggers on *every* run, mixing real user edits with installer noise.
+- [x] **[MED]** ~~install.sh dirties the git checkout it manages~~ — **fixed
+  2026-07-02**: stopped regenerating tracked `.env.example` at install time,
+  dropped the redundant `npm install yaml` (already a normal `package.json`
+  dependency), and committed the exec bit for `setup-rtaudio.sh`/
+  `verify-install.sh` instead of `chmod +x`-ing them at install time (see §4).
 
-- [ ] **[MED]** **log2ram silently absent + unbounded journal.**
-  `setup-storage-silence.sh`'s log2ram step doesn't install on Ubuntu 24.04
-  ARM64 — `verify-install.sh` only marks it "skipped" and the VM shows
-  `log2ram: inactive`. Meanwhile journald has no `SystemMaxUse` cap and
-  `/var/log/journal` is already **1.6 GB after ~3 weeks**. On a real Pi all
-  of that lands on the SD card — the exact wear the feature was meant to
-  prevent. Cap journald (e.g. `SystemMaxUse=100M`) in `install.sh`
-  unconditionally, as the fallback for when log2ram isn't available.
+- [x] **[MED]** ~~log2ram silently absent + unbounded journal~~ — **fixed
+  2026-07-02**: `install.sh` now writes
+  `/etc/systemd/journald.conf.d/resonance-size-cap.conf`
+  (`SystemMaxUse=100M`, `RuntimeMaxUse=50M`) unconditionally, regardless of
+  whether log2ram is available.
 
-- [ ] **[LOW]** Timezone is never configured — the VM runs `Etc/UTC`, so the
-  kiosk clock and play-history timestamps are wrong for any non-UTC user.
-  Add a welcome-wizard step or installer prompt (`timedatectl
-  set-timezone`).
+- [x] **[LOW]** ~~Timezone never configured~~ — **fixed 2026-07-02**: added
+  `GET`/`POST /api/system/timezone` (`timedatectl show`/`set-timezone`,
+  sudoers-scoped) and a new welcome-wizard step that auto-detects and
+  applies the setup browser's `Intl.DateTimeFormat` timezone.
 
-- [ ] **[LOW]** Legacy autostart block never cleaned up — the installer now
-  injects the `startx` loop into `.bashrc` (`install.sh:764`) but older
-  versions used `.profile`; the VM has the block in **both** files. The
-  idempotence check only greps the new target file. Harmless today (the
-  `.bashrc` copy wins, the `.profile` one is unreachable dead code), but the
-  installer should remove the stale block it left behind.
+- [x] **[LOW]** ~~Legacy autostart block never cleaned up~~ — **fixed
+  2026-07-02**: `install.sh` now strips the block from `.profile`/
+  `.bash_profile` (old locations) whenever found, after confirming/writing
+  it to `.bashrc`.
 
-- [ ] **[LOW]** `index.html` hard-loads Google Fonts from
-  `fonts.googleapis.com` — on an offline install (a HiFi appliance may never
-  see the internet) fonts silently fall back. Self-host the two font
-  families in the build instead.
+- [x] **[LOW]** ~~`index.html` hard-loads Google Fonts~~ — **fixed
+  2026-07-02**: vendored Manrope + Hanken Grotesk (latin subset, variable-
+  weight woff2 — one file each covers every weight the app uses) into
+  `public/fonts/`, served via a local `fonts.css` instead of
+  `fonts.googleapis.com`. **New finding while fixing this**: `src/index.css`
+  has 4 more `@import url(fonts.googleapis.com/...)` statements pulling in
+  9 additional families (Doto, JetBrains Mono, Outfit, Inter ×2 weight
+  ranges, Space Mono, Syne, Cormorant Garamond) for the various visual
+  themes — same offline-fallback problem, larger scope (wide variable-weight
+  ranges like `100..900`, some non-variable requiring per-weight files).
+  Not fixed in this pass; tracked as a follow-up below.
+
+- [ ] **[LOW]** **`src/index.css:1-4` — 9 more Google Fonts families loaded
+  the same unpinned way, found while fixing the item above.** Same offline-
+  install fallback risk as the now-fixed `index.html` link, but a bigger
+  job: `Doto:wght@100..900`, `JetBrains+Mono:ital,wght@0,100..800;1,100..800`,
+  `Outfit:wght@100..900`, `Inter:wght@400;500;600;700;800` +
+  `Inter:wght@100;200;300`, `Space+Mono:wght@400;700`,
+  `Syne:wght@700;800`, `Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400;1,600`
+  — used across the theme CSS files (`dot-matrix.css`, `dreamplayer.css`,
+  `minimalist.css`, `origami.css`, `sterling.css`, `brutalist.css`). Check
+  per-family whether Google serves a single variable woff2 (like Manrope/
+  Hanken Grotesk did) before assuming this needs per-weight files.
 
 ### 8.2 Security (verified live)
 
-- [ ] **[SEC/MED]** **MPD control port is open to the whole LAN.**
-  `install.sh:382` sets `bind_to_address "any"`; the VM listens on `*:6600`
-  with no MPD password. Any device on the LAN can control playback, browse
-  the library, and add arbitrary stream URLs — completely bypassing the
-  app's bearer-token auth. Nothing off-box needs MPD (upmpdcli connects to
-  `127.0.0.1`, the server and kiosk are local) — bind it to `127.0.0.1`.
+- [x] **[SEC/MED]** ~~MPD control port open to the whole LAN~~ — **fixed
+  2026-07-02**: `bind_to_address` changed from `"any"` to `"127.0.0.1"` —
+  nothing off-box ever needed it (upmpdcli connects to `127.0.0.1`, the
+  server and kiosk are local).
 
-- [ ] **[SEC/MED]** **librespot runs as root.** The raspotify unit on the VM
-  (`/usr/lib/systemd/system/raspotify.service`) has `DynamicUser=no` and no
-  `User=` directive — `ps` confirms `root librespot`, with its zeroconf
-  control port `*:38431` open to the LAN. Stock raspotify runs unprivileged.
-  Add a drop-in with `User=raspotify` + `SupplementaryGroups=audio` (the
-  existing mlock/affinity drop-ins keep working). While fixing it, verify
-  the audio path: as root, the ALSA→PipeWire `default` device has no user
-  PipeWire socket (`/run/user/0` doesn't exist), so Spotify playback may
-  currently work only by accident.
+- [x] **[SEC/MED]** ~~librespot runs as root~~ — **fixed 2026-07-02**: added
+  `/etc/systemd/system/raspotify.service.d/10-resonance-run-as-user.conf`
+  (`User=$TARGET_USER` + `XDG_RUNTIME_DIR`/`PIPEWIRE_REMOTE`, matching MPD's
+  existing drop-in pattern) — also fixes the audio-path concern noted here
+  (root had no PipeWire session to reach).
 
-- [ ] **[SEC/LOW]** `cupsd` is running and listening on `0.0.0.0:631` — a
-  print server on a HiFi appliance is pure attack surface; remove or disable
-  cups in `install.sh`.
+- [x] **[SEC/LOW]** ~~`cupsd` listening on `0.0.0.0:631`~~ — **fixed
+  2026-07-02**: `install.sh` now runs `systemctl disable --now
+  cups cups-browsed` after the display-stack install (disabled, not
+  apt-removed, to avoid cascading removal of packages that merely
+  recommend it).
 
 - [ ] **[LOW]** `unattended-upgrades` is left enabled — good for security
   patches, but a surprise `mpd`/`bluez`/kernel upgrade can restart audio
@@ -359,22 +360,20 @@ Everything below is what didn't.
 
 ### 8.3 Backend bugs found while auditing the VM
 
-- [ ] **[MED]** **SPA catch-all swallows unknown API routes.**
-  `server/index.js:79-85` — the comment says "non-API requests" but the
-  handler sends `dist/index.html` for **every** GET. Verified live:
-  `GET /api/health` returns `200 text/html` (the SPA shell). Consequences:
-  typo'd/removed API endpoints look like success to clients (feeds directly
-  into the §3 "`r.json()` without `r.ok`" bug), and there is no health
-  endpoint for `update.sh`'s missing post-restart check (§4). Fix:
-  `if (req.path.startsWith('/api')) return next();` before the `sendFile`,
-  plus add a real `GET /api/health`.
+- [x] **[MED]** ~~SPA catch-all swallows unknown API routes~~ — **fixed
+  2026-07-02**: `server/index.js`'s catch-all now returns a JSON 404 for
+  any unmatched `/api/*` GET instead of the SPA shell, and a real
+  `GET /api/health` (unauthenticated, `{status:'ok'}`) was added — also
+  wired into `scripts/update.sh`'s post-restart health check (§4), which
+  previously only polled `/`.
 
-- [ ] **[MED]** Extend `scripts/verify-install.sh` to catch what this audit
-  caught — it currently reports **"0 failed"** on a box where Tidal login,
-  Bluetooth source, and touch-wake are all broken. Add checks for:
-  `TIDAL_CLIENT_ID` present in `.env`, `kiosk-wake-monitor.sh` process alive
-  after boot, kiosk user in the `input` group, and the BT stack the server
-  code actually calls.
+- [x] **[MED]** ~~Extend `verify-install.sh`~~ — **fixed 2026-07-02**: added
+  checks for `TIDAL_CLIENT_ID` in `.env`, the kiosk user's `input` group
+  membership, `kiosk-wake-monitor.sh` running (informational — skipped
+  rather than failed when checked before first reboot), and the actual BT
+  stack the server now calls (`bluealsa` absent + `bluetoothctl`/
+  `bluetooth.service` present, replacing the old bluealsa-unit check that
+  would never have existed on a PipeWire-native install anyway).
 
 ### 8.4 Stale docs / instructions (live system contradicts them)
 
@@ -465,15 +464,15 @@ load is a healthy ~0.13%, zero clipped samples.
   and processing-load display are dead. Replace with the real commands
   (they all work — verified live over the same socket).
 
-- [ ] **[MED]** **raspotify customization silently failed — Spotify runs at
-  defaults.** `/etc/raspotify/conf` on the VM has **zero active lines**:
-  none of the `sed` patterns in install.sh:569-581 matched the template
-  shipped by the current raspotify package, so every customization no-op'd
-  — device name is "Librespot" (not "Resonance Connect"), bitrate 160 kbps
-  (not the intended 320), no explicit device. Replace the fragile
-  comment-toggling seds with an appended, clearly-marked managed block
-  (`LIBRESPOT_NAME=… LIBRESPOT_BITRATE=320 LIBRESPOT_DEVICE=…`), which also
-  survives raspotify template changes.
+- [x] **[MED]** ~~raspotify customization silently failed~~ — **fixed
+  2026-07-02**: replaced the sed-based comment-toggling with an appended,
+  clearly-marked `# --- Resonance HiFi managed block ---` (stripped and
+  re-appended on every install for idempotency) setting
+  `LIBRESPOT_NAME/BITRATE/INITIAL_VOLUME/BACKEND/DEVICE` — since
+  `/etc/raspotify/conf` is a systemd `EnvironmentFile` (last occurrence of a
+  duplicate key wins), an appended block always takes effect regardless of
+  what the shipped template's own commented defaults look like, so it
+  survives future raspotify template changes.
 
 ### 9.2 Improvements — communication & quality
 
@@ -503,16 +502,13 @@ load is a healthy ~0.13%, zero clipped samples.
   happens for rates the DAC lacks — it should be
   `resampler { plugin "soxr" quality "very high" }`, not MPD's default.
 
-- [ ] **[MED]** **Passthrough daemons can't reach the user's PipeWire
-  session.** shairport-sync runs as `User=shairport-sync` (verified) and
-  librespot as root (§8.2); both output to ALSA "default" → the PipeWire
-  ALSA plugin, which needs the session socket under `/run/user/1000`
-  (mode 700, owner pi) — unreachable from those users, so AirPlay and
-  Spotify would stay silent even after the §9.1 bridge fix. MPD already
-  solved this exact problem with the run-as-pi drop-in
-  (install.sh:402-413). Apply the same pattern to `shairport-sync` and
-  `raspotify` (`User=pi` + `XDG_RUNTIME_DIR` + `PIPEWIRE_REMOTE`) — this
-  also resolves the librespot-as-root security finding in §8.2.
+- [x] **[MED]** ~~Passthrough daemons can't reach the user's PipeWire
+  session~~ — **fixed 2026-07-02**: added
+  `raspotify.service.d/10-resonance-run-as-user.conf` and
+  `shairport-sync.service.d/10-resonance-run-as-user.conf`
+  (`User=$TARGET_USER` + `XDG_RUNTIME_DIR`/`PIPEWIRE_REMOTE`), the same
+  pattern MPD already used — also resolves the librespot-as-root finding
+  in §8.2.
 
 - [ ] **[LOW]** Add a CamillaDSP `Dither` filter when the playback format is
   16-bit (this VM's HDA is S16_LE; some budget DACs too) — the current

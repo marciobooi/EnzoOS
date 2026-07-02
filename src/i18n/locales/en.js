@@ -83,6 +83,13 @@ export default {
       bodyUrl: 'Open this address on any phone or tablet on your network, or scan the QR code from the kiosk’s Remote card:',
       bodyNoUrl: 'From the kiosk, tap the Remote card to show a QR code and control playback from any phone or tablet on your network.',
     },
+    timezone: {
+      title: 'Set your timezone',
+      body: 'Keeps the kiosk clock and your listening history accurate.',
+      detected: 'Detected: {tz}',
+      applied: 'Timezone set',
+      failed: 'Could not set timezone — you can change it later over SSH with timedatectl.',
+    },
     done: {
       title: 'You’re all set',
       body: 'Tune the sound any time in Settings — EQ, room correction, balance, bit-perfect and more. Enjoy the music.',
