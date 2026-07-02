@@ -43,12 +43,16 @@
     }
     #path5342 { animation-name: tape-pack-empty; }
     #path5344 { animation-name: tape-pack-fill; }
+    /* "Empty" = pack edge meets the static gray reel disc (r=55.09) drawn
+       over the packs — scaling further down only hides tape behind it and
+       made a reel look bare with half the song left. 0.659 = 55.09/83.656,
+       0.488 = 55.09/112.97. Keep in sync with TAPE_PACKS in PlayerDisplay. */
     @keyframes tape-pack-empty {
       from { transform: scale(1); }
-      to   { transform: scale(0.359); }
+      to   { transform: scale(0.659); }
     }
     @keyframes tape-pack-fill {
-      from { transform: scale(0.266); }
+      from { transform: scale(0.488); }
       to   { transform: scale(1); }
     }
 

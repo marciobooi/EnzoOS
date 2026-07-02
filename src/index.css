@@ -358,6 +358,10 @@ div[data-theme="ruby"] *::selection {
   height: 100%;
   object-fit: fill;
   filter: none;
+  /* <object> swallows clicks into its embedded document — let them fall
+     through to the album-column click handler (album info / menu) like the
+     other themes' <img> art. Scripting via contentDocument is unaffected. */
+  pointer-events: none;
 }
 
 .details-column {

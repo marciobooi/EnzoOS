@@ -9,12 +9,14 @@ import { toVolumeDb, sanitizeTrackName } from '../lib/format';
 // tape its pack currently holds — an empty hub does one revolution in ~1.45s
 // and slows as the pack grows. `outer` and the from/to scales mirror the pack
 // shapes in cassette-audio.svg and their tape-transfer scale() keyframes, so
-// the cog speed always matches the pack radius drawn behind it.
+// the cog speed always matches the pack radius drawn behind it. The "empty"
+// endpoints land the pack edge on the static gray reel disc (r≈55.09), which
+// is drawn over the packs — shrinking further just hides tape behind it.
 const TAPE_HUB_RADIUS = 30;            // cog hub radius in SVG units (≈11mm real)
 const TAPE_HUB_SECONDS_PER_REV = 1.45; // real-deck period at empty-hub radius
 const TAPE_PACKS = {
-  'reel-left':  { outer: 83.656, from: 1,     to: 0.359 }, // supply pack empties
-  'reel-right': { outer: 112.97, from: 0.266, to: 1 },     // take-up pack fills
+  'reel-left':  { outer: 83.656, from: 1,     to: 0.659 }, // supply pack empties
+  'reel-right': { outer: 112.97, from: 0.488, to: 1 },     // take-up pack fills
 };
 
 const PlayerDisplay = React.memo(function PlayerDisplay({
@@ -69,11 +71,53 @@ const PlayerDisplay = React.memo(function PlayerDisplay({
   const cassetteTrackKeyRef = useRef(null);
   const trackPositionRef = useRef(0);
   const tapeTickRef = useRef({ pos: 0, t: 0 });
+  const reelAnimsRef = useRef(null);
 
   const applyCassettePlaybackState = useCallback(() => {
     const svgRoot = cassetteObjRef.current?.contentDocument?.documentElement;
     if (svgRoot) svgRoot.classList.toggle('paused', !isPlaying);
+    // The cogs are WAAPI-driven, so the SVG's .paused CSS rule can't reach them.
+    const anims = reelAnimsRef.current;
+    if (anims) Object.values(anims).forEach(anim => (isPlaying ? anim.play() : anim.pause()));
   }, [isPlaying]);
+
+  // ω = v/r — keep the visible tape surface speed constant: each cog's
+  // playbackRate follows the inverse of its pack's current radius, so the
+  // take-up reel starts fast and slows as it fills while the supply reel
+  // speeds up as it empties, like a real deck.
+  const updateCassetteReelSpeeds = useCallback(() => {
+    const anims = reelAnimsRef.current;
+    if (!anims) return;
+    const durationMs = trackDuration > 0 ? trackDuration : 180000;
+    const progress = Math.min(Math.max(trackPositionRef.current / durationMs, 0), 1);
+    Object.entries(TAPE_PACKS).forEach(([id, pack]) => {
+      const anim = anims[id];
+      if (!anim) return;
+      const radius = pack.outer * (pack.from + (pack.to - pack.from) * progress);
+      anim.playbackRate = TAPE_HUB_RADIUS / radius;
+    });
+  }, [trackDuration]);
+
+  const initCassetteReels = useCallback(() => {
+    const svgDoc = cassetteObjRef.current?.contentDocument;
+    if (!svgDoc) return;
+    const anims = {};
+    Object.keys(TAPE_PACKS).forEach(id => {
+      const el = svgDoc.getElementById(id);
+      if (!el) return;
+      // Replace the SVG's fixed-speed CSS spin with a WAAPI animation:
+      // changing a WAAPI playbackRate preserves the current rotation angle,
+      // so per-second speed updates never make the cog jump.
+      el.getAnimations().forEach(anim => anim.cancel());
+      el.style.animation = 'none';
+      anims[id] = el.animate(
+        [{ transform: 'rotate(0deg)' }, { transform: 'rotate(360deg)' }],
+        { duration: TAPE_HUB_SECONDS_PER_REV * 1000, iterations: Infinity }
+      );
+    });
+    reelAnimsRef.current = anims;
+    updateCassetteReelSpeeds();
+  }, [updateCassetteReelSpeeds]);
 
   const syncCassetteTapeTransfer = useCallback(() => {
     const svgDoc = cassetteObjRef.current?.contentDocument;
@@ -96,9 +140,10 @@ const PlayerDisplay = React.memo(function PlayerDisplay({
   }, [trackDuration]);
 
   const initCassetteSvg = useCallback(() => {
+    initCassetteReels();
     applyCassettePlaybackState();
     syncCassetteTapeTransfer();
-  }, [applyCassettePlaybackState, syncCassetteTapeTransfer]);
+  }, [initCassetteReels, applyCassettePlaybackState, syncCassetteTapeTransfer]);
 
   useEffect(() => {
     if (activeTheme === 'cassette') applyCassettePlaybackState();
@@ -123,8 +168,9 @@ const PlayerDisplay = React.memo(function PlayerDisplay({
     const expected = last.pos + (isPlaying ? now - last.t : 0);
     tapeTickRef.current = { pos: trackPosition, t: now };
     if (activeTheme !== 'cassette') return;
+    updateCassetteReelSpeeds();
     if (Math.abs(trackPosition - expected) > 2000) syncCassetteTapeTransfer();
-  }, [trackPosition, isPlaying, activeTheme, syncCassetteTapeTransfer]);
+  }, [trackPosition, isPlaying, activeTheme, syncCassetteTapeTransfer, updateCassetteReelSpeeds]);
 
   useEffect(() => {
     function handleClickOutside(event) {
