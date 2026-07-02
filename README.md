@@ -104,7 +104,9 @@ Resonance HiFi is an open-source, self-hosted audio streaming platform for Raspb
 - **ReplayGain** — set MPD ReplayGain mode (off / track / album / auto) from Settings; gain applied per-track to normalise loudness across sources
 - **L/R channel balance** — stereo balance slider in Settings; adjusts left and right channel gain offset in real time via CamillaDSP without touching the master volume
 - **Phase inversion** — per-channel phase inversion toggle in Settings; applies a `Gain` filter with `inverted: true` in CamillaDSP for correcting out-of-phase speaker wiring
-- **Crossfade** — configurable crossfade duration (0–10 s) between MPD tracks, set from Settings
+- **Crossfade** — configurable crossfade duration (0–60 s) between MPD tracks, set from Settings
+- **Gapless Playback** — a distinct toggle from Crossfade: forces crossfade to 0 and enables MPD's MixRamp (`mixrampdb`/`mixrampdelay`) so albums whose files carry MixRamp volume-ramp tags mix seamlessly, while every other track still gets a true zero-gap cut
+- **Smart auto-playlists** — "Most Played" (ranked from local play history) and "Recently Added" (ranked by file mtime) mixes, generated entirely from local data with no external service
 
 ### System & Connectivity
 - **Wi-Fi from the UI** — scan for nearby networks, connect with a password, and view signal strength; all via `nmcli` from the Settings panel (requires `network-manager`)
@@ -359,7 +361,7 @@ On every startup, `detectDac()` scans `/proc/asound/card*/stream*` and returns:
 
 | Table | Contents |
 |-------|----------|
-| `settings` | Key-value store: theme, EQ bands, volume, active source, pure direct, replaygain, crossfade, balance, phase, remote access credentials, calibration profile |
+| `settings` | Key-value store: theme, EQ bands, volume, active source, pure direct, replaygain, crossfade, gapless, balance, phase, remote access credentials, calibration profile |
 | `favorite_radios` | Radio stations saved from the radio scanner (name, URL, favicon, country, tags) |
 | `metadata_cache` | Aggregated album metadata cache (album art, biography, credits) keyed by artist+title, 30-day TTL — see *Album Metadata* |
 | `play_history` | Last 50 played tracks across all sources (source, title, artist, album, file path, cover URL, timestamp) |
@@ -385,11 +387,16 @@ On every startup, `detectDac()` scans `/proc/asound/card*/stream*` and returns:
 | `POST` | `/api/player/dsp-calibration` | Save calibration answers and regenerate CamillaDSP config |
 | `POST` | `/api/player/airplay/start` | Start shairport-sync |
 | `POST` | `/api/player/upnp/start` | Start upmpdcli |
-| `POST` | `/api/player/bluetooth/start` | Start BlueALSA |
+| `POST` | `/api/player/bluetooth/start` | Power on the Bluetooth adapter and make it discoverable/pairable (`bluetoothctl`) |
 | `GET` | `/api/player/queue/detailed` | Current MPD queue with full track metadata |
 | `DELETE` | `/api/player/queue/:pos` | Remove a single track from the queue by position |
+| `POST` | `/api/player/queue/add-many` | Add multiple local files to the queue in one call `{ paths: [...], play: bool }` — used by Smart Playlists |
+| `GET` | `/api/player/library/smart/most-played` | Smart playlist: local tracks ranked by play count from `play_history` |
+| `GET` | `/api/player/library/smart/recently-added` | Smart playlist: local tracks ranked by file mtime |
 | `POST` | `/api/player/replaygain` | Set MPD ReplayGain mode `{ mode: "off"|"track"|"album"|"auto" }` |
-| `POST` | `/api/player/crossfade` | Set MPD crossfade duration `{ seconds: 0–10 }` |
+| `POST` | `/api/player/crossfade` | Set MPD crossfade duration `{ seconds: 0–60 }` |
+| `GET` | `/api/player/gapless` | Current Gapless Playback state `{ enabled }` (derived from `mpc mixrampdelay`) |
+| `POST` | `/api/player/gapless` | Toggle Gapless Playback `{ enabled: bool }` — forces crossfade to 0 and sets MixRamp |
 | `POST` | `/api/player/balance` | Set L/R balance via CamillaDSP gain `{ balance: -1.0–1.0 }` |
 | `POST` | `/api/player/phase` | Set per-channel phase inversion `{ left: bool, right: bool }` |
 | `GET` | `/api/player/bitperfect` | Current bit-perfect mode `{ enabled }` |
@@ -579,7 +586,9 @@ Tapping the now-playing cover inside the remote opens the [album metadata](#albu
 | Audio processing mode | Settings → **Acoustic** → Calibration Wizard → first screen |
 | Pure Direct | Calibration Wizard → **Pure Direct** option |
 | ReplayGain | Settings → **Playback** → ReplayGain mode |
-| Crossfade | Settings → **Playback** → Crossfade duration (0–10 s) |
+| Crossfade | Settings → **Playback** → Crossfade duration (0–60 s) |
+| Gapless Playback | Settings → **Playback** → Gapless Playback toggle |
+| Smart Playlists | Universal Search → **Your Playlists** row → "Most Played" / "Recently Added" |
 | L/R Balance | Settings → **DSP** → Balance slider |
 | Phase Inversion | Settings → **DSP** → Phase L / Phase R toggles |
 | Bit-Perfect | Settings → **DSP** → Bit-Perfect (rate-following ↔ fixed 48 kHz) |

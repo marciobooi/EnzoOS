@@ -43,6 +43,12 @@ const execPromise = promisify(exec);
 const execFilePromise = promisify(execFile);
 const router = express.Router();
 
+// MixRamp defaults used by the Gapless Playback toggle (see the /gapless
+// routes below) — sane, widely-used values that only affect tracks carrying
+// embedded MixRamp volume-ramp tags.
+const MIXRAMP_DB_ENABLED = '-17';
+const MIXRAMP_DELAY_ENABLED = '0';
+
 // POST /api/player/play -> Play local media
 router.post('/play', async (req, res) => {
   try {
@@ -1358,19 +1364,28 @@ export async function applyPersistedMpdSettings() {
   if (!reachable) { console.warn('[MPD] Not reachable at startup — skipping persisted-setting restore.'); return; }
 
   try {
-    const [xfVal, rgVal] = await Promise.all([
+    const [xfVal, rgVal, glVal] = await Promise.all([
       getSetting('crossfade_seconds').catch(() => null),
       getSetting('replaygain_mode').catch(() => null),
+      getSetting('gapless_enabled').catch(() => null),
     ]);
+    const gapless = glVal === '1';
+    // Gapless re-applies crossfade itself (it owns crossfade=0 while active),
+    // so only apply the persisted crossfade_seconds value when gapless isn't on.
     const secs = parseInt(xfVal ?? '', 10);
-    if (Number.isFinite(secs) && secs >= 0) {
+    if (!gapless && Number.isFinite(secs) && secs >= 0) {
       await execFilePromise('mpc', ['crossfade', String(secs)]).catch(() => {});
     }
     if (rgVal && ['off', 'track', 'album', 'auto'].includes(rgVal)) {
       await execFilePromise('mpc', ['replaygain', rgVal]).catch(() => {});
     }
-    if ((Number.isFinite(secs) && secs > 0) || (rgVal && rgVal !== 'off')) {
-      console.log(`[MPD] Restored persisted settings — crossfade: ${Number.isFinite(secs) ? secs + 's' : 'n/a'}, replaygain: ${rgVal || 'n/a'}`);
+    if (gapless) {
+      await execFilePromise('mpc', ['crossfade', '0']).catch(() => {});
+      await execFilePromise('mpc', ['mixrampdb', MIXRAMP_DB_ENABLED]).catch(() => {});
+      await execFilePromise('mpc', ['mixrampdelay', MIXRAMP_DELAY_ENABLED]).catch(() => {});
+    }
+    if ((Number.isFinite(secs) && secs > 0) || (rgVal && rgVal !== 'off') || gapless) {
+      console.log(`[MPD] Restored persisted settings — crossfade: ${Number.isFinite(secs) ? secs + 's' : 'n/a'}, replaygain: ${rgVal || 'n/a'}, gapless: ${gapless}`);
     }
   } catch (err) {
     console.warn('[MPD] Failed to restore persisted settings:', err.message);
@@ -1973,6 +1988,45 @@ router.post('/crossfade', async (req, res) => {
     await execFilePromise('mpc', ['crossfade', String(secs)]);
     await setSetting('crossfade_seconds', secs);
     res.json({ success: true, seconds: secs });
+  } catch (err) { sendError(res, err); }
+});
+
+// ── Gapless Playback (#7 — TODOS/TODO.md §7) ──────────────────────────────────
+// True zero-gap gapless is its own MPD mode, NOT just "crossfade set to 0":
+// crossfade 0 alone still lets any per-track MixRamp tags cause a fade, and
+// gives no guarantee about silence between tracks. Enabling this toggle
+// forces crossfade to 0 (verified via `mpc crossfade`) AND turns on MixRamp
+// (`mpc mixrampdb`/`mixrampdelay`, verified live against this project's MPD
+// 0.23 build — `mpc mixrampdb <n>`/`mixrampdelay <n>` both work as plain mpc
+// subcommands here) so albums that DO carry MixRamp volume-ramp tags (rare —
+// added by tools like `mixramp-tag`) get a true seamless mix instead of a
+// hard cut; tracks without those tags are unaffected by mixrampdb/delay and
+// simply get the zero-gap cut from crossfade 0. Disabling it turns MixRamp
+// back off (`mixrampdelay -1`, which per MPD's own docs "restores the
+// previous value of crossfade") without touching the user's separate
+// Crossfade seconds setting.
+router.get('/gapless', async (req, res) => {
+  try {
+    const { stdout } = await execPromise('mpc mixrampdelay');
+    const match = stdout.match(/mixrampdelay:\s*(-?[\d.]+)/i);
+    const delay = match ? parseFloat(match[1]) : -1;
+    res.json({ enabled: delay >= 0 });
+  } catch { res.json({ enabled: false }); }
+});
+
+router.post('/gapless', async (req, res) => {
+  const enabled = !!req.body.enabled;
+  try {
+    if (enabled) {
+      await execFilePromise('mpc', ['crossfade', '0']);
+      await execFilePromise('mpc', ['mixrampdb', MIXRAMP_DB_ENABLED]);
+      await execFilePromise('mpc', ['mixrampdelay', MIXRAMP_DELAY_ENABLED]);
+      await setSetting('crossfade_seconds', 0);
+    } else {
+      await execFilePromise('mpc', ['mixrampdelay', '-1']);
+    }
+    await setSetting('gapless_enabled', enabled ? '1' : '0');
+    res.json({ success: true, enabled });
   } catch (err) { sendError(res, err); }
 });
 

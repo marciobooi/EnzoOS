@@ -54,6 +54,19 @@ export const dspApi = {
     return handleJson(r);
   },
 
+  // ── Gapless Playback ─────────────────────────────────────────────────────────
+  async getGapless() {
+    const r = await fetch('/api/player/gapless');
+    return handleJson(r);
+  },
+  async setGapless(enabled) {
+    const r = await fetch('/api/player/gapless', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ enabled }),
+    });
+    return handleJson(r);
+  },
+
   // ── Balance ─────────────────────────────────────────────────────────────────
   async getBalance() {
     const r = await fetch('/api/player/balance');

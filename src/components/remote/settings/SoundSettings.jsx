@@ -1,5 +1,5 @@
 import { useContext, useState, useRef, useEffect } from 'react';
-import { Sliders, Cpu, Timer, Scale, RefreshCw, FlipHorizontal, RotateCcw, Disc3, SlidersHorizontal } from 'lucide-react';
+import { Sliders, Cpu, Timer, Scale, RefreshCw, FlipHorizontal, RotateCcw, Disc3, SlidersHorizontal, Merge } from 'lucide-react';
 import { toast } from '../../../lib/toast';
 import { reportError } from '../../../lib/errors';
 import { Tk, Row, Section, Sheet } from '../shared';
@@ -19,6 +19,7 @@ function AdvancedAudioSettings() {
   const [replayGain, setReplayGain]   = useState('off');
   const [crossfade, setCrossfade]     = useState(0);
   const [showCrossfade, setShowCrossfade] = useState(false);
+  const [gapless, setGapless]         = useState(false);
   const [balance, setBalance]         = useState(0);
   const [showBalance, setShowBalance] = useState(false);
   const [phaseLeft, setPhaseLeft]     = useState(false);
@@ -32,6 +33,7 @@ function AdvancedAudioSettings() {
   useEffect(() => {
     api.getReplayGain().then(d => setReplayGain(d.mode || 'off')).catch(() => {});
     api.getCrossfade().then(d => setCrossfade(d.seconds || 0)).catch(() => {});
+    api.getGapless().then(d => setGapless(!!d.enabled)).catch(() => {});
     api.getBalance().then(d => setBalance(d.balance || 0)).catch(() => {});
     api.getPhase().then(d => { setPhaseLeft(!!d.left); setPhaseRight(!!d.right); }).catch(() => {});
     api.getBitPerfect().then(d => setBitPerfect(d.enabled !== false)).catch(() => {});
@@ -47,8 +49,24 @@ function AdvancedAudioSettings() {
 
   const handleCrossfadeChange = async (secs) => {
     setCrossfade(secs);
-    try { await api.setCrossfade(secs); }
-    catch (e) { reportError(e.message); }
+    try {
+      await api.setCrossfade(secs);
+      // A nonzero crossfade contradicts Gapless (which owns crossfade=0
+      // while active) — picking one turns the other off to keep both
+      // settings honest about what's actually happening in MPD.
+      if (secs > 0 && gapless) { setGapless(false); await api.setGapless(false); }
+    } catch (e) { reportError(e.message); }
+  };
+
+  const handleGaplessToggle = async () => {
+    const next = !gapless;
+    setGapless(next);
+    try {
+      await api.setGapless(next);
+      // Enabling gapless forces crossfade to 0 server-side — reflect that.
+      if (next) setCrossfade(0);
+      toast.success(next ? 'Gapless playback on' : 'Gapless playback off');
+    } catch (e) { setGapless(!next); reportError(e.message); }
   };
 
   const handleBalanceChange = (v) => {
@@ -124,6 +142,11 @@ function AdvancedAudioSettings() {
             ))}
           </div>
         )}
+        <Row label="Gapless Playback"
+          icon={<Merge className="h-4 w-4" style={{ color: gapless ? C.champagne : C.text4 }} />}
+          value={gapless ? t('common.on') : t('common.off')}
+          chevron={false}
+          onPress={handleGaplessToggle} />
         <Row label={`Balance · ${balance > 0 ? `R +${balance}` : balance < 0 ? `L +${Math.abs(balance)}` : t('settings.centre')}`}
           icon={<FlipHorizontal className="h-4 w-4" style={{ color: Math.abs(balance) > 0 ? C.champagne : C.text4 }} />}
           value={`${balance > 0 ? '+' : ''}${balance} dB`}
