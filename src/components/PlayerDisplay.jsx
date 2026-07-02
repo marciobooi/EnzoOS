@@ -94,7 +94,9 @@ const PlayerDisplay = React.memo(function PlayerDisplay({
       const anim = anims[id];
       if (!anim) return;
       const radius = pack.outer * (pack.from + (pack.to - pack.from) * progress);
-      anim.playbackRate = TAPE_HUB_RADIUS / radius;
+      const rate = TAPE_HUB_RADIUS / radius;
+      // playbackRate throws on non-finite values — skip rather than crash.
+      if (Number.isFinite(rate)) anim.playbackRate = rate;
     });
   }, [trackDuration]);
 
@@ -162,14 +164,17 @@ const PlayerDisplay = React.memo(function PlayerDisplay({
   // jumps somewhere the running animation can't have reached on its own
   // (seek, server re-sync correction, resume after a long pause).
   useEffect(() => {
-    trackPositionRef.current = trackPosition;
+    // Track transitions can briefly report an undefined/NaN position — keep
+    // the ref finite so the tape/reel math downstream never sees NaN.
+    const position = Number.isFinite(trackPosition) ? trackPosition : 0;
+    trackPositionRef.current = position;
     const now = performance.now();
     const last = tapeTickRef.current;
     const expected = last.pos + (isPlaying ? now - last.t : 0);
-    tapeTickRef.current = { pos: trackPosition, t: now };
+    tapeTickRef.current = { pos: position, t: now };
     if (activeTheme !== 'cassette') return;
     updateCassetteReelSpeeds();
-    if (Math.abs(trackPosition - expected) > 2000) syncCassetteTapeTransfer();
+    if (Math.abs(position - expected) > 2000) syncCassetteTapeTransfer();
   }, [trackPosition, isPlaying, activeTheme, syncCassetteTapeTransfer, updateCassetteReelSpeeds]);
 
   useEffect(() => {
