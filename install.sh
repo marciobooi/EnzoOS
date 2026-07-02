@@ -16,8 +16,13 @@ NQPTP_VERSION="1.2.8"
 CAMILLADSP_VERSION="4.1.3"
 # ─────────────────────────────────────────────────────────────────────────────
 
-# Exit immediately if a command exits with a non-zero status
+# Exit immediately if a command exits with a non-zero status. pipefail makes
+# that apply inside pipelines too (several steps below pipe `curl ... | gpg ...`
+# / `curl ... | sh` — without it, a failing first stage can be masked by a
+# successful second stage, leaving an empty/broken keyring or config with no
+# error surfaced).
 set -e
+set -o pipefail
 
 # Color codes for logging
 RED='\033[0;31m'
@@ -59,9 +64,12 @@ apt_install() {
 detect_dac_device() {
   local dev="hw:0,0" card=""
   if [ -f /proc/asound/cards ]; then
-    card=$(grep -iE "USB" /proc/asound/cards | grep -oE '\[[^]]+\]' | head -n1 | tr -d '[] ')
+    # "No match" (no USB card / nothing left after excluding hdmi|vc4|loopback)
+    # is an expected, common outcome here, not an error — || true keeps it
+    # from tripping `set -o pipefail` and aborting the whole install.
+    card=$( { grep -iE "USB" /proc/asound/cards | grep -oE '\[[^]]+\]' | head -n1 | tr -d '[] '; } || true)
     if [ -z "$card" ]; then
-      card=$(grep -ivE "hdmi|vc4|loopback" /proc/asound/cards | grep -oE '\[[^]]+\]' | head -n1 | tr -d '[] ')
+      card=$( { grep -ivE "hdmi|vc4|loopback" /proc/asound/cards | grep -oE '\[[^]]+\]' | head -n1 | tr -d '[] '; } || true)
     fi
     [ -n "$card" ] && dev="hw:CARD=${card},DEV=0"
   fi
@@ -123,13 +131,21 @@ apt_install install -y ca-certificates curl gnupg git build-essential
 # 5. Clone or Update repository
 if [ ! -d "$PROJECT_DIR" ]; then
   echo -e "\n${GREEN}[3/7] Cloning EnzoOS repository into $PROJECT_DIR...${NC}"
-  sudo -u $TARGET_USER git clone https://github.com/marciobooi/EnzoOS.git "$PROJECT_DIR"
+  sudo -u "$TARGET_USER" git clone https://github.com/marciobooi/EnzoOS.git "$PROJECT_DIR"
 else
   echo -e "\n${GREEN}[3/7] Updating existing EnzoOS repository in $PROJECT_DIR...${NC}"
   cd "$PROJECT_DIR"
-  sudo -u $TARGET_USER git fetch origin main
-  sudo -u $TARGET_USER git stash || true
-  sudo -u $TARGET_USER git reset --hard origin/main
+  sudo -u "$TARGET_USER" git fetch origin main
+  # Stash before the hard reset so a re-install never silently discards
+  # uncommitted local edits. Report whether anything was actually stashed —
+  # auto-popping here is NOT safe: it would apply on top of a different
+  # commit (origin/main, reset below) and could conflict mid-unattended-install.
+  STASH_OUTPUT="$(sudo -u "$TARGET_USER" git stash 2>&1)"
+  if echo "$STASH_OUTPUT" | grep -qv "No local changes to save"; then
+    echo -e "${YELLOW}Stashed local changes before reset: ${STASH_OUTPUT}${NC}"
+    echo -e "${YELLOW}Recover them after install with: cd $PROJECT_DIR && sudo -u $TARGET_USER git stash list${NC}"
+  fi
+  sudo -u "$TARGET_USER" git reset --hard origin/main
 fi
 
 # 6. Install Node.js (v20)
@@ -331,7 +347,7 @@ WPEOF
 mkdir -p "$USER_HOME/.config/wireplumber/wireplumber.conf.d"
 cp /etc/wireplumber/wireplumber.conf.d/51-resonance-default-sink.conf \
    "$USER_HOME/.config/wireplumber/wireplumber.conf.d/"
-chown -R $TARGET_USER:$TARGET_USER "$USER_HOME/.config/wireplumber"
+chown -R "$TARGET_USER:$TARGET_USER" "$USER_HOME/.config/wireplumber"
 
 # PipeWire-pulse TCP listener: lets system services (MPD, shairport) connect via
 # 127.0.0.1:4713 when they cannot access the user socket at /run/user/1000/pulse/native
@@ -345,14 +361,14 @@ pulse.properties = {
   ]
 }
 PWPEOF
-chown -R $TARGET_USER:$TARGET_USER "$USER_HOME/.config/pipewire"
+chown -R "$TARGET_USER:$TARGET_USER" "$USER_HOME/.config/pipewire"
 
 # Enable lingering so PipeWire user services survive before X session starts
-loginctl enable-linger $TARGET_USER 2>/dev/null || true
+loginctl enable-linger "$TARGET_USER" 2>/dev/null || true
 
 # Enable and start PipeWire user services for the kiosk user
-TARGET_UID=$(id -u $TARGET_USER)
-sudo -u $TARGET_USER XDG_RUNTIME_DIR=/run/user/$TARGET_UID \
+TARGET_UID=$(id -u "$TARGET_USER")
+sudo -u "$TARGET_USER" XDG_RUNTIME_DIR="/run/user/$TARGET_UID" \
   systemctl --user enable pipewire pipewire-pulse wireplumber 2>/dev/null || true
 
 echo -e "${GREEN}PipeWire configured: all sources → ResonanceInput → loopback → CamillaDSP.${NC}"
@@ -402,7 +418,7 @@ MPDEOF
 # MPD must run as TARGET_USER to access the PipeWire socket (/run/user/<uid>/pipewire-0).
 # Override the systemd service User and inject PipeWire environment variables.
 echo -e "${YELLOW}Configuring MPD to run as $TARGET_USER with PipeWire environment...${NC}"
-TARGET_UID=$(id -u $TARGET_USER)
+TARGET_UID=$(id -u "$TARGET_USER")
 mkdir -p /etc/systemd/system/mpd.service.d
 cat > /etc/systemd/system/mpd.service.d/run-as-user.conf <<MPDOVEOF
 [Service]
@@ -413,7 +429,7 @@ Environment="PIPEWIRE_REMOTE=/run/user/$TARGET_UID/pipewire-0"
 MPDOVEOF
 
 # Give TARGET_USER ownership of MPD state files
-chown -R $TARGET_USER:$TARGET_USER /var/lib/mpd 2>/dev/null || true
+chown -R "$TARGET_USER:$TARGET_USER" /var/lib/mpd 2>/dev/null || true
 
 # Enable and start MPD service
 echo -e "${YELLOW}Enabling and starting Media Player Daemon (MPD)...${NC}"
@@ -516,7 +532,7 @@ pipeline:
   - type: Mixer
     name: speaker_map
 EOF
-chown $TARGET_USER:$TARGET_USER "$PROJECT_DIR/camilladsp.yml"
+chown "$TARGET_USER:$TARGET_USER" "$PROJECT_DIR/camilladsp.yml"
 
 # Create CamillaDSP systemd service running in the background
 echo -e "${YELLOW}Configuring CamillaDSP systemd service...${NC}"
@@ -546,9 +562,12 @@ echo -e "${YELLOW}Installing Raspotify repository and precompiled Librespot daem
 # Install Raspotify repository and package (contains the precompiled /usr/bin/librespot binary)
 curl -sL https://dtcooper.github.io/raspotify/install.sh | sh
 
-# Assign hardware permissions to the target user
-echo -e "${YELLOW}Adding user '$TARGET_USER' to audio/video groups...${NC}"
-usermod -aG audio,video,dialout $TARGET_USER
+# Assign hardware permissions to the target user. `input` is required for
+# scripts/kiosk-wake-monitor.sh to read /dev/input/event* (root:input, mode
+# 660) — without it, touch/keyboard display-wake silently fails even once
+# the evtest invocation itself is fixed.
+echo -e "${YELLOW}Adding user '$TARGET_USER' to audio/video/input groups...${NC}"
+usermod -aG audio,video,dialout,input "$TARGET_USER"
 
 # Enable and start SSH service
 echo -e "${YELLOW}Configuring SSH daemon...${NC}"
@@ -727,7 +746,7 @@ chown root:root "/usr/local/bin/kiosk-wake-monitor.sh"
 echo -e "${YELLOW}Creating Chromium kiosk profile data directories...${NC}"
 mkdir -p "$USER_HOME/snap/chromium/common/kiosk-profile"
 mkdir -p "$USER_HOME/snap/chromium/common/kiosk-cache"
-chown -R $TARGET_USER:$TARGET_USER "$USER_HOME/snap/chromium/common/kiosk-profile" "$USER_HOME/snap/chromium/common/kiosk-cache"
+chown -R "$TARGET_USER:$TARGET_USER" "$USER_HOME/snap/chromium/common/kiosk-profile" "$USER_HOME/snap/chromium/common/kiosk-cache"
 
 # Make OTA update script executable
 chmod +x "$PROJECT_DIR/scripts/update.sh"
@@ -736,14 +755,14 @@ chmod +x "$PROJECT_DIR/scripts/update.sh"
 echo -e "${YELLOW}Deploying kiosk startup xinitrc config...${NC}"
 cp "$PROJECT_DIR/scripts/xinitrc" "$USER_HOME/.xinitrc"
 chmod +x "$USER_HOME/.xinitrc"
-chown $TARGET_USER:$TARGET_USER "$USER_HOME/.xinitrc"
+chown "$TARGET_USER:$TARGET_USER" "$USER_HOME/.xinitrc"
 
 # Deploy Openbox configuration to remove window decorations
 echo -e "${YELLOW}Deploying Openbox config to disable window decorations...${NC}"
 mkdir -p "$USER_HOME/.config/openbox"
 cp "$PROJECT_DIR/scripts/openbox_rc.xml" "$USER_HOME/.config/openbox/rc.xml"
-chown -R $TARGET_USER:$TARGET_USER "$USER_HOME/.config"
-chown -R $TARGET_USER:$TARGET_USER "$USER_HOME/.cache"
+chown -R "$TARGET_USER:$TARGET_USER" "$USER_HOME/.config"
+chown -R "$TARGET_USER:$TARGET_USER" "$USER_HOME/.cache"
 
 # Automatically trigger X server when logging in on TTY1 console
 AUTOSTART_X_BLOCK=$(cat <<'EOF'
@@ -766,7 +785,7 @@ PROFILE_FILE="$USER_HOME/.bashrc"
 if ! grep -q "Autostart X Server on TTY1 Boot" "$PROFILE_FILE"; then
   echo -e "${YELLOW}Injecting autostart loop into $PROFILE_FILE...${NC}"
   echo "$AUTOSTART_X_BLOCK" >> "$PROFILE_FILE"
-  chown $TARGET_USER:$TARGET_USER "$PROFILE_FILE"
+  chown "$TARGET_USER:$TARGET_USER" "$PROFILE_FILE"
 else
   echo -e "${YELLOW}Autostart loop already present in $PROFILE_FILE.${NC}"
 fi
@@ -927,7 +946,11 @@ else
     /tmp/upmpdcli-src/systemd/upmpdcli.service \
     > /etc/systemd/system/upmpdcli.service
   systemctl daemon-reload
-  touch /var/log/upmpdcli.log && chmod 666 /var/log/upmpdcli.log
+  # Owned by the upmpdcli service user (not world-writable — only that user
+  # needs to write; everyone else only needs read for log inspection).
+  touch /var/log/upmpdcli.log
+  chown upmpdcli:upmpdcli /var/log/upmpdcli.log
+  chmod 644 /var/log/upmpdcli.log
 
   echo -e "${GREEN}upmpdcli installed.${NC}"
 fi
@@ -1023,17 +1046,11 @@ fi
 # credentials, not a private secret. They live in .env (not application source)
 # so Tidal stays configurable and the code carries no credential literal.
 # Override TIDAL_CLIENT_ID / TIDAL_CLIENT_SECRET in the environment to use your own.
+# NOTE: written into .env below in step 9 (NOT appended here) — step 9 does
+# `rm -f .env` and rewrites it from scratch, which previously wiped out
+# whatever this block appended a few lines earlier on every fresh install.
 TIDAL_CLIENT_ID="${TIDAL_CLIENT_ID:-zU4XHVVkc2tDPo4t}"
 TIDAL_CLIENT_SECRET="${TIDAL_CLIENT_SECRET:-VJKhDFqJPqvsPVNBV6ukXTJmwlvbttP7wlMlrc72se4=}"
-if [ -f "$PROJECT_DIR/.env" ] && ! grep -q "TIDAL_CLIENT_ID" "$PROJECT_DIR/.env"; then
-  {
-    echo ''
-    echo '# Tidal device-flow client — PUBLIC community "TV" credentials (open-source tidalapi).'
-    echo '# Not a private secret; required by Tidal'"'"'s device flow. Override with your own if desired.'
-    echo "TIDAL_CLIENT_ID=${TIDAL_CLIENT_ID}"
-    echo "TIDAL_CLIENT_SECRET=${TIDAL_CLIENT_SECRET}"
-  } >> "$PROJECT_DIR/.env"
-fi
 echo -e "${GREEN}Tidal/Qobuz hi-res streaming enabled (plays through MPD → CamillaDSP).${NC}"
 
 # 9. Install Node modules, build code and register the systemd service
@@ -1046,44 +1063,28 @@ if [ -z "$LOCAL_IP" ]; then
 fi
 echo -e "  Detected Local IP: ${LOCAL_IP}"
 
-# Write .env and .env.example with collected Spotify credentials
-echo -e "${YELLOW}Writing environment configuration (.env / .env.example)...${NC}"
-rm -f "$PROJECT_DIR/.env" "$PROJECT_DIR/.env.example"
+# Write .env with collected Spotify + Tidal credentials.
+# .env.example is a static tracked template maintained in the repo, NOT
+# regenerated here — rewriting it on every install used to make install.sh
+# dirty its own git checkout (a re-run would then git-stash the installer's
+# own noise alongside any real local edits).
+echo -e "${YELLOW}Writing environment configuration (.env)...${NC}"
+rm -f "$PROJECT_DIR/.env"
 
 cat > "$PROJECT_DIR/.env" <<ENVEOF
 # Resonance HiFi — Auto-generated by install.sh on $(date)
 # Spotify uses Authorization Code + PKCE — no client secret is required.
 SPOTIFY_CLIENT_ID=${SPOTIFY_CLIENT_ID}
 PORT=5000
+
+# Tidal device-flow client — PUBLIC community "TV" credentials (open-source tidalapi).
+# Not a private secret; required by Tidal's device flow. Override with your own if desired.
+TIDAL_CLIENT_ID=${TIDAL_CLIENT_ID}
+TIDAL_CLIENT_SECRET=${TIDAL_CLIENT_SECRET}
 ENVEOF
-chown $TARGET_USER:$TARGET_USER "$PROJECT_DIR/.env"
+chown "$TARGET_USER:$TARGET_USER" "$PROJECT_DIR/.env"
 chmod 600 "$PROJECT_DIR/.env"
-
-cat > "$PROJECT_DIR/.env.example" <<EXEOF
-# Resonance HiFi — Environment Configuration
-# Copy this file to .env and fill in your values.
-
-# ─────────────────────────────────────────────
-# Spotify Developer App — Client ID only (Authorization Code + PKCE)
-# Create a free app at: https://developer.spotify.com/dashboard
-#
-# PKCE needs NO client secret — never put one here. A Client ID is public by
-# design (it appears in the browser's OAuth redirect).
-#
-# Register BOTH redirect URIs in the Spotify Dashboard:
-#   http://127.0.0.1:5000/auth/spotify/callback     ← kiosk (HTTP ok for localhost)
-#   https://resonance.local:5001/auth/spotify/callback  ← remote (HTTPS required)
-#
-# Remote users must visit https://resonance.local:5001/remote (accept the cert warning once).
-# ─────────────────────────────────────────────
-SPOTIFY_CLIENT_ID=your_spotify_client_id_here
-
-# Server port (default: 5000). HTTPS runs on HTTPS_PORT (default: 5001).
-PORT=5000
-HTTPS_PORT=5001
-EXEOF
-chown $TARGET_USER:$TARGET_USER "$PROJECT_DIR/.env.example"
-echo -e "${GREEN}.env and .env.example written.${NC}"
+echo -e "${GREEN}.env written.${NC}"
 
 # Generate self-signed TLS certificate for HTTPS remote access (port 5001)
 # Spotify requires HTTPS for any redirect URI that isn't 127.0.0.1/localhost.
@@ -1107,18 +1108,20 @@ SSLEOF
     -days 3650 -nodes \
     -config /tmp/resonance_ssl.cnf 2>/dev/null
   rm -f /tmp/resonance_ssl.cnf
-  chown $TARGET_USER:$TARGET_USER "$CERTS_DIR/cert.pem" "$CERTS_DIR/key.pem"
+  chown "$TARGET_USER:$TARGET_USER" "$CERTS_DIR/cert.pem" "$CERTS_DIR/key.pem"
   chmod 600 "$CERTS_DIR/key.pem"
   echo -e "${GREEN}TLS certificate generated: $CERTS_DIR/${NC}"
 else
   echo -e "${YELLOW}TLS certificate already exists — skipping generation.${NC}"
 fi
 
-# Build app under target user context (prevents folder permission bugs)
+# Build app under target user context (prevents folder permission bugs).
+# `yaml` is a normal package.json dependency (used by the CamillaDSP config
+# generator) — no separate install needed; a stray extra `npm install yaml`
+# here used to mutate package.json/package-lock.json at install time.
 cd "$PROJECT_DIR"
 echo -e "${YELLOW}Installing npm dependencies (running as $TARGET_USER)...${NC}"
-sudo -u $TARGET_USER npm install
-sudo -u $TARGET_USER npm install yaml
+sudo -u "$TARGET_USER" npm install
 
 echo -e "${YELLOW}Removing old build artifacts...${NC}"
 if [ -d "$PROJECT_DIR/dist" ]; then
@@ -1127,7 +1130,7 @@ if [ -d "$PROJECT_DIR/dist" ]; then
 fi
 
 echo -e "${YELLOW}Compiling production assets (running as $TARGET_USER)...${NC}"
-sudo -u $TARGET_USER npm run build
+sudo -u "$TARGET_USER" npm run build
 
 # Register the backend as a native systemd service (replaces PM2). Re-running
 # the installer over a PM2 install migrates it cleanly (setup-service.sh tears

@@ -1,3 +1,4 @@
+import os from 'os';
 import { getSetting, setSetting, dbReady } from './db.js';
 
 // ─── Minimal payload shape validation ─────────────────────────────────────────
@@ -213,7 +214,10 @@ async function setHardwareBrightness(brightness) {
     const { exec } = await import('child_process');
     const pct = Math.max(0, Math.min(100, Math.round(sanitized)));
     const script = `/usr/local/bin/kiosk-brightness.sh ${pct}`;
-    const x11Env = { ...process.env, DISPLAY: ':0', XAUTHORITY: process.env.XAUTHORITY || '/home/pi/.Xauthority' };
+    // os.homedir() resolves to whichever user resonance-api.service actually
+    // runs as (systemd sets User=$TARGET_USER at install time) — hardcoding
+    // /home/pi here silently broke brightness control on any non-"pi" install.
+    const x11Env = { ...process.env, DISPLAY: ':0', XAUTHORITY: process.env.XAUTHORITY || `${os.homedir()}/.Xauthority` };
     exec(script, { env: x11Env }, (err, stdout) => {
       if (!err) { console.log(`[Brightness] Set to ${pct}%:`, stdout.trim()); return; }
       exec(`sudo ${script}`, { env: x11Env }, (sudoErr, sudoStdout) => {

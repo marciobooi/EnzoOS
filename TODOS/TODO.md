@@ -146,83 +146,64 @@ secondary path · **[LOW]** cosmetic/hygiene · **[SEC]** security.
 
 ## 4. Deployment / install / systemd
 
-- [ ] **[HIGH]** `scripts/kiosk-wake-monitor.sh` — invokes
-  `evtest /dev/input/event*` with a shell glob expanding to multiple paths,
-  but `evtest` only accepts a single device argument. This almost certainly
-  fails immediately, silently breaking touch/keyboard display-wake
-  entirely. **Confirmed live (2026-07-02):** on the VM the monitor process
-  is not running (`pgrep` finds `unclutter` and Chromium from `.xinitrc`,
-  but no `kiosk-wake-monitor.sh` and no `evtest`) — it dies at startup
-  exactly as described.
+- [x] **[HIGH]** ~~`kiosk-wake-monitor.sh` evtest glob bug~~ — **fixed
+  2026-07-02**: rewrote to spawn one `evtest` per `/dev/input/event*`
+  device, all writing into a shared FIFO (opened read+write on fd 3 so it
+  survives individual writers exiting), with a single throttled read-loop
+  consuming it.
 
-- [ ] **[HIGH]** `install.sh` never adds `$TARGET_USER` to the `input`
-  group (`usermod -aG audio,video,dialout` — no `input`). Since
-  `kiosk-wake-monitor.sh` runs unprivileged as that user via `.xinitrc`, it
-  can't read `/dev/input/event*` (root:input, mode 660) even if the glob
-  issue above were fixed — display-wake-on-touch is broken from two
-  independent angles. **Confirmed live (2026-07-02):** `id pi` on the VM
-  shows no `input` group, and `/dev/input/event*` are `root:input 660`.
+- [x] **[HIGH]** ~~`install.sh` never adds `$TARGET_USER` to `input`~~ —
+  **fixed 2026-07-02**: `usermod -aG audio,video,dialout,input`.
 
-- [ ] **[HIGH]** `server/event-service.js:173` — the `XAUTHORITY` fallback
-  used for brightness control is hardcoded to `/home/pi/.Xauthority`, even
-  though `install.sh` supports an arbitrary `$TARGET_USER`/`$USER_HOME`.
-  Brightness control silently fails on any non-`pi` install.
+- [x] **[HIGH]** ~~`XAUTHORITY` hardcoded to `/home/pi/.Xauthority`~~ —
+  **fixed 2026-07-02**: `server/event-service.js` now falls back to
+  `${os.homedir()}/.Xauthority`, which resolves to whichever user
+  `resonance-api.service` actually runs as.
 
-- [ ] **[HIGH]** `scripts/update.sh` restarts `resonance-api` after build
-  but never health-checks that the new process actually comes up (no
-  post-restart curl/health loop). A build that passes `node --check` and
-  `npm run build` but throws on boot (missing env var, migration error,
-  bad import) is invisible to the rollback logic — the "rollback on
-  failure" documented in `docs/ARCHITECTURE.md` only covers
-  install/build failures, not runtime failures. Combined with no
-  `StartLimitIntervalSec`/`StartLimitBurst` override in the systemd unit,
-  systemd's default throttle (5 restarts/10s) can drive the service into a
-  permanent `failed` state after a bad OTA, requiring manual SSH recovery
-  with no auto-rollback.
+- [x] **[HIGH]** ~~`scripts/update.sh` never health-checks post-restart~~ —
+  **fixed 2026-07-02**: the deferred restart subshell now polls
+  `http://127.0.0.1:5000/` for up to 30 s after restarting, and rolls back
+  to the pre-update commit (reset + rebuild + restart) if the new process
+  never comes up, logging the outcome to `ota_update.log`. Also added
+  `StartLimitIntervalSec=0` to `resonance-api.service` (via
+  `scripts/setup-service.sh`) so systemd's default 5-restarts/10s throttle
+  can no longer drive the unit into a permanent `failed` state requiring
+  manual SSH recovery — `RestartSec=3` still caps CPU use during a genuine
+  crash loop, and the health-check above is the first line of defense.
 
-- [ ] **[MED]** `scripts/update.sh` — `git reset --hard origin/main` has no
-  error check, unlike the `git fetch` two lines earlier which is explicitly
-  checked. A failure here (disk full, permissions) lets the script continue
-  into `npm install`/build on an inconsistent working tree and can still
-  report success.
+- [x] **[MED]** ~~`git reset --hard origin/main` unchecked~~ — **fixed
+  2026-07-02**: now wrapped in `if ! git reset --hard origin/main; then …
+  exit 1; fi`, matching the `git fetch` check two lines above.
 
-- [ ] **[MED]** `install.sh:130-132` — re-running the installer on an
-  existing checkout does `git stash` then `git reset --hard origin/main`,
-  but the stash is never popped or reported. Any uncommitted local edits
-  are silently discarded on every re-install.
+- [x] **[MED]** ~~`install.sh` stash not popped/reported~~ — **fixed
+  2026-07-02**: captures `git stash`'s output, and if it actually stashed
+  something (not "No local changes to save"), prints what was stashed and
+  how to recover it (`git stash list`) rather than swallowing it with `|| true`.
 
-- [ ] **[MED]** `scripts/update.sh` — `git clean -fd -e resonance.db
-  -e node_modules -e certs` doesn't exclude `camilladsp.yml`, which
-  `server/player.js:updateCamillaConfigFromSettings()` regenerates on every
-  server start (per project instructions, it's intentionally untracked).
-  It's deleted on every OTA; if `camilladsp.service` restarts/crashes in the
-  window before `resonance-api` regenerates it, CamillaDSP has no config
-  file to start with.
+- [x] **[MED]** ~~`git clean` doesn't exclude `camilladsp.yml`~~ — **fixed
+  2026-07-02**: both `install.sh` (re-install path) and `scripts/update.sh`
+  (OTA path) now pass `-e camilladsp.yml` alongside the existing exclusions.
 
-- [ ] **[MED]** `DEPLOY.md` is stale and contradicts the real install path:
-  it documents daemonizing via PM2
-  (`pm2 start server/index.js --name resonance-player`) and a
-  `SPOTIFY_REDIRECT_URI` env var. The actual installer
-  (`scripts/setup-service.sh`) registers a systemd unit
-  (`resonance-api.service`), and `server/spotify-auth.js` computes the
-  redirect URI dynamically per-request — `SPOTIFY_REDIRECT_URI` is never
-  read anywhere in the code. Following `DEPLOY.md` today produces a
-  duplicate/broken setup alongside (or instead of) the real one. Rewrite it
-  to match `install.sh`/systemd, or delete it in favor of `README.md`.
+- [x] **[MED]** ~~`DEPLOY.md` stale~~ — **fixed 2026-07-02**: replaced with
+  a short pointer to the accurate, already-maintained instructions in
+  `README.md` (Quick Start / Systemd Services / Configuration / Deploying
+  to the Pi) instead of maintaining a second, divergence-prone copy.
 
-- [ ] **[LOW]** `install.sh` — no `set -o pipefail`; several
-  `curl … | gpg …` / `curl … | sh` pipelines rely only on `set -e`, so a
-  failing first stage (e.g. a dropped connection mid-`curl`) can be masked
-  by a successful second stage, leaving an empty/broken keyring or config
-  with no error surfaced.
+- [x] **[LOW]** ~~no `set -o pipefail`~~ — **fixed 2026-07-02**: added,
+  after auditing every pipeline in the script for pipefail-induced
+  regressions — the only real one was `detect_dac_device()`'s two
+  "no USB/no matching card" `grep` pipelines (an empty match is a normal,
+  expected outcome there), which got an explicit `|| true` guard.
 
-- [ ] **[LOW]** `install.sh` — `$TARGET_USER`/path variables used unquoted
-  throughout (e.g. lines ~126, 334, 348, 551, 730, 739, 745-746, 987) —
-  word-splitting/glob risk if a username or home path ever contains a
-  space.
+- [x] **[LOW]** ~~`$TARGET_USER`/path variables used unquoted~~ — **fixed
+  2026-07-02**: quoted every command-argument usage of `$TARGET_USER`,
+  `$USER_HOME`, and `$TARGET_UID` throughout `install.sh` (heredoc body
+  content, which isn't subject to word-splitting the same way, was left
+  as-is).
 
-- [ ] **[LOW]** `install.sh:930` — `chmod 666 /var/log/upmpdcli.log`,
-  world-writable log file.
+- [x] **[LOW]** ~~`chmod 666 /var/log/upmpdcli.log`~~ — **fixed
+  2026-07-02**: now `chown upmpdcli:upmpdcli` + `chmod 644` — only the
+  service's own user needs write access.
 
 ---
 

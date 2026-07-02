@@ -34,6 +34,13 @@ cat > /etc/systemd/system/resonance-api.service <<EOF
 Description=Resonance HiFi API (Node.js backend)
 After=network-online.target sound.target mpd.service
 Wants=network-online.target
+# Disable systemd's default restart-rate throttle (5 restarts/10s → permanent
+# "failed" state). A build that boots but immediately throws (missing env
+# var, migration error) would otherwise need manual SSH recovery after a bad
+# OTA. RestartSec=3 below still caps CPU use during a genuine crash loop;
+# scripts/update.sh's post-restart health check independently tries to catch
+# and auto-roll-back this exact failure mode before it ever gets here.
+StartLimitIntervalSec=0
 
 [Service]
 Type=simple

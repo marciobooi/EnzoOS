@@ -54,11 +54,15 @@ rollback_and_exit() {
 }
 
 # Clean any local changes to prevent conflicts
-# Exclude node_modules and resonance.db so npm install stays fast
+# Exclude node_modules and resonance.db so npm install stays fast. Also
+# exclude camilladsp.yml — it's intentionally untracked (server/player.js
+# regenerates it on every server start) but git clean -fd would otherwise
+# delete it every OTA; if camilladsp.service restarts/crashes in the window
+# before resonance-api regenerates the file, CamillaDSP has nothing to load.
 echo -e "${YELLOW}Clearing local modifications...${NC}"
 echo "[PROGRESS: 15]"
 git reset --hard HEAD
-git clean -fd -e resonance.db -e node_modules -e certs
+git clean -fd -e resonance.db -e node_modules -e certs -e camilladsp.yml
 
 # Fetch changes from GitHub
 echo -e "${YELLOW}Fetching latest modifications from GitHub...${NC}"
@@ -72,7 +76,11 @@ fi
 # Reset local main branch to remote main branch
 echo -e "${YELLOW}Syncing repository with origin/main...${NC}"
 echo "[PROGRESS: 45]"
-git reset --hard origin/main
+if ! git reset --hard origin/main; then
+  echo -e "${RED}ERROR: git reset --hard origin/main failed (disk full? permissions?).${NC}"
+  echo "[PROGRESS: 0]"
+  exit 1
+fi
 
 # Install dependencies (incorporating package.json updates)
 echo -e "${YELLOW}Installing npm dependencies...${NC}"
@@ -173,7 +181,43 @@ else
   RESTART_CMD="sudo systemctl restart resonance-api"
 fi
 echo -e "${YELLOW}Scheduling backend restart in 4 seconds (${RESTART_CMD})...${NC}"
-(sleep 4 && eval "$RESTART_CMD" > /dev/null 2>&1 && pkill -f chromium-browser || true) &
+(
+  sleep 4
+  eval "$RESTART_CMD" > /dev/null 2>&1
+  pkill -f chromium-browser || true
+
+  # Post-restart health check — a build that passes `node --check`/`npm run
+  # build` but throws on boot (missing env var, migration error, bad import)
+  # was previously invisible: the OTA log said "success" while resonance-api
+  # sat in a restart loop. Poll until the new process actually serves HTTP,
+  # then roll back to the pre-update revision if it never comes up.
+  LOG="$PROJECT_DIR/ota_update.log"
+  HEALTHY=0
+  for _ in $(seq 1 15); do
+    sleep 2
+    if curl -sf -o /dev/null http://127.0.0.1:5000/; then
+      HEALTHY=1
+      break
+    fi
+  done
+
+  if [ "$HEALTHY" -eq 1 ]; then
+    echo "[Resonance OTA] Post-restart health check passed." >> "$LOG"
+  else
+    echo "[Resonance OTA] Post-restart health check FAILED — rolling back to ${PREV_SHA:-previous revision}." >> "$LOG"
+    if [ -n "$PREV_SHA" ]; then
+      cd "$PROJECT_DIR" || exit 0
+      { git reset --hard "$PREV_SHA" \
+        && npm install \
+        && rm -rf "$PROJECT_DIR/dist" \
+        && npm run build; } >> "$LOG" 2>&1
+      eval "$RESTART_CMD" >> "$LOG" 2>&1
+      echo "[Resonance OTA] Rollback restart triggered." >> "$LOG"
+    else
+      echo "[Resonance OTA] No previous revision recorded — cannot roll back automatically." >> "$LOG"
+    fi
+  fi
+) &
 disown $!
 
 echo -e "${GREEN}Update sequence complete. Server will restart shortly.${NC}"
