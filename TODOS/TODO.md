@@ -251,23 +251,53 @@ secondary path · **[LOW]** cosmetic/hygiene · **[SEC]** security.
 ---
 
 ## 7. improvements/nice to have
-  - [ ] **Smart/auto playlists** ("On Repeat", "Recently Added" style mixes) —
-  local-library equivalent of what Spotify/Apple generate automatically;
-  for local files this could be built entirely from the existing
-  `play_history` table (most played, recently added by file mtime) with no
-  external dependency.
-- [ ] **Shazam-style track ID for internet radio** — WiiM and some
-  Cambridge Audio products can identify the currently-playing song on a
-  radio stream that doesn't send ICY metadata. Lower priority; needs an
-  audio-fingerprinting service (e.g. AcoustID, which MusicBrainz already
-  provides tooling for) and periodic sampling of the stream — real effort
-  for a nice-to-have.
-  - [ ] **Gapless-playback verification** — crossfade exists
-  (`README.md` → *DSP & Signal Processing*), but true gapless (zero-gap,
-  no crossfade at all, for albums mixed to flow track-to-track) should be
-  confirmed as its own MPD option (`crossfade 0` + `mixrampdb`) and
-  surfaced as a distinct toggle rather than assumed to be "crossfade set to
-  zero."
+  - [x] **Smart/auto playlists** ("On Repeat", "Recently Added" style mixes) —
+  **fixed 2026-07-02**: `GET /api/player/library/smart/most-played` (SQL
+  `GROUP BY file` over `play_history`, ranked by play count) and
+  `/library/smart/recently-added` (`mpc listall` + `fs.stat` on each file
+  under `/var/lib/mpd/music`, ranked by mtime — MPD 0.23 has no
+  "modified-since" search filter, confirmed live before relying on it, so
+  this can't be done as an MPD-side query). Both surfaced as two more cards
+  in the existing "Your Playlists" row in kiosk/remote universal search,
+  playable via a new `POST /api/player/queue/add-many` that adds files one
+  at a time (not a single `mpc add a b c`) so one stale path can't abort
+  the whole batch. Live-verified end-to-end on the VM with real generated
+  test audio files, including the partial-failure case.
+- [ ] **Shazam-style track ID for internet radio** — scoped but
+  deliberately **not implemented 2026-07-02**: this needs `ffmpeg` +
+  `chromaprint`/`fpcalc` (neither currently installed/pinned in
+  `install.sh`), a user-provided AcoustID API key (no scrapeable public
+  endpoint like Qobuz's — the user must register one), and a periodic
+  background sampling job. **Implementation note for whoever picks this
+  up**: sample directly from the station's stream URL
+  (`station.url_resolved`, already available client-side — see
+  `UniversalSearch.jsx`) via a short `ffmpeg`/`curl` grab of N seconds of
+  the raw network stream, decoded straight to PCM for `fpcalc`. Do **NOT**
+  tap the local ALSA/PipeWire pipeline (e.g. re-adding a periodic
+  `arecord` off `loop_dsnoop`) to get the sample — §9.2 of this file
+  already covers removing exactly that kind of process for holding
+  `loop_dsnoop`'s negotiated rate pinned, which was the final blocker for
+  bit-perfect rate-following (§9.1); resurrecting it here would undo that
+  fix. Sampling the stream URL directly sidesteps the whole ALSA chain.
+  Real effort for a nice-to-have — matches this item's original "Lower
+  priority" framing, unlike the two items above which had no such caveat.
+  - [x] **Gapless-playback verification** — **fixed and live-verified
+  2026-07-02**: added a distinct "Gapless Playback" toggle
+  (`GET`/`POST /api/player/gapless`) alongside Crossfade in the remote's
+  Advanced Sound settings. Enabling it forces `crossfade 0` and turns on
+  MixRamp (`mpc mixrampdb -17`, `mixrampdelay 0.1`) so albums whose files
+  carry MixRamp volume-ramp tags get a true seamless mix, while every
+  other track still gets a zero-gap cut from `crossfade 0` alone; picking
+  a nonzero crossfade value turns gapless back off (and vice versa) so the
+  two settings can't silently disagree. **Correction found during live
+  testing**: `mpc mixrampdelay 0` silently reads back as `-1` (disabled)
+  on this MPD build — an exact-zero delay is treated as "never set," not
+  "enabled with zero delay," contradicting the `man mpc` wording. Any
+  positive value (e.g. `0.1`) sticks correctly; used that instead.
+  Verified live including persistence across a full `resonance-api`
+  restart (MPD itself resets crossfade/mixramp on restart, same as
+  ReplayGain already did — re-applied via the existing
+  `applyPersistedMpdSettings()` startup path).
 
 ## 8. Live VM audit — 2026-07-02 (QEMU dev target, via SSH)
 
@@ -576,11 +606,14 @@ load is a healthy ~0.13%, zero clipped samples.
   the main and Pure Direct devices blocks. Live-validated via
   `ValidateConfigJson`.
 
-- [ ] **[note]** Latency budget for context: PW quantum 1024 + dsnoop
+- [x] **[note]** Latency budget for context: PW quantum 1024 + dsnoop
   buffer 3×1024 + CamillaDSP chunk 1024 ≈ 60–90 ms end-to-end. That is the
   right trade-off for a music appliance (stability over lip-sync); don't
   chase "zero latency" by shrinking chunks below 1024 without RT-kernel
   testing — the current values are correctly aligned (chunk == quantum).
+  **Reviewed 2026-07-02**: no action needed — this is guidance for future
+  changes, not an open defect; re-confirmed chunk/quantum are still aligned
+  (both 1024) after this session's audio-pipeline work.
 
 - [x] **[LOW]** ~~Kiosk Definitions Menu sub-panel close returns to Player
   instead of the menu~~ — **fixed 2026-07-02**: `SettingsMenuOverlay.jsx`'s
