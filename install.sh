@@ -306,7 +306,7 @@ context.objects = [
 ]
 PWEOF
 
-# Statically define hw:Loopback,0,0 as its own PipeWire node, bypassing the
+# Statically define a PipeWire node for the ALSA loopback, bypassing the
 # udev/ALSA monitor entirely. That monitor never creates a node for the
 # virtual snd-aloop card (no ALSA-Card-Profile ever auto-activates for it,
 # unlike real hardware), so a plain node-name reference to it from the
@@ -318,9 +318,28 @@ PWEOF
 # worked, because it reaches the loopback via ALSA dmix directly, bypassing
 # PipeWire. Confirmed fixed end-to-end: audio played through the PipeWire
 # "default" ALSA device now measures on CamillaDSP's GetCaptureSignalRms.
+#
+# api.alsa.path points at "camilla_input" (the dmix PCM defined in
+# /etc/asound.conf), NOT the raw "hw:Loopback,0,0" device string. This was
+# the actual device string here until a live regression (2026-07-02, same
+# VM) surfaced the real conflict it causes: MPD/librespot also open
+# hw:Loopback,0,0 through camilla_input's dmix layer, and ALSA dmix must be
+# the sole direct opener of its underlying hw slave to do its job — a
+# second, unrelated direct opener of that same hw device (this PipeWire
+# node, opening it "raw" via factory.name = api.alsa.pcm.sink) races dmix
+# for ownership. Whichever one opens the raw hw device first wins; the
+# other gets "Device or resource busy" — observed live as BOTH MPD (radio)
+# and librespot (Spotify) failing to play once PipeWire won that race after
+# a service restart. Routing PipeWire through camilla_input instead makes
+# it just another dmix client, exactly what dmix exists to share a single
+# hw device between multiple concurrent writers (MPD + librespot + PipeWire)
+# for.
 cat <<'PWALEOF' > /etc/pipewire/pipewire.conf.d/52-resonance-aloop-sink.conf
 # Resonance HiFi — static PipeWire node for the ALSA loopback (bypasses the
 # udev/ALSA monitor, which never auto-activates a profile for snd-aloop).
+# Targets the camilla_input dmix PCM (not the raw hw device) so PipeWire
+# shares hw:Loopback,0,0 with MPD/librespot via ALSA dmix instead of racing
+# them for direct ownership of it — see the comment above this heredoc.
 context.objects = [
   { factory = adapter
     args = {
@@ -328,7 +347,7 @@ context.objects = [
       node.name         = "resonance-aloop-sink"
       node.description  = "Resonance ALSA Loopback Bridge"
       media.class       = "Audio/Sink"
-      api.alsa.path     = "hw:Loopback,0,0"
+      api.alsa.path     = "camilla_input"
       audio.channels    = 2
       audio.format      = "S32LE"
       audio.rate        = 48000

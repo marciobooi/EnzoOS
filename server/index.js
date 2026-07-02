@@ -42,7 +42,19 @@ const HTTPS_PORT = process.env.HTTPS_PORT || 5001;
 // Options/MIME-sniffing, Referrer-Policy, HSTS on the HTTPS remote port,
 // etc.) still applies — meaningful even on a LAN appliance, e.g. against a
 // malicious page framing the remote-control UI to clickjack playback/reboot.
-app.use(helmet({ contentSecurityPolicy: false }));
+//
+// Cross-Origin-Opener-Policy and Origin-Agent-Cluster are also disabled:
+// both are meaningless without HTTPS (or localhost) — the browser just
+// logs a console warning and ignores them on the plain-HTTP kiosk port
+// (http://resonance.local:5000, http://<lan-ip>:5000) this app is served
+// on day-to-day. Neither protects anything this app needs (no
+// SharedArrayBuffer / cross-origin isolation usage) — the HTTPS remote
+// port (5001) doesn't need them either, since it's single-origin.
+app.use(helmet({
+  contentSecurityPolicy: false,
+  crossOriginOpenerPolicy: false,
+  originAgentCluster: false,
+}));
 app.use(cors());
 app.use(express.json());
 
