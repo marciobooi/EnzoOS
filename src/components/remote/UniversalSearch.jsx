@@ -171,6 +171,18 @@ export default function UniversalSearch() {
     catch (e) { reportError(e.message); }
   };
 
+  const playSmartPlaylist = async (kind) => {
+    try {
+      const { tracks } = kind === 'most-played' ? await api.getMostPlayed(50) : await api.getRecentlyAdded(50);
+      if (!tracks?.length) { reportError('Nothing here yet — keep listening and this will fill in.'); return; }
+      wakeKiosk();
+      await api.clearQueue();
+      await api.addManyToQueue(tracks.map(t => t.file), true);
+      handleToggleSource('local');
+      setActiveTab('player');
+    } catch (e) { reportError(e.message); }
+  };
+
   const playRadio = async (station) => {
     const url = station.url_resolved || station.url;
     try { await api.localPlayRadio(url, station.name, station.favicon); handleToggleSource('radio'); setActiveTab('player'); }
@@ -188,6 +200,14 @@ export default function UniversalSearch() {
   // Combined "your playlists" row — same set the kiosk shows: Spotify library
   // playlists, saved local MPD playlists, favorited radio stations.
   const myPlaylists = [
+    {
+      key: 'smart-most-played', title: 'Most Played', color: '#f59e0b', label: 'Local',
+      subtitle: 'Auto-generated', image: null, onPlay: () => playSmartPlaylist('most-played'),
+    },
+    {
+      key: 'smart-recently-added', title: 'Recently Added', color: '#f59e0b', label: 'Local',
+      subtitle: 'Auto-generated', image: null, onPlay: () => playSmartPlaylist('recently-added'),
+    },
     ...playlists.spotify.map(pl => ({
       key: `sp-${pl.id}`, title: pl.name, color: '#1ed760', label: 'Spotify',
       subtitle: pl.tracks?.total ? `${pl.tracks.total} tracks` : null,

@@ -69,6 +69,15 @@ export const playerApi = {
     return handleJson(r);
   },
 
+  async addManyToQueue(paths, play = false) {
+    const r = await fetch('/api/player/queue/add-many', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ paths, play }),
+    });
+    return handleJson(r);
+  },
+
   // ── Queue editing ────────────────────────────────────────────────────────────
   async getDetailedQueue() {
     const r = await fetch('/api/player/queue/detailed');

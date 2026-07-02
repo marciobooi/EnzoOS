@@ -7,7 +7,7 @@ import { fileURLToPath } from 'url';
 import YAML from 'yaml';
 import {
   getFavoriteRadios, addFavoriteRadio, deleteFavoriteRadioByUrl, setSetting, getSetting,
-  addPlayHistory, getPlayHistory, clearPlayHistory,
+  addPlayHistory, getPlayHistory, clearPlayHistory, getMostPlayedTracks,
   getFavorites, addFavorite, removeFavorite, removeFavoriteByUri, isFavorite,
 } from './db.js';
 import { emit, getStandbyState, getCachedVolumeDb, setVolumeState } from './event-service.js';
@@ -1534,6 +1534,24 @@ router.post('/queue/add', async (req, res) => {
   }
 });
 
+// POST /api/player/queue/add-many — used by Smart Playlists' "play all".
+// Adds one at a time (not a single `mpc add a b c`) so one stale/deleted
+// path (e.g. a play_history entry for a file the user since removed) can't
+// abort the whole batch via MPD command-list fail-fast semantics.
+router.post('/queue/add-many', async (req, res) => {
+  const { paths, play = false } = req.body || {};
+  if (!Array.isArray(paths) || paths.length === 0) return sendError(res, badRequest('paths required'));
+  if (paths.length > 200) return sendError(res, badRequest('too many paths (max 200)'));
+  let added = 0;
+  for (const p of paths) {
+    if (typeof p !== 'string' || !p) continue;
+    try { await execFilePromise('mpc', ['add', p]); added++; }
+    catch (err) { console.warn('[queue/add-many] failed to add', p, err.message); }
+  }
+  if (play && added > 0) await execPromise('mpc play').catch(() => {});
+  res.json({ success: true, added, requested: paths.length });
+});
+
 // POST /api/player/standby -> Set standby state (used by wake monitor scripts or external triggers)
 router.post('/standby', async (req, res) => {
   const { enabled } = req.body;
@@ -2245,6 +2263,62 @@ router.get('/stats', async (req, res) => {
     const topTracks  = Object.entries(byTitle).sort((a, b) => b[1] - a[1]).slice(0, 10).map(([name, count]) => ({ name, count }));
     const sourceBreakdown = Object.entries(bySource).map(([source, count]) => ({ source, count }));
     res.json({ totalPlays: history.length, totalMs, topArtists, topTracks, sourceBreakdown });
+  } catch (err) { sendError(res, err); }
+});
+
+// ── Smart Playlists (#27) ─────────────────────────────────────────────────────
+// Local-library equivalent of Spotify/Apple's auto-generated mixes, built
+// entirely from data this app already has (play_history + MPD's own file
+// mtimes) — no external dependency, no new SQLite table.
+
+// GET /api/player/library/smart/most-played?limit=50
+router.get('/library/smart/most-played', async (req, res) => {
+  const limit = Math.min(parseInt(req.query.limit, 10) || 50, 200);
+  try {
+    const tracks = await getMostPlayedTracks(limit);
+    res.json({ tracks });
+  } catch (err) { sendError(res, err); }
+});
+
+const MPD_MUSIC_DIR = '/var/lib/mpd/music';
+let recentlyAddedCache = { at: 0, tracks: [] };
+const RECENTLY_ADDED_CACHE_MS = 5 * 60 * 1000;
+
+// MPD 0.23 (pinned here) has no "modified-since" search filter — confirmed
+// live (`mpc find modified-since ...` rejects it as an invalid search type)
+// — so "recently added" is derived from the music files' own filesystem
+// mtime instead, which needs no MPD protocol support at all. Cached briefly
+// since it stats every file in the library on a cache miss.
+async function getRecentlyAddedTracks(limit) {
+  if (Date.now() - recentlyAddedCache.at < RECENTLY_ADDED_CACHE_MS) {
+    return recentlyAddedCache.tracks.slice(0, limit);
+  }
+  const { stdout } = await execFilePromise('mpc', [
+    '-f', '%file%||%title%||%artist%||%album%',
+    'listall',
+  ]);
+  const lines = stdout.split('\n').map(s => s.trim()).filter(Boolean);
+  const withMtime = await Promise.all(lines.map(async (line) => {
+    const [file, title, artist, album] = line.split('||');
+    if (!file) return null;
+    try {
+      const st = await fs.promises.stat(path.join(MPD_MUSIC_DIR, file));
+      return { file, title: title || path.basename(file), artist: artist || '', album: album || '', mtimeMs: st.mtimeMs };
+    } catch {
+      return null; // file listed in MPD's db but missing on disk (stale db) — skip
+    }
+  }));
+  const tracks = withMtime.filter(Boolean).sort((a, b) => b.mtimeMs - a.mtimeMs);
+  recentlyAddedCache = { at: Date.now(), tracks };
+  return tracks.slice(0, limit);
+}
+
+// GET /api/player/library/smart/recently-added?limit=50
+router.get('/library/smart/recently-added', async (req, res) => {
+  const limit = Math.min(parseInt(req.query.limit, 10) || 50, 200);
+  try {
+    const tracks = await getRecentlyAddedTracks(limit);
+    res.json({ tracks });
   } catch (err) { sendError(res, err); }
 });
 

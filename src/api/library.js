@@ -66,4 +66,14 @@ export const libraryApi = {
     const r = await fetch('/api/player/stats');
     return handleJson(r);
   },
+
+  // ── Smart playlists ──────────────────────────────────────────────────────────
+  async getMostPlayed(limit = 50) {
+    const r = await fetch(`/api/player/library/smart/most-played?limit=${limit}`);
+    return handleJson(r);
+  },
+  async getRecentlyAdded(limit = 50) {
+    const r = await fetch(`/api/player/library/smart/recently-added?limit=${limit}`);
+    return handleJson(r);
+  },
 };

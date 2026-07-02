@@ -288,6 +288,23 @@ export const clearPlayHistory = () => {
   });
 };
 
+// Local-file plays only — Spotify/radio/Tidal/Qobuz have no queueable local
+// `file` path to build a playable "smart playlist" row from.
+export const getMostPlayedTracks = (limit = 50) => {
+  return new Promise((resolve) => {
+    db.all(
+      `SELECT file, title, artist, album, cover, COUNT(*) AS playCount, MAX(played_at) AS lastPlayed
+       FROM play_history
+       WHERE source = 'local' AND file IS NOT NULL AND file != ''
+       GROUP BY file
+       ORDER BY playCount DESC, lastPlayed DESC
+       LIMIT ?`,
+      [limit],
+      (err, rows) => resolve(err ? [] : rows)
+    );
+  });
+};
+
 // ── Favorites ─────────────────────────────────────────────────────────────────
 
 export const getFavorites = () => {

@@ -172,6 +172,17 @@ export default function UniversalSearchOverlay() {
     catch (e) { reportError(e.message); }
   };
 
+  const playSmartPlaylist = async (kind) => {
+    try {
+      const { tracks } = kind === 'most-played' ? await api.getMostPlayed(50) : await api.getRecentlyAdded(50);
+      if (!tracks?.length) { reportError('Nothing here yet — keep listening and this will fill in.'); return; }
+      await api.clearQueue();
+      await api.addManyToQueue(tracks.map(t => t.file), true);
+      handleToggleSource('local');
+      setIsSearchOpen(false);
+    } catch (e) { reportError(e.message); }
+  };
+
   const playRadio = async (station) => {
     try { await api.localPlayRadio(station.url_resolved || station.url, station.name, station.favicon); handleToggleSource('radio'); setIsSearchOpen(false); }
     catch (e) { reportError(e.message); }
@@ -215,6 +226,14 @@ export default function UniversalSearchOverlay() {
   // Combined "your playlists" row — Spotify library playlists, saved local
   // MPD playlists, and favorited radio stations, shown regardless of query.
   const myPlaylists = [
+    {
+      key: 'smart-most-played', source: 'local', title: 'Most Played', subtitle: 'Auto-generated',
+      image: null, onPlay: () => playSmartPlaylist('most-played'),
+    },
+    {
+      key: 'smart-recently-added', source: 'local', title: 'Recently Added', subtitle: 'Auto-generated',
+      image: null, onPlay: () => playSmartPlaylist('recently-added'),
+    },
     ...playlists.spotify.map(pl => ({
       key: `sp-${pl.id}`, source: 'spotify', title: pl.name,
       subtitle: pl.tracks?.total ? `${pl.tracks.total} tracks` : null,
