@@ -119,17 +119,7 @@ single-zone: one Pi, one room, one output.
   Last.fm for artist/album metadata; it doesn't scrobble the user's actual
   listening history to their Last.fm account. Straightforward addition
   using credentials already being collected for the metadata key.
-- [ ] **Smart/auto playlists** ("On Repeat", "Recently Added" style mixes) —
-  local-library equivalent of what Spotify/Apple generate automatically;
-  for local files this could be built entirely from the existing
-  `play_history` table (most played, recently added by file mtime) with no
-  external dependency.
-- [ ] **Shazam-style track ID for internet radio** — WiiM and some
-  Cambridge Audio products can identify the currently-playing song on a
-  radio stream that doesn't send ICY metadata. Lower priority; needs an
-  audio-fingerprinting service (e.g. AcoustID, which MusicBrainz already
-  provides tooling for) and periodic sampling of the stream — real effort
-  for a nice-to-have.
+
 
 ## 5. Convenience & physical UX — **P1**
 
@@ -176,12 +166,7 @@ single-zone: one Pi, one room, one output.
   `mount.cifs`/`autofs`, trigger an MPD library rescan) would remove the
   current SSH requirement for anyone who isn't playing off the SD card
   itself.
-- [ ] **Gapless-playback verification** — crossfade exists
-  (`README.md` → *DSP & Signal Processing*), but true gapless (zero-gap,
-  no crossfade at all, for albums mixed to flow track-to-track) should be
-  confirmed as its own MPD option (`crossfade 0` + `mixrampdb`) and
-  surfaced as a distinct toggle rather than assumed to be "crossfade set to
-  zero."
+
 
 ---
 

@@ -282,6 +282,25 @@ secondary path · **[LOW]** cosmetic/hygiene · **[SEC]** security.
 
 ---
 
+## 7. improvements/nice to have
+  - [ ] **Smart/auto playlists** ("On Repeat", "Recently Added" style mixes) —
+  local-library equivalent of what Spotify/Apple generate automatically;
+  for local files this could be built entirely from the existing
+  `play_history` table (most played, recently added by file mtime) with no
+  external dependency.
+- [ ] **Shazam-style track ID for internet radio** — WiiM and some
+  Cambridge Audio products can identify the currently-playing song on a
+  radio stream that doesn't send ICY metadata. Lower priority; needs an
+  audio-fingerprinting service (e.g. AcoustID, which MusicBrainz already
+  provides tooling for) and periodic sampling of the stream — real effort
+  for a nice-to-have.
+  - [ ] **Gapless-playback verification** — crossfade exists
+  (`README.md` → *DSP & Signal Processing*), but true gapless (zero-gap,
+  no crossfade at all, for albums mixed to flow track-to-track) should be
+  confirmed as its own MPD option (`crossfade 0` + `mixrampdb`) and
+  surfaced as a distinct toggle rather than assumed to be "crossfade set to
+  zero."
+
 ## Note on `AUDIT_REPORT.md`
 
 That file (a prior, narrower audit of just the media-controls flows) is
