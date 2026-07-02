@@ -41,6 +41,9 @@ Raspberry Pi HiFi kiosk — React + Node.js + WebSockets frontend, Ubuntu 24.04 
 - **Always commit and push every code change.** Never leave working changes uncommitted.
 - **Never ask for confirmation.** Proceed autonomously on all tasks.
 
+## Working Efficiently (token / context rules)
+@.claude/EFFICIENCY.md
+
 ## Dev Environment
 - QEMU VM (dev target): `$PI_HOST` (`192.168.178.199`), user `$PI_USER` (`pi`), password `$PI_PASSWORD` (`1234`)
 - SSH via Python paramiko (sshpass not available on Windows): always add `sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')` to avoid CP1252 encoding errors
