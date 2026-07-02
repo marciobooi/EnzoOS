@@ -5,7 +5,9 @@ top of the existing `AUDIT_REPORT.md` (media-controls audit). **Most of that
 report's findings are already fixed in the current codebase** — see the note
 at the bottom. This file covers what's still open, plus everything outside
 its scope (auth, deploy, scripts, install, dependencies, systemd, frontend
-races).
+races). **§8 adds the live VM audit** (2026-07-02, SSH into the QEMU dev
+target at 192.168.178.199): runtime-verified findings, first-run gaps in
+`install.sh`, and corrections to earlier items marked "confirmed live".
 
 Legend: **[HIGH]** broken/exploitable now · **[MED]** real bug in a
 secondary path · **[LOW]** cosmetic/hygiene · **[SEC]** security.
@@ -20,12 +22,13 @@ secondary path · **[LOW]** cosmetic/hygiene · **[SEC]** security.
   MITM on first install is instant root code execution. Pin a release
   tarball + checksum, or vendor the script.
 
-- [ ] **[SEC/HIGH]** CamillaDSP's control WebSocket (`-p 1234`, started by
-  `install.sh`) has no `-a` bind restriction, so it listens on all
-  interfaces with zero authentication, and the service runs as `root`. Any
-  device on the LAN can reconfigure/reload a root-owned audio process.
-  Bind to `127.0.0.1` (nothing outside the box needs it — `server/player.js`
-  already talks to it over loopback) or add an auth token.
+- [ ] **[SEC/MED]** CamillaDSP's service runs as `root` (`install.sh` writes
+  the unit with `User=root`). *Corrected after live check (2026-07-02):* the
+  original claim that `-p 1234` listens on all interfaces is **wrong** —
+  verified on the VM (`ss -tlnp`) that CamillaDSP without `-a` binds
+  `127.0.0.1` only, so there is no LAN exposure. The remaining concern is an
+  unauthenticated localhost WS controlling a root-owned process; run
+  CamillaDSP as the app user (it only needs `audio` group access), not root.
 
 - [ ] **[SEC/HIGH]** `/etc/sudoers.d/resonance` (written by `install.sh`)
   grants the app user NOPASSWD `sudo tee` to system config files, fully
@@ -181,14 +184,18 @@ secondary path · **[LOW]** cosmetic/hygiene · **[SEC]** security.
   `evtest /dev/input/event*` with a shell glob expanding to multiple paths,
   but `evtest` only accepts a single device argument. This almost certainly
   fails immediately, silently breaking touch/keyboard display-wake
-  entirely.
+  entirely. **Confirmed live (2026-07-02):** on the VM the monitor process
+  is not running (`pgrep` finds `unclutter` and Chromium from `.xinitrc`,
+  but no `kiosk-wake-monitor.sh` and no `evtest`) — it dies at startup
+  exactly as described.
 
 - [ ] **[HIGH]** `install.sh` never adds `$TARGET_USER` to the `input`
   group (`usermod -aG audio,video,dialout` — no `input`). Since
   `kiosk-wake-monitor.sh` runs unprivileged as that user via `.xinitrc`, it
   can't read `/dev/input/event*` (root:input, mode 660) even if the glob
   issue above were fixed — display-wake-on-touch is broken from two
-  independent angles.
+  independent angles. **Confirmed live (2026-07-02):** `id pi` on the VM
+  shows no `input` group, and `/dev/input/event*` are `root:input 660`.
 
 - [ ] **[HIGH]** `server/event-service.js:173` — the `XAUTHORITY` fallback
   used for brightness control is hardcoded to `/home/pi/.Xauthority`, even
@@ -300,6 +307,141 @@ secondary path · **[LOW]** cosmetic/hygiene · **[SEC]** security.
   confirmed as its own MPD option (`crossfade 0` + `mixrampdb`) and
   surfaced as a distinct toggle rather than assumed to be "crossfade set to
   zero."
+
+## 8. Live VM audit — 2026-07-02 (QEMU dev target, via SSH)
+
+Runtime audit of the deployed system at `192.168.178.199` (Ubuntu 24.04.4
+ARM64, installed with the current `install.sh` on 2026-07-02 09:09). What
+checked out **healthy**: `resonance-api`/`camilladsp`/`mpd` systemd units all
+running, zero failed units, `verify-install.sh` reports 0 failed, DB in WAL
+mode, TLS cert valid to 2036, CamillaDSP pinned 4.1.3, NTP synced, disk 47%.
+Everything below is what didn't.
+
+### 8.1 First-run blockers (install.sh)
+
+- [ ] **[HIGH]** **Tidal credentials never survive the install.**
+  `install.sh:1028-1036` appends `TIDAL_CLIENT_ID`/`TIDAL_CLIENT_SECRET` to
+  `.env` only if `.env` already exists — but step 9 (`install.sh:1051-1058`)
+  later does `rm -f .env` and rewrites it with *only* `SPOTIFY_CLIENT_ID` and
+  `PORT`. So on a fresh install the Tidal block is a no-op, and on a
+  re-install the appended creds are wiped minutes later. Verified live: the
+  VM's `.env` has no `TIDAL_*` keys. `server/streaming.js:159-164` has no
+  fallback and throws "Tidal is not configured" — **Tidal device-flow login
+  fails on every fresh install**, including from the welcome wizard. Fix:
+  put the TIDAL vars into the step-9 heredoc (or move the append after it).
+
+- [ ] **[HIGH]** **Bluetooth source: code and installer contradict each
+  other.** `install.sh:952-970` deliberately *removes* bluealsa ("PipeWire
+  handles A2DP natively via WirePlumber") — but `server/player.js:1679-1720`
+  still does `systemctl start/stop bluealsa` and gates status on
+  `isServiceActive('bluealsa')`, and `server/event-service.js:211,310-313`
+  stops bluealsa on standby/source-switch. Verified live: the `bluealsa`
+  unit is `not-found` on the VM, so selecting the Bluetooth source runs a
+  failing start and the status check always reports it dead. Rewrite the
+  server's BT flow for the PipeWire stack (bluetoothctl
+  discoverable/pairable on-demand + the installed `bt-agent`), and drop the
+  now-pointless bluealsa entries from the sudoers file (`install.sh:593`).
+
+- [ ] **[MED]** **install.sh dirties the git checkout it manages.** Verified
+  live — `git status` on the VM shows 5 tracked files modified right after a
+  fresh install: (a) `install.sh:1051-1084` rewrites tracked `.env.example`
+  from an embedded heredoc copy that has already drifted from the repo
+  version (two diverging sources of truth); (b) `install.sh:1121`
+  `npm install yaml` mutates `package.json`/`package-lock.json` at install
+  time — make `yaml` a normal committed dependency; (c) `chmod +x` on
+  tracked scripts (`install.sh:687,696,705,733,1136,1145`) shows up as git
+  mode changes — commit the exec bits (`git update-index --chmod=+x`)
+  instead. Knock-on effect: every re-install `git stash`es the installer's
+  own noise (`install.sh:131`), so the already-flagged silent-stash issue
+  (§4) triggers on *every* run, mixing real user edits with installer noise.
+
+- [ ] **[MED]** **log2ram silently absent + unbounded journal.**
+  `setup-storage-silence.sh`'s log2ram step doesn't install on Ubuntu 24.04
+  ARM64 — `verify-install.sh` only marks it "skipped" and the VM shows
+  `log2ram: inactive`. Meanwhile journald has no `SystemMaxUse` cap and
+  `/var/log/journal` is already **1.6 GB after ~3 weeks**. On a real Pi all
+  of that lands on the SD card — the exact wear the feature was meant to
+  prevent. Cap journald (e.g. `SystemMaxUse=100M`) in `install.sh`
+  unconditionally, as the fallback for when log2ram isn't available.
+
+- [ ] **[LOW]** Timezone is never configured — the VM runs `Etc/UTC`, so the
+  kiosk clock and play-history timestamps are wrong for any non-UTC user.
+  Add a welcome-wizard step or installer prompt (`timedatectl
+  set-timezone`).
+
+- [ ] **[LOW]** Legacy autostart block never cleaned up — the installer now
+  injects the `startx` loop into `.bashrc` (`install.sh:764`) but older
+  versions used `.profile`; the VM has the block in **both** files. The
+  idempotence check only greps the new target file. Harmless today (the
+  `.bashrc` copy wins, the `.profile` one is unreachable dead code), but the
+  installer should remove the stale block it left behind.
+
+- [ ] **[LOW]** `index.html` hard-loads Google Fonts from
+  `fonts.googleapis.com` — on an offline install (a HiFi appliance may never
+  see the internet) fonts silently fall back. Self-host the two font
+  families in the build instead.
+
+### 8.2 Security (verified live)
+
+- [ ] **[SEC/MED]** **MPD control port is open to the whole LAN.**
+  `install.sh:382` sets `bind_to_address "any"`; the VM listens on `*:6600`
+  with no MPD password. Any device on the LAN can control playback, browse
+  the library, and add arbitrary stream URLs — completely bypassing the
+  app's bearer-token auth. Nothing off-box needs MPD (upmpdcli connects to
+  `127.0.0.1`, the server and kiosk are local) — bind it to `127.0.0.1`.
+
+- [ ] **[SEC/MED]** **librespot runs as root.** The raspotify unit on the VM
+  (`/usr/lib/systemd/system/raspotify.service`) has `DynamicUser=no` and no
+  `User=` directive — `ps` confirms `root librespot`, with its zeroconf
+  control port `*:38431` open to the LAN. Stock raspotify runs unprivileged.
+  Add a drop-in with `User=raspotify` + `SupplementaryGroups=audio` (the
+  existing mlock/affinity drop-ins keep working). While fixing it, verify
+  the audio path: as root, the ALSA→PipeWire `default` device has no user
+  PipeWire socket (`/run/user/0` doesn't exist), so Spotify playback may
+  currently work only by accident.
+
+- [ ] **[SEC/LOW]** `cupsd` is running and listening on `0.0.0.0:631` — a
+  print server on a HiFi appliance is pure attack surface; remove or disable
+  cups in `install.sh`.
+
+- [ ] **[LOW]** `unattended-upgrades` is left enabled — good for security
+  patches, but a surprise `mpd`/`bluez`/kernel upgrade can restart audio
+  daemons mid-playback or change behavior under the pinned CamillaDSP.
+  Decide deliberately: keep it (document the trade-off) or restrict it to
+  security-only with audio packages held.
+
+### 8.3 Backend bugs found while auditing the VM
+
+- [ ] **[MED]** **SPA catch-all swallows unknown API routes.**
+  `server/index.js:79-85` — the comment says "non-API requests" but the
+  handler sends `dist/index.html` for **every** GET. Verified live:
+  `GET /api/health` returns `200 text/html` (the SPA shell). Consequences:
+  typo'd/removed API endpoints look like success to clients (feeds directly
+  into the §3 "`r.json()` without `r.ok`" bug), and there is no health
+  endpoint for `update.sh`'s missing post-restart check (§4). Fix:
+  `if (req.path.startsWith('/api')) return next();` before the `sendFile`,
+  plus add a real `GET /api/health`.
+
+- [ ] **[MED]** Extend `scripts/verify-install.sh` to catch what this audit
+  caught — it currently reports **"0 failed"** on a box where Tidal login,
+  Bluetooth source, and touch-wake are all broken. Add checks for:
+  `TIDAL_CLIENT_ID` present in `.env`, `kiosk-wake-monitor.sh` process alive
+  after boot, kiosk user in the `input` group, and the BT stack the server
+  code actually calls.
+
+### 8.4 Stale docs / instructions (live system contradicts them)
+
+- [ ] **[LOW]** `.claude/CLAUDE.md` is stale vs. the deployed reality:
+  it says the backend is a PM2 process (`pm2 restart resonance-api`) — the
+  VM runs a systemd unit `resonance-api.service` and PM2's process list is
+  empty; deploys are `git pull && sudo systemctl restart resonance-api`. It
+  also says "PulseAudio conflicts with this chain — keep it killed/disabled"
+  — the current installer *deliberately* runs PipeWire + pipewire-pulse
+  (ResonanceInput virtual sink → PW loopback → `hw:Loopback,0,0`), and the
+  audio-chain diagram misses that whole layer. Same PM2 staleness already
+  flagged for `DEPLOY.md` in §4.
+
+---
 
 ## Note on `AUDIT_REPORT.md`
 
