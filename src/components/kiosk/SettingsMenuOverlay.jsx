@@ -107,12 +107,15 @@ export default function SettingsMenuOverlay() {
           errorMessage={errorMessage}
           setErrorMessage={setErrorMessage}
           onOpenDspWizard={() => {
+            // Leave the Definitions Menu open underneath (z-[60] sub-panels
+            // already stack above this overlay's z-50, so nothing "flashes"
+            // through) — closing it here meant the menu was already gone by
+            // the time the user closed the sub-panel, dropping them straight
+            // to the Player view instead of back to the Definitions Menu.
             setIsDspWizardOpen(true);
-            setIsMenuOpen(false);
           }}
           onOpenThemeSettings={() => {
             setIsThemeSettingsOpen(true);
-            setIsMenuOpen(false);
           }}
           remoteAccessEnabled={remoteAccessEnabled}
           onToggleRemoteAccess={(enabled) => {
@@ -120,10 +123,7 @@ export default function SettingsMenuOverlay() {
             sendUpdate('SET_REMOTE_ACCESS', { enabled });
           }}
           onOpenRemoteAccess={async () => {
-            // Open overlay immediately (z-[60] sits above this overlay's z-50)
-            // then close the menu — no flash of the player view
             setIsRemoteAccessOpen(true);
-            setIsMenuOpen(false);
             // URL fetch runs in background; QR updates once it resolves
             try {
               const r = await fetch('/api/system/lan-url');
@@ -135,11 +135,9 @@ export default function SettingsMenuOverlay() {
           }}
           onOpenWifi={() => {
             setIsWifiOpen(true);
-            setIsMenuOpen(false);
           }}
           onOpenSystemAdmin={() => {
             setIsSystemAdminOpen(true);
-            setIsMenuOpen(false);
           }}
         />
       </div>

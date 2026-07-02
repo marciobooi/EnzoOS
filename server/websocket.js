@@ -1,9 +1,9 @@
 import { WebSocketServer, WebSocket } from 'ws';
-import { spawn } from 'child_process';
 import { getValidAccessToken } from './spotify-auth.js';
 import { getSetting } from './db.js';
 import { setBroadcast, emit, getState } from './event-service.js';
 import { isWsAuthorized } from './auth.js';
+import { sendCamillaCommand } from './camilla-ws.js';
 
 function safeParse(jsonStr, label) {
   try {
@@ -109,103 +109,41 @@ export function setupWebSocket(server) {
 }
 
 // ─── Audio level monitor ──────────────────────────────────────────────────────
+// Polls CamillaDSP's own GetCaptureSignalPeak instead of running a permanent
+// `arecord` process on loop_dsnoop: CamillaDSP already computes this, so this
+// removes a whole ALSA client reading ~384 KB/s of raw PCM in Node. It also
+// removes the one thing pinning the shared dsnoop device to a fixed 48 kHz —
+// arecord's `-r 48000` locked that rate for every other reader too (dsnoop's
+// slave params are fixed by whichever client opens it first), which was the
+// last blocker for bit-perfect rate-following actually working.
 
-let arecordProcess = null;
-let arecordRetryCount = 0;
-const MAX_RETRY_COUNT = 5;
-let arecordRetryTimeout = null;
+let levelPollInterval = null;
+const POLL_INTERVAL_MS = 100;
+const SILENCE_FLOOR_DB = -45.0;
 
 export function startAudioLevelMonitor() {
-  if (arecordProcess) return;
-  if (arecordRetryCount >= MAX_RETRY_COUNT) {
-    console.warn('[Audio Monitor] Max retry count reached. Monitor disabled.');
-    return;
-  }
+  if (levelPollInterval) return;
+  console.log('[Audio Monitor] Starting CamillaDSP-based VU meter (GetCaptureSignalPeak poll)...');
 
-  // loop_dsnoop (ALSA dsnoop on hw:Loopback,1,0) receives audio from:
-  // PipeWire → ResonanceInput virtual sink → PW loopback → hw:Loopback,0,0 → dsnoop
-  console.log('[Audio Monitor] Starting arecord VU meter (loop_dsnoop via PipeWire loopback)...');
-
-  try {
-    // Use S32_LE — the ALSA Loopback kernel module exposes S32_LE on this system.
-    // Rate 48000 matches the fixed clock in asound.conf.
-    arecordProcess = spawn('arecord', [
-      '-D', 'loop_dsnoop',
-      '-f', 'S32_LE',
-      '-c', '2',
-      '-r', '48000',
-      '-t', 'raw',
-      '-q',
-    ]);
-  } catch (err) {
-    console.error('[Audio Monitor] Failed to spawn arecord:', err.message);
-    arecordProcess = null;
-    scheduleRetry();
-    return;
-  }
-
-  let bufferAccumulator = Buffer.alloc(0);
-  // 50 ms at 48 kHz stereo 32-bit = 48000 * 0.05 * 2ch * 4 bytes = 19200
-  const CHUNK_SIZE = 19200;
-
-  arecordProcess.stdout.on('data', (chunk) => {
-    arecordRetryCount = 0;
-    bufferAccumulator = Buffer.concat([bufferAccumulator, chunk]);
-
-    while (bufferAccumulator.length >= CHUNK_SIZE) {
-      const chunkToProcess = bufferAccumulator.subarray(0, CHUNK_SIZE);
-      bufferAccumulator = bufferAccumulator.subarray(CHUNK_SIZE);
-
-      // S32_LE: 4 bytes per sample, 8 bytes per stereo frame
-      let maxL = 0;
-      let maxR = 0;
-      for (let i = 0; i < chunkToProcess.length; i += 8) {
-        if (i + 7 >= chunkToProcess.length) break;
-        const absL = Math.abs(chunkToProcess.readInt32LE(i));
-        const absR = Math.abs(chunkToProcess.readInt32LE(i + 4));
-        if (absL > maxL) maxL = absL;
-        if (absR > maxR) maxR = absR;
-      }
-
-      const calcDb = (val) => {
-        if (val <= 0) return -45.0;
-        return Math.max(-45.0, Math.round(20 * Math.log10(val / 2147483647.0) * 10) / 10);
-      };
-
-      emit('AUDIO_LEVELS', { dbL: calcDb(maxL), dbR: calcDb(maxR) });
+  levelPollInterval = setInterval(async () => {
+    try {
+      const msg = await sendCamillaCommand('GetCaptureSignalPeak');
+      const value = msg.GetCaptureSignalPeak?.value;
+      if (!Array.isArray(value)) return;
+      const clamp = (db) => Math.max(SILENCE_FLOOR_DB, Math.round((db ?? SILENCE_FLOOR_DB) * 10) / 10);
+      emit('AUDIO_LEVELS', { dbL: clamp(value[0]), dbR: clamp(value[1]) });
+    } catch {
+      // CamillaDSP WS not connected right now — next tick retries; no
+      // separate retry/backoff bookkeeping needed since camilla-ws.js
+      // already handles reconnection.
     }
-  });
-
-  arecordProcess.on('error', (err) => {
-    console.error('[Audio Monitor] arecord process error:', err.message);
-  });
-
-  arecordProcess.on('exit', (code) => {
-    console.log(`[Audio Monitor] arecord process exited with code ${code}`);
-    arecordProcess = null;
-    // Lazily check standby state to avoid reading stale closure value
-    import('./event-service.js').then(({ getStandbyState }) => {
-      if (!getStandbyState()) scheduleRetry();
-    });
-  });
-}
-
-function scheduleRetry() {
-  if (arecordRetryTimeout) clearTimeout(arecordRetryTimeout);
-  arecordRetryCount++;
-  console.log(`[Audio Monitor] Scheduling retry ${arecordRetryCount}/${MAX_RETRY_COUNT} in 15 seconds...`);
-  arecordRetryTimeout = setTimeout(() => startAudioLevelMonitor(), 15000);
+  }, POLL_INTERVAL_MS);
 }
 
 export function stopAudioLevelMonitor() {
-  if (arecordRetryTimeout) {
-    clearTimeout(arecordRetryTimeout);
-    arecordRetryTimeout = null;
-  }
-  arecordRetryCount = 0;
-  if (arecordProcess) {
-    console.log('[Audio Monitor] Stopping arecord loopback level monitor...');
-    arecordProcess.kill('SIGTERM');
-    arecordProcess = null;
+  if (levelPollInterval) {
+    clearInterval(levelPollInterval);
+    levelPollInterval = null;
+    console.log('[Audio Monitor] Stopped CamillaDSP VU meter poll.');
   }
 }

@@ -16,6 +16,7 @@ import {
   tidalDeviceAuth, tidalPollToken, tidalSearch, tidalTrackUrl, tidalConnected, clearTidal,
 } from './streaming.js';
 import { sendError, badRequest, badGateway, unauthorized } from './lib/errors.js';
+import { sendCamillaCommand } from './camilla-ws.js';
 
 // ── Streaming source helpers ──────────────────────────────────────────────────
 async function systemctlAction(action, service) {
@@ -142,23 +143,14 @@ router.post('/spotify-volume', async (req, res) => {
  */
 export async function setCamillaVolume(dB) {
   try {
-    const { WebSocket } = await import('ws');
-    return await new Promise((resolve) => {
-      const ws = new WebSocket('ws://localhost:1234');
-      const timer = setTimeout(() => { ws.terminate(); resolve(false); }, 1500);
-      ws.on('open', () => ws.send(JSON.stringify({ SetVolume: dB })));
-      ws.on('message', (d) => {
-        clearTimeout(timer); ws.close();
-        try {
-          const msg = JSON.parse(d.toString());
-          const ok = msg.SetVolume?.result === 'Ok';
-          if (ok) console.log(`[Volume] CamillaDSP volume set to ${dB.toFixed(1)} dB`);
-          resolve(ok);
-        } catch { resolve(false); }
-      });
-      ws.on('error', (err) => { clearTimeout(timer); console.warn('[Volume] WS error:', err.message); resolve(false); });
-    });
-  } catch { return false; }
+    const msg = await sendCamillaCommand({ SetVolume: dB });
+    const ok = msg.SetVolume?.result === 'Ok';
+    if (ok) console.log(`[Volume] CamillaDSP volume set to ${dB.toFixed(1)} dB`);
+    return ok;
+  } catch (err) {
+    console.warn('[Volume] CamillaDSP WS error:', err.message);
+    return false;
+  }
 }
 
 // POST /api/player/seek -> Seek local track
@@ -713,6 +705,15 @@ function generateCamillaConfig(answers, eqSettings, dacInfo, { pureDirect = fals
     const pdPipeRight = [];
     if (phaseLeft)  { pdFilters.phase_left  = { type: "Gain", parameters: { gain: 0, inverted: true, mute: false } }; pdPipeLeft.push("phase_left"); }
     if (phaseRight) { pdFilters.phase_right = { type: "Gain", parameters: { gain: 0, inverted: true, mute: false } }; pdPipeRight.push("phase_right"); }
+    // Dither is a fidelity improvement (replaces quantization distortion with
+    // inaudible shaped noise), not tone-coloring processing, so it's applied
+    // even in Pure Direct — unlike EQ/rate-adjust, which that mode deliberately
+    // bypasses. Only matters when truncating to 16-bit output.
+    if ((dacInfo.format || '').startsWith('S16')) {
+      pdFilters.dither_16bit = { type: "Dither", parameters: { type: "Fweighted441", bits: 16 } };
+      pdPipeLeft.push("dither_16bit");
+      pdPipeRight.push("dither_16bit");
+    }
     const pdPipeline = [{ type: "Mixer", name: "speaker_map" }];
     if (pdPipeLeft.length)  pdPipeline.push({ type: "Filter", channels: [0], names: pdPipeLeft });
     if (pdPipeRight.length) pdPipeline.push({ type: "Filter", channels: [1], names: pdPipeRight });
@@ -723,6 +724,8 @@ function generateCamillaConfig(answers, eqSettings, dacInfo, { pureDirect = fals
         queuelimit: 4,
         capture:  { type: "Alsa", channels: 2, device: "loop_dsnoop", format: captureFormat },
         playback: { type: "Alsa", channels: dacInfo.channels || 2, device: dacInfo.device || "hw:CARD=DAC,DEV=0", format: dacInfo.format || "S24_3_LE" },
+        silence_threshold: -90,
+        silence_timeout: 60,
       },
       mixers: {
         speaker_map: {
@@ -753,7 +756,24 @@ function generateCamillaConfig(answers, eqSettings, dacInfo, { pureDirect = fals
         channels: dacInfo.channels || 2,
         device: dacInfo.device || "hw:CARD=DAC,DEV=0",
         format: dacInfo.format || "S24_3_LE"
-      }
+      },
+      // Absorbs clock drift between the ALSA loopback's timer and the DAC's
+      // own clock (measured live ~20 ppm on the dev VM: capture settles at
+      // 48001 Hz vs 48000 nominal) — without this, that drift caused
+      // periodic buffer under/overruns (audible clicks). AsyncSinc/Balanced
+      // is CamillaDSP's recommended default profile: sub -170 dB added
+      // noise for a modest CPU cost. Not applied in Pure Direct mode (see
+      // the early-return pdConfig above) — that mode intentionally accepts
+      // the drift-related xrun risk in exchange for a genuinely unprocessed
+      // signal path.
+      enable_rate_adjust: true,
+      resampler: { type: "AsyncSinc", profile: "Balanced" },
+      // Let CamillaDSP pause processing during silence instead of running
+      // the DSP pipeline 24/7 — measurable idle CPU/heat saving on a
+      // fanless Pi. -90 dB is well below any real program material's noise
+      // floor; 60s avoids pausing during normal inter-track gaps.
+      silence_threshold: -90,
+      silence_timeout: 60,
     },
     mixers: {},
     filters: {},
@@ -923,6 +943,19 @@ function generateCamillaConfig(answers, eqSettings, dacInfo, { pureDirect = fals
 
   if (phaseLeft)  { config.filters.phase_left  = { type: "Gain", parameters: { gain: 0, inverted: true, mute: false } }; leftPipeline.push("phase_left"); }
   if (phaseRight) { config.filters.phase_right = { type: "Gain", parameters: { gain: 0, inverted: true, mute: false } }; rightPipeline.push("phase_right"); }
+
+  // Dither only matters when truncating to 16-bit output (this VM's onboard
+  // HDA is S16_LE; some budget DACs too) — without it, the EQ/volume/resample
+  // math above (all float-precision) truncates to 16-bit undithered, adding
+  // quantization distortion. Skip entirely for 24/32-bit outputs, where the
+  // extra headroom makes it unnecessary. Must be the LAST filter in the
+  // chain (dither after all gain/EQ stages, right before the ALSA write).
+  if ((dacInfo.format || '').startsWith('S16')) {
+    config.filters.dither_16bit = { type: "Dither", parameters: { type: "Fweighted441", bits: 16 } };
+    leftPipeline.push("dither_16bit");
+    rightPipeline.push("dither_16bit");
+    if (isSubwooferSetup) subPipeline.push("dither_16bit");
+  }
 
   // --- STAGE F: COMPILE THE PIPELINE MATRIX ---
   // CamillaDSP v4: Filter steps use 'channels' (array) instead of v2's 'channel' (integer).
@@ -1167,71 +1200,45 @@ export async function updateCamillaConfigFromSettings({ skipAlsa = false, sample
  */
 async function hotReloadCamilla(yamlString) {
   try {
-    const { WebSocket } = await import('ws');
-    return await new Promise((resolve) => {
-      const ws = new WebSocket('ws://localhost:1234');
-      const timer = setTimeout(() => { ws.terminate(); resolve(false); }, 1500);
-
-      ws.on('open', () => {
-        ws.send(JSON.stringify({ SetConfig: yamlString }));
-      });
-
-      ws.on('message', (data) => {
-        clearTimeout(timer);
-        ws.close();
-        try {
-          const msg = JSON.parse(data.toString());
-          // v1: { SetConfig: 'Ok' }  v2: { SetConfig: { result: 'Ok' } }
-          const ok = msg.SetConfig === 'Ok' || msg.SetConfig?.result === 'Ok';
-          console.log(ok
-            ? '[CamillaDSP] Hot-reload applied — no audio gap.'
-            : '[CamillaDSP] Hot-reload response (unexpected):', msg);
-          resolve(ok);
-        } catch { resolve(false); }
-      });
-
-      ws.on('error', (err) => {
-        clearTimeout(timer);
-        console.warn('[CamillaDSP] Hot-reload WS error:', err.message);
-        resolve(false);
-      });
-    });
+    const msg = await sendCamillaCommand({ SetConfig: yamlString });
+    // v1: { SetConfig: 'Ok' }  v2: { SetConfig: { result: 'Ok' } }
+    const ok = msg.SetConfig === 'Ok' || msg.SetConfig?.result === 'Ok';
+    console.log(ok
+      ? '[CamillaDSP] Hot-reload applied — no audio gap.'
+      : '[CamillaDSP] Hot-reload response (unexpected):', msg);
+    return ok;
   } catch (err) {
-    console.warn('[CamillaDSP] Hot-reload unavailable:', err.message);
+    console.warn('[CamillaDSP] Hot-reload WS error:', err.message);
     return false;
   }
 }
 
 /**
- * Query CamillaDSP GetStatus — returns live signal metrics.
- * Used by /api/player/signal-path for clipping detection, load, and RMS levels.
+ * Query live CamillaDSP signal metrics for /api/player/signal-path.
+ * `GetStatus` is NOT a real command in CamillaDSP 4.x — the previous
+ * implementation sent it and always got back an `Invalid` response, so this
+ * always resolved null. Uses the actual v4 commands instead.
  */
 export async function getCamillaStatus() {
   try {
-    const { WebSocket } = await import('ws');
-    return await new Promise((resolve) => {
-      const ws = new WebSocket('ws://localhost:1234');
-      const timer = setTimeout(() => { ws.terminate(); resolve(null); }, 1500);
-      ws.on('open', () => ws.send(JSON.stringify({ GetStatus: null })));
-      ws.on('message', (d) => {
-        clearTimeout(timer); ws.close();
-        try {
-          const msg = JSON.parse(d.toString());
-          const v = msg.GetStatus?.value;
-          if (!v) { resolve(null); return; }
-          resolve({
-            state:           v.state           ?? 'Unknown',
-            clippedSamples:  v.clippedSamples   ?? 0,
-            bufferUnderruns: v.bufferUnderruns  ?? 0,
-            processingLoad:  v.processingLoad   ?? 0,
-            captureRmsL:     v.captureSignalRms?.[0]  ?? -100,
-            captureRmsR:     v.captureSignalRms?.[1]  ?? -100,
-          });
-        } catch { resolve(null); }
-      });
-      ws.on('error', () => { clearTimeout(timer); resolve(null); });
-    });
-  } catch { return null; }
+    const [state, clipped, load, rms] = await Promise.all([
+      sendCamillaCommand('GetState'),
+      sendCamillaCommand('GetClippedSamples'),
+      sendCamillaCommand('GetProcessingLoad'),
+      sendCamillaCommand('GetCaptureSignalRms'),
+    ]);
+    const rmsValue = rms.GetCaptureSignalRms?.value;
+    return {
+      state:          state.GetState?.value ?? 'Unknown',
+      clippedSamples: clipped.GetClippedSamples?.value ?? 0,
+      processingLoad: load.GetProcessingLoad?.value ?? 0,
+      captureRmsL:    Array.isArray(rmsValue) ? (rmsValue[0] ?? -100) : -100,
+      captureRmsR:    Array.isArray(rmsValue) ? (rmsValue[1] ?? -100) : -100,
+    };
+  } catch (err) {
+    console.warn('[CamillaDSP] Status query failed:', err.message);
+    return null;
+  }
 }
 
 /**

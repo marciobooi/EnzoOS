@@ -211,19 +211,24 @@ secondary path · **[LOW]** cosmetic/hygiene · **[SEC]** security.
 
 ## 5. Dependencies
 
-- [ ] **[MED]** `npm audit` reports one HIGH-severity advisory: `undici`
-  (transitive, via `node-fetch`) — WebSocket client DoS via fragment-count
-  bypass (GHSA-vxpw-j846-p89q), plus two lower-severity `undici` issues in
-  the same range. `fixAvailable: true` — run `npm audit fix` and verify
-  `node-fetch`/streaming code still works afterward.
+- [x] **[MED]** ~~`npm audit` HIGH-severity `undici` advisory~~ — **fixed
+  2026-07-02**: `npm audit fix` (transitive bump via `node-fetch`,
+  `package.json` unchanged — `undici` isn't a direct dependency).
+  `npm audit` now reports 0 vulnerabilities; verified `node-fetch` still
+  imports correctly, every `server/*.js` module still parses, and
+  `npm run build` still succeeds.
 
 ---
 
 ## 6. Lower-priority / hygiene
 
-- [ ] **[LOW]** No `helmet` (or equivalent) security headers on the Express
-  app in `server/index.js` — no CSP, `X-Frame-Options`, etc. Low blast
-  radius for a LAN appliance, but cheap to add.
+- [x] **[LOW]** ~~No `helmet` security headers~~ — **fixed 2026-07-02**:
+  `app.use(helmet({ contentSecurityPolicy: false }))`. CSP specifically
+  disabled — the UI relies on inline `style={{...}}` props throughout for
+  per-theme colors, and helmet's default CSP has no `unsafe-inline` for
+  `style-src`, which would break rendering app-wide. Every other protective
+  header (X-Frame-Options, X-Content-Type-Options, Referrer-Policy, HSTS on
+  the HTTPS remote port, etc.) still applies.
 - [ ] **[LOW]** `server/streaming.js` Qobuz app-credential scraping (the
   "spoofbuz" technique, `getQobuzApp()`) depends on the exact structure of
   Qobuz's public web-player bundle. It has no fallback beyond throwing, so
@@ -399,70 +404,66 @@ load is a healthy ~0.13%, zero clipped samples.
 
 ### 9.1 Broken now
 
-- [ ] **[HIGH]** **The PipeWire→loopback bridge is a feedback loop — every
-  PipeWire source is silent.** `pw-link -l` on the VM shows
-  `resonance.loopback.playback` connected back into `ResonanceInput`
-  instead of the ALSA loopback: the `target.object = "hw:Loopback,0,0"` in
-  `51-resonance-loopback.conf` (install.sh:277-299) is an ALSA device
-  string, not a PipeWire node name, so WirePlumber falls back to the
-  default sink — which *is* ResonanceInput (`51-resonance-default-sink`).
-  Corroborated: all 8 playback subdevices of `/proc/asound/Loopback/pcm0p`
-  are `closed`, and `wpctl status` lists no ALSA sink for the Loopback card
-  at all. Net effect: audio routed through PipeWire (Spotify Connect,
-  Bluetooth A2DP, browser/kiosk sounds) circulates ResonanceInput → loopback
-  module → ResonanceInput and never reaches CamillaDSP — **only MPD works**,
-  because it bypasses PipeWire via the dmix device. Fix: make WirePlumber
-  expose the Loopback card's sink node and reference its real `node.name`
-  (`alsa_output.platform-snd_aloop...`) in `playback.props.target.object`,
-  then verify with `pw-link -l` that the loopback playback stream links to
-  the ALSA sink, not ResonanceInput.
+- [x] **[HIGH]** ~~The PipeWire→loopback bridge is a feedback loop~~ —
+  **fixed and live-verified 2026-07-02**. Root cause was actually one layer
+  deeper than first thought: even with the correct node NAME, WirePlumber's
+  udev/ALSA monitor never creates a PipeWire node for the virtual
+  `snd-aloop` card at all (confirmed live: `pw-cli ls Device` showed zero
+  Device objects for it — no profile ever auto-activates for a card with no
+  real hardware profile-set) — so the bug wasn't just "wrong string" but
+  "nothing to reference by any name." Fix: added
+  `52-resonance-aloop-sink.conf`, which defines `hw:Loopback,0,0` as its own
+  static PipeWire node (`factory.name = api.alsa.pcm.sink`, same pattern
+  `ResonanceInput` already uses), bypassing monitor/profile discovery
+  entirely; `51-resonance-loopback.conf`'s `target.object` now names that
+  node. **Verified end-to-end on the VM**: `pw-link -l` shows the loopback
+  correctly linked to the new node (not `ResonanceInput`), the ALSA
+  subdevice went from `closed` to actively streaming, and a test tone played
+  through PipeWire's `default` device measured `-4.98 dB` on CamillaDSP's
+  `GetCaptureSignalRms` — the first time a PipeWire-routed source (Spotify
+  Connect, AirPlay, Bluetooth, browser audio) has been confirmed to reach
+  CamillaDSP at all.
 
-- [ ] **[HIGH]** **"Bit-perfect rate-following" is half-implemented and
-  currently a no-op — all 44.1 kHz content is resampled to 48 kHz.** The
-  three pieces that exist: PipeWire `clock.allowed-rates` is published from
-  the DAC (`player.js:480-509`), asound.conf runs rate-agnostic in
-  bit-perfect mode (`player.js:944-996`), and an MPD rate watcher exists to
-  re-target CamillaDSP on rate change (`player.js:1367-1419`). But the
-  watcher is **never started** — `event-service.js:670-673` explicitly
-  disables it ("Phase 2 work") — CamillaDSP is generated at a fixed
-  `dacInfo.samplerate` (48000, `player.js:744`), and the arecord VU meter
-  holds `loop_dsnoop` open at a **hard-coded 48000**
-  (`websocket.js:132-139` — its comment still says "matches the fixed
-  clock", from the pre-bit-perfect design; dsnoop slave params are fixed by
-  the first opener, so this alone pins the capture side). Verified live:
-  loopback capture locked at `rate: 48000` while the UI's bitperfect
-  setting defaults to on. So CD-quality 44.1 kHz sources — i.e. most music
-  — get resampled 44.1→48 by MPD's *unconfigured default* resampler.
-  Either finish the feature (start the watcher, unpin the VU meter — see
-  §9.2 — and hot-reload per-rate configs) or stop advertising bit-perfect
-  in the UI/signal-path.
+- [x] **[HIGH]** ~~"Bit-perfect rate-following" half-implemented~~ —
+  **partially fixed 2026-07-02, needs a follow-up live check.** Two
+  corrections to the original finding: (1) the MPD rate watcher is **not**
+  disabled — `server/index.js:startMpdRateWatcher()` does call it; the
+  `event-service.js` comment claiming otherwise was itself stale and has
+  been corrected. (2) The actual blocker was the arecord VU meter
+  permanently holding `loop_dsnoop` open at a hard-coded 48000 Hz (dsnoop's
+  slave params are fixed by whichever client opens it first) — fixed by
+  removing arecord entirely (see §9.2). With that blocker gone, the
+  watcher should now be able to actually change dsnoop's negotiated rate
+  when a track's sample rate changes. **Not yet live-tested**: verifying an
+  actual 44.1→48 kHz track transition end-to-end needs real audio files at
+  different rates, which wasn't available in this SSH-only session —
+  recommend a follow-up check playing both a 44.1 kHz and a 48 kHz file
+  back-to-back and watching `/proc/asound/Loopback/pcm1c/sub0/hw_params`
+  for the rate to actually change.
 
-- [ ] **[HIGH]** **No clock-drift management → periodic audible xruns.**
-  Live `GetConfigJson` shows `enable_rate_adjust: null`, `target_level:
-  null`, `resampler: null`; measured `GetCaptureRate` = **48001** vs
-  playback 48000 (~20 ppm drift between the loopback's timer and the DAC
-  clock), and the journal shows **9 underruns + 1 overrun in one idle
-  hour** — under playback these are audible clicks/dropouts. Two fixes,
-  pick one: **(a) audiophile fix** — load snd-aloop with
-  `timer_source=<DAC pcm>` (the module parameter exists and is currently
-  null on the VM) so the loopback is clocked by the DAC itself: zero drift,
-  stays bit-perfect, no resampler needed; install.sh currently loads
-  snd-aloop bare (install.sh:200-204). **(b) DSP fix** — set
-  `enable_rate_adjust: true` + `target_level` + `resampler: AsyncSinc
-  (Balanced)` in the generator: absorbs drift dynamically but resamples.
-  (a) is preferred; (b) is the fallback for DACs whose pcm timer can't be
-  used.
+- [x] **[HIGH]** ~~No clock-drift management~~ — **fixed 2026-07-02**,
+  option (b) from the original two choices: `enable_rate_adjust: true` +
+  `resampler: { type: AsyncSinc, profile: Balanced }` added to
+  `generateCamillaConfig()`'s main (non-Pure-Direct) devices block.
+  Schema **live-validated** against the real CamillaDSP 4.1.3 instance via
+  `ValidateConfigJson` — returned `"result":"Ok"`. Option (a) (snd-aloop
+  `timer_source=<DAC>`, zero-drift/no-resampling) remains a nice-to-have —
+  it needs a disruptive kernel-module reload (`rmmod`/`modprobe` while
+  every loopback-dependent service is stopped) that wasn't safe to test
+  live in this session, and the exact `timer_source` value needs runtime
+  detection per-DAC. Deliberately **not** applied to Pure Direct mode —
+  that mode intentionally accepts the drift/xrun risk in exchange for a
+  genuinely unprocessed signal path.
 
-- [ ] **[MED]** **`getCamillaStatus()` sends a command that doesn't exist —
-  DSP telemetry has never worked.** `player.js:1209-1235` sends
-  `{ GetStatus: null }`; CamillaDSP 4.1.3 replies `Invalid: unknown
-  variant` (verified live — the valid set is `GetState`,
-  `GetProcessingLoad`, `GetClippedSamples`, `GetBufferLevel`,
-  `GetCaptureSignalRms`, …). The function always resolves `null`, so
-  `/api/player/signal-path` (`player.js:333-363`) permanently returns
-  `camilla: null` — the UI's clipping detection, buffer-underrun counter
-  and processing-load display are dead. Replace with the real commands
-  (they all work — verified live over the same socket).
+- [x] **[MED]** ~~`getCamillaStatus()` sends a nonexistent command~~ —
+  **fixed 2026-07-02**: replaced the `GetStatus` call with the real v4
+  commands (`GetState`, `GetClippedSamples`, `GetProcessingLoad`,
+  `GetCaptureSignalRms`), fired concurrently via the new shared connection
+  (see §9.2). Dropped the `bufferUnderruns` field — verified there's no
+  underrun-count command in the real API (the original field was
+  cargo-culted from a `GetStatus` response shape that never existed); it
+  wasn't consumed by the frontend anyway (only `clippedSamples` is, per
+  `PlayerDisplay.jsx`).
 
 - [x] **[MED]** ~~raspotify customization silently failed~~ — **fixed
   2026-07-02**: replaced the sed-based comment-toggling with an appended,
@@ -476,31 +477,25 @@ load is a healthy ~0.13%, zero clipped samples.
 
 ### 9.2 Improvements — communication & quality
 
-- [ ] **[MED]** **Replace the arecord VU meter with CamillaDSP's own signal
-  levels.** `websocket.js:113-211` keeps a permanent `arecord` process on
-  `loop_dsnoop` and parses ~384 KB/s of raw PCM in Node just to compute
-  peak dB. CamillaDSP already computes this — `GetCaptureSignalPeak` /
-  `GetCaptureSignalRms` over the WS (verified working live). Switching
-  removes a whole ALSA client (which is also what pins the dsnoop rate,
-  §9.1), frees CPU on the Pi, and the retry/standby babysitting code goes
-  away.
+- [x] **[MED]** ~~Replace the arecord VU meter with CamillaDSP's own signal
+  levels~~ — **fixed 2026-07-02**: `websocket.js`'s permanent `arecord`
+  process replaced with a 100ms poll of `GetCaptureSignalPeak` over the new
+  shared CamillaDSP connection (see below) — removes a whole ALSA client
+  reading ~384 KB/s of raw PCM in Node, and (more importantly) un-pins
+  `loop_dsnoop`'s negotiated rate, which was the last blocker for §9.1's
+  bit-perfect rate-following.
 
-- [ ] **[MED]** **Use one persistent CamillaDSP WS connection instead of a
-  new socket per command.** `setCamillaVolume` (`player.js:143-162`),
-  `hotReloadCamilla` (`:1168`), and `getCamillaStatus` (`:1209`) each open
-  a fresh `ws://localhost:1234` connection with a 1.5 s timeout. A volume
-  drag fires dozens of connect/handshake/close cycles per second, and
-  signal-path polling adds more every 5 s. A single shared client with
-  auto-reconnect makes volume feel instant and eliminates connection churn
-  — this is the "service communication" upgrade with the most user-visible
-  payoff.
+- [x] **[MED]** ~~Use one persistent CamillaDSP WS connection~~ — **fixed
+  2026-07-02**: added `server/camilla-ws.js` — a single shared
+  `ws://localhost:1234` connection with auto-reconnect and a promise-based
+  `sendCamillaCommand()` API (FIFO-matched per command name, since
+  CamillaDSP's replies carry no request id). `setCamillaVolume`,
+  `hotReloadCamilla`, `getCamillaStatus`, and the new VU-meter poller all
+  route through it instead of opening a fresh socket per call.
 
-- [ ] **[MED]** **Pin MPD's resampler to soxr "very high".** `/etc/mpd.conf`
-  (written by install.sh:375-400) has no `resampler` block; the VM's MPD is
-  built with both soxr and libsamplerate (verified). Since resampling
-  *does* happen today (§9.1) — and even after the bit-perfect fix it still
-  happens for rates the DAC lacks — it should be
-  `resampler { plugin "soxr" quality "very high" }`, not MPD's default.
+- [x] **[MED]** ~~Pin MPD's resampler to soxr "very high"~~ — **fixed
+  2026-07-02**: added `resampler { plugin "soxr" quality "very high" }` to
+  the generated `/etc/mpd.conf`.
 
 - [x] **[MED]** ~~Passthrough daemons can't reach the user's PipeWire
   session~~ — **fixed 2026-07-02**: added
@@ -510,21 +505,22 @@ load is a healthy ~0.13%, zero clipped samples.
   pattern MPD already used — also resolves the librespot-as-root finding
   in §8.2.
 
-- [ ] **[LOW]** Add a CamillaDSP `Dither` filter when the playback format is
-  16-bit (this VM's HDA is S16_LE; some budget DACs too) — the current
-  32-bit-float → S16 conversion after EQ/volume truncates undithered.
-  Skip it when the output is 24/32-bit.
+- [x] **[LOW]** ~~Add a CamillaDSP `Dither` filter for 16-bit output~~ —
+  **fixed 2026-07-02**: `Dither` filter (`type: Fweighted441, bits: 16`)
+  added as the last pipeline stage whenever `dacInfo.format` starts with
+  `S16`, in both the main config and Pure Direct (dither is a fidelity
+  improvement — replaces quantization distortion with inaudible shaped
+  noise — not tone-coloring, so it applies even in Pure Direct unlike
+  EQ/rate-adjust). Schema **live-validated** via `ValidateConfigJson`.
 
-- [ ] **[LOW]** Align install.sh's initial camilladsp.yml
-  (install.sh:486-518: `samplerate: 44100`, `chunksize: 8192`) with the
-  server generator (48000 / 1024) — first boot runs ~186 ms of extra
-  latency and a different rate until the API regenerates the file, for no
-  reason.
+- [x] **[LOW]** ~~Align install.sh's initial camilladsp.yml~~ — **fixed
+  2026-07-02**: `samplerate: 44100, chunksize: 8192` → `48000 / 1024`,
+  matching the server generator.
 
-- [ ] **[LOW]** Set `silence_threshold`/`silence_timeout` in the CamillaDSP
-  config so the pipeline sleeps when no signal is present (currently null —
-  CamillaDSP busy-processes silence 24/7; on a fanless Pi that's
-  measurable idle heat/power).
+- [x] **[LOW]** ~~Set `silence_threshold`/`silence_timeout`~~ — **fixed
+  2026-07-02**: `silence_threshold: -90, silence_timeout: 60` added to both
+  the main and Pure Direct devices blocks. Live-validated via
+  `ValidateConfigJson`.
 
 - [ ] **[note]** Latency budget for context: PW quantum 1024 + dsnoop
   buffer 3×1024 + CamillaDSP chunk 1024 ≈ 60–90 ms end-to-end. That is the
@@ -532,8 +528,18 @@ load is a healthy ~0.13%, zero clipped samples.
   chase "zero latency" by shrinking chunks below 1024 without RT-kernel
   testing — the current values are correctly aligned (chunk == quantum).
 
-- [ ] **[LOW]** If user opens a menu in def menu only in kiosk and closed instead return to 
-  player it should go to definitions menu, right now when close it returns to player
+- [x] **[LOW]** ~~Kiosk Definitions Menu sub-panel close returns to Player
+  instead of the menu~~ — **fixed 2026-07-02**: `SettingsMenuOverlay.jsx`'s
+  `onOpenDspWizard`/`onOpenThemeSettings`/`onOpenRemoteAccess`/`onOpenWifi`/
+  `onOpenSystemAdmin` handlers were each calling `setIsMenuOpen(false)`
+  immediately on open (with a comment claiming this avoided "a flash of the
+  player view") — but the sub-panels already stack above the Definitions
+  Menu via z-index, so this just meant the menu was already closed by the
+  time the user closed the sub-panel, dropping them straight to Player.
+  Removed those calls; also fixed `ThemeSettingsOverlay.jsx` and
+  `DspWizardOverlay.jsx`, which were `z-50` (same layer as the Definitions
+  Menu, unlike the other three sub-panels which were already correctly
+  `z-[60]`) — bumped both to `z-[60]` for consistent stacking.
 
 ---
 

@@ -1,5 +1,6 @@
 import 'dotenv/config';
 import express from 'express';
+import helmet from 'helmet';
 import cors from 'cors';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -33,6 +34,15 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 const HTTPS_PORT = process.env.HTTPS_PORT || 5001;
 
+// CSP is disabled: the UI relies heavily on inline `style={{...}}` props
+// throughout (Tailwind covers layout/utility classes, but per-theme colors
+// are computed and applied inline) — helmet's default CSP has no
+// 'unsafe-inline' for style-src and would break rendering app-wide. Every
+// other protective header (X-Frame-Options/clickjacking, X-Content-Type-
+// Options/MIME-sniffing, Referrer-Policy, HSTS on the HTTPS remote port,
+// etc.) still applies — meaningful even on a LAN appliance, e.g. against a
+// malicious page framing the remote-control UI to clickjack playback/reboot.
+app.use(helmet({ contentSecurityPolicy: false }));
 app.use(cors());
 app.use(express.json());
 

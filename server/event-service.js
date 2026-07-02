@@ -757,10 +757,13 @@ export const loadStateFromDB = async () => {
       console.error('[EventService] Failed to restore CamillaDSP config:', err.message);
     }
 
-    // NOTE: MPD rate watcher disabled — the ALSA loopback bridge (loop_dsnoop)
-    // operates at a fixed 48000 Hz. CamillaDSP and PipeWire must use the same
-    // rate or the loopback breaks (PCM Slave Active stays off → silence).
-    // Rate-following requires a direct CamillaDSP ALSA plugin (Phase 2 work).
+    // NOTE: the MPD rate watcher itself (server/index.js:startMpdRateWatcher())
+    // does run — this comment previously said it was disabled, which was
+    // stale/inaccurate. What actually blocked bit-perfect rate-following was
+    // the old arecord-based VU meter permanently holding loop_dsnoop open at
+    // a hard-coded 48000 Hz (dsnoop's slave params are fixed by whichever
+    // client opens it first) — fixed by switching the VU meter to poll
+    // CamillaDSP's own GetCaptureSignalPeak instead (see websocket.js).
 
     // Start audio level monitor
     const { startAudioLevelMonitor } = await import('./websocket.js');

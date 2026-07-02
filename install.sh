@@ -298,9 +298,43 @@ context.objects = [
 ]
 PWEOF
 
+# Statically define hw:Loopback,0,0 as its own PipeWire node, bypassing the
+# udev/ALSA monitor entirely. That monitor never creates a node for the
+# virtual snd-aloop card (no ALSA-Card-Profile ever auto-activates for it,
+# unlike real hardware), so a plain node-name reference to it from the
+# loopback module below would otherwise match nothing. Live-verified
+# (2026-07-02, QEMU dev VM): without this, module-loopback's target.object
+# silently fell back to the default sink (ResonanceInput itself), creating
+# a feedback loop where every PipeWire-routed source (Spotify Connect,
+# AirPlay, Bluetooth, browser audio) was completely silent — only MPD
+# worked, because it reaches the loopback via ALSA dmix directly, bypassing
+# PipeWire. Confirmed fixed end-to-end: audio played through the PipeWire
+# "default" ALSA device now measures on CamillaDSP's GetCaptureSignalRms.
+cat <<'PWALEOF' > /etc/pipewire/pipewire.conf.d/52-resonance-aloop-sink.conf
+# Resonance HiFi — static PipeWire node for the ALSA loopback (bypasses the
+# udev/ALSA monitor, which never auto-activates a profile for snd-aloop).
+context.objects = [
+  { factory = adapter
+    args = {
+      factory.name      = api.alsa.pcm.sink
+      node.name         = "resonance-aloop-sink"
+      node.description  = "Resonance ALSA Loopback Bridge"
+      media.class       = "Audio/Sink"
+      api.alsa.path     = "hw:Loopback,0,0"
+      audio.channels    = 2
+      audio.format      = "S32LE"
+      audio.rate        = 48000
+    }
+  }
+]
+PWALEOF
+
 cat <<'PWLBEOF' > /etc/pipewire/pipewire.conf.d/51-resonance-loopback.conf
 # Resonance HiFi — PipeWire loopback: ResonanceInput monitor → ALSA Loopback
 # Bridges the PipeWire virtual sink to hw:Loopback,0,0 for CamillaDSP ALSA capture.
+# target.object below is a PipeWire NODE NAME (resonance-aloop-sink, defined
+# in 52-resonance-aloop-sink.conf), NOT the raw ALSA device string — see that
+# file's comment for why a plain "hw:Loopback,0,0" string doesn't work here.
 context.modules = [
   { name = libpipewire-module-loopback
     args = {
@@ -315,7 +349,7 @@ context.modules = [
       playback.props = {
         node.name      = "resonance.loopback.playback"
         audio.position = [ FL FR ]
-        target.object  = "hw:Loopback,0,0"
+        target.object  = "resonance-aloop-sink"
       }
     }
   }
@@ -409,6 +443,16 @@ sticker_file            "/var/lib/mpd/sticker.sql"
 # playback and browse the library, bypassing the app's bearer-token auth.
 bind_to_address         "127.0.0.1"
 port                    "6600"
+
+# Explicit, high-quality resampler — this build has both soxr and
+# libsamplerate; without this block MPD falls back to an unconfigured
+# default, and resampling genuinely happens here (e.g. any track whose rate
+# the DAC doesn't support, or before the bit-perfect rate-follow work fully
+# lands — see TODO.md §9.1).
+resampler {
+    plugin  "soxr"
+    quality "very high"
+}
 
 audio_output {
     type            "alsa"
@@ -511,10 +555,15 @@ echo -e "${YELLOW}Initial CamillaDSP playback device: ${DAC_DEVICE}${NC}"
 #             → ALSA dsnoop (loop_dsnoop) → CamillaDSP capture (this config)
 # Capture is S32_LE to match the bit-perfect 32-bit loopback (see asound.conf).
 echo -e "${YELLOW}Creating initial flat CamillaDSP configuration...${NC}"
+# samplerate/chunksize match server/player.js's generateCamillaConfig()
+# defaults (48000/1024) — this file only exists so CamillaDSP has something
+# to load before resonance-api starts and regenerates it for real; a
+# mismatched rate/chunksize here just meant ~186ms of extra first-boot
+# latency at the wrong rate for no reason.
 cat <<EOF > "$PROJECT_DIR/camilladsp.yml"
 devices:
-  samplerate: 44100
-  chunksize: 8192
+  samplerate: 48000
+  chunksize: 1024
   queuelimit: 4
   capture:
     type: Alsa
