@@ -431,15 +431,13 @@ Everything below is what didn't.
 
 ### 8.4 Stale docs / instructions (live system contradicts them)
 
-- [ ] **[LOW]** `.claude/CLAUDE.md` is stale vs. the deployed reality:
-  it says the backend is a PM2 process (`pm2 restart resonance-api`) — the
-  VM runs a systemd unit `resonance-api.service` and PM2's process list is
-  empty; deploys are `git pull && sudo systemctl restart resonance-api`. It
-  also says "PulseAudio conflicts with this chain — keep it killed/disabled"
-  — the current installer *deliberately* runs PipeWire + pipewire-pulse
-  (ResonanceInput virtual sink → PW loopback → `hw:Loopback,0,0`), and the
-  audio-chain diagram misses that whole layer. Same PM2 staleness already
-  flagged for `DEPLOY.md` in §4.
+- [x] **[LOW]** ~~`.claude/CLAUDE.md` is stale vs. the deployed reality~~ —
+  **fixed 2026-07-02**: CLAUDE.md now documents the systemd deploy path and
+  the intentional PipeWire chain, and a version-pinned reference library was
+  added under `.claude/docs/` (CamillaDSP WS API, PipeWire/WirePlumber,
+  ALSA loopback/dmix, MPD, librespot/raspotify, AirPlay/UPnP, web APIs,
+  Express 5/React 19/Vite 8/Tailwind 4). `DEPLOY.md` staleness (§4) still
+  open.
 
 ---
 
