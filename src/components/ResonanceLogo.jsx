@@ -122,6 +122,7 @@ export function ResonanceWordmark({ className = '', style }) {
         <span className="rl-txt">res</span>
         <span className="rl-play-o" />
         <span className="rl-txt">nance</span>
+        <span className="rl-txt">2.o</span>
       </span>
     </span>
   );
