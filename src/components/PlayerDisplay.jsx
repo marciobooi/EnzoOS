@@ -4,6 +4,19 @@ import { S, cardShadow } from '../styles/stone';
 import AutoScroll from './AutoScroll';
 import { toVolumeDb, sanitizeTrackName } from '../lib/format';
 
+// Real compact-cassette reel physics: the tape runs at a constant linear speed
+// (4.76 cm/s), so a hub's angular speed is inversely proportional to how much
+// tape its pack currently holds — an empty hub does one revolution in ~1.45s
+// and slows as the pack grows. `outer` and the from/to scales mirror the pack
+// shapes in cassette-audio.svg and their tape-transfer scale() keyframes, so
+// the cog speed always matches the pack radius drawn behind it.
+const TAPE_HUB_RADIUS = 30;            // cog hub radius in SVG units (≈11mm real)
+const TAPE_HUB_SECONDS_PER_REV = 1.45; // real-deck period at empty-hub radius
+const TAPE_PACKS = {
+  'reel-left':  { outer: 83.656, from: 1,     to: 0.359 }, // supply pack empties
+  'reel-right': { outer: 112.97, from: 0.266, to: 1 },     // take-up pack fills
+};
+
 const PlayerDisplay = React.memo(function PlayerDisplay({
   theme = 'amber',
   activeTheme = 'dot-matrix',

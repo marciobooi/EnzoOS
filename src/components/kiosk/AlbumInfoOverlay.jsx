@@ -142,19 +142,19 @@ export default function AlbumInfoOverlay() {
               <div className="flex-grow min-w-0 space-y-3">
                 {d.biography && (
                   <div>
-                    <p className="text-[11px] font-light uppercase tracking-[0.2em] mb-1" style={{ color: S.label }}>{t('meta.artist')}</p>
+                    <p className="text-[11px] font-bold uppercase tracking-[0.2em] mb-1" style={{ color: S.strong }}>{t('meta.artist')}</p>
                     <p className="text-[13px] font-light leading-relaxed" style={{ color: S.text }}>{d.biography}</p>
                   </div>
                 )}
                 {d.review && (
                   <div>
-                    <p className="text-[11px] font-light uppercase tracking-[0.2em] mb-1" style={{ color: S.label }}>{t('meta.aboutAlbum')}</p>
+                    <p className="text-[11px] font-bold uppercase tracking-[0.2em] mb-1" style={{ color: S.strong }}>{t('meta.aboutAlbum')}</p>
                     <p className="text-[13px] font-light leading-relaxed" style={{ color: S.text }}>{d.review}</p>
                   </div>
                 )}
                 {d.similar?.length > 0 && (
                   <div>
-                    <p className="text-[11px] font-light uppercase tracking-[0.2em] mb-1.5 flex items-center gap-1.5" style={{ color: S.label }}>
+                    <p className="text-[11px] font-bold uppercase tracking-[0.2em] mb-1.5 flex items-center gap-1.5" style={{ color: S.strong }}>
                       <Users className="w-3 h-3" /> {t('meta.similarArtists')}
                     </p>
                     <div className="flex flex-wrap gap-1.5">
@@ -166,7 +166,7 @@ export default function AlbumInfoOverlay() {
                 )}
                 {d.tracks?.length > 0 && (
                   <div>
-                    <p className="text-[11px] font-light uppercase tracking-[0.2em] mb-1.5" style={{ color: S.label }}>
+                    <p className="text-[11px] font-bold uppercase tracking-[0.2em] mb-1.5" style={{ color: S.strong }}>
                       {t('meta.tracklist')} · {d.tracks.length}
                     </p>
                     <div className="space-y-0">
@@ -181,16 +181,16 @@ export default function AlbumInfoOverlay() {
                   </div>
                 )}
                 {!d.biography && !d.review && !d.tracks?.length && (
-                  <p className="text-sm font-light" style={{ color: S.muted }}>{t('meta.noEditorial')}</p>
+                  <p className="text-sm font-bold" style={{ color: S.muted }}>{t('meta.noEditorial')}</p>
                 )}
                 {d.sources?.length > 0 && (
-                  <p className="text-[11px] font-light pt-1" style={{ color: S.label }}>{t('meta.poweredBy', { sources: d.sources.join(' · ') })}</p>
+                  <p className="text-[11px] font-bold pt-1" style={{ color: S.strong }}>{t('meta.poweredBy', { sources: d.sources.join(' · ') })}</p>
                 )}
               </div>
 
               {/* credits column */}
               <div className="w-[230px] shrink-0">
-                <p className="text-[11px] font-light uppercase tracking-[0.2em] mb-1" style={{ color: S.label }}>{t('meta.release')}</p>
+                <p className="text-[11px] font-bold uppercase tracking-[0.2em] mb-1" style={{ color: S.strong }}>{t('meta.release')}</p>
                 <Credit icon={<Tag className="w-3.5 h-3.5" style={{ color: S.label }} />} label={t('meta.type')} value={d.albumType} />
                 <Credit icon={<Disc3 className="w-3.5 h-3.5" style={{ color: S.label }} />} label={t('meta.format')} value={d.format} />
                 <Credit icon={<Building2 className="w-3.5 h-3.5" style={{ color: S.label }} />} label={t('meta.label')} value={d.label} />
