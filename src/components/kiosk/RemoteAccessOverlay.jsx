@@ -15,6 +15,7 @@ export default function RemoteAccessOverlay() {
   } = useContext(Kk);
 
   const [qrUrl, setQrUrl] = useState('');
+  const [pairCode, setPairCode] = useState('');
   const [expiresAt, setExpiresAt] = useState(0);
   const [secondsLeft, setSecondsLeft] = useState(0);
 
@@ -31,6 +32,7 @@ export default function RemoteAccessOverlay() {
         if (!alive || !d.token) return;
         const sep = remoteUrl.includes('?') ? '&' : '?';
         setQrUrl(`${remoteUrl}${sep}qr=${d.token}`);
+        setPairCode(d.code || '');
         setExpiresAt(d.expiresAt);
         setSecondsLeft(Math.floor(d.ttlSeconds));
         // Refresh 30 s before expiry so the QR is always valid while visible.
@@ -161,6 +163,20 @@ export default function RemoteAccessOverlay() {
               </span>
             </div>
           )}
+          {/* Manual pairing code — fallback for phones where the installed
+              home-screen app intercepts the QR's URL and drops its token
+              (a real iOS limitation, not a bug in the scan itself). Typed
+              into the remote's gate screen instead of scanned. */}
+          {pairCode && remoteAccessEnabled && (
+            <div className="flex flex-col items-center gap-0.5 shrink-0">
+              <span className="text-[9px] uppercase tracking-wider" style={{ color: S.label }}>
+                or enter code
+              </span>
+              <span className="text-lg font-bold tabular-nums tracking-[0.15em]" style={{ color: S.strong }}>
+                {pairCode}
+              </span>
+            </div>
+          )}
         </div>
 
         {/* Col 3 — URL + instructions */}
@@ -183,6 +199,7 @@ export default function RemoteAccessOverlay() {
             {[
               'Point your phone camera at the QR code',
               'The link opens and connects automatically',
+              'Already added to your Home Screen? Use the code instead — the installed app can\'t follow the QR link',
               'Both devices must be on the same Wi-Fi',
               'QR refreshes every 10 minutes — scan anytime',
             ].map((step, i) => (

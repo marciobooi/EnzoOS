@@ -88,6 +88,39 @@ export default function RemoteControl() {
   // ── auth ──────────────────────────────────────────────────────────────────
   const [isAuthenticated, setIsAuthenticated] = useState(!!getCookie('remote_token'));
   const [qrRedeemError, setQrRedeemError]     = useState('');
+  const [pairCodeInput, setPairCodeInput]     = useState('');
+  const [pairCodeBusy, setPairCodeBusy]       = useState(false);
+
+  // Manual pairing-code fallback: once this remote is added to the iOS home
+  // screen, tapping a freshly-scanned QR link gets routed into the installed
+  // app at its fixed manifest start_url, silently dropping the ?qr=<token>
+  // the scan flow depends on. Typing the code shown alongside the kiosk's QR
+  // authenticates via a plain fetch from inside the already-open app instead,
+  // so no URL navigation (and nothing for iOS to intercept) is involved.
+  const handlePairCodeSubmit = async (e) => {
+    e.preventDefault();
+    if (!pairCodeInput.trim() || pairCodeBusy) return;
+    setPairCodeBusy(true);
+    setQrRedeemError('');
+    try {
+      const r = await fetch('/api/auth/pair-code', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: pairCodeInput.trim() }),
+      });
+      const d = await r.json().catch(() => ({}));
+      if (r.ok && d.token) {
+        setCookie('remote_token', d.token, 365);
+        setIsAuthenticated(true);
+      } else {
+        setQrRedeemError(d.error || 'That code is invalid or has expired — check the kiosk for a fresh one.');
+      }
+    } catch {
+      setQrRedeemError('Could not reach the server.');
+    } finally {
+      setPairCodeBusy(false);
+    }
+  };
 
   // ── nav ───────────────────────────────────────────────────────────────────
   const [activeTab, setActiveTab] = useState('player');
@@ -617,6 +650,26 @@ export default function RemoteControl() {
               {qrRedeemError}
             </p>
           )}
+          <div className="w-full pt-2" style={{ borderTop: `0.5px solid ${C.outline}` }}>
+            <p className="text-[11px] uppercase tracking-wider pt-3 pb-2" style={{ color: C.text3, fontFamily: C.fontLabel }}>
+              Already added to your Home Screen? Enter the code from the kiosk instead
+            </p>
+            <form onSubmit={handlePairCodeSubmit} className="flex gap-2">
+              <input
+                type="text" inputMode="numeric" pattern="[0-9]*" autoComplete="off"
+                maxLength={6} placeholder="000000"
+                value={pairCodeInput}
+                onChange={e => setPairCodeInput(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                className="flex-1 min-w-0 rounded-xl px-3 py-2.5 text-[16px] font-semibold tabular-nums tracking-[0.2em] text-center focus:outline-none"
+                style={{ background: C.container, color: C.text1, border: `0.5px solid ${C.outline}` }}
+              />
+              <button type="submit" disabled={pairCodeInput.length !== 6 || pairCodeBusy}
+                className="px-4 rounded-xl text-[13px] font-semibold shrink-0 active:scale-95 transition-all cursor-pointer disabled:opacity-40 disabled:cursor-default"
+                style={{ background: C.champagne, color: '#1a1c1c' }}>
+                {pairCodeBusy ? '…' : 'Connect'}
+              </button>
+            </form>
+          </div>
         </div>
         <p className="text-[12px] text-center" style={{ color: C.text3 }}>
           {t('remoteGate.noPasswordNote')}

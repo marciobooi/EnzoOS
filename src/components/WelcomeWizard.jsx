@@ -28,6 +28,7 @@ export default function WelcomeWizard({ onClose }) {
   const [step, setStep] = useState(0);
   const [lanUrl, setLanUrl] = useState('');
   const [qrToken, setQrToken] = useState('');
+  const [pairCode, setPairCode] = useState('');
   const [saving, setSaving] = useState(false);
   const [tzApplied, setTzApplied] = useState(false);
   const detectedTz = useMemo(() => {
@@ -306,6 +307,7 @@ export default function WelcomeWizard({ onClose }) {
         const d = await r.json();
         if (!alive || !d.token) return;
         setQrToken(d.token);
+        setPairCode(d.code || '');
         refreshTimeout = setTimeout(doFetch, Math.max(0, (d.ttlSeconds || 600) - 30) * 1000);
       } catch { /* best-effort — QR falls back to the untokened URL */ }
     };
@@ -642,6 +644,17 @@ export default function WelcomeWizard({ onClose }) {
                     size={120} fgColor="#1a1918" bgColor="#ffffff" level="M"
                   />
                 </div>
+              </div>
+            )}
+
+            {s.qr && pairCode && (
+              <div className="mt-3 flex flex-col items-center gap-0.5">
+                <span className="text-[10px] uppercase tracking-wider" style={{ color: S.label }}>
+                  already added to your Home Screen? enter this code instead
+                </span>
+                <span className="text-xl font-bold tabular-nums tracking-[0.15em]" style={{ color: S.strong }}>
+                  {pairCode}
+                </span>
               </div>
             )}
 

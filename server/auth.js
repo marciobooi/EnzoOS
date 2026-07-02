@@ -116,21 +116,38 @@ export async function isWsAuthorized(request) {
 // In-memory map: token → expiresAt (ms). Single-use; auto-pruned every minute.
 
 const qrTokens = new Map();
+// 6-digit fallback code → full token. iOS home-screen PWAs use a data store
+// isolated from regular Safari — completing the QR scan via the phone's
+// camera app opens the link in *Safari*, which redeems the token into
+// Safari's own cookie jar, not the already-installed standalone app's.
+// The standalone app has no way to receive that redemption at all (no URL
+// navigation happens inside it), so it's stuck on the gate screen forever
+// even though "open the link in Safari directly" works. A short code the
+// user can type by hand, read straight off the kiosk screen, sidesteps
+// cross-context navigation entirely — the standalone app redeems it via a
+// plain fetch() from within its own already-open page.
+const qrCodes = new Map();
 
 setInterval(() => {
   const now = Date.now();
   for (const [t, exp] of qrTokens) if (exp <= now) qrTokens.delete(t);
+  for (const [code, t] of qrCodes) if (!qrTokens.has(t)) qrCodes.delete(code);
 }, 60_000);
 
 /**
- * Generate a short-lived single-use QR token.
- * Returns { token, expiresAt, ttlSeconds } — caller appends token to the remote URL.
+ * Generate a short-lived single-use QR token, plus a 6-digit code that
+ * redeems the same underlying token (manual-entry fallback for contexts
+ * where following the QR's URL isn't possible/useful — see qrCodes above).
+ * Returns { token, code, expiresAt, ttlSeconds } — caller appends token to
+ * the remote URL and displays code alongside the QR image.
  */
 export function generateQrToken() {
   const token = crypto.randomBytes(24).toString('hex');
+  const code = String(crypto.randomInt(100000, 1000000));
   const expiresAt = Date.now() + QR_TTL_MS;
   qrTokens.set(token, expiresAt);
-  return { token, expiresAt, ttlSeconds: QR_TTL_MS / 1000 };
+  qrCodes.set(code, token);
+  return { token, code, expiresAt, ttlSeconds: QR_TTL_MS / 1000 };
 }
 
 /**
@@ -146,4 +163,17 @@ export async function redeemQrToken(qrToken) {
   }
   qrTokens.delete(qrToken); // one-time use
   return issueToken();
+}
+
+/**
+ * Redeem a 6-digit pairing code for the same bearer token a QR scan would
+ * produce. Same one-time-use / expiry semantics as redeemQrToken, since it
+ * resolves to and consumes the same underlying token.
+ */
+export async function redeemPairCode(code) {
+  if (!code || typeof code !== 'string') return null;
+  const token = qrCodes.get(code);
+  if (!token) return null;
+  qrCodes.delete(code);
+  return redeemQrToken(token);
 }
