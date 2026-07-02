@@ -189,14 +189,14 @@
            r=34 matches the outer reach of the cog teeth. -->
       <circle
           id="hub-bg-left"
-          style="fill:#ffffff"
+          style="fill:#cbccc7"
           cx="263.41"
           cy="518.03"
           r="34"
       />
       <circle
           id="hub-bg-right"
-          style="fill:#ffffff"
+          style="fill:#cbccc7"
           cx="483.06"
           cy="518.03"
           r="34"
