@@ -257,8 +257,8 @@ export function useResonanceWS({
             // Uses the same lock as PLAYBACK_STATE so kiosk slider changes take
             // priority for 2.5 s and aren't immediately overridden by this event.
             if (type === 'SET_VOLUME') {
-              if (payload.volume !== undefined && setters.setVolume) setters.setVolume(payload.volume);
-              if (payload.is_muted !== undefined && setters.setIsMuted) setters.setIsMuted(payload.is_muted);
+              if (payload.volume !== undefined && setVolume) setVolume(payload.volume);
+              if (payload.is_muted !== undefined && setIsMuted) setIsMuted(payload.is_muted);
             }
 
             if (type === 'EQ_SETTINGS') {

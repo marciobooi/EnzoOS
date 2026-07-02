@@ -1,4 +1,5 @@
 import express from 'express';
+import { rateLimit } from 'express-rate-limit';
 import { exec, spawn } from 'child_process';
 import { promisify } from 'util';
 import path from 'path';
@@ -12,6 +13,15 @@ const __dirname = path.dirname(__filename);
 const projectRoot = path.resolve(__dirname, '..');
 const execPromise = promisify(exec);
 const router = express.Router();
+
+// Same cap as the other destructive routes in system.js — an OTA update is a
+// one-shot user action, not something a client should be able to fire in a loop.
+const sensitiveLimiter = rateLimit({ windowMs: 10 * 60 * 1000, max: 20, standardHeaders: true, legacyHeaders: false });
+
+// In-flight guard — prevents overlapping update.sh runs (git reset --hard +
+// npm install + npm run build racing each other on the same working tree)
+// if a client fires the trigger more than once before the first finishes.
+let updateInProgress = false;
 
 // GET /api/system/update/status -> Check git commit difference
 router.get('/status', async (req, res) => {
@@ -39,23 +49,27 @@ router.get('/status', async (req, res) => {
 });
 
 // POST /api/system/update -> Trigger update bash script
-router.post('/', (req, res) => {
+router.post('/', sensitiveLimiter, (req, res) => {
+  if (updateInProgress) {
+    return res.status(409).json({ success: false, error: 'An update is already in progress.' });
+  }
+  updateInProgress = true;
   console.log('[Resonance Server] Initiating OTA Update...');
-  
+
   try {
     const scriptPath = path.resolve(__dirname, '../scripts/update.sh');
     const logPath = path.resolve(__dirname, '../ota_update.log');
-    
+
     // Reset/truncate log file and write initiation header
     fs.writeFileSync(logPath, `=== OTA UPDATE TRIGGERED AT ${new Date().toISOString()} ===\n`, 'utf8');
-    
+
     // Spawn detached child process to run update.sh (pipe streams to read in Node)
     const child = spawn('bash', [scriptPath], {
       cwd: path.resolve(__dirname, '..'),
       detached: true,
       stdio: ['ignore', 'pipe', 'pipe']
     });
-    
+
     child.stdout.on('data', (data) => {
       const text = data.toString();
       fs.appendFileSync(logPath, text);
@@ -75,14 +89,29 @@ router.post('/', (req, res) => {
     child.stderr.on('error', (err) => {
       console.error('[OTA Update] stderr stream error:', err.message);
     });
-    
+
+    // update.sh ends by restarting resonance-api (see scripts/update.sh), which
+    // kills this process — so the in-progress flag only needs clearing on the
+    // failure paths that DON'T end in a restart.
+    child.on('exit', (code) => {
+      updateInProgress = false;
+      if (code !== 0) {
+        console.error(`[OTA Update] update.sh exited with code ${code}`);
+      }
+    });
+    child.on('error', (err) => {
+      updateInProgress = false;
+      console.error('[OTA Update] Failed to spawn update.sh:', err.message);
+    });
+
     child.unref();
-    
+
     res.json({
       success: true,
       message: 'OTA Update process started. The server will pull changes, compile and restart.'
     });
   } catch (err) {
+    updateInProgress = false;
     console.error('[Resonance Server] Failed to trigger update script:', err);
     res.status(500).json({ success: false, error: err.message });
   }

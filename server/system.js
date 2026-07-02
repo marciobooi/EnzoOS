@@ -6,7 +6,7 @@ import os from 'os';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { clearSettingsExcept, getSetting, setSetting } from './db.js';
+import { clearSettingsExcept, getSetting, setSetting, checkpointWAL, closeDB } from './db.js';
 import { sendError, badRequest, notFound } from './lib/errors.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -174,9 +174,12 @@ router.post('/wifi/connect', sensitiveLimiter, async (req, res) => {
 // ── Backup / Restore (#19) ────────────────────────────────────────────────────
 const DB_PATH = path.resolve(__dirname, '../resonance.db');
 
-router.get('/backup', async (req, res) => {
+router.get('/backup', sensitiveLimiter, async (req, res) => {
   try {
     if (!fs.existsSync(DB_PATH)) return sendError(res, notFound('Database not found'));
+    // Flush the WAL sidecar first — otherwise recent committed writes sitting
+    // in resonance.db-wal are silently missing from a raw file copy.
+    await checkpointWAL().catch(err => console.warn('[Backup] WAL checkpoint failed (continuing):', err.message));
     const filename = `resonance-backup-${new Date().toISOString().slice(0, 10)}.db`;
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
     res.setHeader('Content-Type', 'application/octet-stream');
@@ -184,22 +187,55 @@ router.get('/backup', async (req, res) => {
   } catch (err) { sendError(res, err); }
 });
 
-router.post('/restore', async (req, res) => {
+// Settings/history/favorites/metadata-cache only — no audio blobs — so a
+// restored DB should never legitimately approach this size. Caps memory use
+// against a malicious/oversized upload on a Pi.
+const MAX_RESTORE_BYTES = 100 * 1024 * 1024; // 100 MB
+
+router.post('/restore', sensitiveLimiter, async (req, res) => {
   const chunks = [];
-  req.on('data', c => chunks.push(c));
+  let received = 0;
+  let rejected = false;
+
+  req.on('data', (c) => {
+    if (rejected) return;
+    received += c.length;
+    if (received > MAX_RESTORE_BYTES) {
+      rejected = true;
+      sendError(res, badRequest(`File too large (max ${MAX_RESTORE_BYTES / (1024 * 1024)} MB)`));
+      req.destroy();
+      return;
+    }
+    chunks.push(c);
+  });
+
   req.on('end', async () => {
+    if (rejected) return;
     try {
       const buf = Buffer.concat(chunks);
       if (!buf.length) return sendError(res, badRequest('Empty file'));
       if (!buf.slice(0, 16).toString('ascii').startsWith('SQLite format 3')) {
         return sendError(res, badRequest('Not a valid SQLite database'));
       }
+      // Close our own connection (and flush its WAL) before overwriting the
+      // file in place — the process is single-connection/WAL-mode, so writing
+      // under it risks corrupting the sidecar files. We restart the process
+      // afterward (systemd Restart=always) rather than trying to reopen.
+      await closeDB().catch(() => {});
       const backupPath = DB_PATH + '.bak';
       fs.copyFileSync(DB_PATH, backupPath);
       fs.writeFileSync(DB_PATH, buf);
-      res.json({ success: true, message: 'Database restored. Restart the server to apply.' });
+      // Also drop any leftover WAL/SHM sidecars from the old connection so
+      // the restarted process starts clean against the restored file only.
+      for (const suffix of ['-wal', '-shm']) {
+        try { fs.unlinkSync(DB_PATH + suffix); } catch {}
+      }
+      res.json({ success: true, message: 'Database restored. Server is restarting to apply it.' });
+      setTimeout(() => process.exit(0), 500);
     } catch (err) { sendError(res, err); }
   });
+
+  req.on('error', () => { rejected = true; });
 });
 
 // ── Factory Reset (#20) ───────────────────────────────────────────────────────

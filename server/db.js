@@ -338,3 +338,23 @@ export const closeDB = () => {
     });
   });
 };
+
+/**
+ * Flush the WAL sidecar into the main DB file. Required before copying/
+ * streaming resonance.db directly (e.g. for backup) — under WAL mode, recent
+ * committed writes can still be sitting in the -wal file and would otherwise
+ * be silently missing from a raw file copy.
+ * @returns {Promise<void>}
+ */
+export const checkpointWAL = () => {
+  return new Promise((resolve, reject) => {
+    db.run('PRAGMA wal_checkpoint(TRUNCATE)', (err) => {
+      if (err) {
+        console.error('[Resonance DB] wal_checkpoint Error:', err.message);
+        reject(err);
+      } else {
+        resolve();
+      }
+    });
+  });
+};

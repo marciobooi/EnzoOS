@@ -1,5 +1,42 @@
 import { getSetting, setSetting, dbReady } from './db.js';
 
+// ─── Minimal payload shape validation ─────────────────────────────────────────
+// These events cache + persist + rebroadcast whatever a client sends verbatim.
+// Any authenticated LAN client (kiosk, phone remotes) can reach them, so a
+// buggy client — not just a malicious one — could otherwise corrupt shared
+// state for the whole household. This is intentionally shallow (type/range
+// checks, not a full schema) so legitimate payloads from older/newer clients
+// still pass; it only rejects garbage that can't possibly be valid.
+const isPlainObject = (v) => typeof v === 'object' && v !== null && !Array.isArray(v);
+const isFiniteNum = (v) => typeof v === 'number' && Number.isFinite(v);
+
+function isValidBroadcastState(payload) {
+  // BROADCAST_STATE may legitimately be null (source cleared its state).
+  return payload === null || isPlainObject(payload);
+}
+
+function isValidEqSettings(payload) {
+  if (!isPlainObject(payload)) return false;
+  if (payload.preset !== undefined && (typeof payload.preset !== 'string' || payload.preset.length > 100)) return false;
+  if (payload.bands !== undefined) {
+    if (!Array.isArray(payload.bands) || payload.bands.length > 10) return false;
+    if (!payload.bands.every((b) => isFiniteNum(Number(b)))) return false;
+  }
+  for (const key of ['preAmp', 'noiseFloor', 'saturation']) {
+    if (payload[key] !== undefined && !isFiniteNum(Number(payload[key]))) return false;
+  }
+  return true;
+}
+
+function isValidThemeSettings(payload) {
+  if (!isPlainObject(payload)) return false;
+  if (payload.brightness !== undefined) {
+    const b = Number(payload.brightness);
+    if (!isFiniteNum(b) || b < 0 || b > 100) return false;
+  }
+  return true;
+}
+
 // ─── Cached state (single source of truth) ───────────────────────────────────
 let cachedPlaybackState = null;
 let cachedSourceState   = { spotify: true, source: 'spotify' };
@@ -11,6 +48,12 @@ let broadcastFn         = null;
 // Timestamp of last standby entry — BROADCAST_STATE auto-wake is suppressed
 // for 15 s after entering standby to prevent Spotify polling from waking it
 let standbyEnteredAt    = 0;
+
+// Passthrough source → systemd unit that provides it. Shared by SET_SOURCE
+// (starts the daemon on selection) and applyStandby (restarts it on wake —
+// entering standby unconditionally stops all three, so whichever one was
+// actually serving the active source needs to come back up on its own).
+const SOURCE_DAEMON = { airplay: 'shairport-sync', upnp: 'upmpdcli', bluetooth: 'bluealsa' };
 // Debounce timer for volume persistence — avoid a DB write on every slider tick
 let volumeSaveTimer     = null;
 
@@ -234,6 +277,17 @@ async function applyStandby(enabled) {
       } catch (err) {
         console.warn('[Standby] Volume re-apply on wake failed (non-fatal):', err.message);
       }
+      // Restart whichever passthrough daemon was serving the active source —
+      // entering standby stopped shairport-sync/upmpdcli/bluealsa unconditionally,
+      // so an AirPlay/UPnP/Bluetooth session would otherwise stay dead until the
+      // user manually reselects the source from the picker.
+      const daemon = SOURCE_DAEMON[cachedSourceState.source];
+      if (daemon) {
+        exec(`sudo systemctl start ${daemon}`, (err) => {
+          if (err) console.error(`[Standby] Failed to restart ${daemon} on wake:`, err.message);
+          else console.log(`[Standby] Restarted ${daemon} on wake (active source: ${cachedSourceState.source})`);
+        });
+      }
     }
   } catch (err) {
     console.error('[Standby] Power/mpc action failed:', err);
@@ -244,6 +298,10 @@ async function applyStandby(enabled) {
 async function handleEvent(type, payload, excludeWs) {
   switch (type) {
     case 'BROADCAST_STATE': {
+      if (!isValidBroadcastState(payload)) {
+        console.warn('[EventService] Rejected malformed BROADCAST_STATE payload:', payload);
+        break;
+      }
       cachedPlaybackState = payload;
 
       // Auto-wake only if standby has been active for > 15 s to avoid the Spotify
@@ -438,12 +496,7 @@ async function handleEvent(type, payload, excludeWs) {
           // starting the daemon here is what makes the remote able to bring up
           // AirPlay/UPnP/Bluetooth — previously only the kiosk's REST /start calls
           // did this, leaving the remote with a silenced source and no audio.
-          const sourceDaemon = {
-            airplay:   'shairport-sync',
-            upnp:      'upmpdcli',
-            bluetooth: 'bluealsa',
-          };
-          const daemon = sourceDaemon[newSource];
+          const daemon = SOURCE_DAEMON[newSource];
           if (daemon) {
             try {
               const { exec } = await import('child_process');
@@ -471,6 +524,10 @@ async function handleEvent(type, payload, excludeWs) {
     }
 
     case 'SET_EQ_SETTINGS': {
+      if (!isValidEqSettings(payload)) {
+        console.warn('[EventService] Rejected malformed SET_EQ_SETTINGS payload:', payload);
+        break;
+      }
       await setSetting('eq_settings', JSON.stringify(payload));
       broadcast({ type: 'EQ_SETTINGS', payload }, excludeWs);
       // Fire CamillaDSP hot-reload outside the serial queue so other events
@@ -483,6 +540,10 @@ async function handleEvent(type, payload, excludeWs) {
     }
 
     case 'SET_THEME_SETTINGS': {
+      if (!isValidThemeSettings(payload)) {
+        console.warn('[EventService] Rejected malformed SET_THEME_SETTINGS payload:', payload);
+        break;
+      }
       console.log('[EventService] Theme settings update:', payload);
       await setSetting('theme_settings', JSON.stringify(payload));
       if (payload && payload.brightness !== undefined) {

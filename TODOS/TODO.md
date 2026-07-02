@@ -38,80 +38,60 @@ secondary path · **[LOW]** cosmetic/hygiene · **[SEC]** security.
   capability. Tighten the sudoers entries to specific file paths / `nmcli`
   subcommands instead of blanket access.
 
-- [ ] **[SEC/HIGH]** `server/system.js` `POST /restore` — buffers the
-  entire uploaded file into memory with no size cap (memory-exhaustion DoS
-  on a Pi) and isn't behind `sensitiveLimiter` like the other destructive
-  routes. It also overwrites the live `resonance.db` file in place while
-  the app's own SQLite connection is open in WAL mode, without checkpointing
-  or closing that connection first — a real corruption risk, not just a
-  restart inconvenience.
+- [x] **[SEC/HIGH]** ~~`server/system.js` `POST /restore` — no size cap,
+  not rate-limited, WAL corruption risk~~ — **fixed 2026-07-02**: added a
+  100 MB cap enforced during upload (`req.destroy()` past the limit),
+  `sensitiveLimiter`, and the route now `closeDB()`s (flushing WAL) before
+  overwriting `resonance.db`, drops stale `-wal`/`-shm` sidecars, and exits
+  the process so systemd restarts clean against the restored file.
 
-- [ ] **[SEC/HIGH]** `server/system.js` `GET /backup` streams
-  `resonance.db` directly with no `PRAGMA wal_checkpoint` first. Because the
-  DB runs `journal_mode=WAL` (`server/db.js:28`), recent committed writes
-  can still be sitting in the `-wal` sidecar file and are silently missing
-  from the exported backup. Run `PRAGMA wal_checkpoint(TRUNCATE)` before
-  streaming.
+- [x] **[SEC/HIGH]** ~~`server/system.js` `GET /backup` — no WAL
+  checkpoint~~ — **fixed 2026-07-02**: added `checkpointWAL()` in
+  `server/db.js` (`PRAGMA wal_checkpoint(TRUNCATE)`), called before
+  streaming; route also now behind `sensitiveLimiter`.
 
-- [ ] **[SEC/HIGH]** `server/update.js` `POST /` (OTA trigger) has no
-  concurrency guard and isn't rate-limited (unlike every other destructive
-  route in `system.js`). Any authenticated LAN client can fire it
-  repeatedly, spawning overlapping `update.sh` runs (`git reset --hard` +
-  `npm install` + `npm run build` racing each other) on the same working
-  tree. Add a simple in-flight lock and put it behind `sensitiveLimiter`.
+- [x] **[SEC/HIGH]** ~~`server/update.js` `POST /` (OTA trigger) — no
+  concurrency guard, not rate-limited~~ — **fixed 2026-07-02**: added an
+  in-flight `updateInProgress` lock (409 while an update is running, cleared
+  on the child process's `exit`/`error`) and `sensitiveLimiter`.
 
-- [ ] **[SEC/HIGH]** `server/websocket.js` broadcasts every field of
-  `BROADCAST_STATE`/`SET_THEME_SETTINGS`/`SET_EQ_SETTINGS` payloads
-  straight from any authenticated client into cached state, persisted
-  settings, and back out to every other client — no schema validation. A
-  buggy or malicious LAN client with a valid bearer token can corrupt
-  persisted DSP/theme/playback state for the whole household. Add minimal
-  shape validation before caching/persisting.
+- [x] **[SEC/HIGH]** ~~`server/websocket.js` broadcasts unvalidated
+  payloads~~ — **fixed 2026-07-02**: `server/event-service.js` now runs
+  minimal shape validation (`isValidBroadcastState`/`isValidEqSettings`/
+  `isValidThemeSettings`) before caching/persisting `BROADCAST_STATE`,
+  `SET_EQ_SETTINGS`, `SET_THEME_SETTINGS` — malformed payloads are logged
+  and dropped instead of corrupting shared state.
 
-- [ ] **[SEC/MED]** `remote_token` cookie (`src/lib/cookies.js:2-6`, a
-  365-day-lived bearer credential per the login flow) is set with no
-  `Secure` and no `SameSite` attribute. On any network path that isn't
-  HTTPS-only, or a hostile device on the same LAN, this weakens an
-  otherwise-reasonable token design.
+- [x] **[SEC/MED]** ~~`remote_token` cookie missing `Secure`/`SameSite`~~ —
+  **fixed 2026-07-02**: `src/lib/cookies.js:setCookie()` now sets
+  `SameSite=Strict` always and `Secure` whenever `location.protocol` is
+  `https:` (the only path that ever sets this cookie).
 
-- [ ] **[SEC/LOW]** `server/auth.js` — the file's own comment says the
-  bearer token is "long-lived (1 year)" but `TOKEN_TTL_MS` is actually 30
-  days (doc/code mismatch — harmless but confusing). More importantly:
-  there's no way to revoke a single issued token short of rotating
-  `auth_secret` (which invalidates *every* outstanding token, kiosk QR
-  re-pairing required). Consider a per-token ID + revocation list if
-  multi-device trust matters.
+- [x] **[SEC/LOW]** ~~`server/auth.js` TTL comment mismatch~~ — **fixed
+  2026-07-02**: comment corrected to describe the real 30-day token TTL vs.
+  365-day cookie expiry, and documents the rotate-`auth_secret`-to-revoke
+  limitation inline. No revocation-list implementation yet (acceptable for
+  single-household trust model; noted as a future option).
 
 ---
 
 ## 2. Backend correctness bugs
 
-- [ ] **[HIGH]** `server/event-service.js` `applyStandby()` — entering
-  standby unconditionally stops `shairport-sync`/`upmpdcli`/`bluealsa`
-  (lines ~209-211), but **waking from standby never restarts them**
-  (lines ~226-236 only run `kiosk-power.sh wake` + re-apply volume). Result:
-  put an AirPlay/UPnP/Bluetooth session into standby once, and that source
-  is permanently dead until the user manually reselects it from the source
-  picker (which is the only place that starts those daemons). Fix: track
-  which passthrough daemon (if any) was active before standby and restart
-  it on wake, same way `SET_SOURCE` does.
+- [x] **[HIGH]** ~~`applyStandby()` never restarts passthrough daemons on
+  wake~~ — **fixed 2026-07-02**: hoisted the `SOURCE_DAEMON` map (used by
+  `SET_SOURCE`) to module scope in `server/event-service.js` and reused it
+  on the wake path — whichever daemon matches `cachedSourceState.source` is
+  restarted via `systemctl start` alongside the existing volume re-apply.
 
-- [ ] **[HIGH]** `src/websocket.js:259-262` — the `SET_VOLUME` WS handler
-  references `setters.setVolume`/`setters.setIsMuted`, but `setters` is
-  never defined in this scope (`useResonanceWS`) — it only exists as a
-  parameter name of the unrelated `applyFullStatus` helper defined earlier
-  in the file. Every `SET_VOLUME` message (fired whenever the Spotify app
-  changes volume via the `librespot --onevent` hook) throws a
-  `ReferenceError` that's swallowed by the outer `catch` and logged as a
-  generic parse failure. **The Spotify-volume-sync feature is completely
-  broken** on both Kiosk and Remote — confirmed by reading the surrounding
-  code, this isn't a false positive.
+- [x] **[HIGH]** ~~`src/websocket.js:259-262` `SET_VOLUME` references
+  undefined `setters`~~ — **fixed 2026-07-02**: changed to the actual hook
+  parameters (`setVolume`/`setIsMuted`), matching every other handler in the
+  same `onmessage` block. Spotify-volume-sync (the `librespot --onevent`
+  hook) now updates the UI instead of throwing a swallowed `ReferenceError`.
 
-- [ ] **[MED]** `server/player.js:361` — `Math.max(...dac.supportedRates)`
-  returns `-Infinity` if `supportedRates` is empty, which serializes to
-  `null` in `/api/player/signal-path`. Guard with a default before the
-  spread. (Still present — this is the one item from the old
-  `AUDIT_REPORT.md` that's unresolved; see note at the bottom.)
+- [x] **[MED]** ~~`Math.max(...dac.supportedRates)` → `-Infinity`~~ —
+  **fixed 2026-07-02**: `server/player.js` now guards with
+  `dac.supportedRates.length ? Math.max(...) : null`.
 
 ---
 

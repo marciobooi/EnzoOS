@@ -358,7 +358,7 @@ router.get('/signal-path', async (req, res) => {
         device:         dac.device,
         format:         dac.format,
         supportedRates: dac.supportedRates,
-        maxRate:        Math.max(...dac.supportedRates),
+        maxRate:        dac.supportedRates.length ? Math.max(...dac.supportedRates) : null,
       },
     });
   } catch (err) {
