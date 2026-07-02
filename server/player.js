@@ -46,8 +46,12 @@ const router = express.Router();
 // MixRamp defaults used by the Gapless Playback toggle (see the /gapless
 // routes below) — sane, widely-used values that only affect tracks carrying
 // embedded MixRamp volume-ramp tags.
+// mixrampdelay "0" is NOT a valid "enabled, zero delay" value — confirmed
+// live against this project's MPD build: `mpc mixrampdelay 0` silently
+// reads back as -1 (disabled), same as never setting it. Any positive value
+// sticks correctly, so 0.1s (imperceptible) is used as the minimal "on" value.
 const MIXRAMP_DB_ENABLED = '-17';
-const MIXRAMP_DELAY_ENABLED = '0';
+const MIXRAMP_DELAY_ENABLED = '0.1';
 
 // POST /api/player/play -> Play local media
 router.post('/play', async (req, res) => {
