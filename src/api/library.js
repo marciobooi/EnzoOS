@@ -1,8 +1,10 @@
 // Local library browse, genres, playlists, and listening stats.
+import { handleJson } from './_client';
+
 export const libraryApi = {
   async getLibraryArtists() {
     const r = await fetch('/api/player/library/artists');
-    return r.json();
+    return handleJson(r);
   },
 
   async getLibraryAlbums(artist) {
@@ -10,7 +12,7 @@ export const libraryApi = {
       ? `/api/player/library/albums?artist=${encodeURIComponent(artist)}`
       : '/api/player/library/albums';
     const r = await fetch(url);
-    return r.json();
+    return handleJson(r);
   },
 
   async getLibraryTracks(album, artist) {
@@ -18,47 +20,50 @@ export const libraryApi = {
     if (album) params.set('album', album);
     if (artist) params.set('artist', artist);
     const r = await fetch(`/api/player/library/tracks?${params}`);
-    return r.json();
+    return handleJson(r);
   },
 
   async searchLibrary(q, limit = 12) {
     const r = await fetch(`/api/player/library/search?q=${encodeURIComponent(q)}&limit=${limit}`);
+    // Search is used inline in multi-source Promise.allSettled combos (see
+    // UniversalSearch/TrackSearch) — degrade to an empty result instead of
+    // throwing so one failing source doesn't blank the whole search UI.
     if (!r.ok) return [];
-    const d = await r.json();
+    const d = await handleJson(r);
     return d.tracks || [];
   },
 
   // ── Library genres ───────────────────────────────────────────────────────────
   async getLibraryGenres() {
     const r = await fetch('/api/player/library/genres');
-    return r.json();
+    return handleJson(r);
   },
   async getLibraryByGenre(genre) {
     const r = await fetch(`/api/player/library/by-genre?genre=${encodeURIComponent(genre)}`);
-    return r.json();
+    return handleJson(r);
   },
 
   // ── Playlists ────────────────────────────────────────────────────────────────
   async getPlaylists() {
     const r = await fetch('/api/player/playlists');
-    return r.json();
+    return handleJson(r);
   },
   async savePlaylist(name) {
     const r = await fetch(`/api/player/playlists/${encodeURIComponent(name)}/save`, { method: 'POST' });
-    return r.json();
+    return handleJson(r);
   },
   async deletePlaylist(name) {
     const r = await fetch(`/api/player/playlists/${encodeURIComponent(name)}`, { method: 'DELETE' });
-    return r.json();
+    return handleJson(r);
   },
   async playPlaylist(name) {
     const r = await fetch(`/api/player/playlists/${encodeURIComponent(name)}/play`, { method: 'POST' });
-    return r.json();
+    return handleJson(r);
   },
 
   // ── Stats ────────────────────────────────────────────────────────────────────
   async getStats() {
     const r = await fetch('/api/player/stats');
-    return r.json();
+    return handleJson(r);
   },
 };

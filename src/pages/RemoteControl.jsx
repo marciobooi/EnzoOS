@@ -311,8 +311,11 @@ export default function RemoteControl() {
     } else { clearInterval(progressInterval.current); }
     return () => clearInterval(progressInterval.current);
   }, [playbackState, isPlaying, trackDuration, isAuthenticated]);
+  // Keyed on sleepMinutes (only changes when the timer is armed/cleared), NOT
+  // sleepRemaining (which the interval itself updates every second) — depending
+  // on sleepRemaining would tear down and recreate this setInterval every tick.
   useEffect(() => {
-    if (sleepRemaining <= 0) return;
+    if (sleepMinutes <= 0) return;
     const id = setInterval(() => {
       setSleepRemaining(r => {
         if (r <= 1) {
@@ -326,7 +329,7 @@ export default function RemoteControl() {
       });
     }, 1000);
     return () => clearInterval(id);
-  }, [sleepRemaining]);
+  }, [sleepMinutes]);
 
   // Record to play history whenever the track changes
   useEffect(() => {
@@ -402,7 +405,40 @@ export default function RemoteControl() {
   const handleSetSleepTimer = minutes => { setSleepMinutes(minutes); setSleepRemaining(minutes * 60); if (!minutes) { setSleepRemaining(0); toast.success('Sleep timer off'); } else toast.success(`Sleep in ${minutes < 60 ? `${minutes}m` : `${minutes / 60}h`}`); };
 
   // ── transport ─────────────────────────────────────────────────────────────
-  const handleToggleSource  = src => { setSource(src); setPlaybackState(null); sendUpdate('SET_SOURCE', { spotify: src === 'spotify', source: src }); };
+  // Mirrors Kiosk.jsx's handleToggleSource: fire-and-forget stop calls for the
+  // OLD source before switching, so the phone remote silences it as instantly
+  // as the kiosk touchscreen does instead of waiting on the SET_SOURCE event
+  // queue (which left a longer window of audio bleed/overlap between sources).
+  const handleToggleSource  = src => {
+    switch (source) {
+      case 'local':
+      case 'radio':
+        fetch('/api/player/pause', { method: 'POST' }).catch(() => {});
+        break;
+      case 'spotify':
+        if (token) {
+          fetch('https://api.spotify.com/v1/me/player/pause', {
+            method: 'PUT',
+            headers: { 'Authorization': `Bearer ${token}` },
+          }).catch(() => {});
+        }
+        break;
+      case 'airplay':
+        fetch('/api/player/airplay/stop', { method: 'POST' }).catch(() => {});
+        break;
+      case 'upnp':
+        fetch('/api/player/upnp/stop', { method: 'POST' }).catch(() => {});
+        break;
+      case 'bluetooth':
+        fetch('/api/player/bluetooth/stop', { method: 'POST' }).catch(() => {});
+        break;
+      default:
+        break;
+    }
+    setSource(src);
+    setPlaybackState(null);
+    sendUpdate('SET_SOURCE', { spotify: src === 'spotify', source: src });
+  };
   const handleToggleStandby = en  => { setStandby(en); if (ws.current?.readyState === WebSocket.OPEN) ws.current.send(JSON.stringify({ type: 'SET_STANDBY', payload: { enabled: en } })); };
   const handleTogglePureDirect = async enabled => {
     try { await fetch('/api/player/pure-direct', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ enabled }) }); setPureDirect(enabled); }
@@ -514,6 +550,7 @@ export default function RemoteControl() {
     handleTransferPlayback,
     setIsAuthenticated, eraseCookie,
     queueOpen, setQueueOpen, queue, queueLoading,
+    setToken, setPlaybackState, setDevices,
   }), [
     darkMode, activeTab, isConnected, ws, sendUpdate,
     standby, source, spotify, token, isPlaying,
@@ -542,8 +579,8 @@ export default function RemoteControl() {
         <Smartphone className="h-8 w-8" style={{ color: C.error }} />
       </div>
       <div className="text-center">
-        <p className="text-[22px] font-medium mb-2" style={{ color: C.text1, letterSpacing: '-0.01em' }}>Remote Disabled</p>
-        <p className="text-[15px]" style={{ color: C.text4 }}>Enable it from the kiosk system menu.</p>
+        <p className="text-[22px] font-medium mb-2" style={{ color: C.text1, letterSpacing: '-0.01em' }}>{t('remoteGate.disabledTitle')}</p>
+        <p className="text-[15px]" style={{ color: C.text4 }}>{t('remoteGate.disabledBody')}</p>
       </div>
     </div>
   );
@@ -570,9 +607,9 @@ export default function RemoteControl() {
             <Smartphone className="h-7 w-7" style={{ color: C.champagne }} />
           </div>
           <div>
-            <p className="text-[17px] font-semibold mb-1" style={{ color: C.text1 }}>Scan QR to Connect</p>
+            <p className="text-[17px] font-semibold mb-1" style={{ color: C.text1 }}>{t('remoteGate.scanTitle')}</p>
             <p className="text-[14px] leading-relaxed" style={{ color: C.text3 }}>
-              Open the Remote panel on your Hi-Fi system and point your camera at the QR code.
+              {t('remoteGate.scanBody')}
             </p>
           </div>
           {qrRedeemError && (
@@ -582,7 +619,7 @@ export default function RemoteControl() {
           )}
         </div>
         <p className="text-[12px] text-center" style={{ color: C.text3 }}>
-          No password needed — the QR code authenticates you automatically.
+          {t('remoteGate.noPasswordNote')}
         </p>
       </div>
     </div>

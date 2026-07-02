@@ -97,64 +97,50 @@ secondary path · **[LOW]** cosmetic/hygiene · **[SEC]** security.
 
 ## 3. Frontend bugs
 
-- [ ] **[HIGH]** `src/components/kiosk/SystemAdminOverlay.jsx:49` —
-  `if (isSystemAdminOpen && !loaded) loadStorage();` runs directly in the
-  render body instead of inside a `useEffect`. The component stays mounted
-  and re-renders whenever Kiosk's large `kioskCtx` memo changes, so
-  `loadStorage()` can re-fire and overlap before the first `getStorage()`
-  response lands — duplicate network calls and a React render-purity
-  violation. The equivalent remote flow
-  (`src/components/remote/SystemSettings.jsx:60`) does this correctly from
-  an `onPress` handler — mirror that pattern here.
+- [x] **[HIGH]** ~~`SystemAdminOverlay.jsx:49` render-body side effect~~ —
+  **fixed 2026-07-02**: moved `loadStorage()` into a `useEffect([isSystemAdminOpen,
+  loaded])`, matching the remote's `onPress`-triggered pattern.
 
-- [ ] **[MED]** Kiosk vs Remote source-switch asymmetry —
-  `Kiosk.jsx:537-572`'s `handleToggleSource` fires immediate fire-and-forget
-  stop calls (MPD/Spotify/AirPlay/UPnP/Bluetooth) before switching, silencing
-  the old source instantly. `RemoteControl.jsx:405`'s version only updates
-  local state and emits `SET_SOURCE` over the wire, with no client-side stop
-  — a longer window of audio bleed/overlap when switching from the phone
-  vs. the kiosk touchscreen.
+- [x] **[MED]** ~~Kiosk vs Remote source-switch asymmetry~~ — **fixed
+  2026-07-02**: `RemoteControl.jsx`'s `handleToggleSource` now runs the same
+  fire-and-forget stop-the-old-source switch (MPD/Spotify/AirPlay/UPnP/
+  Bluetooth) that `Kiosk.jsx` already had, before emitting `SET_SOURCE`.
 
-- [ ] **[MED]** `src/components/remote/settings/AccountSettings.jsx:43-48`
-  — "Disconnect Spotify" only calls `fetch('/auth/spotify/logout')`. Unlike
-  `Kiosk.jsx:1214-1222`'s `handleLogout`, it never clears local
-  `token`/`devices`/`playbackState` state or sends `CLEAR_TOKEN` — the kiosk
-  and every other connected remote keep showing stale Spotify UI until a
-  full page reload.
+- [x] **[MED]** ~~`AccountSettings.jsx` incomplete Spotify disconnect~~ —
+  **fixed 2026-07-02**: now clears local `token`/`playbackState`/`devices`
+  state and sends `CLEAR_TOKEN` over the WS, mirroring `Kiosk.jsx`'s
+  `handleLogout`. Required exposing `setToken`/`setPlaybackState`/
+  `setDevices` through `RemoteControl.jsx`'s `Tk` context (they existed as
+  local state but weren't in `ctxValue`).
 
-- [ ] **[MED]** Search race conditions — `src/components/remote/UniversalSearch.jsx:126-154`,
-  `src/components/kiosk/UniversalSearchOverlay.jsx:133-151`, and
-  `src/components/TrackSearch.jsx:184-197` all fire `Promise.allSettled`
-  across multiple sources with no request-id/abort/staleness guard. If an
-  older query's results resolve after a newer one's, `setResults` gets
-  clobbered with results for a search the user already replaced.
+- [x] **[MED]** ~~Search race conditions~~ — **fixed 2026-07-02**: added a
+  `searchIdRef` staleness guard to `UniversalSearch.jsx`, `UniversalSearchOverlay.jsx`,
+  and `TrackSearch.jsx` — each `doSearch`/`handleSearch` call captures an id
+  and only applies `setResults` if no newer search has started since.
 
-- [ ] **[MED]** `src/pages/RemoteControl.jsx:314-329` — the sleep-timer
-  countdown `useEffect` depends on `[sleepRemaining]`, so its own
-  `setInterval` is torn down and recreated every second — the same
-  interval-churn anti-pattern already flagged for the progress bar in
-  `AUDIT_REPORT.md §2.2`, but here it's a separate feature (sleep timer)
-  that report never covered.
+- [x] **[MED]** ~~`RemoteControl.jsx` sleep-timer interval churn~~ — **fixed
+  2026-07-02**: the countdown `useEffect` now keys on `sleepMinutes` (only
+  changes when the timer is armed/cleared) instead of `sleepRemaining`
+  (which the interval itself updates every second).
 
-- [ ] **[MED]** `src/components/WelcomeWizard.jsx:593-599` — the onboarding
-  "connect your phone" QR code encodes `${lanUrl}/remote` with **no**
-  `?qr=` auth token, unlike the real `RemoteAccessOverlay.jsx` (which
-  fetches a one-time token from `/api/auth/qr-token` first). Scanning the
-  wizard's QR just opens the remote's login gate instead of authenticating
-  the phone — misleading first-run UX.
+- [x] **[MED]** ~~`WelcomeWizard.jsx` QR code missing auth token~~ — **fixed
+  2026-07-02**: added a `qrToken` fetch (mirrors `RemoteAccessOverlay.jsx`'s
+  `/api/auth/qr-token` + auto-refresh pattern) gated on the phone step being
+  active, and appends `?qr=<token>` to the QR value. Also fixed a separate
+  bug found while doing this: the QR was encoding `${lanUrl}/remote` but
+  `lanUrl` (from `GET /api/system/lan-url`) already ends in `/remote` —
+  producing `.../remote/remote` in the actual QR code.
 
-- [ ] **[LOW]** API layer (`src/api/player.js`, `radio.js`, `library.js`,
-  `streaming.js`, `history.js`, `system.js`) — most methods call `r.json()`
-  unconditionally without checking `r.ok`. A non-2xx response with a JSON
-  error body (`{ error: "..." }`, which `server/lib/errors.js` always
-  returns) is silently treated as success data by the caller.
+- [x] **[LOW]** ~~API layer `r.json()` without `r.ok` check~~ — **fixed
+  2026-07-02**: added `handleJson()` to `src/api/_client.js` (parses the
+  body, throws using our backend's actual `{ error: "..." }` shape on
+  non-2xx) and routed every method in `player.js`, `radio.js`, `library.js`,
+  `streaming.js`, `history.js`, `system.js`, and `dsp.js` through it.
 
-- [ ] **[LOW]** i18n gaps in `src/pages/RemoteControl.jsx` (lines ~545,
-  564-565, 573, 584-586, 655) — several user-facing strings ("Remote
-  Disabled", the QR-scan instructions, the disabled-state copy) are
-  hardcoded English even though `useI18n()`/`t()` is used everywhere else in
-  the same file and `en.js`/`pt.js` otherwise match 1:1. Portuguese users
-  hit English text on the QR-auth and remote-disabled screens.
+- [x] **[LOW]** ~~i18n gaps in `RemoteControl.jsx`~~ — **fixed 2026-07-02**:
+  added a `remoteGate` key namespace (`disabledTitle`, `disabledBody`,
+  `scanTitle`, `scanBody`, `noPasswordNote`) to both `en.js` and `pt.js` and
+  replaced the hardcoded strings on the remote-disabled and QR-scan screens.
 
 ---
 

@@ -1,33 +1,29 @@
 // Local player transport, queue, and lyrics.
-import { handleResponse } from './_client';
+import { handleResponse, handleJson } from './_client';
 
 export const playerApi = {
   /** Play local media. */
   async localPlay() {
     const response = await fetch('/api/player/play', { method: 'POST' });
-    if (response.status === 204) return { success: true };
-    return response.json();
+    return handleJson(response);
   },
 
   /** Pause local media. */
   async localPause() {
     const response = await fetch('/api/player/pause', { method: 'POST' });
-    if (response.status === 204) return { success: true };
-    return response.json();
+    return handleJson(response);
   },
 
   /** Skip next local media. */
   async localNext() {
     const response = await fetch('/api/player/next', { method: 'POST' });
-    if (response.status === 204) return { success: true };
-    return response.json();
+    return handleJson(response);
   },
 
   /** Skip previous local media. */
   async localPrevious() {
     const response = await fetch('/api/player/previous', { method: 'POST' });
-    if (response.status === 204) return { success: true };
-    return response.json();
+    return handleJson(response);
   },
 
   /** Set volume of local media. */
@@ -37,8 +33,7 @@ export const playerApi = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ volume })
     });
-    if (response.status === 204) return { success: true };
-    return response.json();
+    return handleJson(response);
   },
 
   async localGetStatus() {
@@ -52,18 +47,17 @@ export const playerApi = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ position })
     });
-    if (response.status === 204) return { success: true };
-    return response.json();
+    return handleJson(response);
   },
 
   async getQueue() {
     const r = await fetch('/api/player/queue');
-    return r.json();
+    return handleJson(r);
   },
 
   async clearQueue() {
     const r = await fetch('/api/player/queue/clear', { method: 'POST' });
-    return r.json();
+    return handleJson(r);
   },
 
   async addToQueue(filePath, play = false) {
@@ -72,24 +66,24 @@ export const playerApi = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ path: filePath, play }),
     });
-    return r.json();
+    return handleJson(r);
   },
 
   // ── Queue editing ────────────────────────────────────────────────────────────
   async getDetailedQueue() {
     const r = await fetch('/api/player/queue/detailed');
-    return r.json();
+    return handleJson(r);
   },
   async removeFromQueue(id) {
     const r = await fetch(`/api/player/queue/${id}`, { method: 'DELETE' });
-    return r.json();
+    return handleJson(r);
   },
   async moveInQueue(from, to) {
     const r = await fetch('/api/player/queue/move', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ from, to }),
     });
-    return r.json();
+    return handleJson(r);
   },
 
   // ── Lyrics ───────────────────────────────────────────────────────────────────
@@ -98,6 +92,6 @@ export const playerApi = {
     if (album) params.set('album', album);
     if (duration) params.set('duration', duration);
     const r = await fetch(`/api/player/lyrics?${params}`);
-    return r.json();
+    return handleJson(r);
   },
 };

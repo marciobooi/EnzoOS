@@ -1,4 +1,6 @@
 // Web radio playback + favorite stations.
+import { handleJson } from './_client';
+
 export const radioApi = {
   /** Play web radio stream. */
   async localPlayRadio(url, name, favicon) {
@@ -7,13 +9,13 @@ export const radioApi = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ url, name, favicon })
     });
-    return response.json();
+    return handleJson(response);
   },
 
   /** Fetch saved favorite radio stations. */
   async getFavoriteRadios() {
     const response = await fetch('/api/player/radios');
-    return response.json();
+    return handleJson(response);
   },
 
   /** Save a station to favorites. */
@@ -23,7 +25,7 @@ export const radioApi = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(station)
     });
-    return response.json();
+    return handleJson(response);
   },
 
   /** Remove a station from favorites. */
@@ -33,6 +35,6 @@ export const radioApi = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ url })
     });
-    return response.json();
+    return handleJson(response);
   },
 };

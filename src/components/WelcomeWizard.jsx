@@ -27,6 +27,7 @@ export default function WelcomeWizard({ onClose }) {
   const screenThemes = useMemo(() => getScreenThemes(t), [t]);
   const [step, setStep] = useState(0);
   const [lanUrl, setLanUrl] = useState('');
+  const [qrToken, setQrToken] = useState('');
   const [saving, setSaving] = useState(false);
   const closedRef = useRef(false);
 
@@ -270,6 +271,26 @@ export default function WelcomeWizard({ onClose }) {
   useEffect(() => {
     if (s?.wifi && !wifiScanned && !wifiScanning) scanWifi();
   }, [s, wifiScanned, wifiScanning]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Fetch a one-time QR auth token while the phone/QR step is showing — mirrors
+  // RemoteAccessOverlay.jsx. Without it the QR just links to the remote's login
+  // gate instead of actually authenticating the phone that scans it.
+  useEffect(() => {
+    if (!s?.qr) return;
+    let alive = true;
+    let refreshTimeout = null;
+    const doFetch = async () => {
+      try {
+        const r = await fetch('/api/auth/qr-token');
+        const d = await r.json();
+        if (!alive || !d.token) return;
+        setQrToken(d.token);
+        refreshTimeout = setTimeout(doFetch, Math.max(0, (d.ttlSeconds || 600) - 30) * 1000);
+      } catch { /* best-effort — QR falls back to the untokened URL */ }
+    };
+    doFetch();
+    return () => { alive = false; clearTimeout(refreshTimeout); };
+  }, [s?.qr]);
 
   const finish = async () => {
     if (closedRef.current) return;
@@ -593,7 +614,12 @@ export default function WelcomeWizard({ onClose }) {
             {s.qr && (
               <div className="mt-3 flex justify-center">
                 <div className="p-3 rounded-xl" style={{ background: '#fff', boxShadow: cardShadow }}>
-                  <QRCodeSVG value={`${lanUrl}/remote`} size={120} fgColor="#1a1918" bgColor="#ffffff" level="M" />
+                  {/* lanUrl already ends in /remote (see GET /api/system/lan-url) —
+                      appending it again here previously produced .../remote/remote. */}
+                  <QRCodeSVG
+                    value={qrToken ? `${lanUrl}?qr=${qrToken}` : lanUrl}
+                    size={120} fgColor="#1a1918" bgColor="#ffffff" level="M"
+                  />
                 </div>
               </div>
             )}

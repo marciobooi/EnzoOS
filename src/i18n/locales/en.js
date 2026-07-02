@@ -514,4 +514,12 @@ export default {
       cassette:      { name: 'Cassette',         desc: 'Analog tape deck' },
     },
   },
+
+  remoteGate: {
+    disabledTitle: 'Remote Disabled',
+    disabledBody: 'Enable it from the kiosk system menu.',
+    scanTitle: 'Scan QR to Connect',
+    scanBody: 'Open the Remote panel on your Hi-Fi system and point your camera at the QR code.',
+    noPasswordNote: 'No password needed — the QR code authenticates you automatically.',
+  },
 };

@@ -1,4 +1,4 @@
-import { useContext, useState, useRef } from 'react';
+import { useContext, useState, useRef, useEffect } from 'react';
 import { HardDrive, Download, Upload, RotateCcw, RefreshCw, Power } from 'lucide-react';
 import { Kk } from './KioskContext';
 import { toast } from '../../lib/toast';
@@ -46,7 +46,14 @@ export default function SystemAdminOverlay() {
     catch (e) { reportError(e.message); }
   };
 
-  if (isSystemAdminOpen && !loaded) loadStorage();
+  // Fetch once per open, from an effect rather than the render body — this
+  // component stays mounted (only opacity/scale toggle), so it re-renders
+  // whenever Kiosk's large kioskCtx memo changes. Calling loadStorage()
+  // directly in render let it re-fire and overlap before the first response
+  // landed, and it's a React render-purity violation regardless.
+  useEffect(() => {
+    if (isSystemAdminOpen && !loaded) loadStorage();
+  }, [isSystemAdminOpen, loaded]);
 
   const withConfirm = (key, action) => () => {
     if (armed === key) {

@@ -146,6 +146,10 @@ export default function TrackSearch({ token, onPlayTrack, onPlayContext, isDrawe
   const inputRef     = useRef(null);
   // Cache browse data so token refresh (every 4 min) doesn't retrigger
   const browseLoaded = useRef(false);
+  // Staleness guard: handleSearch is async, so if it fires again (repeated
+  // Enter/submit) before the previous call resolves, an older response can
+  // land after a newer one and clobber results with a stale search's data.
+  const searchIdRef  = useRef(0);
 
   useEffect(() => {
     if (!token || browseLoaded.current) return;
@@ -183,16 +187,18 @@ export default function TrackSearch({ token, onPlayTrack, onPlayContext, isDrawe
 
   const handleSearch = useCallback(async (e) => {
     e?.preventDefault?.();
+    const id = ++searchIdRef.current;
     if (!query.trim()) { setView('browse'); setResults(null); return; }
     setIsLoading(true);
     setView('search');
     try {
       const data = await api.searchAll(token, query, 'track,album,playlist', 8);
+      if (id !== searchIdRef.current) return; // a newer search already superseded this one
       setResults(data);
     } catch (err) {
       console.error('[TrackSearch] search error:', err);
     } finally {
-      setIsLoading(false);
+      if (id === searchIdRef.current) setIsLoading(false);
     }
   }, [query, token]);
 

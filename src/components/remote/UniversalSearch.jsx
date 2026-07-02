@@ -104,6 +104,10 @@ export default function UniversalSearch() {
   const [playlists, setPlaylists] = useState({ spotify: [], local: [] });
   const debounceRef = useRef(null);
   const inputRef = useRef(null);
+  // Staleness guard: doSearch is async (Promise.allSettled across 5 sources),
+  // so an older query's results can resolve after a newer one's. Only the
+  // request that's still the latest when it resolves is allowed to setResults.
+  const searchIdRef = useRef(0);
 
   // Playlists row is independent of the query — Spotify library playlists,
   // saved local MPD playlists, favorited radio stations — shown as soon as
@@ -124,6 +128,7 @@ export default function UniversalSearch() {
   }, [token, spotify]);
 
   const doSearch = async (q) => {
+    const id = ++searchIdRef.current;
     if (!q.trim()) {
       setResults({ spotify: [], local: [], tidal: [], qobuz: [], radio: [] });
       setLoading(false);
@@ -137,6 +142,7 @@ export default function UniversalSearch() {
       api.tidalSearch(q),
       api.qobuzSearch(q),
     ]);
+    if (id !== searchIdRef.current) return; // a newer search already superseded this one
     setResults({
       spotify: (spotifyR.value || []).slice(0, 8),
       local:   (localR.value || []).slice(0, 8),

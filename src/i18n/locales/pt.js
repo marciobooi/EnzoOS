@@ -512,4 +512,12 @@ export default {
       cassette: { name: 'Cassete', desc: 'Toca-fitas analógico' },
     },
   },
+
+  remoteGate: {
+    disabledTitle: 'Comando Remoto Desativado',
+    disabledBody: 'Ative-o no menu do sistema do quiosque.',
+    scanTitle: 'Digitalize o QR para Ligar',
+    scanBody: 'Abra o painel Remoto no seu sistema Hi-Fi e aponte a câmara para o código QR.',
+    noPasswordNote: 'Não é necessária palavra-passe — o código QR autentica-o automaticamente.',
+  },
 };

@@ -1,16 +1,16 @@
 // Hi-res streaming services: Tidal (OAuth2 device flow) and Qobuz (user/pass).
+import { handleJson } from './_client';
+
 export const streamingApi = {
   // ── Tidal (OAuth2 device flow) ──────────────────────────────────────────────
   async getTidalStatus() {
     const r = await fetch('/api/player/tidal/status');
-    return r.json();
+    return handleJson(r);
   },
 
   async tidalDeviceAuth() {
     const r = await fetch('/api/player/tidal/device-auth', { method: 'POST' });
-    const d = await r.json().catch(() => ({}));
-    if (!r.ok) throw new Error(d?.error || 'Tidal device auth failed');
-    return d;
+    return handleJson(r, 'Tidal device auth failed');
   },
 
   async tidalPoll(deviceCode) {
@@ -19,15 +19,12 @@ export const streamingApi = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ deviceCode }),
     });
-    const d = await r.json().catch(() => ({}));
-    if (!r.ok) throw new Error(d?.error || 'Tidal poll failed');
-    return d;
+    return handleJson(r, 'Tidal poll failed');
   },
 
   async tidalSearch(q) {
     const r = await fetch(`/api/player/tidal/search?q=${encodeURIComponent(q)}`);
-    if (!r.ok) throw new Error((await r.json().catch(() => ({})))?.error || 'Search failed');
-    return r.json();
+    return handleJson(r, 'Search failed');
   },
 
   async tidalPlayTrack(track) {
@@ -36,20 +33,18 @@ export const streamingApi = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(track),
     });
-    const d = await r.json().catch(() => ({}));
-    if (!r.ok) throw new Error(d?.error || 'Playback failed');
-    return d;
+    return handleJson(r, 'Playback failed');
   },
 
   async tidalDisconnect() {
     const r = await fetch('/api/player/tidal/disconnect', { method: 'DELETE' });
-    return r.json();
+    return handleJson(r);
   },
 
   // ── Qobuz (username/password) ───────────────────────────────────────────────
   async getQobuzStatus() {
     const r = await fetch('/api/player/qobuz/status');
-    return r.json();
+    return handleJson(r);
   },
 
   async qobuzAuth(username, password) {
@@ -58,15 +53,12 @@ export const streamingApi = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ username, password }),
     });
-    const data = await r.json().catch(() => ({}));
-    if (!r.ok) throw new Error(data?.error || 'Qobuz auth failed');
-    return data;
+    return handleJson(r, 'Qobuz auth failed');
   },
 
   async qobuzSearch(q) {
     const r = await fetch(`/api/player/qobuz/search?q=${encodeURIComponent(q)}`);
-    if (!r.ok) throw new Error((await r.json().catch(() => ({})))?.error || 'Search failed');
-    return r.json();
+    return handleJson(r, 'Search failed');
   },
 
   async qobuzPlayTrack(track) {
@@ -75,13 +67,11 @@ export const streamingApi = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(track),
     });
-    const d = await r.json().catch(() => ({}));
-    if (!r.ok) throw new Error(d?.error || 'Playback failed');
-    return d;
+    return handleJson(r, 'Playback failed');
   },
 
   async qobuzDisconnect() {
     const r = await fetch('/api/player/qobuz/disconnect', { method: 'DELETE' });
-    return r.json();
+    return handleJson(r);
   },
 };
