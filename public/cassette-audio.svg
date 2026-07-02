@@ -183,6 +183,24 @@
           inkscape:connector-curvature="0"
           d="m483.06 405.07c-62.38 0-112.97 50.588-112.97 112.97 0 62.38 50.588 112.94 112.97 112.94 62.38 0 112.94-50.557 112.94-112.94 0-62.38-50.557-112.97-112.94-112.97zm-0.3125 82.938c12.788-0.1295 24.716 7.9991 28.844 20.812 5.0807 15.77-3.5735 32.669-19.344 37.75-15.77 5.0808-32.669-3.5735-37.75-19.344-5.0808-15.77 3.5734-32.669 19.344-37.75 2.9569-0.9527 5.955-1.4389 8.9062-1.4688z"
       />
+      <!-- The scale() animation on the tape packs above shrinks their inner
+           hole below the hub radius (30), which would show black behind the
+           reel cogs. These discs keep the hub interior white at every frame;
+           r=34 matches the outer reach of the cog teeth. -->
+      <circle
+          id="hub-bg-left"
+          style="fill:#ffffff"
+          cx="263.41"
+          cy="518.03"
+          r="34"
+      />
+      <circle
+          id="hub-bg-right"
+          style="fill:#ffffff"
+          cx="483.06"
+          cy="518.03"
+          r="34"
+      />
       <path
           id="path5346"
           style="stroke:#999999;stroke-linecap:round;stroke-width:1.8148;fill:#b3b3b3"
