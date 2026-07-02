@@ -401,39 +401,7 @@
           id="g25362"
           transform="translate(102.86 48.929)"
         >
-        <g
-            id="g24718"
-          >
-          <rect
-              id="rect5390"
-              style="stroke:#666666;stroke-linecap:round;stroke-width:2;fill:#000000"
-              ry="1.6071"
-              height="41.071"
-              width="41.071"
-              y="569.63"
-              x="467.7"
-          />
-          <path
-              id="path5392"
-              sodipodi:r2="8.9285717"
-              style="fill:#1a1a1a"
-              sodipodi:type="star"
-              d="m2165 975.61-15.465-26.786h30.929z"
-              sodipodi:r1="17.857143"
-              inkscape:transform-center-x="-4.4642453"
-              inkscape:transform-center-y="2.0920903e-05"
-              transform="matrix(0 -1 1 0 -473.99 2755.2)"
-              sodipodi:arg2="2.6179939"
-              sodipodi:arg1="1.5707963"
-              inkscape:randomized="0"
-              sodipodi:cy="957.75586"
-              sodipodi:cx="2165"
-              inkscape:rounded="0"
-              inkscape:flatsided="true"
-              sodipodi:sides="3"
-          />
-        </g
-        >
+
         <g
             id="g25089"
           >
@@ -533,31 +501,7 @@
             <g
                 id="g24722"
               >
-              <g
-                  id="g24713"
-                >
-                <rect
-                    id="rect5382"
-                    style="stroke:#666666;stroke-linecap:round;stroke-width:2;fill:#000000"
-                    ry="1.6071"
-                    height="41.071"
-                    width="41.071"
-                    y="569.63"
-                    x="34.125"
-                />
-                <g
-                    id="text5384"
-                    style="fill:#1a1a1a"
-                  >
-                  <path
-                      id="path3308"
-                      style=""
-                      d="m60.121 598.86h-10.92l-1.96 5.88h-6.12l10.36-29.16h6.64l10.08 29.16h-6.16l-1.92-5.88m-1.64-5-3.8-11.4-3.8 11.4h7.6"
-                  />
-                </g
-                >
-              </g
-              >
+  
               <g
                   id="g5913"
                   transform="matrix(.99999 -.0053827 .0053827 .99999 -1277.2 639.22)"
