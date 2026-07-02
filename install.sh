@@ -210,13 +210,17 @@ apt_install install -y \
   evtest \
   network-manager
 
-# cups is frequently pulled in as a recommended dependency of the desktop/
-# display packages above, and listens on 0.0.0.0:631 by default — pure
-# attack surface on a HiFi appliance with no printer. Disable rather than
-# apt-remove (removing it risks cascading removal of packages that merely
-# recommend it).
-systemctl disable --now cups 2>/dev/null || true
-systemctl disable --now cups-browsed 2>/dev/null || true
+# cups is frequently preinstalled (as either the apt package or, per live
+# testing on Ubuntu 24.04, an auto-installed cups SNAP — unit names
+# snap.cups.cupsd.service / snap.cups.cups-browsed.service, not
+# cups.service) and listens on 0.0.0.0:631 by default — pure attack surface
+# on a HiFi appliance with no printer. Try every known unit name; `|| true`
+# on each means whichever form isn't present is silently skipped rather
+# than aborting the install. Disable rather than remove (uninstalling risks
+# cascading removal of packages/snap dependents that merely recommend it).
+for cups_unit in cups cups-browsed snap.cups.cupsd snap.cups.cups-browsed; do
+  systemctl disable --now "$cups_unit" 2>/dev/null || true
+done
 
 # Enable ALSA Loopback kernel module immediately and on boot.
 # CamillaDSP (ALSA-only build) still captures from this loopback via dsnoop.
@@ -441,6 +445,8 @@ sticker_file            "/var/lib/mpd/sticker.sql"
 # 127.0.0.1, the server and kiosk are local, mpc defaults to localhost).
 # MPD has no built-in auth, so "any" would let any LAN device control
 # playback and browse the library, bypassing the app's bearer-token auth.
+# NOTE: on Ubuntu's mpd package this directive alone does NOT restrict the
+# listening address — see the mpd.socket.d drop-in written below for why.
 bind_to_address         "127.0.0.1"
 port                    "6600"
 
@@ -487,10 +493,30 @@ MPDOVEOF
 # Give TARGET_USER ownership of MPD state files
 chown -R "$TARGET_USER:$TARGET_USER" /var/lib/mpd 2>/dev/null || true
 
-# Enable and start MPD service
+# Ubuntu's mpd package launches via `mpd --systemd $MPDCONF` with
+# `Also=mpd.socket` — this is systemd SOCKET ACTIVATION: the actual listen
+# address/port come from mpd.socket's own ListenStream=, and mpd.conf's
+# bind_to_address above is silently ignored for the socket-activated
+# listener. Live-verified (2026-07-02, QEMU dev VM): setting only
+# bind_to_address left MPD listening on *:6600 regardless. Override the
+# socket unit's ListenStream to loopback-only instead.
+mkdir -p /etc/systemd/system/mpd.socket.d
+cat <<'MPDSOCKEOF' > /etc/systemd/system/mpd.socket.d/10-resonance-loopback.conf
+[Socket]
+ListenStream=
+ListenStream=127.0.0.1:6600
+MPDSOCKEOF
+
+# Enable and start MPD service. Socket-activated units need the socket
+# stopped/reloaded/restarted BEFORE the service — restarting mpd.service
+# alone while an old-config mpd.socket is still bound leaves the stale
+# (world-listening) socket in place.
 echo -e "${YELLOW}Enabling and starting Media Player Daemon (MPD)...${NC}"
+systemctl stop mpd.service 2>/dev/null || true
+systemctl stop mpd.socket 2>/dev/null || true
 systemctl daemon-reload
 systemctl enable mpd
+systemctl restart mpd.socket
 systemctl restart mpd
 
 echo -e "\n${GREEN}Installing CamillaDSP (pinned v${CAMILLADSP_VERSION})...${NC}"

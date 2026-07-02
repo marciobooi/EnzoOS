@@ -340,10 +340,20 @@ Everything below is what didn't.
 
 ### 8.2 Security (verified live)
 
-- [x] **[SEC/MED]** ~~MPD control port open to the whole LAN~~ — **fixed
-  2026-07-02**: `bind_to_address` changed from `"any"` to `"127.0.0.1"` —
-  nothing off-box ever needed it (upmpdcli connects to `127.0.0.1`, the
-  server and kiosk are local).
+- [x] **[SEC/MED]** ~~MPD control port open to the whole LAN~~ — **fixed and
+  live-verified 2026-07-02**, with a correction along the way: `mpd.conf`'s
+  `bind_to_address "any"` → `"127.0.0.1"` alone **does not work** on
+  Ubuntu's mpd package. It launches via `mpd --systemd $MPDCONF` with
+  `Also=mpd.socket` (systemd socket activation) — the actual listen
+  address/port come from `mpd.socket`'s own `ListenStream=`, and
+  `bind_to_address` is silently ignored for the socket-activated listener.
+  Confirmed live: setting only `bind_to_address` left MPD listening on
+  `*:6600` even after a full restart. Fix: added
+  `mpd.socket.d/10-resonance-loopback.conf` overriding `ListenStream=` to
+  `127.0.0.1:6600`, plus stop-socket-then-service/restart-socket-then-
+  service ordering (socket-activated units need the socket cycled, not
+  just the service). Verified: `ss -tlnp` now shows `127.0.0.1:6600` only,
+  `mpc status` still works locally.
 
 - [x] **[SEC/MED]** ~~librespot runs as root~~ — **fixed 2026-07-02**: added
   `/etc/systemd/system/raspotify.service.d/10-resonance-run-as-user.conf`
@@ -351,11 +361,17 @@ Everything below is what didn't.
   existing drop-in pattern) — also fixes the audio-path concern noted here
   (root had no PipeWire session to reach).
 
-- [x] **[SEC/LOW]** ~~`cupsd` listening on `0.0.0.0:631`~~ — **fixed
-  2026-07-02**: `install.sh` now runs `systemctl disable --now
-  cups cups-browsed` after the display-stack install (disabled, not
-  apt-removed, to avoid cascading removal of packages that merely
-  recommend it).
+- [x] **[SEC/LOW]** ~~`cupsd` listening on `0.0.0.0:631`~~ — **fixed and
+  live-verified 2026-07-02**, also with a correction: the first attempt
+  (`systemctl disable --now cups cups-browsed`) silently no-op'd —
+  `systemctl` reported "Unit file cups.service does not exist" while
+  `cupsd` was still very much running, because cups was installed as a
+  **snap** on this VM, under unit names `snap.cups.cupsd.service` /
+  `snap.cups.cups-browsed.service`, not the apt package's `cups.service`.
+  install.sh now loops over both naming schemes
+  (`cups cups-browsed snap.cups.cupsd snap.cups.cups-browsed`), each with
+  `|| true` so whichever form isn't present is silently skipped. Verified:
+  port 631 fully closed.
 
 - [ ] **[LOW]** `unattended-upgrades` is left enabled — good for security
   patches, but a surprise `mpd`/`bluez`/kernel upgrade can restart audio
