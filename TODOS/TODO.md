@@ -589,6 +589,9 @@ load is a healthy ~0.13%, zero clipped samples.
   chase "zero latency" by shrinking chunks below 1024 without RT-kernel
   testing — the current values are correctly aligned (chunk == quantum).
 
+- [ ] **[LOW]** If user opens a menu in def menu only in kiosk and closed instead return to 
+  player it should go to definitions menu, right now when close it returns to player
+
 ---
 
 ## Note on `AUDIT_REPORT.md`
