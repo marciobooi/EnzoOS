@@ -360,6 +360,35 @@ context.modules = [
 ]
 PWLBEOF
 
+# `target.object` above is a preference, not a hard lock: WirePlumber's
+# session-manager policy can still re-link a passive Stream/Input/Audio
+# client (resonance.loopback.capture) onto a hardware capture device if one
+# gets discovered/promoted to "default source" AFTER this stream started —
+# live-verified (2026-07-02, QEMU dev VM): the emulated sound card's
+# analog-stereo capture (mic/line-in) appeared some time after boot and
+# silently stole the link away from ResonanceInput, making every PipeWire
+# source go silent again despite the config above being completely correct.
+# This appliance has no legitimate use for ANY hardware audio capture
+# (no mic/line-in feature anywhere in the app), so the robust fix is to
+# make sure no such device can ever become a candidate default source.
+mkdir -p /etc/wireplumber/main.lua.d
+cat <<'WPLUAEOF' > /etc/wireplumber/main.lua.d/51-resonance-disable-hw-capture.lua
+-- Resonance HiFi — disable all hardware ALSA capture nodes. Prevents
+-- WirePlumber's default-source policy from ever re-linking
+-- resonance.loopback.capture away from ResonanceInput's monitor ports.
+alsa_monitor.rules = alsa_monitor.rules or {}
+table.insert(alsa_monitor.rules, {
+  matches = {
+    {
+      { "node.name", "matches", "alsa_input.*" },
+    },
+  },
+  apply_properties = {
+    ["node.disabled"] = true,
+  },
+})
+WPLUAEOF
+
 # ── PipeWire clock: bit-perfect rate-following ───────────────────────────────
 # clock.allowed-rates lets PipeWire switch its graph clock to each source's
 # native rate (no resampling). The loopback runs rate-agnostic (see asound.conf)

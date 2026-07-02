@@ -439,6 +439,23 @@ load is a healthy ~0.13%, zero clipped samples.
   `GetCaptureSignalRms` — the first time a PipeWire-routed source (Spotify
   Connect, AirPlay, Bluetooth, browser audio) has been confirmed to reach
   CamillaDSP at all.
+  **Third layer found during final verification**: even with the node
+  fixed, the link didn't stay put. `target.object` is a *preference*, not a
+  hard lock — WirePlumber's session-manager policy re-linked
+  `resonance.loopback.capture` away from `ResonanceInput` onto the VM's
+  emulated hardware capture device (`alsa_input.pci-...`, i.e. its
+  mic/line-in) once that device was discovered and promoted to "default
+  source," some time after boot — silently going quiet again despite a
+  fully correct config. Fix: `51-resonance-disable-hw-capture.lua`
+  (WirePlumber's Lua rule format — the ALSA/Bluez monitor rule system in
+  this WirePlumber version, 0.4.17, predates the JSON `.conf.d` rule syntax
+  used elsewhere) disables every `alsa_input.*` node outright — this
+  appliance has no feature anywhere that uses hardware audio capture, so
+  there's no legitimate default-source candidate left to steal the link.
+  Re-verified after this fix: signal reliably measured on both channels as
+  `speaker-test` cycled through them (**-4.9 dB L, then -5.0 dB R**), stable
+  across 6 samples over 9 seconds — the previous two fixes were necessary
+  but not sufficient without this one.
 
 - [x] **[HIGH]** ~~"Bit-perfect rate-following" half-implemented~~ —
   **partially fixed 2026-07-02, needs a follow-up live check.** Two
