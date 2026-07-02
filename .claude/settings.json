@@ -23,5 +23,30 @@
       "args": ["-y", "@modelcontextprotocol/server-fetch"],
       "type": "stdio"
     }
+  },
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node .claude/hooks/session-start-context.cjs",
+            "timeout": 15,
+            "statusMessage": "Loading .claude/docs index..."
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node .claude/hooks/context-nudge.cjs",
+            "timeout": 15
+          }
+        ]
+      }
+    ]
   }
 }

@@ -112,3 +112,32 @@ first, then `Read` with `offset`/`limit` around the match.
   in §3 above, synthesized into one scannable doc. Don't re-run a full audit
   that `TODO.md`/`IMPROVEMENTS.md` already cover — check those first and
   only investigate what's genuinely new or unverified.
+
+## 7. Automated context management
+
+Two hooks in `.claude/hooks/` (wired in `.claude/settings.json`) automate
+what used to be manual habits — memory/CLAUDE.md text can't trigger actions,
+only hooks can:
+
+- **`session-start-context.cjs`** (`SessionStart` hook) — injects the full
+  contents of `.claude/docs/README.md` as additional context at the start
+  of every session, so the docs index (§ above, "Reference Docs") is known
+  from turn one without an extra `Read` call. It only loads the index, not
+  every file under `.claude/docs/` — full doc files are still read on demand
+  per §1/§6, matching this file's own "don't read more than the task needs"
+  rule.
+- **`context-nudge.cjs`** (`Stop` hook) — after each assistant turn, checks
+  the transcript file's byte size as a rough proxy for token count
+  (`bytes / 4`; not exact — tool results skew it, but it's directionally
+  right). Once a session crosses ~150k estimated tokens it prints a
+  one-time `systemMessage` suggesting `/compact` (same task) or `/clear`
+  (new task), then stays silent until context grows another ~50k tokens
+  (state tracked per-session under the OS temp dir). This is the concrete
+  automation behind the general rule: **`/compact` mid-task, `/clear` when
+  switching tasks** — long sessions cost more even with prompt caching,
+  because every turn re-sends the full history and only the unchanged
+  prefix is discounted.
+
+Built-in auto-compact (`autoCompactEnabled`, on by default) still handles
+hard context-limit compaction on its own; these hooks exist for the softer,
+earlier nudge these thresholds don't cover.
