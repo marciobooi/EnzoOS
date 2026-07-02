@@ -54,33 +54,38 @@ const PlayerDisplay = React.memo(function PlayerDisplay({
   const canvasRef = useRef(null);
   const cassetteObjRef = useRef(null);
   const cassetteTrackKeyRef = useRef(null);
+  const trackPositionRef = useRef(0);
+  const tapeTickRef = useRef({ pos: 0, t: 0 });
 
   const applyCassettePlaybackState = useCallback(() => {
     const svgRoot = cassetteObjRef.current?.contentDocument?.documentElement;
     if (svgRoot) svgRoot.classList.toggle('paused', !isPlaying);
   }, [isPlaying]);
 
-  const restartCassetteTapeTransfer = useCallback(() => {
+  const syncCassetteTapeTransfer = useCallback(() => {
     const svgDoc = cassetteObjRef.current?.contentDocument;
     const svgRoot = svgDoc?.documentElement;
     if (!svgRoot) return;
-    const seconds = trackDuration > 0 ? trackDuration / 1000 : 180;
-    svgRoot.style.setProperty('--transfer-duration', `${seconds}s`);
-    // Animation is a single forwards-filled pass keyed to song length, so
-    // a new track needs a hard reset back to frame 0 (left full / right empty).
+    const durationSec = trackDuration > 0 ? trackDuration / 1000 : 180;
+    const positionSec = Math.min(Math.max(trackPositionRef.current / 1000, 0), durationSec);
+    svgRoot.style.setProperty('--transfer-duration', `${durationSec}s`);
+    // Animation is a single forwards-filled pass keyed to song length: hard
+    // reset it, then use a negative delay to land on the frame matching the
+    // current playback position (frame 0 = left full / right empty).
     ['path5342', 'path5344'].forEach(id => {
       const el = svgDoc.getElementById(id);
       if (!el) return;
       el.style.animation = 'none';
       void el.getBoundingClientRect();
       el.style.animation = '';
+      el.style.animationDelay = `-${positionSec}s`;
     });
   }, [trackDuration]);
 
   const initCassetteSvg = useCallback(() => {
     applyCassettePlaybackState();
-    restartCassetteTapeTransfer();
-  }, [applyCassettePlaybackState, restartCassetteTapeTransfer]);
+    syncCassetteTapeTransfer();
+  }, [applyCassettePlaybackState, syncCassetteTapeTransfer]);
 
   useEffect(() => {
     if (activeTheme === 'cassette') applyCassettePlaybackState();
@@ -91,8 +96,22 @@ const PlayerDisplay = React.memo(function PlayerDisplay({
     const key = `${trackName}::${trackArtist}`;
     if (cassetteTrackKeyRef.current === key) return;
     cassetteTrackKeyRef.current = key;
-    restartCassetteTapeTransfer();
-  }, [activeTheme, trackName, trackArtist, restartCassetteTapeTransfer]);
+    syncCassetteTapeTransfer();
+  }, [activeTheme, trackName, trackArtist, syncCassetteTapeTransfer]);
+
+  // The tape animation free-runs on wall clock, so it only stays honest while
+  // playback advances 1s per second. Re-sync it whenever the reported position
+  // jumps somewhere the running animation can't have reached on its own
+  // (seek, server re-sync correction, resume after a long pause).
+  useEffect(() => {
+    trackPositionRef.current = trackPosition;
+    const now = performance.now();
+    const last = tapeTickRef.current;
+    const expected = last.pos + (isPlaying ? now - last.t : 0);
+    tapeTickRef.current = { pos: trackPosition, t: now };
+    if (activeTheme !== 'cassette') return;
+    if (Math.abs(trackPosition - expected) > 2000) syncCassetteTapeTransfer();
+  }, [trackPosition, isPlaying, activeTheme, syncCassetteTapeTransfer]);
 
   useEffect(() => {
     function handleClickOutside(event) {
