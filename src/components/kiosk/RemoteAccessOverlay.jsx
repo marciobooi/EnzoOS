@@ -18,6 +18,12 @@ export default function RemoteAccessOverlay() {
   const [pairCode, setPairCode] = useState('');
   const [expiresAt, setExpiresAt] = useState(0);
   const [secondsLeft, setSecondsLeft] = useState(0);
+  // /api/auth/qr-token is loopback-only (minting an auth token for anyone on
+  // the LAN would be an auth bypass). When this overlay is viewed from
+  // another device's browser (http://resonance.local:5000/...) the fetch
+  // 403s — track that and say so, instead of silently showing a tokenless
+  // QR that would only lead the phone to the gate screen.
+  const [qrForbidden, setQrForbidden] = useState(false);
 
   // Fetch a fresh QR token whenever the overlay opens (or remoteUrl first lands).
   useEffect(() => {
@@ -28,8 +34,10 @@ export default function RemoteAccessOverlay() {
     const doFetch = async () => {
       try {
         const r = await fetch('/api/auth/qr-token');
+        if (r.status === 403) { if (alive) setQrForbidden(true); return; }
         const d = await r.json();
         if (!alive || !d.token) return;
+        setQrForbidden(false);
         const sep = remoteUrl.includes('?') ? '&' : '?';
         setQrUrl(`${remoteUrl}${sep}qr=${d.token}`);
         setPairCode(d.code || '');
@@ -143,7 +151,7 @@ export default function RemoteAccessOverlay() {
             style={{
               border: `1px solid ${S.border}`,
               boxShadow: cardShadow,
-              opacity: remoteAccessEnabled ? 1 : 0.25,
+              opacity: remoteAccessEnabled && !qrForbidden ? 1 : 0.25,
             }}>
             <QRCodeSVG
               value={qrValue}
@@ -154,6 +162,12 @@ export default function RemoteAccessOverlay() {
               style={{ maxWidth: '100%', height: 'auto' }}
             />
           </div>
+          {qrForbidden && (
+            <p className="text-[11px] text-center leading-relaxed shrink-0 px-2" style={{ color: S.muted }}>
+              Pairing is only available on the HiFi's own screen — open this
+              panel there to get a working QR code and pairing code.
+            </p>
+          )}
           {/* Countdown badge */}
           {secondsLeft > 0 && remoteAccessEnabled && (
             <div className="flex items-center gap-1 shrink-0">
