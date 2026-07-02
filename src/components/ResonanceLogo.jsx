@@ -152,7 +152,6 @@ export default function ResonanceLogo({ className = '', style, bare = false }) {
             <span className="rl-txt">res</span>
             <span className="rl-play-o" />
             <span className="rl-txt">nance</span>
-            <span className="rl-txt">2.0</span>
           </div>
         </div>
       </div>
