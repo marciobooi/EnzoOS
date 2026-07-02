@@ -443,6 +443,156 @@ Everything below is what didn't.
 
 ---
 
+## 9. Audio pipeline deep audit — 2026-07-02 (sound quality, latency, service communication)
+
+Follow-up to §8, focused on what the listener actually hears. Verified live
+on the VM with `pw-link`, `/proc/asound` hw_params, the CamillaDSP WS API
+(`GetConfigJson`, `GetCaptureRate`, `GetBufferLevel`), and journal xrun
+counts. Working today: MPD → `camilla_input` (dmix) → loopback → dsnoop →
+CamillaDSP → DAC plays correctly, hot-reload (`SetConfig`) is gapless,
+CamillaDSP owns the whole gain stage (hw volume pinned to 0 dB), processing
+load is a healthy ~0.13%, zero clipped samples.
+
+### 9.1 Broken now
+
+- [ ] **[HIGH]** **The PipeWire→loopback bridge is a feedback loop — every
+  PipeWire source is silent.** `pw-link -l` on the VM shows
+  `resonance.loopback.playback` connected back into `ResonanceInput`
+  instead of the ALSA loopback: the `target.object = "hw:Loopback,0,0"` in
+  `51-resonance-loopback.conf` (install.sh:277-299) is an ALSA device
+  string, not a PipeWire node name, so WirePlumber falls back to the
+  default sink — which *is* ResonanceInput (`51-resonance-default-sink`).
+  Corroborated: all 8 playback subdevices of `/proc/asound/Loopback/pcm0p`
+  are `closed`, and `wpctl status` lists no ALSA sink for the Loopback card
+  at all. Net effect: audio routed through PipeWire (Spotify Connect,
+  Bluetooth A2DP, browser/kiosk sounds) circulates ResonanceInput → loopback
+  module → ResonanceInput and never reaches CamillaDSP — **only MPD works**,
+  because it bypasses PipeWire via the dmix device. Fix: make WirePlumber
+  expose the Loopback card's sink node and reference its real `node.name`
+  (`alsa_output.platform-snd_aloop...`) in `playback.props.target.object`,
+  then verify with `pw-link -l` that the loopback playback stream links to
+  the ALSA sink, not ResonanceInput.
+
+- [ ] **[HIGH]** **"Bit-perfect rate-following" is half-implemented and
+  currently a no-op — all 44.1 kHz content is resampled to 48 kHz.** The
+  three pieces that exist: PipeWire `clock.allowed-rates` is published from
+  the DAC (`player.js:480-509`), asound.conf runs rate-agnostic in
+  bit-perfect mode (`player.js:944-996`), and an MPD rate watcher exists to
+  re-target CamillaDSP on rate change (`player.js:1367-1419`). But the
+  watcher is **never started** — `event-service.js:670-673` explicitly
+  disables it ("Phase 2 work") — CamillaDSP is generated at a fixed
+  `dacInfo.samplerate` (48000, `player.js:744`), and the arecord VU meter
+  holds `loop_dsnoop` open at a **hard-coded 48000**
+  (`websocket.js:132-139` — its comment still says "matches the fixed
+  clock", from the pre-bit-perfect design; dsnoop slave params are fixed by
+  the first opener, so this alone pins the capture side). Verified live:
+  loopback capture locked at `rate: 48000` while the UI's bitperfect
+  setting defaults to on. So CD-quality 44.1 kHz sources — i.e. most music
+  — get resampled 44.1→48 by MPD's *unconfigured default* resampler.
+  Either finish the feature (start the watcher, unpin the VU meter — see
+  §9.2 — and hot-reload per-rate configs) or stop advertising bit-perfect
+  in the UI/signal-path.
+
+- [ ] **[HIGH]** **No clock-drift management → periodic audible xruns.**
+  Live `GetConfigJson` shows `enable_rate_adjust: null`, `target_level:
+  null`, `resampler: null`; measured `GetCaptureRate` = **48001** vs
+  playback 48000 (~20 ppm drift between the loopback's timer and the DAC
+  clock), and the journal shows **9 underruns + 1 overrun in one idle
+  hour** — under playback these are audible clicks/dropouts. Two fixes,
+  pick one: **(a) audiophile fix** — load snd-aloop with
+  `timer_source=<DAC pcm>` (the module parameter exists and is currently
+  null on the VM) so the loopback is clocked by the DAC itself: zero drift,
+  stays bit-perfect, no resampler needed; install.sh currently loads
+  snd-aloop bare (install.sh:200-204). **(b) DSP fix** — set
+  `enable_rate_adjust: true` + `target_level` + `resampler: AsyncSinc
+  (Balanced)` in the generator: absorbs drift dynamically but resamples.
+  (a) is preferred; (b) is the fallback for DACs whose pcm timer can't be
+  used.
+
+- [ ] **[MED]** **`getCamillaStatus()` sends a command that doesn't exist —
+  DSP telemetry has never worked.** `player.js:1209-1235` sends
+  `{ GetStatus: null }`; CamillaDSP 4.1.3 replies `Invalid: unknown
+  variant` (verified live — the valid set is `GetState`,
+  `GetProcessingLoad`, `GetClippedSamples`, `GetBufferLevel`,
+  `GetCaptureSignalRms`, …). The function always resolves `null`, so
+  `/api/player/signal-path` (`player.js:333-363`) permanently returns
+  `camilla: null` — the UI's clipping detection, buffer-underrun counter
+  and processing-load display are dead. Replace with the real commands
+  (they all work — verified live over the same socket).
+
+- [ ] **[MED]** **raspotify customization silently failed — Spotify runs at
+  defaults.** `/etc/raspotify/conf` on the VM has **zero active lines**:
+  none of the `sed` patterns in install.sh:569-581 matched the template
+  shipped by the current raspotify package, so every customization no-op'd
+  — device name is "Librespot" (not "Resonance Connect"), bitrate 160 kbps
+  (not the intended 320), no explicit device. Replace the fragile
+  comment-toggling seds with an appended, clearly-marked managed block
+  (`LIBRESPOT_NAME=… LIBRESPOT_BITRATE=320 LIBRESPOT_DEVICE=…`), which also
+  survives raspotify template changes.
+
+### 9.2 Improvements — communication & quality
+
+- [ ] **[MED]** **Replace the arecord VU meter with CamillaDSP's own signal
+  levels.** `websocket.js:113-211` keeps a permanent `arecord` process on
+  `loop_dsnoop` and parses ~384 KB/s of raw PCM in Node just to compute
+  peak dB. CamillaDSP already computes this — `GetCaptureSignalPeak` /
+  `GetCaptureSignalRms` over the WS (verified working live). Switching
+  removes a whole ALSA client (which is also what pins the dsnoop rate,
+  §9.1), frees CPU on the Pi, and the retry/standby babysitting code goes
+  away.
+
+- [ ] **[MED]** **Use one persistent CamillaDSP WS connection instead of a
+  new socket per command.** `setCamillaVolume` (`player.js:143-162`),
+  `hotReloadCamilla` (`:1168`), and `getCamillaStatus` (`:1209`) each open
+  a fresh `ws://localhost:1234` connection with a 1.5 s timeout. A volume
+  drag fires dozens of connect/handshake/close cycles per second, and
+  signal-path polling adds more every 5 s. A single shared client with
+  auto-reconnect makes volume feel instant and eliminates connection churn
+  — this is the "service communication" upgrade with the most user-visible
+  payoff.
+
+- [ ] **[MED]** **Pin MPD's resampler to soxr "very high".** `/etc/mpd.conf`
+  (written by install.sh:375-400) has no `resampler` block; the VM's MPD is
+  built with both soxr and libsamplerate (verified). Since resampling
+  *does* happen today (§9.1) — and even after the bit-perfect fix it still
+  happens for rates the DAC lacks — it should be
+  `resampler { plugin "soxr" quality "very high" }`, not MPD's default.
+
+- [ ] **[MED]** **Passthrough daemons can't reach the user's PipeWire
+  session.** shairport-sync runs as `User=shairport-sync` (verified) and
+  librespot as root (§8.2); both output to ALSA "default" → the PipeWire
+  ALSA plugin, which needs the session socket under `/run/user/1000`
+  (mode 700, owner pi) — unreachable from those users, so AirPlay and
+  Spotify would stay silent even after the §9.1 bridge fix. MPD already
+  solved this exact problem with the run-as-pi drop-in
+  (install.sh:402-413). Apply the same pattern to `shairport-sync` and
+  `raspotify` (`User=pi` + `XDG_RUNTIME_DIR` + `PIPEWIRE_REMOTE`) — this
+  also resolves the librespot-as-root security finding in §8.2.
+
+- [ ] **[LOW]** Add a CamillaDSP `Dither` filter when the playback format is
+  16-bit (this VM's HDA is S16_LE; some budget DACs too) — the current
+  32-bit-float → S16 conversion after EQ/volume truncates undithered.
+  Skip it when the output is 24/32-bit.
+
+- [ ] **[LOW]** Align install.sh's initial camilladsp.yml
+  (install.sh:486-518: `samplerate: 44100`, `chunksize: 8192`) with the
+  server generator (48000 / 1024) — first boot runs ~186 ms of extra
+  latency and a different rate until the API regenerates the file, for no
+  reason.
+
+- [ ] **[LOW]** Set `silence_threshold`/`silence_timeout` in the CamillaDSP
+  config so the pipeline sleeps when no signal is present (currently null —
+  CamillaDSP busy-processes silence 24/7; on a fanless Pi that's
+  measurable idle heat/power).
+
+- [ ] **[note]** Latency budget for context: PW quantum 1024 + dsnoop
+  buffer 3×1024 + CamillaDSP chunk 1024 ≈ 60–90 ms end-to-end. That is the
+  right trade-off for a music appliance (stability over lip-sync); don't
+  chase "zero latency" by shrinking chunks below 1024 without RT-kernel
+  testing — the current values are correctly aligned (chunk == quantum).
+
+---
+
 ## Note on `AUDIT_REPORT.md`
 
 That file (a prior, narrower audit of just the media-controls flows) is
