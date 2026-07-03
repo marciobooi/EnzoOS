@@ -49,62 +49,53 @@ by theme. Priority key: **P1** (high value, moderate effort) · **P2**
 - [ ] **Amazon Music / YouTube Music** — no stable third-party APIs; would
   need the reverse-engineering approach used for Qobuz. Research spikes, not
   committed work.
-- [ ] **Radio directory browsing** — search + country browse exist
-  (`/api/player/radio-search`, country picker); what's missing vs. BluOS/
-  WiiM is genre/tag and "trending/most-voted" directory pages —
-  radio-browser.info already exposes tag/popularity endpoints, so this is
-  mostly frontend.
+- [x] **Radio directory browsing** — SHIPPED 2026-07-03: the remote's Search
+  tab empty state shows "Radio — Trending Now" plus genre chips
+  (`/api/player/radio-browse` + `/radio-tags`, proxied and cached 5 min).
 
 ## 2. Smart-home integration — **P1**
 
-- [ ] **Home Assistant integration** — most of the API already exists
-  (`/api/status`, `/api/player/*`); needs a stable documented contract plus
-  a thin HA custom component or MQTT bridge. Low effort relative to value.
-- [ ] **Outbound webhooks** — fire on play/pause/track-change/standby so
-  users can automate without HA. Thin layer over the existing EventService
-  broadcast points.
+- [x] **Outbound webhooks** — SHIPPED 2026-07-03: one configurable URL
+  (Settings → System → Automation Webhook, or `POST /api/system/webhook`)
+  receives `{ event, ts, … }` on playing/paused/track-change/source/standby
+  transitions (`server/webhooks.js`, deduped against the polling stream).
+- [ ] **Home Assistant integration** — the webhook above already covers
+  event-driven automations; still open is a documented REST contract + a
+  thin HA custom component or MQTT bridge for state/control from HA's side.
 - [ ] **Google Cast receiver** — the "Cast" strings in the UI are Spotify
   Connect device switching, not Google Cast. As a *source* into this single
   unit (like AirPlay/UPnP already are), receiver emulation
   (`node-castv2`-style) is possible but heavier and less maintained — long
   tail.
-- [ ] **Push-to-talk voice in the remote PWA** — the unit itself has no mic
-  (Alexa/Google-style ambient assistants are out), but the phone remote can
-  do voice as a webpage: the Web Speech API (`webkitSpeechRecognition` +
-  `getUserMedia`) works in installed PWAs on iOS ≥14.5 and Android Chrome.
-  Tap a mic button, speak "play jazz" / "volume down", map the transcript to
-  the existing `/api/player/*` routes. Hard limits of the web platform: no
-  wake word, nothing while the phone is locked or the page backgrounded, and
-  iOS routes transcription through Apple's servers. P2.
+- [x] **Push-to-talk voice in the remote PWA** — SHIPPED 2026-07-03: mic
+  button in the remote top bar → full-screen liquid-orb overlay (WebGL2 port
+  of the requested CodePen) → Web Speech transcript parsed by
+  `src/lib/voiceCommands.js` (EN+PT: transport, volume, mute, sources,
+  standby, sleep timer, "play radio X", "play <query>"). Requires the HTTPS
+  address (`https://<host>:5001/remote`) and, on iPhone, iOS Dictation
+  enabled — the overlay explains both inline. No wake word possible on the
+  web platform.
 
 ## 3. Personalization & social — **P2**
 
-- [ ] **"Like" sync back to the source service** — favoriting writes only to
-  the local `favorites` table. Spotify (`PUT /me/tracks`) and Tidal both
-  expose save-track endpoints; mirror the heart so it appears in the
-  official apps too.
-- [ ] **Last.fm scrobbling** — `server/metadata.js` already talks to
-  audioscrobbler for metadata; submitting the user's own listens is a small
-  addition on credentials already collected. `play_history` has everything a
-  scrobble needs.
+- [x] **"Like" sync back to the source service** — SHIPPED 2026-07-03 for
+  Spotify: the remote's heart mirrors into the real library via
+  `PUT/DELETE /me/tracks` (new `user-library-modify` scope — applies on the
+  next Spotify re-login). Tidal mirroring still open.
+- [x] **Last.fm scrobbling** — SHIPPED 2026-07-03: `server/scrobbler.js`
+  with the desktop auth flow (Settings → Account → Last.fm: paste API
+  key/secret once, approve on last.fm). Follows official scrobble rules +
+  updateNowPlaying; radio/unknown-artist streams excluded.
 
 ## 4. Convenience & physical UX — **P1**
 
-- [ ] **Wake/alarm scheduling** — sleep timer exists; "play [station] at
-  07:00" does not, and it's a headline feature on every consumer streamer.
-  Cron-like scheduler persisted in SQLite calling the existing play/wake
-  code paths.
-- [ ] **Quick-access presets** — numbered slots (radio station, playlist,
-  album) recallable in one tap, like hardware preset buttons on
-  Sonos/Bluesound/WiiM. Nearly free: `favorites` table + a thin "pin to
-  slot 1–6" UI + `/api/player/preset/:n`.
-- [ ] **Guest / permission tiers** — every paired remote gets full control
-  including DSP, reboot and factory reset. Tag tokens with a role
-  (admin/guest) in `server/auth.js` and gate system/DSP routes on it;
-  guests keep playback + volume.
-- [ ] **IR remote support** — standard on Naim/Cambridge/Yamaha. Pi GPIO +
-  `ir-keytable` decoding to the existing `/api/player/*` routes;
-  self-contained daemon, no audio-pipeline changes.
+- ~~**Wake/alarm scheduling**~~ — SKIPPED by user decision (2026-07-03).
+- [x] **Quick-access presets** — SHIPPED 2026-07-03: six numbered slots at
+  the top of the remote's Search tab (pin a favorite radio, Spotify
+  playlist, local or smart playlist; tap to play, pencil to edit). Stored
+  via `GET/PUT/DELETE /api/player/presets[/:n]`.
+- ~~**Guest / permission tiers**~~ — SKIPPED by user decision (2026-07-03).
+- ~~**IR remote support**~~ — SKIPPED by user decision (2026-07-03).
 - [ ] **Bluetooth OUT (headphones)** — WiiM and Sonos (Ace) now do private
   late-night listening to BT headphones. PipeWire can source a `bluez_output`
   sink post-CamillaDSP; needs a UI toggle + pairing flow. New since last
@@ -116,10 +107,9 @@ by theme. Priority key: **P1** (high value, moderate effort) · **P2**
 
 ## 5. Reliability & "big brand" resilience — **P2**
 
-- [ ] **Degraded-network indicator** — WS auto-reconnect exists
-  (`src/websocket.js`), but mid-stream Wi-Fi loss shows silence rather than
-  an explicit "reconnecting…" state in kiosk/remote. Surface the existing
-  reconnect state in the UI.
+- [x] **Degraded-network indicator** — SHIPPED 2026-07-03: the remote's
+  top-bar status pulses amber "Reconnecting…" while the WS retry loop is
+  down instead of showing a static "Offline".
 - [ ] **NAS share management from the app** — BluOS adds SMB/NFS shares from
   the phone with no SSH. Resonance's library path is fixed at install time
   in `/etc/mpd.conf`; a Settings "Add network share" flow (mount.cifs/autofs
@@ -127,13 +117,16 @@ by theme. Priority key: **P1** (high value, moderate effort) · **P2**
 
 ---
 
-## Suggested sequencing
+## Suggested sequencing (updated 2026-07-03)
 
-1. **P1 quick wins** — quick-access presets, Last.fm scrobbling, webhooks +
-   Home Assistant contract, radio genre/trending browsing, like-sync: each
-   builds on data and routes that already exist.
-2. **P1 medium** — podcasts, wake/alarm scheduling, guest permission tiers,
-   Bluetooth OUT.
-3. **P2 / long tail** — Deezer/SoundCloud, audiobooks, USB auto-play, NAS
-   share UI, IR remote, Cast receiver, push-to-talk voice in the remote,
-   HDMI-ARC.
+Shipped in the 2026-07-03 batch: push-to-talk voice with the liquid-orb
+animation, radio genre/trending directory, quick-access presets, outbound
+webhooks, reconnecting indicator, Spotify like-sync, Last.fm scrobbling.
+Skipped by user decision: wake/alarm scheduling, guest permission tiers,
+IR remote.
+
+What remains:
+1. **P1 medium** — podcasts, Bluetooth OUT (headphones), Home Assistant
+   component/MQTT bridge on top of the shipped webhook.
+2. **P2 / long tail** — Deezer/SoundCloud, audiobooks, USB auto-play, NAS
+   share UI, Cast receiver, Tidal like-sync, HDMI-ARC.
