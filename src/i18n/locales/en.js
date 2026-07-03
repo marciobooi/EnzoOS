@@ -540,6 +540,7 @@ export default {
     tapToCancel: 'Tap anywhere to cancel',
     didntCatch: 'Didn’t catch that — try “pause”, “next” or “play radio…”',
     micDenied: 'Microphone access denied — allow it in your browser settings',
+    needsHttps: 'The microphone only works on the secure address — open the remote here instead:',
     noSpeech: 'No speech detected',
     notConnected: 'Spotify is not connected',
     paused: 'Paused',

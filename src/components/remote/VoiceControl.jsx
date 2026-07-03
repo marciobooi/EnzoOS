@@ -17,10 +17,11 @@ const SR = typeof window !== 'undefined'
   ? (window.SpeechRecognition || window.webkitSpeechRecognition)
   : null;
 
-// Mic capture needs BOTH the Web Speech API and a secure context (HTTPS or
-// localhost) — on plain http://resonance.local the browser blocks the mic,
-// so the button is hidden rather than shown broken.
-export const voiceSupported = () => !!SR && typeof window !== 'undefined' && window.isSecureContext;
+// Show the button whenever the browser has the Web Speech API (Chrome,
+// Safari — not Firefox). Mic capture additionally needs a secure context
+// (HTTPS or localhost); on plain http:// the overlay explains and links to
+// the HTTPS address instead of failing silently.
+export const voiceSupported = () => !!SR;
 
 const OVERLAY_BG = '#070A18'; // must match VoiceOrb's shader background
 
@@ -119,8 +120,22 @@ export default function VoiceControl({ onClose }) {
     }
   };
 
+  const insecure = typeof window !== 'undefined' && !window.isSecureContext;
+  const httpsUrl = typeof window !== 'undefined'
+    ? `https://${window.location.hostname}:5001/remote`
+    : '';
+
   useEffect(() => {
     if (!SR) { onClose(); return; }
+    // Browsers block ALL mic access on insecure origins — don't even try;
+    // show the pointer to the HTTPS address instead (overlay stays open
+    // until tapped so the URL can be read).
+    if (insecure) {
+      setPhase('done');
+      setMood('error');
+      setDisplay(t('voice.needsHttps'));
+      return;
+    }
     const rec = new SR();
     recRef.current = rec;
     rec.lang = lang === 'pt' ? 'pt-PT' : 'en-US';
@@ -184,6 +199,13 @@ export default function VoiceControl({ onClose }) {
         style={{ color: '#e8ecf8', letterSpacing: '-0.01em' }}>
         {display || (phase === 'listening' ? t('voice.listening') : '')}
       </p>
+      {insecure && (
+        <a href={httpsUrl} onClick={e => e.stopPropagation()}
+          className="mt-3 px-5 py-2.5 rounded-full text-[14px] font-semibold"
+          style={{ background: '#4099FF22', color: '#8fc2ff', border: '0.5px solid #4099FF55' }}>
+          {httpsUrl}
+        </a>
+      )}
       <p className="absolute left-0 right-0 text-center text-[12px] uppercase tracking-widest"
         style={{ color: '#5a6788', bottom: 'calc(28px + env(safe-area-inset-bottom))' }}>
         {t('voice.tapToCancel')}

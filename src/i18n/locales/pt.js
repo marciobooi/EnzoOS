@@ -538,6 +538,7 @@ export default {
     tapToCancel: 'Toque em qualquer lado para cancelar',
     didntCatch: 'Não percebi — tente “pausa”, “seguinte” ou “toca a rádio…”',
     micDenied: 'Acesso ao microfone negado — permita nas definições do navegador',
+    needsHttps: 'O microfone só funciona no endereço seguro — abra o comando aqui:',
     noSpeech: 'Nenhuma voz detetada',
     notConnected: 'O Spotify não está ligado',
     paused: 'Em pausa',
