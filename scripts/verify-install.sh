@@ -133,9 +133,16 @@ if [ -x "$PROJECT_DIR/scripts/librespot-event.sh" ]; then
 else
   bad "librespot-event.sh" "missing or not executable — Spotify app volume slider won't reach CamillaDSP"
 fi
-grep -q 'LIBRESPOT_ONEVENT' /etc/raspotify/conf 2>/dev/null \
-  && ok "LIBRESPOT_ONEVENT wired in /etc/raspotify/conf" \
-  || bad "LIBRESPOT_ONEVENT" "not set — volume events from the Spotify app are dropped"
+# /etc/raspotify/conf is root-only readable — as a non-root user this check
+# can only be skipped, not failed (a plain failed grep here false-flagged a
+# correctly configured system).
+if [ -r /etc/raspotify/conf ]; then
+  grep -q 'LIBRESPOT_ONEVENT' /etc/raspotify/conf \
+    && ok "LIBRESPOT_ONEVENT wired in /etc/raspotify/conf" \
+    || bad "LIBRESPOT_ONEVENT" "not set — volume events from the Spotify app are dropped"
+else
+  skip "LIBRESPOT_ONEVENT" "/etc/raspotify/conf not readable — re-run with sudo to check"
+fi
 
 echo -e "\n${BLUE}════════════════════════════════════════════════════════════════════${NC}"
 printf "  ${GREEN}%d active${NC}   ${YELLOW}%d skipped${NC}   ${RED}%d failed${NC}\n" "$PASS" "$WARN" "$FAIL"
