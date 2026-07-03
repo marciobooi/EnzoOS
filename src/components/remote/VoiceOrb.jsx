@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 // Liquid-glass voice orb — WebGL2 port of the "Loading Orb" raymarch shader
 // (codepen.io/TaminoMartinius/pen/MYJEyer), trimmed to a single orb with no
@@ -37,7 +37,6 @@ uniform vec3  u_glowA;
 uniform vec3  u_glowB;
 uniform float u_liquidSpeed;
 uniform float u_filament;
-uniform vec3  u_bg;
 
 mat2 rot(float a){ float c=cos(a), s=sin(a); return mat2(c,-s,s,c); }
 
@@ -147,25 +146,39 @@ void main(){
     E += (gc * g * 1.4 + vec3(0.6, 0.8, 1.0) * pow(g, 3.0) * 0.7) * u_glowStrength;
   }
 
-  fragColor = vec4(clamp(u_bg + E, 0.0, 1.0), 1.0);
+  // Tone-mapped color with coverage alpha (premultiplied) so the orb
+  // composites over ANY backdrop — the frosted light/dark overlay included —
+  // instead of owning an opaque background square.
+  vec3 tone = E / (1.0 + E * 0.7);
+  float m = max(E.r, max(E.g, E.b));
+  // squared falloff keeps the outer glow translucent instead of muddying
+  // light backdrops; the blob body itself still reaches full coverage
+  float cov = clamp(m * m * 0.5 + m * 0.9, 0.0, 1.0);
+  fragColor = vec4(tone * cov, cov);
 }`;
 
+// Resonance palette: listening = champagne gold over warm bronze (the app's
+// signature #d4af37), success = soft emerald, error = ember red.
 const MOODS = {
-  listen: { blue: [0.25, 0.60, 1.00], mag: [0.90, 0.20, 0.75], glowA: [0.20, 0.71, 1.00], glowB: [0.89, 0.30, 0.82] },
-  ok:     { blue: [0.35, 1.00, 0.63], mag: [0.00, 0.90, 0.63], glowA: [0.34, 1.00, 0.24], glowB: [0.00, 1.00, 0.78] },
-  error:  { blue: [1.00, 0.76, 0.30], mag: [1.00, 0.23, 0.18], glowA: [1.00, 0.48, 0.09], glowB: [1.00, 0.18, 0.33] },
+  listen: { blue: [1.00, 0.88, 0.48], mag: [0.78, 0.58, 0.18], glowA: [0.98, 0.87, 0.55], glowB: [0.85, 0.68, 0.30] },
+  ok:     { blue: [0.45, 0.93, 0.62], mag: [0.06, 0.62, 0.42], glowA: [0.40, 0.90, 0.55], glowB: [0.10, 0.70, 0.50] },
+  error:  { blue: [1.00, 0.66, 0.30], mag: [0.85, 0.18, 0.14], glowA: [1.00, 0.48, 0.09], glowB: [0.90, 0.20, 0.25] },
 };
-const BG = [7 / 255, 10 / 255, 24 / 255]; // #070A18 — must match the overlay bg
 
 export default function VoiceOrb({ levelRef, mood = 'listen', size = 280 }) {
   const canvasRef = useRef(null);
   const moodRef = useRef(mood);
   moodRef.current = mood;
+  // CSS pulse stands in only when WebGL2 is genuinely unavailable — the
+  // canvas is transparent now, so the fallback can't just sit underneath it.
+  const [glFailed, setGlFailed] = useState(false);
 
   useEffect(() => {
     const canvas = canvasRef.current;
-    const gl = canvas.getContext('webgl2', { antialias: false, alpha: false });
-    if (!gl) return; // fallback element behind the canvas stays visible
+    // alpha + premultiplied: the shader emits coverage-weighted color so the
+    // orb floats over the frosted overlay with no background square.
+    const gl = canvas.getContext('webgl2', { antialias: false, alpha: true, premultipliedAlpha: true });
+    if (!gl) { setGlFailed(true); return; }
 
     const compile = (type, src) => {
       const sh = gl.createShader(type);
@@ -183,6 +196,7 @@ export default function VoiceOrb({ levelRef, mood = 'listen', size = 280 }) {
       if (!gl.getProgramParameter(program, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(program) || 'link failed');
     } catch (e) {
       console.warn('[VoiceOrb] shader failed, falling back:', e.message);
+      setGlFailed(true);
       return;
     }
     gl.useProgram(program);
@@ -197,9 +211,10 @@ export default function VoiceOrb({ levelRef, mood = 'listen', size = 280 }) {
 
     const U = {};
     for (const name of ['time', 'res', 'radius', 'deform', 'freq', 'morphSpeed', 'rotSpeed',
-      'glowStrength', 'colBlue', 'colMag', 'glowA', 'glowB', 'liquidSpeed', 'filament', 'bg']) {
+      'glowStrength', 'colBlue', 'colMag', 'glowA', 'glowB', 'liquidSpeed', 'filament']) {
       U[name] = gl.getUniformLocation(program, 'u_' + name);
     }
+    gl.clearColor(0, 0, 0, 0);
 
     const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
     const px = Math.min(Math.floor(size * dpr), 460);
@@ -241,7 +256,7 @@ export default function VoiceOrb({ levelRef, mood = 'listen', size = 280 }) {
       gl.uniform3fv(U.glowB, col.glowB);
       gl.uniform1f(U.liquidSpeed, 0.45 + lvl * 0.9);
       gl.uniform1f(U.filament, 1.4 + lvl * 0.9);
-      gl.uniform3fv(U.bg, BG);
+      gl.clear(gl.COLOR_BUFFER_BIT);
       gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
       raf = requestAnimationFrame(frame);
     };
@@ -255,10 +270,11 @@ export default function VoiceOrb({ levelRef, mood = 'listen', size = 280 }) {
 
   return (
     <div className="relative" style={{ width: size, height: size }}>
-      {/* CSS fallback pulse — visible only when WebGL2 is unavailable
-          (the opaque canvas covers it otherwise) */}
-      <div className="absolute inset-[15%] rounded-full animate-pulse"
-        style={{ background: 'radial-gradient(circle at 40% 35%, #4099FF 0%, #E633BF 70%, transparent 100%)', filter: 'blur(6px)', opacity: 0.85 }} />
+      {/* CSS fallback pulse — visible only when WebGL2 is unavailable */}
+      {glFailed && (
+        <div className="absolute inset-[15%] rounded-full animate-pulse"
+          style={{ background: 'radial-gradient(circle at 40% 35%, #e8cd7a 0%, #d4af37 55%, transparent 100%)', filter: 'blur(6px)', opacity: 0.7 }} />
+      )}
       <canvas ref={canvasRef} className="absolute inset-0 w-full h-full" />
     </div>
   );

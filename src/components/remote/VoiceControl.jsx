@@ -24,11 +24,10 @@ const SR = typeof window !== 'undefined'
 // insecure origin (mic is blocked on plain http://), with the fix inline.
 export const voiceSupported = () => true;
 
-const OVERLAY_BG = '#070A18'; // must match VoiceOrb's shader background
-
 export default function VoiceControl({ onClose }) {
   const { t, lang } = useI18n();
   const ctx = useContext(Tk);
+  const { C, darkMode } = ctx;
   const [display, setDisplay] = useState('');
   const [mood, setMood] = useState('listen');   // listen | ok | error
   const [phase, setPhase] = useState('listening'); // listening | done
@@ -199,24 +198,30 @@ export default function VoiceControl({ onClose }) {
     onClose();
   };
 
+  // Frosted overlay in the remote's own theme — light stays light, dark
+  // stays dark — with the champagne orb floating over it (alpha canvas).
+  const overlayBg = darkMode
+    ? { background: 'rgba(10,15,30,0.90)', backdropFilter: 'blur(24px) saturate(160%)', WebkitBackdropFilter: 'blur(24px) saturate(160%)' }
+    : { background: 'rgba(249,249,249,0.90)', backdropFilter: 'blur(24px) saturate(160%)', WebkitBackdropFilter: 'blur(24px) saturate(160%)' };
+
   return createPortal(
     <div className="remote-root fixed inset-0 z-[10020] flex flex-col items-center justify-center"
-      style={{ background: OVERLAY_BG, paddingTop: 'env(safe-area-inset-top)', paddingBottom: 'env(safe-area-inset-bottom)' }}
+      style={{ ...overlayBg, fontFamily: C.font, paddingTop: 'env(safe-area-inset-top)', paddingBottom: 'env(safe-area-inset-bottom)' }}
       onClick={cancel}>
       <VoiceOrb levelRef={levelRef} mood={mood} size={280} />
       <p className="px-8 text-center text-[19px] font-medium min-h-[56px] mt-2"
-        style={{ color: '#e8ecf8', letterSpacing: '-0.01em' }}>
+        style={{ color: C.text1, letterSpacing: '-0.01em' }}>
         {display || (phase === 'listening' ? t('voice.listening') : '')}
       </p>
       {insecure && (
         <a href={httpsUrl} onClick={e => e.stopPropagation()}
           className="mt-3 px-5 py-2.5 rounded-full text-[14px] font-semibold"
-          style={{ background: '#4099FF22', color: '#8fc2ff', border: '0.5px solid #4099FF55' }}>
+          style={{ background: `${C.champagne}22`, color: C.primary, border: `0.5px solid ${C.champagne}66` }}>
           {httpsUrl}
         </a>
       )}
       <p className="absolute left-0 right-0 text-center text-[12px] uppercase tracking-widest"
-        style={{ color: '#5a6788', bottom: 'calc(28px + env(safe-area-inset-bottom))' }}>
+        style={{ color: C.text3, fontFamily: C.fontLabel, bottom: 'calc(28px + env(safe-area-inset-bottom))' }}>
         {t('voice.tapToCancel')}
       </p>
     </div>,
