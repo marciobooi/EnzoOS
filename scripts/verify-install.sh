@@ -107,6 +107,35 @@ else
 fi
 command -v bluetoothctl >/dev/null 2>&1 && ok "bluetoothctl available" || bad "bluetoothctl" "not installed"
 svc_active bluetooth && ok "bluetooth.service running" || bad "bluetooth.service" "not active"
+# Without the BlueZ SPA plugin, PipeWire logs "Bluetooth not supported" and
+# the whole BT audio source is dead regardless of any routing rules.
+dpkg -s libspa-0.2-bluetooth >/dev/null 2>&1 \
+  && ok "libspa-0.2-bluetooth installed (PipeWire BlueZ plugin)" \
+  || bad "libspa-0.2-bluetooth" "missing — PipeWire cannot do Bluetooth audio at all"
+[ -f /etc/wireplumber/bluetooth.lua.d/52-resonance-bluetooth-route.lua ] \
+  && ok "Bluetooth→ResonanceInput WirePlumber rule (Lua)" \
+  || bad "52-resonance-bluetooth-route.lua" "missing — BT audio only reaches CamillaDSP via default-sink fallback"
+
+echo -e "\n${BLUE}Audio pipeline config artifacts${NC}"
+[ -f /etc/wireplumber/main.lua.d/51-resonance-disable-hw-capture.lua ] \
+  && ok "hw-capture disable rule (stops WirePlumber stealing the loopback link)" \
+  || bad "51-resonance-disable-hw-capture.lua" "missing — a discovered capture device can silently steal the CamillaDSP feed"
+grep -q 'api.alsa.path.*=.*"camilla_input"' /etc/pipewire/pipewire.conf.d/52-resonance-aloop-sink.conf 2>/dev/null \
+  && ok "PipeWire aloop bridge targets camilla_input dmix (shared, no device race)" \
+  || bad "52-resonance-aloop-sink.conf" "missing or targets raw hw device — races MPD/librespot for exclusive access"
+[ -f /etc/systemd/system/mpd.socket.d/10-resonance-loopback.conf ] \
+  && ok "MPD socket bound to loopback (systemd socket activation drop-in)" \
+  || bad "mpd.socket drop-in" "missing — MPD control port may be open to the whole LAN"
+
+echo -e "\n${BLUE}Spotify volume sync (librespot --onevent hook)${NC}"
+if [ -x "$PROJECT_DIR/scripts/librespot-event.sh" ]; then
+  ok "librespot-event.sh present and executable"
+else
+  bad "librespot-event.sh" "missing or not executable — Spotify app volume slider won't reach CamillaDSP"
+fi
+grep -q 'LIBRESPOT_ONEVENT' /etc/raspotify/conf 2>/dev/null \
+  && ok "LIBRESPOT_ONEVENT wired in /etc/raspotify/conf" \
+  || bad "LIBRESPOT_ONEVENT" "not set — volume events from the Spotify app are dropped"
 
 echo -e "\n${BLUE}════════════════════════════════════════════════════════════════════${NC}"
 printf "  ${GREEN}%d active${NC}   ${YELLOW}%d skipped${NC}   ${RED}%d failed${NC}\n" "$PASS" "$WARN" "$FAIL"

@@ -753,18 +753,29 @@ fi
 # duplicate key, so an appended block always wins regardless of what (if
 # anything) is already set above it — no pattern-matching required.
 echo -e "${YELLOW}Configuring Raspotify settings in /etc/raspotify/conf...${NC}"
+# Values mirror server/spotify-daemon.js:writeRaspotifyConf() exactly — the
+# runtime writer replaces this file whenever the user touches Spotify
+# settings, so first boot must behave identically or "works after I fiddled
+# with settings once" bugs appear. In particular: VOLUME_CTRL=fixed +
+# INITIAL_VOLUME=100 pins librespot's own gain at unity so CamillaDSP is the
+# single master volume (anything else double-attenuates), and ONEVENT wires
+# the Spotify-app volume slider through to CamillaDSP via the API.
 sed -i '/# --- Resonance HiFi managed block ---/,/# --- end Resonance HiFi managed block ---/d' /etc/raspotify/conf
-cat <<'RASPOEOF' >> /etc/raspotify/conf
+cat <<RASPOEOF >> /etc/raspotify/conf
 
 # --- Resonance HiFi managed block ---
 LIBRESPOT_NAME="Resonance Connect"
 LIBRESPOT_BITRATE=320
-LIBRESPOT_INITIAL_VOLUME=50
 LIBRESPOT_BACKEND=alsa
-# Route Spotify Connect to PipeWire via ALSA "default" device.
-# /usr/share/alsa/alsa.conf.d/99-pipewire-default.conf (from pipewire-alsa)
-# makes "default" route to PipeWire → ResonanceInput virtual sink → CamillaDSP.
-LIBRESPOT_DEVICE="default"
+# plug: prefix adds ALSA's rate/format converter so librespot's 44100 Hz
+# output is resampled to the 48000 Hz the dmix loopback runs at.
+LIBRESPOT_DEVICE=plug:camilla_input
+LIBRESPOT_INITIAL_VOLUME=100
+LIBRESPOT_MIXER=softvol
+LIBRESPOT_VOLUME_CTRL=fixed
+LIBRESPOT_ENABLE_VOLUME_NORMALISATION=true
+LIBRESPOT_FORMAT=S16
+LIBRESPOT_ONEVENT=$PROJECT_DIR/scripts/librespot-event.sh
 # --- end Resonance HiFi managed block ---
 RASPOEOF
 
