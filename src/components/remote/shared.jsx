@@ -14,7 +14,7 @@ export function Sheet({ C, kicker, title, onBack, children, padded = true }) {
       style={{
         '--rc-outline': C.outline, '--rc-champagne': C.champagne,
         '--rc-container': C.container, '--rc-bg-white': C.bgWhite,
-        background: C.bg, fontFamily: C.font, paddingTop: 'env(safe-area-inset-top)',
+        background: C.bg, fontFamily: C.font, paddingTop: 'var(--rc-safe-top, env(safe-area-inset-top))',
       }}>
       <div className="flex items-center gap-3 px-5 pt-4 pb-4 shrink-0"
         style={{ background: C.bg, borderBottom: `0.5px solid ${C.outline}` }}>

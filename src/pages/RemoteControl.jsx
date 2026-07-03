@@ -97,6 +97,36 @@ export default function RemoteControl() {
     return () => { document.documentElement.style.background = prev; document.body.style.background = prev; };
   }, [C.bg]);
 
+  // --rc-safe-top: the top inset the page must pad itself by. Measured live
+  // from an installed iPhone (iOS 26.5, journal 2026-07-03): the standalone
+  // webview already starts BELOW the status bar (screenH 874 vs innerH 812 —
+  // short by exactly the 62px notch inset) yet env(safe-area-inset-top)
+  // still reports 62, so padding by raw env() double-spaces the top. The
+  // effective inset is env() minus whatever the OS already shifted the
+  // window by; on full-bleed iOS versions (window == screen) that
+  // subtraction is 0 and this equals plain env(), and in a regular browser
+  // tab env() is 0 so it stays 0. Set on :root so portaled sheets see it too.
+  useEffect(() => {
+    const measure = () => {
+      const probe = document.createElement('div');
+      probe.style.cssText = 'position:fixed;top:env(safe-area-inset-top);left:0;width:1px;height:1px;visibility:hidden;pointer-events:none';
+      document.body.appendChild(probe);
+      const satTop = probe.getBoundingClientRect().top;
+      probe.remove();
+      const osShift = Math.max(0, (window.screen?.height || 0) - window.innerHeight);
+      const effective = Math.max(0, Math.round(satTop - osShift));
+      document.documentElement.style.setProperty('--rc-safe-top', `${effective}px`);
+    };
+    measure();
+    window.addEventListener('resize', measure);
+    window.addEventListener('orientationchange', measure);
+    return () => {
+      window.removeEventListener('resize', measure);
+      window.removeEventListener('orientationchange', measure);
+      document.documentElement.style.removeProperty('--rc-safe-top');
+    };
+  }, []);
+
   // ── auth ──────────────────────────────────────────────────────────────────
   const [isAuthenticated, setIsAuthenticated] = useState(!!getCookie('remote_token'));
   const [qrRedeemError, setQrRedeemError]     = useState('');
@@ -652,7 +682,7 @@ export default function RemoteControl() {
   // DISABLED
   // ══════════════════════════════════════════════════════════════════════════
   if (!remoteAccessEnabled) return (
-    <div style={{ ...rcVars, fontFamily: C.font, background: C.bg, paddingTop: 'calc(2rem + env(safe-area-inset-top))', paddingBottom: 'calc(2rem + env(safe-area-inset-bottom))' }}
+    <div style={{ ...rcVars, fontFamily: C.font, background: C.bg, paddingTop: 'calc(2rem + var(--rc-safe-top, env(safe-area-inset-top)))', paddingBottom: 'calc(2rem + env(safe-area-inset-bottom))' }}
       className="remote-root fixed inset-0 flex flex-col items-center justify-center gap-6 p-8 touch-manipulation select-none">
       <div className="w-20 h-20 rounded-3xl flex items-center justify-center" style={{ background: C.containerLow, border: `0.5px solid ${C.outline}` }}>
         <Smartphone className="h-8 w-8" style={{ color: C.error }} />
@@ -668,7 +698,7 @@ export default function RemoteControl() {
   // SCAN QR — shown when no valid session exists
   // ══════════════════════════════════════════════════════════════════════════
   if (!isAuthenticated) return (
-    <div style={{ ...rcVars, fontFamily: C.font, background: C.bg, paddingTop: 'env(safe-area-inset-top)', paddingBottom: 'env(safe-area-inset-bottom)' }}
+    <div style={{ ...rcVars, fontFamily: C.font, background: C.bg, paddingTop: 'var(--rc-safe-top, env(safe-area-inset-top))', paddingBottom: 'env(safe-area-inset-bottom)' }}
       className="remote-root fixed inset-0 flex flex-col items-center justify-center px-6 touch-manipulation select-none overflow-hidden">
       <div className="absolute top-[-80px] left-1/2 -translate-x-1/2 w-[320px] h-[320px] rounded-full pointer-events-none"
         style={{ background: `radial-gradient(ellipse, ${C.champagne} 0%, transparent 70%)`, opacity: darkMode ? 0.06 : 0.11 }} />
@@ -731,8 +761,8 @@ export default function RemoteControl() {
   return (
     <Tk.Provider value={ctxValue}>
       <>
-        <div style={{ ...rcVars, fontFamily: C.font, background: C.bg, paddingTop: 'env(safe-area-inset-top)' }}
-          className="h-[100vh] remote-root fixed inset-0 flex flex-col overflow-hidden touch-manipulation select-none">
+        <div style={{ ...rcVars, fontFamily: C.font, background: C.bg, paddingTop: 'var(--rc-safe-top, env(safe-area-inset-top))' }}
+          className="h-dvh remote-root fixed inset-0 flex flex-col overflow-hidden overflow-y-auto touch-manipulation select-none">
 
           <TopBar darkMode={darkMode} setDarkMode={setDarkMode} />
 
@@ -764,7 +794,7 @@ export default function RemoteControl() {
           // equal z-index meant the still-open Sound sheet painted on top and
           // swallowed clicks — the wizard was there, just hidden underneath.
           <div className="remote-root fixed inset-0 z-[10010] flex flex-col"
-            style={{ ...rcVars, background: C.bg, paddingTop: 'env(safe-area-inset-top)', paddingBottom: 'env(safe-area-inset-bottom)' }}>
+            style={{ ...rcVars, background: C.bg, paddingTop: 'var(--rc-safe-top, env(safe-area-inset-top))', paddingBottom: 'env(safe-area-inset-bottom)' }}>
             <RemoteDspWizard
               onClose={() => { setIsDspWizardOpen(false); api.getDspCalibration().then(c => setDspActive(c && c[0] === 'dsp')).catch(() => {}); }}
               onCalibrationComplete={active => setDspActive(active)}
@@ -784,7 +814,7 @@ export default function RemoteControl() {
 
         {isThemeSettingsOpen && (
           <div className="remote-root fixed inset-0 z-[9999] flex flex-col overflow-y-auto"
-            style={{ ...rcVars, background: C.bg, fontFamily: C.font, paddingTop: 'env(safe-area-inset-top)' }}>
+            style={{ ...rcVars, background: C.bg, fontFamily: C.font, paddingTop: 'var(--rc-safe-top, env(safe-area-inset-top))' }}>
             <div className="flex justify-between items-center px-5 pt-4 pb-4 sticky top-0 z-10 shrink-0"
               style={{ background: C.bg, borderBottom: `0.5px solid ${C.outline}` }}>
               <div>
