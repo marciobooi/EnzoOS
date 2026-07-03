@@ -1,6 +1,6 @@
 import { useContext, useState, useEffect, useRef } from 'react';
-import { Search, X, Disc3, Music2, Radio, Waves, Heart, ListMusic } from 'lucide-react';
-import { Tk } from './shared';
+import { Search, X, Disc3, Music2, Radio, Waves, Heart, ListMusic, Pencil, Plus } from 'lucide-react';
+import { Tk, Sheet, Row } from './shared';
 import { api } from '../../api';
 import { reportError } from '../../lib/errors';
 import { useI18n } from '../../i18n';
@@ -107,6 +107,10 @@ export default function UniversalSearch() {
   const [radioTags, setRadioTags] = useState([]);
   const [radioDir, setRadioDir] = useState({ tag: null, stations: [], loading: true });
   const radioDirIdRef = useRef(0);
+  // Quick-access presets — hardware-style numbered slots (1–6)
+  const [presets, setPresets] = useState(Array(6).fill(null));
+  const [presetsEdit, setPresetsEdit] = useState(false);
+  const [assignSlot, setAssignSlot] = useState(null); // 1-based slot being assigned
   const debounceRef = useRef(null);
   const inputRef = useRef(null);
   // Staleness guard: doSearch is async (Promise.allSettled across 5 sources),
@@ -152,10 +156,41 @@ export default function UniversalSearch() {
       .then(r => r.json())
       .then(d => { if (alive && Array.isArray(d)) setRadioTags(d); })
       .catch(() => {});
+    fetch('/api/player/presets')
+      .then(r => r.json())
+      .then(d => { if (alive && Array.isArray(d?.presets)) setPresets(d.presets); })
+      .catch(() => {});
     loadRadioDir(null);
     return () => { alive = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const savePreset = async (slot, item) => {
+    try {
+      const r = await fetch(`/api/player/presets/${slot}`, {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(item),
+      });
+      const d = await r.json();
+      if (Array.isArray(d?.presets)) setPresets(d.presets);
+    } catch (e) { reportError(e.message); }
+    setAssignSlot(null);
+  };
+
+  const clearPreset = async (slot) => {
+    try {
+      const r = await fetch(`/api/player/presets/${slot}`, { method: 'DELETE' });
+      const d = await r.json();
+      if (Array.isArray(d?.presets)) setPresets(d.presets);
+    } catch (e) { reportError(e.message); }
+  };
+
+  const playPreset = (p) => {
+    if (!p) return;
+    if (p.type === 'radio') return playRadio(p.payload);
+    if (p.type === 'spotify') return handlePlayContext(p.payload.uri);
+    if (p.type === 'localPlaylist') return playLocalPlaylist(p.payload.name);
+    if (p.type === 'smart') return playSmartPlaylist(p.payload.kind);
+  };
 
   const doSearch = async (q) => {
     const id = ++searchIdRef.current;
@@ -227,6 +262,23 @@ export default function UniversalSearch() {
     try { await api.qobuzPlayTrack(track); setActiveTab('player'); } catch (e) { reportError(e.message); }
   };
 
+  // Everything a preset slot can point at — same universe as "your playlists"
+  // but with typed payloads so the slot survives restarts on its own.
+  const assignables = [
+    { type: 'smart', title: 'Most Played', image: null, payload: { kind: 'most-played' }, sub: 'Local · auto' },
+    { type: 'smart', title: 'Recently Added', image: null, payload: { kind: 'recently-added' }, sub: 'Local · auto' },
+    ...playlists.spotify.map(pl => ({
+      type: 'spotify', title: pl.name, image: pl.images?.[0]?.url, payload: { uri: pl.uri }, sub: 'Spotify',
+    })),
+    ...playlists.local.map(name => ({
+      type: 'localPlaylist', title: name, image: null, payload: { name }, sub: 'Local playlist',
+    })),
+    ...(favoriteStations || []).map(s => ({
+      type: 'radio', title: s.name, image: s.favicon,
+      payload: { url: s.url_resolved || s.url, name: s.name, favicon: s.favicon }, sub: 'Radio',
+    })),
+  ];
+
   // Combined "your playlists" row — same set the kiosk shows: Spotify library
   // playlists, saved local MPD playlists, favorited radio stations.
   const myPlaylists = [
@@ -284,6 +336,51 @@ export default function UniversalSearch() {
       <div className="flex-1 overflow-y-auto px-4 pb-4">
         {!query.trim() ? (
           <div className="flex flex-col gap-5">
+            {/* Quick-access presets — hardware-style slots, one-tap recall */}
+            <div>
+              <div className="flex items-center justify-between px-1 mb-2">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: C.text3, fontFamily: C.fontLabel }}>
+                    {t('presets.title')}
+                  </span>
+                </div>
+                <button onClick={() => setPresetsEdit(e => !e)} aria-label="Edit presets"
+                  className="w-7 h-7 flex items-center justify-center rounded-full active:scale-90 transition-all cursor-pointer"
+                  style={{ background: presetsEdit ? C.champagne : C.containerLow, border: `0.5px solid ${C.outline}` }}>
+                  <Pencil className="h-3 w-3" style={{ color: presetsEdit ? '#1a1c1c' : C.text3 }} />
+                </button>
+              </div>
+              <div className="grid grid-cols-6 gap-2">
+                {presets.map((p, i) => {
+                  const slot = i + 1;
+                  const onTap = () => {
+                    if (presetsEdit) { if (p) clearPreset(slot); else setAssignSlot(slot); return; }
+                    if (p) playPreset(p); else setAssignSlot(slot);
+                  };
+                  return (
+                    <button key={slot} onClick={onTap}
+                      className="relative aspect-square rounded-xl overflow-hidden flex flex-col items-center justify-center active:scale-95 transition-all cursor-pointer"
+                      style={{ background: C.containerLow, border: `0.5px solid ${p ? C.champagne + '66' : C.outline}` }}>
+                      {p?.image
+                        ? <img src={p.image} alt="" className="absolute inset-0 w-full h-full object-cover"
+                            style={{ opacity: presetsEdit ? 0.3 : 0.85 }} onError={e => { e.target.style.display = 'none'; }} />
+                        : null}
+                      {p && !presetsEdit && (
+                        <span className="absolute inset-x-0 bottom-0 px-0.5 pb-0.5 text-[7px] font-semibold truncate text-center"
+                          style={{ color: '#fff', background: 'linear-gradient(transparent, rgba(0,0,0,0.75))', textShadow: '0 1px 2px #000' }}>
+                          {p.title}
+                        </span>
+                      )}
+                      <span className="relative text-[15px] font-bold tabular-nums"
+                        style={{ color: p ? C.champagne : C.text4, textShadow: p?.image ? '0 1px 4px rgba(0,0,0,0.8)' : 'none' }}>
+                        {presetsEdit && p ? <X className="h-4 w-4" style={{ color: C.error }} /> : p ? slot : <Plus className="h-4 w-4" />}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
             {/* Your Playlists — Spotify, local, favorited radio, always visible */}
             <div>
               <div className="flex items-center gap-1.5 px-1 mb-2">
@@ -433,6 +530,24 @@ export default function UniversalSearch() {
           </div>
         )}
       </div>
+
+      {/* Preset assignment sheet */}
+      {assignSlot && (
+        <Sheet C={C} kicker={t('presets.title')} title={t('presets.assign', { n: assignSlot })}
+          onBack={() => setAssignSlot(null)} padded={false}>
+          {assignables.length === 0 ? (
+            <p className="text-[14px] px-5 py-6 text-center" style={{ color: C.text3 }}>{t('presets.nothingToPin')}</p>
+          ) : (
+            assignables.map((a, i) => (
+              <Row key={`${a.type}-${a.title}-${i}`} label={a.title} sub={a.sub} chevron={false}
+                icon={a.image
+                  ? <img src={a.image} alt="" className="w-8 h-8 rounded-xl object-cover" onError={e => { e.target.style.display = 'none'; }} />
+                  : (a.type === 'radio' ? <Radio className="h-4 w-4" style={{ color: C.text3 }} /> : <ListMusic className="h-4 w-4" style={{ color: C.text3 }} />)}
+                onPress={() => savePreset(assignSlot, { type: a.type, title: a.title, image: a.image, payload: a.payload })} />
+            ))
+          )}
+        </Sheet>
+      )}
     </div>
   );
 }

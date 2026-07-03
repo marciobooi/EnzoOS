@@ -2218,6 +2218,49 @@ router.post('/queue/move', async (req, res) => {
   } catch (err) { sendError(res, err); }
 });
 
+// ── Quick-access presets — hardware-style numbered slots (1–6) ──────────────
+// Each slot pins one playable thing (radio station, Spotify context, local or
+// smart playlist) for one-tap recall in the remote. Stored as a JSON array in
+// the settings table; playback itself happens client-side through the same
+// handlers the touch UI uses (Spotify needs the browser's user token).
+const PRESET_SLOTS = 6;
+
+async function readPresets() {
+  try {
+    const raw = await getSetting('content_presets');
+    const arr = raw ? JSON.parse(raw) : [];
+    return Array.from({ length: PRESET_SLOTS }, (_, i) => arr[i] || null);
+  } catch { return Array(PRESET_SLOTS).fill(null); }
+}
+
+router.get('/presets', async (req, res) => {
+  res.json({ presets: await readPresets() });
+});
+
+router.put('/presets/:n', async (req, res) => {
+  const n = parseInt(req.params.n, 10);
+  if (!Number.isFinite(n) || n < 1 || n > PRESET_SLOTS) return sendError(res, badRequest('slot must be 1-6'));
+  const { type, title, image, payload } = req.body || {};
+  if (!type || !title) return sendError(res, badRequest('type and title required'));
+  try {
+    const presets = await readPresets();
+    presets[n - 1] = { type, title, image: image || null, payload: payload || {} };
+    await setSetting('content_presets', JSON.stringify(presets));
+    res.json({ presets });
+  } catch (err) { sendError(res, err); }
+});
+
+router.delete('/presets/:n', async (req, res) => {
+  const n = parseInt(req.params.n, 10);
+  if (!Number.isFinite(n) || n < 1 || n > PRESET_SLOTS) return sendError(res, badRequest('slot must be 1-6'));
+  try {
+    const presets = await readPresets();
+    presets[n - 1] = null;
+    await setSetting('content_presets', JSON.stringify(presets));
+    res.json({ presets });
+  } catch (err) { sendError(res, err); }
+});
+
 // ── Lyrics (#7) via LRCLIB ───────────────────────────────────────────────────
 let _lyricsNodeFetch = null;
 async function getLyricsFetch() {

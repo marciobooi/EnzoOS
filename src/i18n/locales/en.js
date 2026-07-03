@@ -535,6 +535,16 @@ export default {
     trendingNow: 'Radio — Trending Now',
   },
 
+  presets: {
+    title: 'Presets',
+    assign: 'Assign Preset {n}',
+    nothingToPin: 'Nothing to pin yet — favorite a radio station or create a playlist first.',
+  },
+
+  net2: {
+    reconnecting: 'Reconnecting…',
+  },
+
   voice: {
     listening: 'Listening…',
     tapToCancel: 'Tap anywhere to cancel',

@@ -533,6 +533,16 @@ export default {
     trendingNow: 'Rádio — Populares Agora',
   },
 
+  presets: {
+    title: 'Predefinições',
+    assign: 'Atribuir Predefinição {n}',
+    nothingToPin: 'Nada para fixar ainda — adicione uma rádio aos favoritos ou crie uma playlist primeiro.',
+  },
+
+  net2: {
+    reconnecting: 'A religar…',
+  },
+
   voice: {
     listening: 'A ouvir…',
     tapToCancel: 'Toque em qualquer lado para cancelar',
