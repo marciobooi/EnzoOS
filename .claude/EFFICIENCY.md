@@ -77,6 +77,21 @@ first, then `Read` with `offset`/`limit` around the match.
   reading every file in the main thread.
 - Don't spawn an agent for something answerable in 1-2 tool calls — the
   agent's own cold-start context costs more than the lookup.
+- **Pick the cheapest model that can do the job.** Usage stats (2026-07)
+  show subagent-heavy sessions account for ~95% of this machine's spend,
+  so the model each agent runs on matters more than any other single
+  choice. Route:
+  - Mechanical lookups ("where is X defined/handled/referenced", route or
+    event tracing, Kiosk/Remote parity greps) → **`scout`** (project agent,
+    `.claude/agents/scout.md`, pinned to Haiku, read-only). It returns
+    `file:line` lists, not analysis.
+  - Broader sweeps needing judgment about relevance → `Explore` with
+    `model: "sonnet"` passed explicitly.
+  - Only agents that must write nontrivial code or reason about
+    architecture should inherit the main (expensive) model.
+- Never re-spawn a fresh agent to continue work an earlier agent already
+  has context for — `SendMessage` to the existing agent instead; a new
+  spawn re-derives everything from a cold start.
 
 ## 4. Documentation output rules
 
@@ -126,18 +141,47 @@ only hooks can:
   every file under `.claude/docs/` — full doc files are still read on demand
   per §1/§6, matching this file's own "don't read more than the task needs"
   rule.
-- **`context-nudge.cjs`** (`Stop` hook) — after each assistant turn, checks
-  the transcript file's byte size as a rough proxy for token count
-  (`bytes / 4`; not exact — tool results skew it, but it's directionally
-  right). Once a session crosses ~150k estimated tokens it prints a
-  one-time `systemMessage` suggesting `/compact` (same task) or `/clear`
-  (new task), then stays silent until context grows another ~50k tokens
-  (state tracked per-session under the OS temp dir). This is the concrete
-  automation behind the general rule: **`/compact` mid-task, `/clear` when
-  switching tasks** — long sessions cost more even with prompt caching,
-  because every turn re-sends the full history and only the unchanged
-  prefix is discounted.
+- **`context-nudge.cjs`** (`Stop` hook) — after each assistant turn, reads
+  the newest `usage` record from the transcript tail to get the **real**
+  context size (input + cache-read + cache-creation tokens; falls back to
+  `bytes / 4` only if no usage record is found — the byte count over-counts
+  after `/compact` because the transcript keeps pre-compact turns). From
+  ~100k tokens it prints a `systemMessage` suggesting `/compact` (same
+  task) or `/clear` (new task), re-nudging every ~40k of further growth.
+  It also nudges once a session passes ~6h of age (and every 6h after) to
+  catch forgotten loop/background sessions — see §8. State is tracked
+  per-session under the OS temp dir. This is the concrete automation behind
+  the general rule: **`/compact` mid-task, `/clear` when switching tasks**
+  — long sessions cost more even with prompt caching, because every turn
+  re-sends the full history and only the unchanged prefix is discounted.
+  (The threshold was originally 150k; 2026-07 usage stats showed 91% of
+  spend still landed above 150k — the nudge fired only after the expensive
+  zone was already reached — hence 100k now.)
 
 Built-in auto-compact (`autoCompactEnabled`, on by default) still handles
 hard context-limit compaction on its own; these hooks exist for the softer,
 earlier nudge these thresholds don't cover.
+
+## 8. Long-running & loop sessions
+
+Usage stats (2026-07): ~95% of this machine's spend came from sessions
+active 8+ hours, almost all of it at >150k context. Duration alone isn't
+the cost — every turn of a big-context session re-sends the history — so
+these rules are about not letting long sessions *stay* big:
+
+- **`/clear` between independent loop iterations.** If a `/loop` or
+  babysit session's iterations don't need each other's history, each one
+  should start near-empty. A loop session riding above the ~100k nudge is
+  a bug in the loop's design, not a fact of life.
+- **Don't poll.** Background Bash tasks and subagents re-invoke the
+  session when they finish — a wakeup that just checks on them burns a
+  full-context turn for nothing. Schedule wakeups only for external state
+  the harness can't track (CI, a deploy, the QEMU VM coming back up), and
+  when merely idling pick intervals of 20+ minutes, not minutes.
+- **Prefer a scheduled cloud agent (`/schedule`) over keeping a local
+  session alive** for genuinely periodic jobs — a cron-style agent starts
+  each run with a fresh, small context instead of dragging one 8-hour
+  session's history along.
+- When an overnight/background session really is needed, start it from
+  `/clear` with a one-paragraph brief (goal, constraints, done-criteria)
+  rather than handing it a full interactive session's history.
