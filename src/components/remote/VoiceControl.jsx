@@ -200,9 +200,11 @@ export default function VoiceControl({ onClose }) {
 
   // Frosted overlay in the remote's own theme — light stays light, dark
   // stays dark — with the champagne orb floating over it (alpha canvas).
+  // Modest blur radius: a full-screen backdrop-filter recomposites on every
+  // animation frame of the orb canvas — 24px was measurably janky on phones.
   const overlayBg = darkMode
-    ? { background: 'rgba(10,15,30,0.90)', backdropFilter: 'blur(24px) saturate(160%)', WebkitBackdropFilter: 'blur(24px) saturate(160%)' }
-    : { background: 'rgba(249,249,249,0.90)', backdropFilter: 'blur(24px) saturate(160%)', WebkitBackdropFilter: 'blur(24px) saturate(160%)' };
+    ? { background: 'rgba(10,15,30,0.94)', backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)' }
+    : { background: 'rgba(249,249,249,0.94)', backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)' };
 
   return createPortal(
     <div className="remote-root fixed inset-0 z-[10020] flex flex-col items-center justify-center"

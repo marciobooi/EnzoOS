@@ -28,20 +28,24 @@ uniform vec2  u_res;
 uniform float u_radius;
 uniform float u_deform;
 uniform float u_freq;
-uniform float u_morphSpeed;
-uniform float u_rotSpeed;
+// Phases are integrated on the CPU (phase += dt * speed) so voice-reactive
+// speed changes stay smooth. Multiplying a *changing* speed by absolute time
+// in the shader made the whole rotation/morph phase jump by (elapsed time ×
+// speed delta) every time the level moved — huge visible spin glitches.
+uniform float u_morphPhase;
+uniform float u_rotPhase;
+uniform float u_liquidPhase;
 uniform float u_glowStrength;
 uniform vec3  u_colBlue;
 uniform vec3  u_colMag;
 uniform vec3  u_glowA;
 uniform vec3  u_glowB;
-uniform float u_liquidSpeed;
 uniform float u_filament;
 
 mat2 rot(float a){ float c=cos(a), s=sin(a); return mat2(c,-s,s,c); }
 
 float blobField(vec3 p){
-  float t = u_time * u_morphSpeed;
+  float t = u_morphPhase;
   float f = u_freq;
   float d = 0.0;
   d += sin(p.x * 2.6 * f + t * 1.00);
@@ -53,7 +57,7 @@ float blobField(vec3 p){
 }
 
 float mapBlob(vec3 p){
-  float t = u_time * u_rotSpeed;
+  float t = u_rotPhase;
   p.xy *= rot(t * 0.7);
   p.yz *= rot(t * 0.5);
   float r = u_radius + u_deform * blobField(p);
@@ -79,7 +83,7 @@ float vnoise3(vec3 p){
 float fbm3(vec3 p){ float v = 0.0, a = 0.5; for (int i = 0; i < 3; i++){ v += a * vnoise3(p); p *= 2.03; a *= 0.5; } return v; }
 
 float liquid(vec3 p){
-  float t = u_time * u_liquidSpeed;
+  float t = u_liquidPhase;
   p *= 2.2;
   p.xy *= rot(t * 0.15);
   p.yz *= rot(t * 0.10);
@@ -210,8 +214,8 @@ export default function VoiceOrb({ levelRef, mood = 'listen', size = 280 }) {
     gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
 
     const U = {};
-    for (const name of ['time', 'res', 'radius', 'deform', 'freq', 'morphSpeed', 'rotSpeed',
-      'glowStrength', 'colBlue', 'colMag', 'glowA', 'glowB', 'liquidSpeed', 'filament']) {
+    for (const name of ['time', 'res', 'radius', 'deform', 'freq', 'morphPhase', 'rotPhase',
+      'liquidPhase', 'glowStrength', 'colBlue', 'colMag', 'glowA', 'glowB', 'filament']) {
       U[name] = gl.getUniformLocation(program, 'u_' + name);
     }
     gl.clearColor(0, 0, 0, 0);
@@ -222,8 +226,12 @@ export default function VoiceOrb({ levelRef, mood = 'listen', size = 280 }) {
     canvas.height = px;
     gl.viewport(0, 0, px, px);
 
-    // smoothed voice level + color crossfade state
+    // smoothed voice level + color crossfade + CPU-integrated motion phases
     let lvl = 0;
+    let last = null;
+    let morphPhase = Math.random() * 20; // random start so reopening varies
+    let rotPhase = Math.random() * 20;
+    let liquidPhase = Math.random() * 20;
     const col = {
       blue: [...MOODS.listen.blue], mag: [...MOODS.listen.mag],
       glowA: [...MOODS.listen.glowA], glowB: [...MOODS.listen.glowB],
@@ -232,9 +240,16 @@ export default function VoiceOrb({ levelRef, mood = 'listen', size = 280 }) {
 
     let raf;
     const frame = (now) => {
-      const time = now * 0.001;
+      const dt = last === null ? 0.016 : Math.min((now - last) * 0.001, 0.1);
+      last = now;
       const target = Math.max(0, Math.min(1, levelRef?.current ?? 0));
       lvl += (target - lvl) * 0.12;
+
+      // advance phases by dt × current speed — speed changes only alter the
+      // rate from here on, never the already-accumulated angle
+      morphPhase  += dt * (0.9 + lvl * 1.6);
+      rotPhase    += dt * (0.12 + lvl * 0.10);
+      liquidPhase += dt * (0.45 + lvl * 0.9);
 
       const m = MOODS[moodRef.current] || MOODS.listen;
       lerp3(col.blue, m.blue, 0.08);
@@ -242,19 +257,19 @@ export default function VoiceOrb({ levelRef, mood = 'listen', size = 280 }) {
       lerp3(col.glowA, m.glowA, 0.08);
       lerp3(col.glowB, m.glowB, 0.08);
 
-      gl.uniform1f(U.time, time);
+      gl.uniform1f(U.time, now * 0.001);
       gl.uniform2f(U.res, px, px);
       gl.uniform1f(U.radius, 0.30);
       gl.uniform1f(U.deform, 0.28 + lvl * 0.30);
       gl.uniform1f(U.freq, 2.0);
-      gl.uniform1f(U.morphSpeed, 0.9 + lvl * 1.6);
-      gl.uniform1f(U.rotSpeed, 0.12 + lvl * 0.10);
+      gl.uniform1f(U.morphPhase, morphPhase);
+      gl.uniform1f(U.rotPhase, rotPhase);
+      gl.uniform1f(U.liquidPhase, liquidPhase);
       gl.uniform1f(U.glowStrength, 0.62 + lvl * 0.55);
       gl.uniform3fv(U.colBlue, col.blue);
       gl.uniform3fv(U.colMag, col.mag);
       gl.uniform3fv(U.glowA, col.glowA);
       gl.uniform3fv(U.glowB, col.glowB);
-      gl.uniform1f(U.liquidSpeed, 0.45 + lvl * 0.9);
       gl.uniform1f(U.filament, 1.4 + lvl * 0.9);
       gl.clear(gl.COLOR_BUFFER_BIT);
       gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
