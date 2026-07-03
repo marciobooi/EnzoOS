@@ -732,7 +732,7 @@ export default function RemoteControl() {
     <Tk.Provider value={ctxValue}>
       <>
         <div style={{ ...rcVars, fontFamily: C.font, background: C.bg, paddingTop: 'env(safe-area-inset-top)' }}
-          className="h-[100vh] remote-root fixed inset-0 flex flex-col overflow-hidden touch-manipulation select-none">
+          className="h-[100vh] remote-root fixed inset-0 flex flex-col overflow-hidden overflow-y-auto touch-manipulation select-none">
 
           <TopBar darkMode={darkMode} setDarkMode={setDarkMode} />
 
