@@ -68,9 +68,14 @@ by theme. Priority key: **P1** (high value, moderate effort) · **P2**
   unit (like AirPlay/UPnP already are), receiver emulation
   (`node-castv2`-style) is possible but heavier and less maintained — long
   tail.
-- [ ] **Voice assistant control** (Alexa skill / Google Assistant) — "play
-  jazz on Resonance" for this one device. Requires a cloud skill + account
-  linking backend; long-term item.
+- [ ] **Push-to-talk voice in the remote PWA** — the unit itself has no mic
+  (Alexa/Google-style ambient assistants are out), but the phone remote can
+  do voice as a webpage: the Web Speech API (`webkitSpeechRecognition` +
+  `getUserMedia`) works in installed PWAs on iOS ≥14.5 and Android Chrome.
+  Tap a mic button, speak "play jazz" / "volume down", map the transcript to
+  the existing `/api/player/*` routes. Hard limits of the web platform: no
+  wake word, nothing while the phone is locked or the page backgrounded, and
+  iOS routes transcription through Apple's servers. P2.
 
 ## 3. Personalization & social — **P2**
 
@@ -130,4 +135,5 @@ by theme. Priority key: **P1** (high value, moderate effort) · **P2**
 2. **P1 medium** — podcasts, wake/alarm scheduling, guest permission tiers,
    Bluetooth OUT.
 3. **P2 / long tail** — Deezer/SoundCloud, audiobooks, USB auto-play, NAS
-   share UI, IR remote, Cast receiver, voice assistants, HDMI-ARC.
+   share UI, IR remote, Cast receiver, push-to-talk voice in the remote,
+   HDMI-ARC.
