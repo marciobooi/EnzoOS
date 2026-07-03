@@ -20,6 +20,7 @@ import UniversalSearch from '../components/remote/UniversalSearch';
 import SettingsTab from '../components/remote/SettingsTab';
 import MiniPlayer  from '../components/remote/MiniPlayer';
 import QueuePanel  from '../components/remote/QueuePanel';
+import VoiceControl, { voiceSupported } from '../components/remote/VoiceControl';
 import { setCookie, getCookie, eraseCookie } from '../lib/cookies';
 
 const NAV_H = 72;
@@ -216,6 +217,9 @@ export default function RemoteControl() {
   const [queueOpen, setQueueOpen]     = useState(false);
   const [queue, setQueue]             = useState([]);
   const [queueLoading, setQueueLoading] = useState(false);
+
+  // ── voice control (push-to-talk) ──────────────────────────────────────────
+  const [voiceOpen, setVoiceOpen]     = useState(false);
 
   // ── unified favorites & live format ───────────────────────────────────────
   const [favorites, setFavorites]     = useState([]);
@@ -751,7 +755,8 @@ export default function RemoteControl() {
         <div style={{ ...rcVars, fontFamily: C.font, background: C.bg, paddingTop: 'env(safe-area-inset-top)' }}
           className="h-[100vh] remote-root fixed inset-0 flex flex-col overflow-hidden overflow-y-auto touch-manipulation select-none">
 
-          <TopBar darkMode={darkMode} setDarkMode={setDarkMode} />
+          <TopBar darkMode={darkMode} setDarkMode={setDarkMode}
+            onVoice={voiceSupported() ? () => setVoiceOpen(true) : undefined} />
 
           <div className="flex-1 overflow-y-auto overscroll-none"
             style={{ paddingBottom: `calc(${NAV_H + (activeTab !== 'player' ? 72 : 8)}px + env(safe-area-inset-bottom))` }}>
@@ -798,6 +803,8 @@ export default function RemoteControl() {
             onClose={() => setQueueOpen(false)}
           />
         )}
+
+        {voiceOpen && <VoiceControl onClose={() => setVoiceOpen(false)} />}
 
         {isThemeSettingsOpen && (
           <div className="remote-root fixed inset-0 z-[9999] flex flex-col overflow-y-auto"

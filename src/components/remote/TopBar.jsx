@@ -1,8 +1,8 @@
 import { useContext } from 'react';
-import { Power, Sun, Moon } from 'lucide-react';
+import { Power, Sun, Moon, Mic } from 'lucide-react';
 import { Tk } from './shared';
 
-export default function TopBar({ darkMode, setDarkMode }) {
+export default function TopBar({ darkMode, setDarkMode, onVoice }) {
   const { C, btn, isConnected, standby, handleToggleStandby } = useContext(Tk);
   return (
     <div className="shrink-0 flex items-center justify-between px-5 pt-3 pb-2.5"
@@ -20,6 +20,14 @@ export default function TopBar({ darkMode, setDarkMode }) {
         </span>
       </div>
       <div className="flex items-center gap-2">
+        {onVoice && (
+          <button onClick={onVoice}
+            aria-label="Voice control"
+            className="w-10 h-10 rounded-full flex items-center justify-center active:scale-90 transition-all cursor-pointer"
+            style={btn}>
+            <Mic className="h-4 w-4" style={{ color: C.champagne }} />
+          </button>
+        )}
         <button onClick={() => setDarkMode(d => !d)}
           aria-label={darkMode ? 'Switch to light mode' : 'Switch to dark mode'}
           className="w-10 h-10 rounded-full flex items-center justify-center active:scale-90 transition-all cursor-pointer"
