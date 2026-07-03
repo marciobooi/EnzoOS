@@ -323,11 +323,15 @@ Everything below is what didn't.
   sudoers, and added a `monitor.bluez.rules` WirePlumber config
   (`52-resonance-bluetooth-route.conf`) that targets any `bluez_output.*`
   node at ResonanceInput so incoming A2DP audio reaches the CamillaDSP
-  chain the same way every other source does. **Caveat**: the WirePlumber
-  routing rule is unverified against a real paired phone (no Bluetooth
-  hardware reachable over this SSH-only session) — the `bluetoothctl`
-  adapter-control fix is high-confidence, the audio-routing rule should get
-  a live pairing test before being trusted blind.
+  chain the same way every other source does. **Caveat, strengthened
+  2026-07-03**: the routing rule uses the JSON `monitor.bluez.rules`
+  syntax, but this WirePlumber version (0.4.17) uses the **Lua** rule
+  system for monitor rules — the same discovery that forced §9.1's
+  capture-disable fix to be written as a `.lua` file. The JSON rule is
+  therefore almost certainly inert. Harmless in practice (BT audio should
+  still follow the default sink, which is ResonanceInput), but it needs a
+  Lua rewrite plus a live pairing test with a real phone before the
+  explicit-routing claim can be trusted (AUDIT-2026-07-03.md §A.3).
 
 - [x] **[MED]** ~~install.sh dirties the git checkout it manages~~ — **fixed
   2026-07-02**: stopped regenerating tracked `.env.example` at install time,
@@ -479,11 +483,18 @@ load is a healthy ~0.13%, zero clipped samples.
   Device objects for it — no profile ever auto-activates for a card with no
   real hardware profile-set) — so the bug wasn't just "wrong string" but
   "nothing to reference by any name." Fix: added
-  `52-resonance-aloop-sink.conf`, which defines `hw:Loopback,0,0` as its own
-  static PipeWire node (`factory.name = api.alsa.pcm.sink`, same pattern
-  `ResonanceInput` already uses), bypassing monitor/profile discovery
-  entirely; `51-resonance-loopback.conf`'s `target.object` now names that
-  node. **Verified end-to-end on the VM**: `pw-link -l` shows the loopback
+  `52-resonance-aloop-sink.conf`, a static PipeWire node
+  (`factory.name = api.alsa.pcm.sink`, same pattern `ResonanceInput`
+  already uses) bypassing monitor/profile discovery entirely;
+  `51-resonance-loopback.conf`'s `target.object` now names that node.
+  **Revised 2026-07-03**: the node originally opened raw `hw:Loopback,0,0`,
+  which raced MPD/librespot's `camilla_input` dmix for exclusive ownership
+  of the underlying device — whichever opened first won, the others got
+  "Device or resource busy" (observed live as both radio and Spotify
+  failing). The node now targets `api.alsa.path = "camilla_input"` (the
+  dmix PCM itself) so all three writers share the loopback through dmix;
+  the full PipeWire→CamillaDSP path was re-verified live after this change
+  (signal measured on `GetCaptureSignalRms`, see AUDIT-2026-07-03.md §A.2). **Verified end-to-end on the VM**: `pw-link -l` shows the loopback
   correctly linked to the new node (not `ResonanceInput`), the ALSA
   subdevice went from `closed` to actively streaming, and a test tone played
   through PipeWire's `default` device measured `-4.98 dB` on CamillaDSP's
