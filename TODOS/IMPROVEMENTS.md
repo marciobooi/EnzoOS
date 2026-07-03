@@ -3,7 +3,7 @@
 **Re-audited 2026-07-03** against the current codebase (previous analysis
 deleted — several of its items have since shipped and its statuses were
 stale). Comparison set: Sonos, Bluesound BluOS, Naim, Cambridge Audio
-StreamMagic, Denon HEOS, Yamaha MusicCast, WiiM, Devialet, Roon.
+StreamMagic, Denon HEOS, Yamaha MusicCast, WiiM, Devialet.
 
 ## What Resonance already matches or beats (verified in code today)
 
@@ -20,33 +20,19 @@ factory reset, OTA updates, onboarding wizard, EN/PT i18n, installable PWA
 remote with QR/6-digit pairing, HTTPS remote port, universal search across
 all five sources.
 
-What follows is **only what's still genuinely absent**, grouped by theme.
-Priority key: **P0** (biggest UX gap vs. competitors) · **P1** (high value,
-moderate effort) · **P2** (nice-to-have / long tail).
+**Scope decision (2026-07-03):** Resonance is a **single-zone streamer by
+design** — one Pi, one room, one output. Multi-room grouping, stereo pairing,
+zone UIs, and the Roon ecosystem are deliberately **out of scope** and must
+not be re-proposed in future analyses; comparisons below ignore competitors'
+multi-room features entirely.
+
+What follows is **only what's still genuinely absent AND in scope**, grouped
+by theme. Priority key: **P1** (high value, moderate effort) · **P2**
+(nice-to-have / long tail).
 
 ---
 
-## 1. Multi-room / whole-home audio — **P0**
-
-Still the single biggest gap, unchanged. Every mainstream competitor (Sonos,
-HEOS, MusicCast, BluOS, Chromecast built-in) is built around grouping units
-in perfect sync. Resonance is single-zone: one Pi, one room.
-
-- [ ] **Multi-unit grouping** — two or more Resonance units playing one
-  source in sample-accurate sync. Fastest path: Snapcast
-  (`snapserver`/`snapclient`) alongside the CamillaDSP output stage; the
-  alternative is a custom play-timestamp sync protocol between Node
-  backends. Highest effort on this list, highest value.
-- [ ] **Stereo pairing** — two units as dedicated L/R of one virtual pair
-  (Sonos One/Five, Bluesound Pulse). A fixed-role subset of the same
-  clock-sync problem.
-- [ ] **Zone-aware volume UI** — once grouping exists: per-room sliders + a
-  group master fader in the remote (Sonos room list pattern).
-- [ ] **AirPlay 2 multi-room membership** — shairport-sync 5 can be one leg
-  of an iOS-orchestrated group *today*; needs a live verification pass and a
-  line of user documentation. Cheapest partial win in this section.
-
-## 2. Content sources — **P1**
+## 1. Content sources — **P1**
 
 - [ ] **Podcasts** — the search placeholder still promises "Artists, songs,
   podcasts…" (`src/i18n/locales/en.js`, `pt.js`) but no podcast backend
@@ -69,17 +55,8 @@ in perfect sync. Resonance is single-zone: one Pi, one room.
   radio-browser.info already exposes tag/popularity endpoints, so this is
   mostly frontend.
 
-## 3. Ecosystem & smart-home — **P1**
+## 2. Smart-home integration — **P1**
 
-- [ ] **Roon Bridge endpoint** — the audiophile audience expects any serious
-  streamer to appear as a Roon zone. Licensing note (keeps this compatible
-  with a free project): the Roon Bridge ARM binary is a *free* download from
-  Roon Labs — only the user's Roon Core subscription is paid, exactly like
-  Spotify/Tidal accounts today. No "Roon Ready" certification (a paid
-  manufacturer program) is needed. Do what DietPi/RoPieee do: an optional
-  install.sh step that fetches the binary from Roon's servers (closed-source,
-  so never vendored into the repo), output wired into the same
-  PipeWire → CamillaDSP chain that AirPlay/BT already feed.
 - [ ] **Home Assistant integration** — most of the API already exists
   (`/api/status`, `/api/player/*`); needs a stable documented contract plus
   a thin HA custom component or MQTT bridge. Low effort relative to value.
@@ -87,14 +64,15 @@ in perfect sync. Resonance is single-zone: one Pi, one room.
   users can automate without HA. Thin layer over the existing EventService
   broadcast points.
 - [ ] **Google Cast receiver** — the "Cast" strings in the UI are Spotify
-  Connect device switching, not Google Cast. Receiver emulation
-  (`node-castv2`-style) is heavier and less maintained than AirPlay/UPnP —
-  keep below Roon in priority.
-- [ ] **Voice assistants** (Alexa skill / Google Assistant) — requires a
-  cloud skill + account linking; only sensible after multi-room naming
-  exists (voice targets zones by name).
+  Connect device switching, not Google Cast. As a *source* into this single
+  unit (like AirPlay/UPnP already are), receiver emulation
+  (`node-castv2`-style) is possible but heavier and less maintained — long
+  tail.
+- [ ] **Voice assistant control** (Alexa skill / Google Assistant) — "play
+  jazz on Resonance" for this one device. Requires a cloud skill + account
+  linking backend; long-term item.
 
-## 4. Personalization & social — **P2**
+## 3. Personalization & social — **P2**
 
 - [ ] **"Like" sync back to the source service** — favoriting writes only to
   the local `favorites` table. Spotify (`PUT /me/tracks`) and Tidal both
@@ -105,7 +83,7 @@ in perfect sync. Resonance is single-zone: one Pi, one room.
   addition on credentials already collected. `play_history` has everything a
   scrobble needs.
 
-## 5. Convenience & physical UX — **P1**
+## 4. Convenience & physical UX — **P1**
 
 - [ ] **Wake/alarm scheduling** — sleep timer exists; "play [station] at
   07:00" does not, and it's a headline feature on every consumer streamer.
@@ -131,7 +109,7 @@ in perfect sync. Resonance is single-zone: one Pi, one room.
 - [ ] **HDMI-ARC / TV input** — hardware-dependent stretch goal (needs a DAC
   hat with HDMI); keep parked.
 
-## 6. Reliability & "big brand" resilience — **P2**
+## 5. Reliability & "big brand" resilience — **P2**
 
 - [ ] **Degraded-network indicator** — WS auto-reconnect exists
   (`src/websocket.js`), but mid-stream Wi-Fi loss shows silence rather than
@@ -146,12 +124,10 @@ in perfect sync. Resonance is single-zone: one Pi, one room.
 
 ## Suggested sequencing
 
-1. **P0 — multi-room grouping** (Snapcast for a working v1; stereo pairing
-   falls out of the same work).
-2. **P1 quick wins** — quick-access presets, Last.fm scrobbling, webhooks +
+1. **P1 quick wins** — quick-access presets, Last.fm scrobbling, webhooks +
    Home Assistant contract, radio genre/trending browsing, like-sync: each
    builds on data and routes that already exist.
-3. **P1 medium** — podcasts, wake/alarm scheduling, Roon Bridge, guest
-   permission tiers, Bluetooth OUT.
-4. **P2 / long tail** — Deezer/SoundCloud, audiobooks, USB auto-play, NAS
+2. **P1 medium** — podcasts, wake/alarm scheduling, guest permission tiers,
+   Bluetooth OUT.
+3. **P2 / long tail** — Deezer/SoundCloud, audiobooks, USB auto-play, NAS
    share UI, IR remote, Cast receiver, voice assistants, HDMI-ARC.
