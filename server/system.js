@@ -88,6 +88,15 @@ router.post('/language', async (req, res) => {
   } catch (err) { sendError(res, err); }
 });
 
+// TEMP DIAGNOSTIC — remove once the iOS standalone (home-screen) layout issue
+// is resolved. The remote POSTs its real viewport/safe-area numbers here so
+// they can be read from `journalctl -u resonance-api` — there is no other way
+// to see what an installed iPhone PWA actually measures.
+router.post('/client-viewport-debug', (req, res) => {
+  console.log('[ClientViewport]', JSON.stringify(req.body));
+  res.json({ success: true });
+});
+
 // GET /api/system/lan-url — returns the LAN-accessible remote URL for QR code generation
 router.get('/lan-url', (req, res) => {
   const port = process.env.PORT || 5000;

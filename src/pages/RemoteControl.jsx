@@ -85,6 +85,18 @@ export default function RemoteControl() {
     '--rc-container-low': C.containerLow, '--rc-champagne': C.champagne, '--rc-outline': C.outline,
   };
 
+  // Paint the document itself in the remote's background: if iOS ever
+  // letterboxes the standalone app inside the safe area (viewport-fit not
+  // honored), the strip outside the page viewport shows the <html>
+  // background — without this it's the kiosk's dark navy behind a
+  // light-mode remote, a visible band under the bottom nav.
+  useEffect(() => {
+    const prev = document.documentElement.style.background;
+    document.documentElement.style.background = C.bg;
+    document.body.style.background = C.bg;
+    return () => { document.documentElement.style.background = prev; document.body.style.background = prev; };
+  }, [C.bg]);
+
   // ── auth ──────────────────────────────────────────────────────────────────
   const [isAuthenticated, setIsAuthenticated] = useState(!!getCookie('remote_token'));
   const [qrRedeemError, setQrRedeemError]     = useState('');
@@ -298,6 +310,39 @@ export default function RemoteControl() {
   }, [token, isAuthenticated, spotify]);
   // Allow the Spotify device to be re-pinned to unity next time it becomes active.
   useEffect(() => { if (!spotify) spotifyVolPinned.current = false; }, [spotify]);
+  // TEMP DIAGNOSTIC — remove with /api/system/client-viewport-debug once the
+  // iOS standalone layout issue is resolved. Reports what the phone actually
+  // measures (viewport vs screen, real env(safe-area-inset-*) values,
+  // standalone mode or not) to the server journal.
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    const t = setTimeout(() => {
+      const standalone = window.matchMedia?.('(display-mode: standalone)')?.matches
+        || window.navigator.standalone === true;
+      const probe = document.createElement('div');
+      probe.style.cssText = 'position:fixed;top:env(safe-area-inset-top);bottom:env(safe-area-inset-bottom);left:0;width:1px;visibility:hidden;pointer-events:none';
+      document.body.appendChild(probe);
+      const r = probe.getBoundingClientRect();
+      const satTop = Math.round(r.top);
+      const satBottom = Math.round(window.innerHeight - r.bottom);
+      probe.remove();
+      fetch('/api/system/client-viewport-debug', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          standalone,
+          innerW: window.innerWidth, innerH: window.innerHeight,
+          screenW: window.screen.width, screenH: window.screen.height,
+          visualH: Math.round(window.visualViewport?.height || 0),
+          dpr: window.devicePixelRatio,
+          satTop, satBottom,
+          ua: navigator.userAgent,
+        }),
+      }).catch(() => {});
+    }, 1500);
+    return () => clearTimeout(t);
+  }, [isAuthenticated]);
+
   // On mount: redeem a ?qr= token from the URL, or validate an existing cookie.
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
