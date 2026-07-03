@@ -433,6 +433,13 @@ export default {
 
   settings: {
     runWizard: 'Executar Assistente',
+    webhook: 'Webhook de Automação',
+    webhookOff: 'Desligado — toque para configurar',
+    webhookHint: 'O Resonance envia JSON para este URL em eventos de reprodução, pausa, mudança de faixa, fonte e espera (Home Assistant, Node-RED, …).',
+    webhookSave: 'Guardar e Testar',
+    webhookDisable: 'Desativar',
+    webhookSaved: 'Webhook guardado — evento de teste enviado',
+    webhookDisabled: 'Webhook desativado',
     language: 'Idioma',
     configuration: 'Configuração',
     signalMonitor: 'Monitor de Sinal',
@@ -549,6 +556,7 @@ export default {
     didntCatch: 'Não percebi — tente “pausa”, “seguinte” ou “toca a rádio…”',
     micDenied: 'Acesso ao microfone negado — permita nas definições do navegador',
     needsHttps: 'O microfone só funciona no endereço seguro — abra o comando aqui:',
+    unsupported: 'Este navegador não tem reconhecimento de voz. No iPhone, ative Definições → Geral → Teclado → Ditado e recarregue esta página.',
     noSpeech: 'Nenhuma voz detetada',
     notConnected: 'O Spotify não está ligado',
     paused: 'Em pausa',

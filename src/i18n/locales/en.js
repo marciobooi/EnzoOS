@@ -435,6 +435,13 @@ export default {
 
   settings: {
     runWizard: 'Run Setup Wizard',
+    webhook: 'Automation Webhook',
+    webhookOff: 'Off — tap to configure',
+    webhookHint: 'Resonance will POST JSON to this URL on play, pause, track change, source and standby events (for Home Assistant, Node-RED, …).',
+    webhookSave: 'Save & Test',
+    webhookDisable: 'Disable',
+    webhookSaved: 'Webhook saved — test event sent',
+    webhookDisabled: 'Webhook disabled',
     language: 'Language',
     configuration: 'Configuration',
     signalMonitor: 'Signal Monitor',
@@ -551,6 +558,7 @@ export default {
     didntCatch: 'Didn’t catch that — try “pause”, “next” or “play radio…”',
     micDenied: 'Microphone access denied — allow it in your browser settings',
     needsHttps: 'The microphone only works on the secure address — open the remote here instead:',
+    unsupported: 'This browser has no speech recognition. On iPhone, enable Settings → General → Keyboard → Enable Dictation, then reload this page.',
     noSpeech: 'No speech detected',
     notConnected: 'Spotify is not connected',
     paused: 'Paused',

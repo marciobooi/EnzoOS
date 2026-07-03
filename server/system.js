@@ -25,6 +25,26 @@ const ALLOWED_SERVICES = ['mpd', 'camilladsp', 'raspotify'];
 // low cap stops abuse without affecting the read-only status/storage polling.
 const sensitiveLimiter = rateLimit({ windowMs: 10 * 60 * 1000, max: 20, standardHeaders: true, legacyHeaders: false });
 
+// ── Outbound webhook (automations: Home Assistant, Node-RED, …) ──────────────
+// One URL; the server POSTs { event, ts, ... } on playing/paused/track-change/
+// source/standby transitions (see server/webhooks.js). Empty URL disables.
+router.get('/webhook', async (req, res) => {
+  const url = await getSetting('webhook_url').catch(() => null);
+  res.json({ url: url || '' });
+});
+
+router.post('/webhook', async (req, res) => {
+  const url = (req.body?.url || '').trim();
+  if (url && !/^https?:\/\//.test(url)) return sendError(res, badRequest('url must start with http:// or https://'));
+  try {
+    await setSetting('webhook_url', url);
+    const { invalidateWebhookUrl, fireWebhook } = await import('./webhooks.js');
+    invalidateWebhookUrl();
+    if (url) fireWebhook('test', { message: 'Resonance webhook configured' });
+    res.json({ url });
+  } catch (err) { sendError(res, err); }
+});
+
 // ── Onboarding (first-boot welcome wizard) ────────────────────────────────────
 // Persisted so the wizard only shows once. Unset (fresh install / factory reset)
 // reads as not complete → wizard shows. POST { complete:false } re-arms it so a

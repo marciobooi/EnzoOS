@@ -1,6 +1,6 @@
 import { useContext, useState, useRef } from 'react';
 import {
-  RefreshCw, Wifi, HardDrive, RotateCcw, Download, Sparkles, Power, Music, Sliders,
+  RefreshCw, Wifi, HardDrive, RotateCcw, Download, Sparkles, Power, Music, Sliders, Webhook,
 } from 'lucide-react';
 import { toast } from '../../../lib/toast';
 import { reportError } from '../../../lib/errors';
@@ -22,6 +22,38 @@ export default function SystemSettings() {
 
   const [storage, setStorage]     = useState(null);
   const [showStorage, setShowStorage] = useState(false);
+
+  // Outbound webhook (automations) — one URL, POSTed on player transitions
+  const [showWebhook, setShowWebhook]   = useState(false);
+  const [webhookUrl, setWebhookUrl]     = useState('');
+  const [webhookDraft, setWebhookDraft] = useState('');
+  const [webhookBusy, setWebhookBusy]   = useState(false);
+
+  const handleOpenWebhook = async () => {
+    if (showWebhook) { setShowWebhook(false); return; }
+    try {
+      const r = await fetch('/api/system/webhook');
+      const d = await r.json();
+      setWebhookUrl(d.url || '');
+      setWebhookDraft(d.url || '');
+    } catch { /* field just opens empty */ }
+    setShowWebhook(true);
+  };
+
+  const handleSaveWebhook = async (override) => {
+    const url = (override !== undefined ? override : webhookDraft).trim();
+    setWebhookBusy(true);
+    try {
+      const r = await fetch('/api/system/webhook', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ url }),
+      });
+      if (!r.ok) throw new Error((await r.json())?.error || 'Save failed');
+      setWebhookUrl(url);
+      toast.success(url ? t('settings.webhookSaved') : t('settings.webhookDisabled'));
+      if (!url) setShowWebhook(false);
+    } catch (e) { reportError(e.message); }
+    finally { setWebhookBusy(false); }
+  };
 
   const {
     C, card, cardWhite, darkMode,
@@ -172,6 +204,33 @@ export default function SystemSettings() {
             <p className="text-[12px]" style={{ color: C.text3 }}>
               {t('net.musicLibrary')}: {storage.musicFiles} files · {storage.musicSizeMb} MB
             </p>
+          </div>
+        )}
+        <Row label={t('settings.webhook')} sub={webhookUrl ? webhookUrl : t('settings.webhookOff')}
+          icon={<Webhook className="h-4 w-4" style={{ color: webhookUrl ? C.champagne : C.text4 }} />}
+          onPress={handleOpenWebhook} />
+        {showWebhook && (
+          <div className="mx-4 mb-3 rounded-xl p-3 flex flex-col gap-2" style={cardWhite}>
+            <p className="text-[12px]" style={{ color: C.text3 }}>{t('settings.webhookHint')}</p>
+            <input type="url" value={webhookDraft} onChange={e => setWebhookDraft(e.target.value)}
+              placeholder="https://homeassistant.local:8123/api/webhook/resonance"
+              autoCapitalize="none" autoComplete="off" spellCheck={false}
+              className="rounded-xl px-3 py-2.5 text-[14px] focus:outline-none"
+              style={{ background: C.containerLow, color: C.text1, border: `0.5px solid ${C.outline}` }} />
+            <div className="flex gap-2">
+              <button onClick={handleSaveWebhook} disabled={webhookBusy}
+                className="flex-1 py-2.5 rounded-xl text-[13px] font-semibold active:scale-95 transition-all disabled:opacity-40"
+                style={{ background: C.champagne, color: '#1a1c1c' }}>
+                {webhookBusy ? '…' : t('settings.webhookSave')}
+              </button>
+              {webhookUrl && (
+                <button onClick={() => { setWebhookDraft(''); handleSaveWebhook(''); }} disabled={webhookBusy}
+                  className="px-4 py-2.5 rounded-xl text-[13px] font-semibold active:scale-95 transition-all disabled:opacity-40"
+                  style={{ background: C.containerLow, color: C.error, border: `0.5px solid ${C.outline}` }}>
+                  {t('settings.webhookDisable')}
+                </button>
+              )}
+            </div>
           </div>
         )}
         <Row label={t('settings.runWizard')}

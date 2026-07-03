@@ -17,11 +17,12 @@ const SR = typeof window !== 'undefined'
   ? (window.SpeechRecognition || window.webkitSpeechRecognition)
   : null;
 
-// Show the button whenever the browser has the Web Speech API (Chrome,
-// Safari — not Firefox). Mic capture additionally needs a secure context
-// (HTTPS or localhost); on plain http:// the overlay explains and links to
-// the HTTPS address instead of failing silently.
-export const voiceSupported = () => !!SR;
+// The mic button always shows — hiding it just reads as "voice doesn't
+// exist" (observed on iPhone Safari, where webkitSpeechRecognition is only
+// exposed when iOS Dictation is enabled). When speech isn't usable the
+// overlay explains exactly why: missing API (Firefox / Dictation off) or
+// insecure origin (mic is blocked on plain http://), with the fix inline.
+export const voiceSupported = () => true;
 
 const OVERLAY_BG = '#070A18'; // must match VoiceOrb's shader background
 
@@ -126,7 +127,15 @@ export default function VoiceControl({ onClose }) {
     : '';
 
   useEffect(() => {
-    if (!SR) { onClose(); return; }
+    // No Web Speech API: Firefox, or iPhone with Dictation disabled
+    // (iOS only exposes webkitSpeechRecognition when Settings → General →
+    // Keyboard → Enable Dictation is on).
+    if (!SR) {
+      setPhase('done');
+      setMood('error');
+      setDisplay(t('voice.unsupported'));
+      return;
+    }
     // Browsers block ALL mic access on insecure origins — don't even try;
     // show the pointer to the HTTPS address instead (overlay stays open
     // until tapped so the URL can be read).

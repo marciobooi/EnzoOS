@@ -1,5 +1,6 @@
 import os from 'os';
 import { getSetting, setSetting, dbReady } from './db.js';
+import { fireWebhook, fireOnPlaybackChange } from './webhooks.js';
 
 // ─── Minimal payload shape validation ─────────────────────────────────────────
 // These events cache + persist + rebroadcast whatever a client sends verbatim.
@@ -329,18 +330,21 @@ async function handleEvent(type, payload, excludeWs) {
       // Relay with server-authoritative volume so stale polling from any client
       // never overwrites the volume the user actually set via /api/player/volume.
       broadcast({ type: 'PLAYBACK_STATE', payload: { ...payload, volume: cachedVolume, is_muted: cachedMuted } }, excludeWs);
+      fireOnPlaybackChange(payload);
       break;
     }
 
     case 'PLAYBACK_STATE': {
       cachedPlaybackState = payload;
       broadcast({ type: 'PLAYBACK_STATE', payload }, excludeWs);
+      fireOnPlaybackChange(payload);
       break;
     }
 
     case 'SET_SOURCE': {
       const previousSource = cachedSourceState.source;
       const newSource = payload.source || (payload.spotify ? 'spotify' : 'local');
+      fireWebhook('source', { source: newSource, previous: previousSource });
       cachedSourceState = payload;
       await setSetting('active_source', newSource);
 
@@ -549,6 +553,7 @@ async function handleEvent(type, payload, excludeWs) {
 
     case 'SET_STANDBY': {
       await applyStandby(payload.enabled);
+      fireWebhook('standby', { enabled: !!payload.enabled });
       break;
     }
 
