@@ -727,14 +727,27 @@ export const loadStateFromDB = async () => {
     cachedPureDirect = pureDirectVal === 'true';
     console.log(`[EventService] Loaded pure_direct: ${cachedPureDirect}`);
 
-    // Ensure raspotify always has the correct ALSA device (camilla_input) and
-    // device name ("Resonance Connect"). Runs silently on every startup so a
-    // manual edit or a failed previous write doesn't persist.
+    // Ensure raspotify has the correct ALSA device (camilla_input) and device
+    // name ("Resonance Connect") — but only write + restart when the managed
+    // conf actually changed. Restarting raspotify drops librespot's Spotify
+    // Connect session, and Spotify never re-activates a device by itself, so an
+    // unconditional restart here knocked the kiosk to SYSTEM IDLE on every
+    // resonance-api restart. The conf file is root-only readable, so the
+    // last-applied copy is tracked in the settings DB instead. (A manual edit
+    // of /etc/raspotify/conf is invisible to this check — POST /api/spotify/device
+    // still force-rewrites if audio routing ever needs repairing.)
     try {
-      const { writeRaspotifyConf, restartRaspotify } = await import('./spotify-daemon.js');
-      await writeRaspotifyConf();
-      await restartRaspotify();
-      console.log('[EventService] Raspotify device config applied on startup.');
+      const { buildRaspotifyConf, writeRaspotifyConf, restartRaspotify } = await import('./spotify-daemon.js');
+      const desiredConf = buildRaspotifyConf();
+      const appliedConf = await getSetting('raspotify_applied_conf').catch(() => null);
+      if (appliedConf === desiredConf) {
+        console.log('[EventService] Raspotify conf unchanged — restart skipped (Spotify Connect session preserved).');
+      } else {
+        await writeRaspotifyConf();
+        await restartRaspotify();
+        await setSetting('raspotify_applied_conf', desiredConf);
+        console.log('[EventService] Raspotify device config applied on startup.');
+      }
     } catch (err) {
       console.warn('[EventService] Raspotify config write failed (non-fatal):', err.message);
     }

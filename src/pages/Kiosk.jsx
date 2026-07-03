@@ -848,6 +848,28 @@ export default function Kiosk() {
     }
   });
 
+  // Auto-reclaim Spotify Connect. When librespot restarts (reboot, raspotify
+  // conf change) its Connect session drops and Spotify de-activates the device;
+  // Spotify never re-activates a device on its own — a transfer command must be
+  // issued. That used to be the manual "ROUTE TO RESONANCE" pill; do it
+  // automatically whenever the kiosk is on the Spotify source, our device is
+  // listed but inactive, and no OTHER device is active (never steal playback
+  // from a phone/desktop the user is deliberately listening on). Transfers with
+  // play=false: the device becomes ACTIVE and ready without blasting audio
+  // unprompted after a reboot.
+  const lastAutoReclaim = useRef(0);
+  useEffect(() => {
+    if (!spotify || !token || standbyRef.current) return;
+    if (!resonanceDeviceId || isLocalDeviceActive) return;
+    if (devices.some(d => d.is_active)) return;
+    const now = Date.now();
+    if (now - lastAutoReclaim.current < 15000) return; // don't spam if a transfer 4xx-loops
+    lastAutoReclaim.current = now;
+    api.transferPlayback(token, resonanceDeviceId, false)
+      .then(() => setTimeout(fetchDevices, 500))
+      .catch(() => {}); // silent — background action, next poll retries after cooldown
+  }, [spotify, token, devices, resonanceDeviceId, isLocalDeviceActive, fetchDevices]);
+
   // Restart raspotify and poll until "Resonance Connect" appears, then call onReady(deviceId).
   // Guard prevents concurrent restart storms if the user clicks rapidly.
   const ensureRaspotify = async (onReady) => {

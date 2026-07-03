@@ -267,20 +267,28 @@ router.post('/radios', async (req, res) => {
 });
 
 // Sanitise MPD ICY/stream %title% metadata before exposing it as a track name.
-// Three cases seen in the wild:
+// Four cases seen in the wild (blobs captured live from Rádio Comercial):
 //   1. The raw stream URL (HLS/AAC streams with no ICY title) -> suppress.
-//   2. Dalet RadioInfo XML (Rádio Comercial and other PT/ES stations) ->
+//   2. Dalet RadioInfo XML with a song playing ->
 //      pull <DB_SONG_NAME> / <DB_LEAD_ARTIST_NAME> out of the blob.
-//   3. Any other angle-bracket markup -> strip tags as a last resort.
+//   3. Dalet RadioInfo XML during a live show (no song; <DB_SONG_ID>0</DB_SONG_ID>,
+//      only an <AnimadorInfo> block) -> show name + station as artist. Note
+//      <DB_DALET_TITLE_NAME> holds the station SLOGAN here, not a title.
+//   4. Any other angle-bracket markup -> strip tags; but never emit a Dalet
+//      blob as tag-stripped field soup — suppress so the UI keeps the station
+//      name instead.
 // Returns { name, artist } so callers get clean, separated fields.
 export function sanitizeStreamTitle(raw) {
   const name = (raw || '').trim();
   if (!name) return { name: '', artist: '' };
   if (name.startsWith('http://') || name.startsWith('https://')) return { name: '', artist: '' };
   if (!name.includes('<')) return { name, artist: '' };
-  const song   = name.match(/<DB_SONG_NAME>([^<]+)<\/DB_SONG_NAME>/)?.[1]?.trim();
-  const artist = name.match(/<DB_LEAD_ARTIST_NAME>([^<]+)<\/DB_LEAD_ARTIST_NAME>/)?.[1]?.trim();
-  if (song) return { name: song, artist: artist || '' };
+  const tag = (t) => name.match(new RegExp(`<${t}>([^<]+)</${t}>`))?.[1]?.trim();
+  const song = tag('DB_SONG_NAME');
+  if (song) return { name: song, artist: tag('DB_LEAD_ARTIST_NAME') || '' };
+  const show = tag('SHOW_NAME') || tag('TITLE');
+  if (show) return { name: show, artist: tag('DB_RADIO_NAME') || '' };
+  if (/<(RadioInfo|DB_[A-Z_]+)>/i.test(name)) return { name: '', artist: '' };
   const stripped = name.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
   return { name: stripped, artist: '' };
 }
