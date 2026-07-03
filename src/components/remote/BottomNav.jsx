@@ -20,7 +20,14 @@ export default function BottomNav({ navH }) {
   const activeIdx = BASE_TABS.findIndex(t => t.id === activeTab);
 
   return (
-    <div className="relative shrink-0 z-10" style={{ height: navH, paddingBottom: 'env(safe-area-inset-bottom)' }}>
+    // Bar height grows by the home-indicator inset (iOS standalone/fullscreen
+    // only — env() is 0 in a normal browser tab). Icons stay in the top navH
+    // px; the background extends to the physical screen bottom so the inset
+    // strip isn't a see-through gap. A paddingBottom inside a fixed height
+    // (the previous approach) is a no-op under border-box sizing — it left
+    // the icons under the home indicator and a visible gap below MiniPlayer,
+    // which positions itself at navH + the inset.
+    <div className="relative shrink-0 z-10" style={{ height: `calc(${navH}px + env(safe-area-inset-bottom))` }}>
       <div className="absolute inset-0 rounded-t-2xl"
         style={{
           background: darkMode ? 'rgba(10,15,30,0.93)' : 'rgba(249,249,249,0.93)',

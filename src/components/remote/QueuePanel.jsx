@@ -41,7 +41,7 @@ export default function QueuePanel({ queue, queueLoading, onClose }) {
       <div className="absolute inset-0" style={{ background: 'rgba(0,0,0,0.45)' }} />
       <div
         className="absolute bottom-0 left-0 right-0 rounded-t-3xl overflow-hidden queue-panel-in"
-        style={{ ...panelBg, border: `0.5px solid ${C.outline}`, maxHeight: '80vh' }}
+        style={{ ...panelBg, border: `0.5px solid ${C.outline}`, maxHeight: '80vh', paddingBottom: 'env(safe-area-inset-bottom)' }}
         onClick={e => e.stopPropagation()}>
 
         {/* handle */}

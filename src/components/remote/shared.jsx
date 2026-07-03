@@ -30,7 +30,8 @@ export function Sheet({ C, kicker, title, onBack, children, padded = true }) {
             style={{ color: C.text1, letterSpacing: '-0.01em' }}>{title}</p>
         </div>
       </div>
-      <div className={`flex-1 overflow-y-auto ${padded ? 'p-5' : 'py-4'}`}>{children}</div>
+      <div className={`flex-1 overflow-y-auto ${padded ? 'p-5' : 'py-4'}`}
+        style={{ paddingBottom: `calc(${padded ? '1.25rem' : '1rem'} + env(safe-area-inset-bottom))` }}>{children}</div>
     </div>,
     document.body,
   );

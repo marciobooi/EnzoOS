@@ -607,7 +607,8 @@ export default function RemoteControl() {
   // DISABLED
   // ══════════════════════════════════════════════════════════════════════════
   if (!remoteAccessEnabled) return (
-    <div style={{ ...rcVars, fontFamily: C.font, background: C.bg }} className="remote-root fixed inset-0 flex flex-col items-center justify-center gap-6 p-8 touch-manipulation select-none">
+    <div style={{ ...rcVars, fontFamily: C.font, background: C.bg, paddingTop: 'calc(2rem + env(safe-area-inset-top))', paddingBottom: 'calc(2rem + env(safe-area-inset-bottom))' }}
+      className="remote-root fixed inset-0 flex flex-col items-center justify-center gap-6 p-8 touch-manipulation select-none">
       <div className="w-20 h-20 rounded-3xl flex items-center justify-center" style={{ background: C.containerLow, border: `0.5px solid ${C.outline}` }}>
         <Smartphone className="h-8 w-8" style={{ color: C.error }} />
       </div>
@@ -622,7 +623,8 @@ export default function RemoteControl() {
   // SCAN QR — shown when no valid session exists
   // ══════════════════════════════════════════════════════════════════════════
   if (!isAuthenticated) return (
-    <div style={{ ...rcVars, fontFamily: C.font, background: C.bg }} className="remote-root fixed inset-0 flex flex-col items-center justify-center px-6 touch-manipulation select-none overflow-hidden">
+    <div style={{ ...rcVars, fontFamily: C.font, background: C.bg, paddingTop: 'env(safe-area-inset-top)', paddingBottom: 'env(safe-area-inset-bottom)' }}
+      className="remote-root fixed inset-0 flex flex-col items-center justify-center px-6 touch-manipulation select-none overflow-hidden">
       <div className="absolute top-[-80px] left-1/2 -translate-x-1/2 w-[320px] h-[320px] rounded-full pointer-events-none"
         style={{ background: `radial-gradient(ellipse, ${C.champagne} 0%, transparent 70%)`, opacity: darkMode ? 0.06 : 0.11 }} />
       <div className="w-full max-w-xs z-10 flex flex-col items-center gap-8">
@@ -716,7 +718,8 @@ export default function RemoteControl() {
           // since portals land after this non-portaled overlay in DOM order,
           // equal z-index meant the still-open Sound sheet painted on top and
           // swallowed clicks — the wizard was there, just hidden underneath.
-          <div className="remote-root fixed inset-0 z-[10010] flex flex-col" style={{ ...rcVars, background: C.bg }}>
+          <div className="remote-root fixed inset-0 z-[10010] flex flex-col"
+            style={{ ...rcVars, background: C.bg, paddingTop: 'env(safe-area-inset-top)', paddingBottom: 'env(safe-area-inset-bottom)' }}>
             <RemoteDspWizard
               onClose={() => { setIsDspWizardOpen(false); api.getDspCalibration().then(c => setDspActive(c && c[0] === 'dsp')).catch(() => {}); }}
               onCalibrationComplete={active => setDspActive(active)}
@@ -750,7 +753,7 @@ export default function RemoteControl() {
                 <X className="h-4 w-4" style={{ color: C.text3 }} />
               </button>
             </div>
-            <div className="p-5">
+            <div className="p-5" style={{ paddingBottom: 'calc(1.25rem + env(safe-area-inset-bottom))' }}>
               <RemoteThemeSettings
                 activeTheme={activeTheme} onThemeChange={handleActiveThemeChange}
                 themeColor={theme} onColorChange={handleThemeColorChange}
