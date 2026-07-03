@@ -72,9 +72,14 @@ in perfect sync. Resonance is single-zone: one Pi, one room.
 ## 3. Ecosystem & smart-home — **P1**
 
 - [ ] **Roon Bridge endpoint** — the audiophile audience expects any serious
-  streamer to appear as a Roon zone. RoonBridge is a redistributable ARM
-  binary; wire its output into the same PipeWire → CamillaDSP chain that
-  AirPlay/BT already feed. Low effort, high prestige in this segment.
+  streamer to appear as a Roon zone. Licensing note (keeps this compatible
+  with a free project): the Roon Bridge ARM binary is a *free* download from
+  Roon Labs — only the user's Roon Core subscription is paid, exactly like
+  Spotify/Tidal accounts today. No "Roon Ready" certification (a paid
+  manufacturer program) is needed. Do what DietPi/RoPieee do: an optional
+  install.sh step that fetches the binary from Roon's servers (closed-source,
+  so never vendored into the repo), output wired into the same
+  PipeWire → CamillaDSP chain that AirPlay/BT already feed.
 - [ ] **Home Assistant integration** — most of the API already exists
   (`/api/status`, `/api/player/*`); needs a stable documented contract plus
   a thin HA custom component or MQTT bridge. Low effort relative to value.
