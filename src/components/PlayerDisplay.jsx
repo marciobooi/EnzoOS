@@ -962,14 +962,19 @@ const PlayerDisplay = React.memo(function PlayerDisplay({
           <Sliders className="h-5 w-5" />
         </button>
 
-        {/* Spotify Search Button */}
-        {spotify && hasToken && onToggleSearch && (
-          <button 
+        {/* Universal search — searches local library, radio stations, Tidal,
+            Qobuz AND Spotify (Spotify results only when a token exists), so it
+            must be reachable from every source. It was originally gated on the
+            Spotify source, which left radio with no visible way to find another
+            station (the dotted antenna button next to play didn't read as
+            "search"). */}
+        {onToggleSearch && (
+          <button
             onClick={onToggleSearch}
             className="icon-button search"
-            type="button" 
-            aria-label="Search Spotify"
-            title="Search & Browse Spotify"
+            type="button"
+            aria-label="Search music and stations"
+            title="Search Music, Stations & Streaming"
           >
             <Search className="h-5 w-5" />
           </button>
