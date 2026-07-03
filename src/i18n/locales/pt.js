@@ -528,6 +528,11 @@ export default {
     noPasswordNote: 'Não é necessária palavra-passe — o código QR autentica-o automaticamente.',
   },
 
+  radioDir: {
+    trending: 'Populares',
+    trendingNow: 'Rádio — Populares Agora',
+  },
+
   voice: {
     listening: 'A ouvir…',
     tapToCancel: 'Toque em qualquer lado para cancelar',

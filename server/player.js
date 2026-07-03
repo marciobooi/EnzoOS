@@ -1654,6 +1654,56 @@ router.get('/radio-search', async (req, res) => {
   }
 });
 
+// ── Radio directory browsing (genre/tag + trending) ─────────────────────────
+// BluOS/WiiM-style directory pages on top of plain search. Results barely
+// change minute to minute, so a small in-memory TTL cache keeps repeat taps
+// instant and is kind to the public radio-browser mirrors.
+const radioBrowseCache = new Map(); // key → { t, data }
+const RADIO_BROWSE_TTL = 5 * 60 * 1000;
+
+async function radioFetchCached(path, timeoutMs) {
+  const hit = radioBrowseCache.get(path);
+  if (hit && Date.now() - hit.t < RADIO_BROWSE_TTL) return hit.data;
+  const data = await radioFetch(path, timeoutMs);
+  radioBrowseCache.set(path, { t: Date.now(), data });
+  return data;
+}
+
+// GET /api/player/radio-tags?limit=<n> → most-used genre tags for chip rows
+router.get('/radio-tags', async (req, res) => {
+  const limit = Math.min(parseInt(req.query.limit, 10) || 24, 100);
+  try {
+    const data = await radioFetchCached(`/json/tags?order=stationcount&reverse=true&limit=${limit}&hidebroken=true`);
+    res.json(data.map(t => ({ name: t.name, count: t.stationcount })));
+  } catch (err) {
+    sendError(res, badGateway(err.message));
+  }
+});
+
+// GET /api/player/radio-browse?by=trending|popular|tag&tag=<genre>&limit=<n>
+//   trending → most clicked stations right now (topclick)
+//   popular  → most voted all-time (topvote)
+//   tag      → stations for one genre tag, best-voted first
+router.get('/radio-browse', async (req, res) => {
+  const by = (req.query.by || 'trending').trim();
+  const limit = Math.min(parseInt(req.query.limit, 10) || 30, 100);
+  try {
+    let path;
+    if (by === 'tag') {
+      const tag = (req.query.tag || '').trim();
+      if (!tag) return res.json([]);
+      path = `/json/stations/bytag/${encodeURIComponent(tag)}?limit=${limit}&hidebroken=true&order=votes&reverse=true`;
+    } else if (by === 'popular') {
+      path = `/json/stations/topvote/${limit}?hidebroken=true`;
+    } else {
+      path = `/json/stations/topclick/${limit}?hidebroken=true`;
+    }
+    res.json(await radioFetchCached(path, 12000));
+  } catch (err) {
+    sendError(res, badGateway(err.message));
+  }
+});
+
 // GET /api/player/radio-bycountry?country=<name>&limit=<n>
 // Used by: kiosk country picker
 router.get('/radio-bycountry', async (req, res) => {

@@ -102,6 +102,11 @@ export default function UniversalSearch() {
   const [results, setResults] = useState({ spotify: [], local: [], tidal: [], qobuz: [], radio: [] });
   const [loading, setLoading] = useState(false);
   const [playlists, setPlaylists] = useState({ spotify: [], local: [] });
+  // Radio directory (empty state): trending stations + genre tag chips,
+  // backed by /api/player/radio-browse + /radio-tags (server-cached 5 min).
+  const [radioTags, setRadioTags] = useState([]);
+  const [radioDir, setRadioDir] = useState({ tag: null, stations: [], loading: true });
+  const radioDirIdRef = useRef(0);
   const debounceRef = useRef(null);
   const inputRef = useRef(null);
   // Staleness guard: doSearch is async (Promise.allSettled across 5 sources),
@@ -126,6 +131,31 @@ export default function UniversalSearch() {
     });
     return () => { alive = false; };
   }, [token, spotify]);
+
+  const loadRadioDir = async (tag) => {
+    const id = ++radioDirIdRef.current;
+    setRadioDir(d => ({ ...d, tag, loading: true }));
+    try {
+      const qs = tag ? `by=tag&tag=${encodeURIComponent(tag)}` : 'by=trending';
+      const r = await fetch(`/api/player/radio-browse?${qs}&limit=8`);
+      const stations = await r.json();
+      if (id !== radioDirIdRef.current) return; // superseded by a faster tap
+      setRadioDir({ tag, stations: Array.isArray(stations) ? stations : [], loading: false });
+    } catch {
+      if (id === radioDirIdRef.current) setRadioDir({ tag, stations: [], loading: false });
+    }
+  };
+
+  useEffect(() => {
+    let alive = true;
+    fetch('/api/player/radio-tags?limit=12')
+      .then(r => r.json())
+      .then(d => { if (alive && Array.isArray(d)) setRadioTags(d); })
+      .catch(() => {});
+    loadRadioDir(null);
+    return () => { alive = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const doSearch = async (q) => {
     const id = ++searchIdRef.current;
@@ -268,6 +298,48 @@ export default function UniversalSearch() {
                 </div>
               ) : (
                 <p className="text-[13px] px-1" style={{ color: C.text4 }}>{t('library.noFavorites')}</p>
+              )}
+            </div>
+
+            {/* Radio directory — trending stations + genre chips (radio-browser.info) */}
+            <div>
+              <div className="flex items-center gap-1.5 px-1 mb-2">
+                <Radio className="h-3.5 w-3.5" style={{ color: C.champagne }} />
+                <span className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: C.text3, fontFamily: C.fontLabel }}>
+                  {radioDir.tag ? `${t('search.radioStations')} · ${radioDir.tag}` : t('radioDir.trendingNow')}
+                </span>
+              </div>
+              <div className="flex gap-2 overflow-x-auto pb-2" style={{ scrollbarWidth: 'none' }}>
+                <button onClick={() => loadRadioDir(null)}
+                  className="shrink-0 px-3.5 py-1.5 rounded-full text-[12px] font-semibold active:scale-95 transition-all cursor-pointer"
+                  style={!radioDir.tag
+                    ? { background: C.champagne, color: '#1a1c1c' }
+                    : { background: C.containerLow, color: C.text3, border: `0.5px solid ${C.outline}` }}>
+                  {t('radioDir.trending')}
+                </button>
+                {radioTags.map(tag => (
+                  <button key={tag.name} onClick={() => loadRadioDir(tag.name)}
+                    className="shrink-0 px-3.5 py-1.5 rounded-full text-[12px] font-semibold capitalize active:scale-95 transition-all cursor-pointer"
+                    style={radioDir.tag === tag.name
+                      ? { background: C.champagne, color: '#1a1c1c' }
+                      : { background: C.containerLow, color: C.text3, border: `0.5px solid ${C.outline}` }}>
+                    {tag.name}
+                  </button>
+                ))}
+              </div>
+              {radioDir.loading ? (
+                <div className="flex items-center justify-center py-6">
+                  <Disc3 className="h-5 w-5 animate-spin" style={{ color: C.champagne, animationDuration: '2.4s' }} />
+                </div>
+              ) : radioDir.stations.length > 0 && (
+                <div className="rounded-2xl overflow-hidden" style={{ background: C.containerLow, border: `0.5px solid ${C.outline}` }}>
+                  {radioDir.stations.map((s, i) => (
+                    <StationRow key={s.stationuuid || i} C={C} divider={i > 0} station={s}
+                      isFav={favoriteStations?.some(f => f.url === (s.url_resolved || s.url))}
+                      onToggleFav={() => handleToggleFavRadio(s)}
+                      onPlay={() => playRadio(s)} />
+                  ))}
+                </div>
               )}
             </div>
 

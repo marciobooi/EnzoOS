@@ -530,6 +530,11 @@ export default {
     noPasswordNote: 'No password needed — the QR code authenticates you automatically.',
   },
 
+  radioDir: {
+    trending: 'Trending',
+    trendingNow: 'Radio — Trending Now',
+  },
+
   voice: {
     listening: 'Listening…',
     tapToCancel: 'Tap anywhere to cancel',
