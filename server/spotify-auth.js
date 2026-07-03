@@ -180,6 +180,10 @@ router.get('/login', (req, res) => {
     'user-read-email',
     'streaming',
     'user-library-read',
+    // like-sync: the remote's favorite heart mirrors into the user's real
+    // Spotify library (PUT/DELETE /me/tracks) — requires the modify scope.
+    // Existing logins keep working; the new scope applies on next re-login.
+    'user-library-modify',
     'playlist-read-private',
     'playlist-read-collaborative',
     'user-top-read',

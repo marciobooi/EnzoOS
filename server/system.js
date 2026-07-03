@@ -45,6 +45,48 @@ router.post('/webhook', async (req, res) => {
   } catch (err) { sendError(res, err); }
 });
 
+// ── Last.fm scrobbling (submit listens; metadata module only READS) ──────────
+router.get('/lastfm/status', async (req, res) => {
+  try {
+    const { lastfmStatus } = await import('./scrobbler.js');
+    res.json(await lastfmStatus());
+  } catch (err) { sendError(res, err); }
+});
+
+router.post('/lastfm/keys', async (req, res) => {
+  const { key, secret } = req.body || {};
+  if (!key || !secret) return sendError(res, badRequest('key and secret required'));
+  try {
+    const { lastfmSaveKeys, lastfmStatus } = await import('./scrobbler.js');
+    await lastfmSaveKeys(key, secret);
+    res.json(await lastfmStatus());
+  } catch (err) { sendError(res, err); }
+});
+
+router.get('/lastfm/connect', async (req, res) => {
+  try {
+    const { lastfmGetAuthUrl } = await import('./scrobbler.js');
+    res.json(await lastfmGetAuthUrl());
+  } catch (err) { sendError(res, err); }
+});
+
+router.post('/lastfm/complete', async (req, res) => {
+  const { token } = req.body || {};
+  if (!token) return sendError(res, badRequest('token required'));
+  try {
+    const { lastfmCompleteAuth } = await import('./scrobbler.js');
+    res.json(await lastfmCompleteAuth(token));
+  } catch (err) { sendError(res, err); }
+});
+
+router.post('/lastfm/disconnect', async (req, res) => {
+  try {
+    const { lastfmDisconnect } = await import('./scrobbler.js');
+    await lastfmDisconnect();
+    res.json({ connected: false });
+  } catch (err) { sendError(res, err); }
+});
+
 // ── Onboarding (first-boot welcome wizard) ────────────────────────────────────
 // Persisted so the wizard only shows once. Unset (fresh install / factory reset)
 // reads as not complete → wizard shows. POST { complete:false } re-arms it so a

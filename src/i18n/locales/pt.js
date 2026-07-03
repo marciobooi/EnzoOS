@@ -540,6 +540,16 @@ export default {
     trendingNow: 'Rádio — Populares Agora',
   },
 
+  lastfm: {
+    keysHint: 'Registe as suas audições no Last.fm. Crie uma conta API gratuita em last.fm/api/account/create e cole a chave + segredo partilhado.',
+    saveKeys: 'Guardar Chaves',
+    approveHint: 'Chaves guardadas. Ligar abre o last.fm num novo separador — aprove o Resonance lá e esta página termina automaticamente.',
+    connect: 'Ligar Last.fm',
+    waiting: 'A aguardar aprovação…',
+    connected: 'A registar como {user}',
+    scrobblingAs: 'A registar como {user}',
+  },
+
   presets: {
     title: 'Predefinições',
     assign: 'Atribuir Predefinição {n}',

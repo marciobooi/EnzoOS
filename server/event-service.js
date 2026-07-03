@@ -1,6 +1,7 @@
 import os from 'os';
 import { getSetting, setSetting, dbReady } from './db.js';
 import { fireWebhook, fireOnPlaybackChange } from './webhooks.js';
+import { scrobbleOnPlaybackChange } from './scrobbler.js';
 
 // ─── Minimal payload shape validation ─────────────────────────────────────────
 // These events cache + persist + rebroadcast whatever a client sends verbatim.
@@ -331,6 +332,7 @@ async function handleEvent(type, payload, excludeWs) {
       // never overwrites the volume the user actually set via /api/player/volume.
       broadcast({ type: 'PLAYBACK_STATE', payload: { ...payload, volume: cachedVolume, is_muted: cachedMuted } }, excludeWs);
       fireOnPlaybackChange(payload);
+      scrobbleOnPlaybackChange(payload);
       break;
     }
 
@@ -338,6 +340,7 @@ async function handleEvent(type, payload, excludeWs) {
       cachedPlaybackState = payload;
       broadcast({ type: 'PLAYBACK_STATE', payload }, excludeWs);
       fireOnPlaybackChange(payload);
+      scrobbleOnPlaybackChange(payload);
       break;
     }
 

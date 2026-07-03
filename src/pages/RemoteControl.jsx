@@ -594,6 +594,14 @@ export default function RemoteControl() {
         setFavorites(prev => [...prev, added]);
         toast.success('Added to favorites');
       }
+      // Like-sync: mirror the heart into the user's real Spotify library so it
+      // shows in the official app too. Fire-and-forget — the local favorites
+      // table stays the source of truth even if Spotify is unreachable.
+      if (src === 'spotify' && token && uri?.startsWith('spotify:track:')) {
+        const trackId = uri.split(':')[2];
+        (isFav ? api.removeSavedTrack(token, trackId) : api.saveTrack(token, trackId))
+          .catch(err => console.warn('[LikeSync] Spotify library sync failed:', err.message));
+      }
     } catch (e) { reportError(e.message); }
   };
   const handleRadioSearch = async () => {

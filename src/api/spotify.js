@@ -2,6 +2,26 @@
 import { SPOTIFY_API_URL, handleResponse } from './_client';
 
 export const spotifyApi = {
+  /** Save a track to the user's Spotify library (like-sync for favorites). */
+  async saveTrack(token, trackId) {
+    const response = await fetch(`${SPOTIFY_API_URL}/me/tracks?ids=${trackId}`, {
+      method: 'PUT',
+      headers: { 'Authorization': `Bearer ${token}` },
+    });
+    if (!response.ok) throw new Error(`Spotify save failed (${response.status})`);
+    return true;
+  },
+
+  /** Remove a track from the user's Spotify library. */
+  async removeSavedTrack(token, trackId) {
+    const response = await fetch(`${SPOTIFY_API_URL}/me/tracks?ids=${trackId}`, {
+      method: 'DELETE',
+      headers: { 'Authorization': `Bearer ${token}` },
+    });
+    if (!response.ok) throw new Error(`Spotify unsave failed (${response.status})`);
+    return true;
+  },
+
   /** Fetches active Spotify Connect devices. */
   async getDevices(token) {
     const response = await fetch(`${SPOTIFY_API_URL}/me/player/devices`, {

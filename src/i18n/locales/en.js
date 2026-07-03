@@ -542,6 +542,16 @@ export default {
     trendingNow: 'Radio — Trending Now',
   },
 
+  lastfm: {
+    keysHint: 'Scrobble your listens to Last.fm. Create a free API account at last.fm/api/account/create and paste the key + shared secret.',
+    saveKeys: 'Save Keys',
+    approveHint: 'Keys saved. Connect opens last.fm in a new tab — approve Resonance there and this page finishes automatically.',
+    connect: 'Connect Last.fm',
+    waiting: 'Waiting for approval…',
+    connected: 'Scrobbling as {user}',
+    scrobblingAs: 'Scrobbling as {user}',
+  },
+
   presets: {
     title: 'Presets',
     assign: 'Assign Preset {n}',
