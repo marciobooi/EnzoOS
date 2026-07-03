@@ -1,4 +1,4 @@
-import React, { useContext, useEffect, useRef, useState } from 'react';
+import { useContext, useEffect, useRef, useState } from 'react';
 import { Music, Radio, Airplay, Network, Bluetooth, Music2 } from 'lucide-react';
 import { Tk, SpotifyIcon, Sheet } from './shared';
 import { api } from '../../api';

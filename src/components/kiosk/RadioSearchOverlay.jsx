@@ -7,7 +7,6 @@ export default function RadioSearchOverlay() {
   const {
     isRadioSearchOpen,
     setIsRadioSearchOpen,
-    source,
     handleToggleSource,
     radioCountry,
     setRadioCountry,

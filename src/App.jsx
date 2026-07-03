@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import Kiosk from './pages/Kiosk';
 import RemoteControl from './pages/RemoteControl';
 import ToastContainer from './components/ui/ToastContainer';

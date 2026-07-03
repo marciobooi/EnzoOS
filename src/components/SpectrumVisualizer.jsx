@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import { useEffect, useRef } from 'react';
 
 export default function SpectrumVisualizer({ isPlaying }) {
   const canvasRef = useRef(null);
@@ -47,15 +47,13 @@ export default function SpectrumVisualizer({ isPlaying }) {
         ctx.stroke();
       }
 
-      // Update target values
-      const targetHeights = [];
       const isBeat = isPlaying && (time - lastBeatTime > beatInterval);
       if (isBeat) {
         lastBeatTime = time;
       }
 
       for (let i = 0; i < numBars; i++) {
-        let target = 0.05; // Base breathing level
+        let target; // every branch below assigns
 
         if (isPlaying) {
           // 1. Bass region (0 - 5) - highly responsive to beat

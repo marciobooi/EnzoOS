@@ -1,4 +1,4 @@
-import React, { useContext } from 'react';
+import { useContext } from 'react';
 import { Music, Library, Layers, Sliders, Search } from 'lucide-react';
 import { Tk } from './shared';
 import { useI18n } from '../../i18n';

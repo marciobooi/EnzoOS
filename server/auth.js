@@ -102,7 +102,7 @@ export async function requireAuth(req, res, next) {
  */
 export async function isWsAuthorized(request) {
   if (isLoopback(request)) return true;
-  let token = null;
+  let token;
   try {
     token = new URL(request.url, 'http://localhost').searchParams.get('token');
   } catch {

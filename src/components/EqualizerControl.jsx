@@ -1,5 +1,4 @@
-import React from 'react';
-import { Sliders, RotateCcw, Flame, AudioLines, Sparkles, X } from 'lucide-react';
+import { Sliders, RotateCcw, Flame, AudioLines, Sparkles } from 'lucide-react';
 import { S, cardShadow } from '../styles/stone';
 
 export const EQ_PRESETS = [

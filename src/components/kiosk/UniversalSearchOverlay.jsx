@@ -1,4 +1,4 @@
-import React, { useContext, useState, useEffect, useRef } from 'react';
+import { useContext, useState, useEffect, useRef } from 'react';
 import { Search, X, Disc3, Music2, Radio, Heart, ListMusic } from 'lucide-react';
 import { Kk } from './KioskContext';
 import { S } from '../../styles/stone';

@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { Waves, ChevronLeft, Check, X, Cpu, AudioLines } from 'lucide-react';
+import { useState, useEffect, useMemo } from 'react';
+import { Waves, ChevronLeft, Check, Cpu, AudioLines } from 'lucide-react';
 import { api } from '../api';
 import { S, cardShadow } from '../styles/stone';
 import { useI18n } from '../i18n';
@@ -139,7 +139,7 @@ export default function DspWizard({ onClose, onCalibrationComplete, pureDirect =
 
   const [currentStep, setCurrentStep] = useState(0);
   const [answers, setAnswers] = useState({});
-  const [isSaving, setIsSaving] = useState(false);
+  const [, setIsSaving] = useState(false);
 
   useEffect(() => {
     api.getDspCalibration().then(saved => { if (saved) setAnswers(saved); }).catch(() => {});

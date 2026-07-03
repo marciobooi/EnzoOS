@@ -1,4 +1,4 @@
-import React, { useContext, useEffect, useState } from 'react';
+import { useContext, useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
   ChevronLeft, Disc3, Users, Calendar, Star, Building2, Globe,

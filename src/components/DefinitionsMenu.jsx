@@ -16,7 +16,6 @@ export default function DefinitionsMenu({
   otaPercent,
   setOtaPercent,
   setOtaProgress,
-  errorMessage,
   setErrorMessage,
   onOpenDspWizard,
   onOpenThemeSettings,
@@ -30,7 +29,10 @@ export default function DefinitionsMenu({
   // Local health metrics state
   const [healthData, setHealthData] = useState({ cpuTemp: 40, ramLoad: 30, wifiSignal: -60 });
 
-  // Auto check updates on mount
+  // Auto check updates on mount. Deliberately mount-only: the effect itself
+  // drives updateStatus through checking → available/no-update, so listing
+  // updateStatus as a dependency would re-trigger the check it just ran.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     const checkInitialUpdates = async () => {
       try {

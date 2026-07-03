@@ -1,4 +1,4 @@
-import React, { useContext, useEffect, useState } from 'react';
+import { useContext, useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { ChevronLeft, Share, Plus, MoreVertical, Check, Download } from 'lucide-react';
 import { Tk } from './shared';

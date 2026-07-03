@@ -2356,16 +2356,24 @@ async function getRecentlyAddedTracks(limit) {
     'listall',
   ]);
   const lines = stdout.split('\n').map(s => s.trim()).filter(Boolean);
-  const withMtime = await Promise.all(lines.map(async (line) => {
-    const [file, title, artist, album] = line.split('||');
-    if (!file) return null;
-    try {
-      const st = await fs.promises.stat(path.join(MPD_MUSIC_DIR, file));
-      return { file, title: title || path.basename(file), artist: artist || '', album: album || '', mtimeMs: st.mtimeMs };
-    } catch {
-      return null; // file listed in MPD's db but missing on disk (stale db) — skip
-    }
-  }));
+  // Stat in bounded batches — an unbounded Promise.all would open one fd per
+  // library file simultaneously (fine at appliance scale, an fd spike on a
+  // large NAS-mounted library). AUDIT-2026-07-03.md §C.2.
+  const STAT_BATCH = 64;
+  const withMtime = [];
+  for (let i = 0; i < lines.length; i += STAT_BATCH) {
+    const batch = await Promise.all(lines.slice(i, i + STAT_BATCH).map(async (line) => {
+      const [file, title, artist, album] = line.split('||');
+      if (!file) return null;
+      try {
+        const st = await fs.promises.stat(path.join(MPD_MUSIC_DIR, file));
+        return { file, title: title || path.basename(file), artist: artist || '', album: album || '', mtimeMs: st.mtimeMs };
+      } catch {
+        return null; // file listed in MPD's db but missing on disk (stale db) — skip
+      }
+    }));
+    withMtime.push(...batch);
+  }
   const tracks = withMtime.filter(Boolean).sort((a, b) => b.mtimeMs - a.mtimeMs);
   recentlyAddedCache = { at: Date.now(), tracks };
   return tracks.slice(0, limit);

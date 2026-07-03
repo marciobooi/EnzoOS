@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Play, Pause, SkipForward, SkipBack, Shuffle, Repeat, Volume2, VolumeX, Home, Volume1, Sliders, Radio, Heart, Power, Search } from 'lucide-react';
-import { S, cardShadow } from '../styles/stone';
+import { Play, Pause, SkipForward, SkipBack, Shuffle, Repeat, Volume2, VolumeX, Volume1, Sliders, Radio, Heart, Power, Search } from 'lucide-react';
 import AutoScroll from './AutoScroll';
 import { toVolumeDb, sanitizeTrackName } from '../lib/format';
 
@@ -23,7 +22,6 @@ const PlayerDisplay = React.memo(function PlayerDisplay({
   theme = 'amber',
   activeTheme = 'dot-matrix',
   visualizerMode = 'vu',
-  onVisualizerModeChange,
   isPlaying,
   isLocalDeviceActive,
   trackName,
@@ -315,7 +313,7 @@ const PlayerDisplay = React.memo(function PlayerDisplay({
       const isSimulated = !isPlaying || (Date.now() - lastEventTime > 2000);
 
       for (let i = 0; i < numBars; i++) {
-        let target = 0.05;
+        let target;
 
         if (isSimulated) {
           if (isPlaying) {
@@ -488,17 +486,6 @@ const PlayerDisplay = React.memo(function PlayerDisplay({
     const mins = Math.floor(totalSecs / 60);
     const secs = totalSecs % 60;
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-  };
-
-  // Helper for step-volume buttons
-  const stepVolumeUp = () => {
-    const nextVol = Math.min(100, volume + 10);
-    handleVolumeChange({ target: { value: nextVol } });
-  };
-
-  const stepVolumeDown = () => {
-    const nextVol = Math.max(0, volume - 10);
-    handleVolumeChange({ target: { value: nextVol } });
   };
 
   // Extract cover art

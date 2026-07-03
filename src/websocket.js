@@ -1,5 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
-import { toast } from './lib/toast';
+import { useEffect, useRef, useState, useCallback } from 'react';
 
 /**
  * Apply a full /api/status snapshot to all React state setters at once.
@@ -351,12 +350,14 @@ export function useResonanceWS({
     }
   }, [token, isAuthenticated]);
 
-  // Send updates to websocket
-  const sendUpdate = (type, payload) => {
+  // Send updates to websocket. Stable identity (only touches the ws ref) —
+  // it sits in both pages' context-memo dependency lists, so an inline
+  // arrow here would defeat those memos on every render.
+  const sendUpdate = useCallback((type, payload) => {
     if (ws.current && ws.current.readyState === WebSocket.OPEN) {
       ws.current.send(JSON.stringify({ type, payload }));
     }
-  };
+  }, []);
 
   return { isConnected, ws, sendUpdate };
 }

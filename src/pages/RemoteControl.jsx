@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { Waves, Smartphone, X } from 'lucide-react';
 import { toast } from '../lib/toast';
 import { reportError } from '../lib/errors';
@@ -155,7 +155,7 @@ export default function RemoteControl() {
   // ── spotify ───────────────────────────────────────────────────────────────
   const [token, setToken]             = useState('');
   const [devices, setDevices]         = useState([]);
-  const [isFetchingDevices, setIsFetchingDevices] = useState(false);
+  const [, setIsFetchingDevices] = useState(false);
 
   // ── playback ──────────────────────────────────────────────────────────────
   const [playbackState, setPlaybackState] = useState(null);
@@ -299,6 +299,23 @@ export default function RemoteControl() {
 
   // ── effects ───────────────────────────────────────────────────────────────
   useEffect(() => { api.getDspCalibration().then(c => setDspActive(c && c[0] === 'dsp')).catch(() => {}); }, []);
+  // Live source format for PlayerTab's quality badge (HI-RES / CD QUALITY …).
+  // signal-path's `mpd` field is MPD's decoded {rate, bits, channels} — the
+  // exact shape PlayerTab expects. setLiveFormat was declared but never
+  // called before (AUDIT-2026-07-03.md dead-code pass), so the badge
+  // silently never upgraded past its fallback.
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    const poll = async () => {
+      try {
+        const r = await fetch('/api/player/signal-path');
+        if (r.ok) setLiveFormat((await r.json()).mpd || null);
+      } catch { /* keep last known value */ }
+    };
+    poll();
+    const id = setInterval(poll, 5000);
+    return () => clearInterval(id);
+  }, [isAuthenticated]);
   useEffect(() => { if (source === 'radio' && !hasCheckedSource.current) { setActiveTab('source'); hasCheckedSource.current = true; } }, [source]);
   useEffect(() => { if (isConnected) { fetchFavorites(); checkUpdates(); } }, [isConnected]);
   useEffect(() => { if (!radioSearch.trim()) setStationsList(favoriteStations); }, [radioSearch, favoriteStations]);

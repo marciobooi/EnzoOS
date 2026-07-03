@@ -1,4 +1,3 @@
-import React from 'react';
 import { Laptop, Smartphone, Speaker, RefreshCw, Sliders, Terminal } from 'lucide-react';
 
 export default function OutputPatchBay({

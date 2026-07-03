@@ -1,4 +1,4 @@
-import React, { useContext, useMemo } from 'react';
+import { useContext, useMemo } from 'react';
 import { Monitor, Check, Sun } from 'lucide-react';
 import { Tk } from './shared';
 import { getThemeColors, getScreenThemes } from '../ThemeSettingsControl';

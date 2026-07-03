@@ -1,4 +1,4 @@
-import React, { useContext } from 'react';
+import { useContext } from 'react';
 import { Power, Sun, Moon } from 'lucide-react';
 import { Tk } from './shared';
 

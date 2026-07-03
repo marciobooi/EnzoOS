@@ -160,7 +160,7 @@ if (fs.existsSync(certPath) && fs.existsSync(keyPath)) {
 
   // Reuse the same wss so kiosk (WS) and remote (WSS) share one client list + broadcast
   httpsServer.on('upgrade', (request, socket, head) => {
-    let pathname = '';
+    let pathname;
     try { pathname = new URL(request.url, 'http://localhost').pathname; }
     catch { pathname = request.url?.split('?')[0] || ''; }
     if (pathname !== '/ws') {

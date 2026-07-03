@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Search, Music, Play, Loader, ChevronLeft, Clock, TrendingUp, ListMusic, Disc3, X } from 'lucide-react';
 import { api } from '../api';
 import { S, cardShadow } from '../styles/stone';

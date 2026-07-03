@@ -1,10 +1,11 @@
-import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { toast } from '../lib/toast';
 import { reportError } from '../lib/errors';
 import { api } from '../api';
 import { useResonanceWS } from '../websocket';
 import { EQ_PRESETS } from '../components/EqualizerControl';
 import { getGreeting } from '../lib/format';
+import { useStableCallback } from '../lib/useStableCallback';
 
 // Subcomponents
 import PlayerDisplay from '../components/PlayerDisplay';
@@ -85,7 +86,7 @@ export default function Kiosk() {
     }, 800);
   };
 
-  const handleThemeColorChange = (newColor) => {
+  const handleThemeColorChange = useStableCallback((newColor) => {
     setTheme(newColor);
     localStorage.setItem('resonance_theme', newColor);
     sendUpdate('SET_THEME_SETTINGS', {
@@ -94,7 +95,7 @@ export default function Kiosk() {
       brightness,
       visualizerMode
     });
-  };
+  });
 
   // The first-boot welcome wizard (App-level, no WS context) asks for the accent
   // colour and skin via these events; apply both through the normal theme path so
@@ -110,7 +111,7 @@ export default function Kiosk() {
     };
   }, [theme, activeTheme, brightness, visualizerMode]);
 
-  const handleActiveThemeChange = (newTheme) => {
+  const handleActiveThemeChange = useStableCallback((newTheme) => {
     setActiveTheme(newTheme);
     localStorage.setItem('resonance_theme_active', newTheme);
     sendUpdate('SET_THEME_SETTINGS', {
@@ -119,15 +120,15 @@ export default function Kiosk() {
       brightness,
       visualizerMode
     });
-  };
+  });
 
-  const handleBrightnessChange = (newVal) => {
+  const handleBrightnessChange = useStableCallback((newVal) => {
     setBrightness(newVal);
     localStorage.setItem('resonance_theme_brightness', newVal);
     queueThemeSync(theme, activeTheme, newVal, visualizerMode);
-  };
+  });
 
-  const handleVisualizerModeChange = (mode) => {
+  const handleVisualizerModeChange = useStableCallback((mode) => {
     setVisualizerMode(mode);
     localStorage.setItem('resonance_visualizer_mode', mode);
     sendUpdate('SET_THEME_SETTINGS', {
@@ -136,7 +137,7 @@ export default function Kiosk() {
       brightness,
       visualizerMode: mode
     });
-  };
+  });
 
   const lastVolumeChangeTime = useRef(0);
   const volumeApiTimeout = useRef(null);
@@ -197,7 +198,7 @@ export default function Kiosk() {
     }, 800);
   };
 
-  const handleEqPresetChange = (presetName) => {
+  const handleEqPresetChange = useStableCallback((presetName) => {
     setEqPreset(presetName);
     localStorage.setItem('resonance_eq_preset', presetName);
     const found = EQ_PRESETS.find(p => p.name === presetName);
@@ -220,9 +221,9 @@ export default function Kiosk() {
         preAmp: found.preAmp
       });
     }
-  };
+  });
 
-  const handleBandChange = (index, val) => {
+  const handleBandChange = useStableCallback((index, val) => {
     const nextBands = [...eqBands];
     nextBands[index] = val;
     setEqBands(nextBands);
@@ -230,31 +231,31 @@ export default function Kiosk() {
     setEqPreset('Custom');
     localStorage.setItem('resonance_eq_preset', 'Custom');
     queueEqSync('Custom', nextBands, eqSaturation, eqNoiseFloor, eqPreAmp);
-  };
+  });
 
-  const handleSaturationChange = (val) => {
+  const handleSaturationChange = useStableCallback((val) => {
     setEqSaturation(val);
     localStorage.setItem('resonance_eq_saturation', val);
     setEqPreset('Custom');
     localStorage.setItem('resonance_eq_preset', 'Custom');
     queueEqSync('Custom', eqBands, val, eqNoiseFloor, eqPreAmp);
-  };
+  });
 
-  const handleNoiseFloorChange = (val) => {
+  const handleNoiseFloorChange = useStableCallback((val) => {
     setEqNoiseFloor(val);
     localStorage.setItem('resonance_eq_noise', val);
     setEqPreset('Custom');
     localStorage.setItem('resonance_eq_preset', 'Custom');
     queueEqSync('Custom', eqBands, eqSaturation, val, eqPreAmp);
-  };
+  });
 
-  const handlePreAmpChange = (val) => {
+  const handlePreAmpChange = useStableCallback((val) => {
     setEqPreAmp(val);
     localStorage.setItem('resonance_eq_preamp', val);
     setEqPreset('Custom');
     localStorage.setItem('resonance_eq_preset', 'Custom');
     queueEqSync('Custom', eqBands, eqSaturation, eqNoiseFloor, val);
-  };
+  });
 
 
 
@@ -296,7 +297,7 @@ export default function Kiosk() {
     loadDspStatus();
   }, []);
 
-  async function handleDeactivateDsp() {
+  const handleDeactivateDsp = useStableCallback(async () => {
     try {
       const calibration = await api.getDspCalibration() || {};
       calibration[0] = 'eq';
@@ -305,7 +306,7 @@ export default function Kiosk() {
     } catch (err) {
       console.warn('Failed to change audio processing mode:', err);
     }
-  }
+  });
 
   function setVolumeWithLock(vol) {
     if (Date.now() - lastVolumeChangeTime.current < 2500) return;
@@ -316,11 +317,6 @@ export default function Kiosk() {
     if (Date.now() - lastVolumeChangeTime.current < 2500) return;
     setIsMuted(muted);
   }
-
-  const handleThemeChange = (newTheme) => {
-    setTheme(newTheme);
-    localStorage.setItem('resonance_theme', newTheme);
-  };
 
 
 
@@ -482,7 +478,7 @@ export default function Kiosk() {
     return () => clearInterval(id);
   }, []);
 
-  const handleTogglePureDirect = useCallback(async (enabled) => {
+  const handleTogglePureDirect = useStableCallback(async (enabled) => {
     try {
       await fetch('/api/player/pure-direct', {
         method: 'POST',
@@ -493,9 +489,9 @@ export default function Kiosk() {
     } catch (err) {
       console.error('[Kiosk] Pure Direct toggle failed:', err);
     }
-  }, []);
+  });
 
-  const handleToggleStandby = (enabled) => {
+  const handleToggleStandby = useStableCallback((enabled) => {
     if (transitionScreen) return;
     if (enabled) {
       // Mark standby immediately so syncCurrentState stops polling during the goodbye animation
@@ -517,7 +513,7 @@ export default function Kiosk() {
       setTransitionScreen('welcome');
       setTimeout(() => setTransitionScreen(null), 2800);
     }
-  };
+  });
 
   // Keep standbyRef always current so async callbacks (syncCurrentState, polling) can read it
   useEffect(() => { standbyRef.current = standby; }, [standby]);
@@ -534,7 +530,7 @@ export default function Kiosk() {
     return () => clearTimeout(idleTimeout);
   }, [isPlaying, standby]);
 
-  const handleToggleSource = (targetSource) => {
+  const handleToggleSource = useStableCallback((targetSource) => {
     let nextSource = targetSource;
     if (!targetSource || typeof targetSource !== 'string') {
       nextSource = source === 'spotify' ? 'local' : (source === 'local' ? 'radio' : 'spotify');
@@ -580,9 +576,9 @@ export default function Kiosk() {
     setRepeatState('off');
     const isSpotify = nextSource === 'spotify';
     sendUpdate('SET_SOURCE', { spotify: isSpotify, source: nextSource });
-  };
+  });
 
-  const handleToggleFavoriteRadio = async (station) => {
+  const handleToggleFavoriteRadio = useStableCallback(async (station) => {
     const isFavorite = favoriteStations.some(s => s.url === station.url);
     try {
       if (isFavorite) {
@@ -600,9 +596,9 @@ export default function Kiosk() {
     } catch (err) {
       reportError(`Favorite operation failed: ${err.message}`);
     }
-  };
+  });
 
-  const handleRadioByCountry = async (country) => {
+  const handleRadioByCountry = useStableCallback(async (country) => {
     if (!country) { setStationsList([]); return; }
     try {
       setIsSearching(true);
@@ -619,9 +615,9 @@ export default function Kiosk() {
       else setStationsList(formatted);
     } catch { reportError('Failed to scan stations.'); }
     finally { setIsSearching(false); }
-  };
+  });
 
-  const handlePlayRadio = async (url, name, favicon) => {
+  const handlePlayRadio = useStableCallback(async (url, name, favicon) => {
     try {
       await api.localPlayRadio(url, name, favicon);
       // The REST route emits SET_SOURCE + PLAYBACK_STATE through the event queue,
@@ -630,7 +626,7 @@ export default function Kiosk() {
     } catch (err) {
       reportError(`Failed to play radio: ${err.message}`);
     }
-  };
+  });
 
   useEffect(() => {
     const handleResize = () => {
@@ -829,7 +825,7 @@ export default function Kiosk() {
   }, [playbackState, trackDuration]);
 
   // Refresh Spotify Connect devices list
-  async function fetchDevices() {
+  const fetchDevices = useStableCallback(async () => {
     if (!token) return;
     try {
       setIsFetchingDevices(true);
@@ -840,17 +836,17 @@ export default function Kiosk() {
     } finally {
       setIsFetchingDevices(false);
     }
-  }
+  });
 
   // Transfer playback to target device
-  const transferPlayback = async (targetId) => {
+  const transferPlayback = useStableCallback(async (targetId) => {
     try {
       await api.transferPlayback(token, targetId);
       setTimeout(fetchDevices, 500);
     } catch (err) {
       reportError(`Transfer error: ${err.message}`);
     }
-  };
+  });
 
   // Restart raspotify and poll until "Resonance Connect" appears, then call onReady(deviceId).
   // Guard prevents concurrent restart storms if the user clicks rapidly.
@@ -883,7 +879,7 @@ export default function Kiosk() {
   };
 
   // Play a searched track on the active device
-  const handlePlayTrack = async (trackUri) => {
+  const handlePlayTrack = useStableCallback(async (trackUri) => {
     try {
       const activeId = resonanceDeviceId || (devices.find(d => d.is_active)?.id);
       await api.play(token, activeId, null, [trackUri]);
@@ -892,10 +888,10 @@ export default function Kiosk() {
     } catch (err) {
       reportError(`Play error: ${err.message}`);
     }
-  };
+  });
 
   // Play an album or playlist context on the active device
-  const handlePlayContext = async (contextUri) => {
+  const handlePlayContext = useStableCallback(async (contextUri) => {
     try {
       const activeId = resonanceDeviceId || (devices.find(d => d.is_active)?.id);
       await api.play(token, activeId, contextUri);
@@ -904,7 +900,7 @@ export default function Kiosk() {
     } catch (err) {
       reportError(`Play error: ${err.message}`);
     }
-  };
+  });
 
   // Build a BROADCAST_STATE-compatible object from the /status endpoint response
   const syncLocalState = async () => {
@@ -1211,7 +1207,7 @@ export default function Kiosk() {
   };
 
   // Log out / disconnect Spotify
-  const handleLogout = async () => {
+  const handleLogout = useStableCallback(async () => {
     try {
       await fetch('/auth/spotify/logout', { method: 'POST' });
     } catch (_) {}
@@ -1219,7 +1215,7 @@ export default function Kiosk() {
     setPlaybackState(null);
     setDevices([]);
     sendUpdate('CLEAR_TOKEN');
-  };
+  });
 
   const onToggleMenu      = useCallback(() => setIsMenuOpen(v => !v), []);
   const onToggleEqualizer = useCallback(() => setIsEqualizerOpen(v => !v), []);

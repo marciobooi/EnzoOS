@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import { useMemo } from 'react';
 import { Palette, Sun, Monitor, Check } from 'lucide-react';
 import { S, cardShadow, swatchRing } from '../styles/stone';
 import { useI18n } from '../i18n';

@@ -1,9 +1,7 @@
-import React from 'react';
 import { Play, Pause, SkipForward, SkipBack, Shuffle, Repeat } from 'lucide-react';
 
 export default function PlaybackControls({
   isPlaying,
-  isLocalDeviceActive,
   trackPosition,
   trackDuration,
   volume,

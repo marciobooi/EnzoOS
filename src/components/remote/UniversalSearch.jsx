@@ -1,4 +1,4 @@
-import React, { useContext, useState, useEffect, useRef } from 'react';
+import { useContext, useState, useEffect, useRef } from 'react';
 import { Search, X, Disc3, Music2, Radio, Waves, Heart, ListMusic } from 'lucide-react';
 import { Tk } from './shared';
 import { api } from '../../api';
@@ -94,7 +94,7 @@ export default function UniversalSearch() {
   const { t } = useI18n();
   const {
     C, token, spotify,
-    handlePlayTrack, handlePlayContext, handleLibraryPlayTrack, handleToggleSource, setActiveTab,
+    handlePlayTrack, handlePlayContext, handleToggleSource, setActiveTab,
     favoriteStations, handleToggleFavRadio, wakeKiosk,
   } = useContext(Tk);
 

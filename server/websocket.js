@@ -80,7 +80,7 @@ export function setupWebSocket(server) {
   });
 
   server.on('upgrade', (request, socket, head) => {
-    let pathname = '';
+    let pathname;
     try {
       pathname = new URL(request.url, 'http://localhost').pathname;
     } catch (err) {

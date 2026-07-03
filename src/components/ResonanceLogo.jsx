@@ -1,4 +1,3 @@
-import React from 'react';
 
 /**
  * ResonanceLogo — pure CSS/HTML origami intro animation.

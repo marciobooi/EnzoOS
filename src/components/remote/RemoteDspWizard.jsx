@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext, useMemo } from 'react';
+import { useState, useEffect, useContext, useMemo } from 'react';
 import { Waves, ChevronLeft, Check, X, Cpu, AudioLines } from 'lucide-react';
 import { api } from '../../api';
 import { Tk } from './shared';

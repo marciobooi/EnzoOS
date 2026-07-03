@@ -1,4 +1,4 @@
-import React, { useContext, useState, useEffect, useRef } from 'react';
+import { useContext, useState, useEffect, useRef } from 'react';
 import { X, Mic2, Loader } from 'lucide-react';
 import { Tk } from './shared';
 import { api } from '../../api';
@@ -45,7 +45,9 @@ export default function LyricsSheet({ title, artist, album, duration, position, 
       .catch(() => { if (!cancelled) setError(true); })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
-  }, [title, artist]);
+    // album/duration are part of the LRCLIB query — the same title on a
+    // different album (or a different edit length) must refetch.
+  }, [title, artist, album, duration]);
 
   useEffect(() => {
     if (!synced) return;

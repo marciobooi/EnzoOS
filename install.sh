@@ -197,6 +197,7 @@ apt_install install -y \
   pipewire \
   pipewire-pulse \
   pipewire-alsa \
+  libspa-0.2-bluetooth \
   wireplumber \
   openssh-server \
   unclutter \
@@ -1282,22 +1283,31 @@ apt_install remove -y bluealsa bluealsa-utils 2>/dev/null || true
 # such node at ResonanceInput, the same null sink every other source
 # (MPD/Spotify/AirPlay) feeds into, so Bluetooth reaches the loopback →
 # CamillaDSP → DAC chain the same way.
-mkdir -p /etc/wireplumber/wireplumber.conf.d
-cat <<'BTROUTEEOF' > /etc/wireplumber/wireplumber.conf.d/52-resonance-bluetooth-route.conf
-# Resonance HiFi — route incoming Bluetooth A2DP audio into ResonanceInput
-monitor.bluez.rules = [
-  {
-    matches = [
-      { node.name = "~bluez_output.*" }
-    ]
-    actions = {
-      update-props = {
-        node.target = "ResonanceInput"
-        node.dont-remix = true
-      }
-    }
-  }
-]
+# WirePlumber 0.4.x uses the Lua rule system for monitor rules (the JSON
+# .conf.d "monitor.bluez.rules" syntax used here previously belongs to
+# WirePlumber 0.5+ and was silently ignored — AUDIT-2026-07-03.md §A.3).
+# A phone streaming A2DP TO this appliance appears as a bluez *source* node
+# (bluez_input.*), not bluez_output.* (that would be headphones we play to);
+# autoconnect + target.object tells WirePlumber's policy to link it into
+# ResonanceInput like any other stream, feeding the normal CamillaDSP chain.
+# Still needs a live pairing test with a real phone on real hardware.
+mkdir -p /etc/wireplumber/bluetooth.lua.d
+rm -f /etc/wireplumber/wireplumber.conf.d/52-resonance-bluetooth-route.conf
+cat <<'BTROUTEEOF' > /etc/wireplumber/bluetooth.lua.d/52-resonance-bluetooth-route.lua
+-- Resonance HiFi — route incoming Bluetooth A2DP audio into ResonanceInput
+bluez_monitor.rules = bluez_monitor.rules or {}
+table.insert(bluez_monitor.rules, {
+  matches = {
+    {
+      { "node.name", "matches", "bluez_input.*" },
+    },
+  },
+  apply_properties = {
+    ["target.object"] = "ResonanceInput",
+    ["node.autoconnect"] = true,
+    ["stream.dont-remix"] = true,
+  },
+})
 BTROUTEEOF
 
 echo -e "${GREEN}Bluetooth configured: PipeWire handles A2DP sink natively via WirePlumber.${NC}"

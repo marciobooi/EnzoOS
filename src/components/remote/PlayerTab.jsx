@@ -1,4 +1,4 @@
-import React, { useContext, useRef, useState } from 'react';
+import { useContext, useRef, useState } from 'react';
 import {
   Play, Pause, SkipForward, SkipBack, Volume2, VolumeX,
   Shuffle, Repeat, Music, Heart, Radio, ListMusic, Info, Mic2,
@@ -15,12 +15,12 @@ export default function PlayerTab() {
     albumImage, trackName, trackArtist, source, spotify, token,
     isPlaying, trackPosition, trackDuration, progressPct,
     volume, isMuted, shuffleState, repeatState,
-    activeDevice, isCurrentFav, currentTrack, playbackState,
+    activeDevice, isCurrentFav, currentTrack,
     handlePlayPause, handleNext, handlePrevious,
     handleShuffle, handleRepeat, handleSeek,
     handleVolumeChange, handleMuteToggle,
     handleToggleFavRadio, setActiveTab,
-    queueOpen, setQueueOpen,
+    setQueueOpen,
     favorites, handleToggleFavorite,
     liveFormat,
   } = useContext(Tk);

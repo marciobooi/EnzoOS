@@ -1,4 +1,4 @@
-import React, { useContext } from 'react';
+import { useContext } from 'react';
 import { RotateCcw, Flame, AudioLines, Sparkles, Sliders, Cpu } from 'lucide-react';
 import { Tk } from './shared';
 import { EQ_PRESETS } from '../EqualizerControl';
