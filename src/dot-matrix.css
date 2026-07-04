@@ -77,3 +77,15 @@
   color: var(--color-green-matrix);
   animation: pulse-glow-green 2s infinite ease-in-out;
 }
+
+/* ─────────────────────────────────────────────────────────────────────────
+   7-BAND VISUALIZER — LED grid (PlayerDisplay.jsx switches to individual
+   dots instead of solid bars whenever activeTheme contains "dot"/"matrix").
+   --spectrum-dot-inactive-color is the "unlit LED" tone behind the
+   active/peak dots; --spectrum-gradient-mid/-end/-glow color the lit ones.
+   Edit these to restyle the visualizer for this theme — same variables
+   the amber/emerald/cyan/amethyst/ruby accents use, see index.css.
+   ───────────────────────────────────────────────────────────────────────── */
+div[data-active-theme="dot-matrix"] .spectrum-visualizer {
+  --spectrum-dot-inactive-color: rgba(255, 255, 255, 0.05);
+}

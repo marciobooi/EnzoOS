@@ -311,6 +311,7 @@ const PlayerDisplay = React.memo(function PlayerDisplay({
       mid: readVar('--spectrum-gradient-mid', '#f59e0b'),
       peak: readVar('--spectrum-gradient-end', '#fcd307'),
       glow: readVar('--spectrum-glow-color', 'rgba(245, 158, 11, 0.4)'),
+      dotInactive: readVar('--spectrum-dot-inactive-color', 'rgba(255, 255, 255, 0.05)'),
     };
     const barWidthScale = parseFloat(readVar('--spectrum-bar-width-scale', '1')) || 1;
 
@@ -404,7 +405,7 @@ const PlayerDisplay = React.memo(function PlayerDisplay({
               ctx.shadowColor = activeColor.glow;
               ctx.shadowBlur = 6;
             } else {
-              ctx.fillStyle = 'rgba(255, 255, 255, 0.05)';
+              ctx.fillStyle = activeColor.dotInactive;
               ctx.shadowBlur = 0;
             }
 

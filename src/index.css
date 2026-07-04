@@ -194,6 +194,10 @@ body {
   --spectrum-gradient-end: #fcd307;
   --spectrum-glow-color: rgba(245, 158, 11, 0.4);
   --spectrum-bar-width-scale: 1;
+  /* Unlit dot in the dot-matrix "isDotMatrix" render mode (activeTheme
+     containing "dot" or "matrix") — the faint LED-off tone behind the
+     active/peak dots. */
+  --spectrum-dot-inactive-color: rgba(255, 255, 255, 0.05);
   background: var(--spectrum-bg);
 }
 
