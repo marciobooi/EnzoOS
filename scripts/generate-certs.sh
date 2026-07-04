@@ -23,7 +23,14 @@
 set -euo pipefail
 
 CERTS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/certs"
-mkdir -p "$CERTS_DIR"
+mkdir -p "$CERTS_DIR" 2>/dev/null || true
+# Older installs created certs/ as root; a plain-user run then dies on a
+# silent EACCES. Fail loudly with the fix instead.
+if [ ! -w "$CERTS_DIR" ]; then
+  echo "ERROR: $CERTS_DIR is not writable by $(whoami)." >&2
+  echo "Fix with:  sudo chown -R $(whoami):$(whoami) '$CERTS_DIR'  and re-run." >&2
+  exit 1
+fi
 
 CA_KEY="$CERTS_DIR/resonance-ca.key"
 CA_CRT="$CERTS_DIR/resonance-ca.crt"

@@ -1425,8 +1425,13 @@ echo -e "${GREEN}.env written.${NC}"
 # CA (phones stay trusted), replaces legacy bare self-signed certs, and
 # re-issues when the machine's IP is no longer covered by the SANs.
 echo -e "${YELLOW}Generating device-local CA + TLS certificate...${NC}"
+# Pre-own the dir: install.sh runs as root, but the server (and future
+# re-runs of the script as $TARGET_USER after IP changes) must be able to
+# read/re-issue — a root-owned certs/ made plain-user re-runs fail EACCES.
+mkdir -p "$PROJECT_DIR/certs"
+chown -R "$TARGET_USER:$TARGET_USER" "$PROJECT_DIR/certs"
 bash "$PROJECT_DIR/scripts/generate-certs.sh"
-chown "$TARGET_USER:$TARGET_USER" "$PROJECT_DIR/certs"/* 2>/dev/null || true
+chown -R "$TARGET_USER:$TARGET_USER" "$PROJECT_DIR/certs"
 
 # Build app under target user context (prevents folder permission bugs).
 # `yaml` is a normal package.json dependency (used by the CamillaDSP config
