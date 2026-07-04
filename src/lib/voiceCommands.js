@@ -21,15 +21,15 @@ const SOURCES = {
 // Dicionários para ajudar na validação dinâmica
 const INTENT_MAPPINGS = {
   pause: ['pause', 'stop', 'para', 'parar', 'pausa'],
-  play: ['play', 'resume', 'continue', 'toca', 'tocar', 'continua', 'continuar', 'retoma', 'retomar'],
+  play: ['play', 'resume',"start", 'continue', 'toca', 'tocar', 'continua', 'continuar', 'retoma', 'retomar'],
   next: ['next', 'skip', 'seguinte', 'proxima', 'passa', 'avanca'],
   previous: ['previous', 'back', 'go back', 'anterior', 'volta', 'voltar'],
   volumeUp: ['up', 'louder', 'increase', 'raise', 'aumenta', 'aumentar', 'sobe', 'subir', 'mais alto'],
   volumeDown: ['down', 'lower', 'quieter', 'decrease', 'reduce', 'baixa', 'baixar', 'desce', 'descer', 'mais baixo'],
-  mute: ['mute', 'silence', 'silencio', 'mudo', 'sem som'],
+  mute: ['mute', 'silence', 'silencio', 'mudo', 'sem som', 'kill sound'],
   unmute: ['unmute', 'com som', 'tira o mudo', 'tirar o mudo'],
-  standby: ['standby', 'stand by', 'em espera', 'modo de espera'],
-  wake: ['wake', 'wake up', 'acorda', 'acordar', 'liga o ecra']
+  standby: ['standby', 'stand by', 'em espera', 'modo de espera', 'off'],
+  wake: ['wake', 'wake up', 'acorda', 'acordar', 'liga o ecra', 'on']
 };
 
 export function parseVoiceCommand(raw) {
