@@ -127,6 +127,32 @@ grep -q 'api.alsa.path.*=.*"camilla_input"' /etc/pipewire/pipewire.conf.d/52-res
   && ok "MPD socket bound to loopback (systemd socket activation drop-in)" \
   || bad "mpd.socket drop-in" "missing — MPD control port may be open to the whole LAN"
 
+echo -e "\n${BLUE}HTTPS remote / PWA (device-local CA)${NC}"
+if [ -f "$PROJECT_DIR/certs/resonance-ca.crt" ]; then
+  ok "Resonance local CA present (certs/resonance-ca.crt)"
+else
+  bad "resonance-ca.crt" "missing — run scripts/generate-certs.sh (phones get cert warnings, no mic/PWA)"
+fi
+if [ -f "$PROJECT_DIR/certs/cert.pem" ] && openssl verify -CAfile "$PROJECT_DIR/certs/resonance-ca.crt" "$PROJECT_DIR/certs/cert.pem" >/dev/null 2>&1; then
+  ok "Server certificate is signed by the local CA"
+else
+  bad "certs/cert.pem" "missing or not CA-signed — legacy self-signed cert; run scripts/generate-certs.sh"
+fi
+CUR_IP="$(hostname -I 2>/dev/null | awk '{print $1}')"
+if [ -n "$CUR_IP" ] && openssl x509 -in "$PROJECT_DIR/certs/cert.pem" -noout -text 2>/dev/null | grep -q "IP Address:$CUR_IP"; then
+  ok "Certificate SANs cover the current IP ($CUR_IP)"
+else
+  skip "certificate SAN for $CUR_IP" "re-run scripts/generate-certs.sh after an IP change"
+fi
+[ -f "$PROJECT_DIR/dist/sw.js" ] \
+  && ok "Service worker in build (dist/sw.js)" \
+  || bad "dist/sw.js" "missing — rebuild the frontend (npm run build)"
+if curl -s -o /dev/null -w '%{http_code}' http://localhost:5000/ca.crt 2>/dev/null | grep -q 200; then
+  ok "CA download endpoint live (http://localhost:5000/ca.crt)"
+else
+  skip "/ca.crt endpoint" "server not running or CA missing"
+fi
+
 echo -e "\n${BLUE}Spotify volume sync (librespot --onevent hook)${NC}"
 if [ -x "$PROJECT_DIR/scripts/librespot-event.sh" ]; then
   ok "librespot-event.sh present and executable"

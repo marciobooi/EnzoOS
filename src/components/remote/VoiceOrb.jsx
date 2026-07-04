@@ -265,7 +265,7 @@ export default function VoiceOrb({ levelRef, mood = 'listen', size = 280 }) {
       gl.uniform1f(U.morphPhase, morphPhase);
       gl.uniform1f(U.rotPhase, rotPhase);
       gl.uniform1f(U.liquidPhase, liquidPhase);
-      gl.uniform1f(U.glowStrength, 0.62 + lvl * 0.55);
+      gl.uniform1f(U.glowStrength, 0.22 + lvl * 0.55);
       gl.uniform3fv(U.colBlue, col.blue);
       gl.uniform3fv(U.colMag, col.mag);
       gl.uniform3fv(U.glowA, col.glowA);

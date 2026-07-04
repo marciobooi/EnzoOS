@@ -1,6 +1,6 @@
 import { useContext, useState, useRef } from 'react';
 import {
-  RefreshCw, Wifi, HardDrive, RotateCcw, Download, Sparkles, Power, Music, Sliders, Webhook,
+  RefreshCw, Wifi, HardDrive, RotateCcw, Download, Sparkles, Power, Music, Sliders, Webhook, ShieldCheck,
 } from 'lucide-react';
 import { toast } from '../../../lib/toast';
 import { reportError } from '../../../lib/errors';
@@ -22,6 +22,9 @@ export default function SystemSettings() {
 
   const [storage, setStorage]     = useState(null);
   const [showStorage, setShowStorage] = useState(false);
+
+  // Secure remote (HTTPS/PWA) instructions
+  const [showSecure, setShowSecure]     = useState(false);
 
   // Outbound webhook (automations) — one URL, POSTed on player transitions
   const [showWebhook, setShowWebhook]   = useState(false);
@@ -204,6 +207,24 @@ export default function SystemSettings() {
             <p className="text-[12px]" style={{ color: C.text3 }}>
               {t('net.musicLibrary')}: {storage.musicFiles} files · {storage.musicSizeMb} MB
             </p>
+          </div>
+        )}
+        <Row label={t('settings.secureRemote')} sub={window.isSecureContext ? t('settings.secureRemoteOn') : t('settings.secureRemoteOff')}
+          icon={<ShieldCheck className="h-4 w-4" style={{ color: window.isSecureContext ? '#22c55e' : C.text4 }} />}
+          onPress={() => setShowSecure(s => !s)} />
+        {showSecure && (
+          <div className="mx-4 mb-3 rounded-xl p-4 flex flex-col gap-2.5" style={cardWhite}>
+            {[1, 2, 3, 4].map(n => (
+              <p key={n} className="text-[13px] leading-relaxed" style={{ color: C.text2 }}>
+                <span className="font-bold" style={{ color: C.champagne }}>{n}. </span>
+                {t(`settings.secureStep${n}`, { host: window.location.hostname })}
+              </p>
+            ))}
+            <a href="/ca.crt" download
+              className="mt-1 py-2.5 rounded-xl text-[13px] font-semibold text-center active:scale-95 transition-all"
+              style={{ background: C.champagne, color: '#1a1c1c' }}>
+              {t('settings.downloadCa')}
+            </a>
           </div>
         )}
         <Row label={t('settings.webhook')} sub={webhookUrl ? webhookUrl : t('settings.webhookOff')}

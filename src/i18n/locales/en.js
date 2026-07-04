@@ -435,6 +435,14 @@ export default {
 
   settings: {
     runWizard: 'Run Setup Wizard',
+    secureRemote: 'Secure Remote (HTTPS / App)',
+    secureRemoteOn: 'Secure connection active',
+    secureRemoteOff: 'Set up once for mic, padlock & app mode',
+    secureStep1: 'Tap "Download certificate" below (or open http://{host}:5000/ca.crt in Safari) and allow the profile download.',
+    secureStep2: 'iPhone: Settings → General → VPN & Device Management → install "Resonance HiFi Root CA". Then Settings → General → About → Certificate Trust Settings → enable full trust.',
+    secureStep3: 'Open https://{host}:5001/remote — the padlock is now real: microphone and app features work without warnings.',
+    secureStep4: 'Share → "Add to Home Screen" from that page: the icon opens full-screen like a native app.',
+    downloadCa: 'Download certificate',
     webhook: 'Automation Webhook',
     webhookOff: 'Off — tap to configure',
     webhookHint: 'Resonance will POST JSON to this URL on play, pause, track change, source and standby events (for Home Assistant, Node-RED, …).',

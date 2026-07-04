@@ -1,16 +1,35 @@
 {
+  "id": "/remote",
   "name": "Resonance Remote",
   "short_name": "Resonance",
   "description": "Remote control for your Resonance HiFi kiosk.",
+  "lang": "en",
+  "dir": "ltr",
   "start_url": "/remote",
   "scope": "/",
   "display": "standalone",
+  "display_override": ["standalone", "minimal-ui"],
   "orientation": "portrait",
   "background_color": "#0a0f1e",
   "theme_color": "#0a0f1e",
+  "categories": ["music", "entertainment"],
   "icons": [
     { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
     { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
     { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    {
+      "name": "Search",
+      "short_name": "Search",
+      "url": "/remote?tab=search",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Now Playing",
+      "short_name": "Player",
+      "url": "/remote?tab=player",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+    }
   ]
 }

@@ -136,7 +136,11 @@ export default function RemoteControl() {
   };
 
   // ── nav ───────────────────────────────────────────────────────────────────
-  const [activeTab, setActiveTab] = useState('player');
+  // PWA manifest shortcuts deep-link straight to a tab (/remote?tab=search)
+  const [activeTab, setActiveTab] = useState(() => {
+    const tab = new URLSearchParams(window.location.search).get('tab');
+    return ['player', 'library', 'search', 'source', 'settings'].includes(tab) ? tab : 'player';
+  });
   const [tabDirection, setTabDirection] = useState('right');
   const activeTabRef = useRef('player');
   useEffect(() => { activeTabRef.current = activeTab; }, [activeTab]);

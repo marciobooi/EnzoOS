@@ -433,6 +433,14 @@ export default {
 
   settings: {
     runWizard: 'Executar Assistente',
+    secureRemote: 'Comando Seguro (HTTPS / App)',
+    secureRemoteOn: 'Ligação segura ativa',
+    secureRemoteOff: 'Configure uma vez para microfone, cadeado e modo app',
+    secureStep1: 'Toque em "Transferir certificado" abaixo (ou abra http://{host}:5000/ca.crt no Safari) e permita a transferência do perfil.',
+    secureStep2: 'iPhone: Definições → Geral → VPN e Gestão de Dispositivos → instale "Resonance HiFi Root CA". Depois Definições → Geral → Acerca → Definições de Confiança de Certificados → ative a confiança total.',
+    secureStep3: 'Abra https://{host}:5001/remote — o cadeado passa a ser real: microfone e funções de app funcionam sem avisos.',
+    secureStep4: 'Partilhar → "Adicionar ao ecrã principal" a partir dessa página: o ícone abre em ecrã inteiro como uma app nativa.',
+    downloadCa: 'Transferir certificado',
     webhook: 'Webhook de Automação',
     webhookOff: 'Desligado — toque para configurar',
     webhookHint: 'O Resonance envia JSON para este URL em eventos de reprodução, pausa, mudança de faixa, fonte e espera (Home Assistant, Node-RED, …).',

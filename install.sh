@@ -1417,34 +1417,16 @@ chown "$TARGET_USER:$TARGET_USER" "$PROJECT_DIR/.env"
 chmod 600 "$PROJECT_DIR/.env"
 echo -e "${GREEN}.env written.${NC}"
 
-# Generate self-signed TLS certificate for HTTPS remote access (port 5001)
-# Spotify requires HTTPS for any redirect URI that isn't 127.0.0.1/localhost.
-CERTS_DIR="$PROJECT_DIR/certs"
-mkdir -p "$CERTS_DIR"
-if [ ! -f "$CERTS_DIR/cert.pem" ] || [ ! -f "$CERTS_DIR/key.pem" ]; then
-  echo -e "${YELLOW}Generating self-signed TLS certificate for HTTPS remote access...${NC}"
-  cat > /tmp/resonance_ssl.cnf <<SSLEOF
-[req]
-distinguished_name = req_distinguished_name
-x509_extensions = v3_req
-prompt = no
-[req_distinguished_name]
-CN = resonance.local
-[v3_req]
-subjectAltName = DNS:resonance.local,IP:${LOCAL_IP}
-SSLEOF
-  openssl req -x509 -newkey rsa:2048 \
-    -keyout "$CERTS_DIR/key.pem" \
-    -out   "$CERTS_DIR/cert.pem" \
-    -days 3650 -nodes \
-    -config /tmp/resonance_ssl.cnf 2>/dev/null
-  rm -f /tmp/resonance_ssl.cnf
-  chown "$TARGET_USER:$TARGET_USER" "$CERTS_DIR/cert.pem" "$CERTS_DIR/key.pem"
-  chmod 600 "$CERTS_DIR/key.pem"
-  echo -e "${GREEN}TLS certificate generated: $CERTS_DIR/${NC}"
-else
-  echo -e "${YELLOW}TLS certificate already exists — skipping generation.${NC}"
-fi
+# TLS for HTTPS remote access (port 5001): device-local CA + CA-signed server
+# cert (scripts/generate-certs.sh). Users trust certs/resonance-ca.crt ONCE on
+# their phone (served at http://<host>:5000/ca.crt) and then the remote gets a
+# real padlock — required for the mic (voice control), service workers, and a
+# warning-free installed PWA. The script is idempotent: it keeps an existing
+# CA (phones stay trusted), replaces legacy bare self-signed certs, and
+# re-issues when the machine's IP is no longer covered by the SANs.
+echo -e "${YELLOW}Generating device-local CA + TLS certificate...${NC}"
+bash "$PROJECT_DIR/scripts/generate-certs.sh"
+chown "$TARGET_USER:$TARGET_USER" "$PROJECT_DIR/certs"/* 2>/dev/null || true
 
 # Build app under target user context (prevents folder permission bugs).
 # `yaml` is a normal package.json dependency (used by the CamillaDSP config

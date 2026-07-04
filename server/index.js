@@ -75,6 +75,20 @@ app.use('/api/auth', authLimiter);
 // (not just the TCP port) is actually serving.
 app.get('/api/health', (req, res) => res.json({ status: 'ok' }));
 
+// Device-local CA certificate download (public by design — a CA cert is not a
+// secret; only the .key is). Users open http://<host>:5000/ca.crt on their
+// phone, install + trust it once, and the HTTPS remote gets a real padlock:
+// mic access without warnings, service worker, warning-free installed PWA.
+// The application/x-x509-ca-cert MIME type makes iOS offer the profile
+// installer instead of showing the file as text.
+app.get('/ca.crt', (req, res) => {
+  const caPath = path.join(__dirname, '../certs/resonance-ca.crt');
+  if (!fs.existsSync(caPath)) return res.status(404).send('CA not generated yet — run scripts/generate-certs.sh');
+  res.type('application/x-x509-ca-cert');
+  res.setHeader('Content-Disposition', 'attachment; filename="resonance-ca.crt"');
+  res.send(fs.readFileSync(caPath));
+});
+
 // Remote-access auth (login / check). Unauthenticated by design — this is how
 // LAN clients obtain a token. Loopback (kiosk) is always trusted.
 app.use('/api/auth', authRouter);
