@@ -11,56 +11,73 @@ const strip = (s) =>
    .replace(/\s+/g, ' ')
    .trim();
 
-// Source aliases → canonical source ids used by handleToggleSource()
+// Fonte aliases → canonical source ids
 const SOURCES = {
   spotify: 'spotify',
   radio: 'radio',
   local: 'local', library: 'local', biblioteca: 'local', musica: 'local',
 };
 
+// Dicionários para ajudar na validação dinâmica
+const INTENT_MAPPINGS = {
+  pause: ['pause', 'stop', 'para', 'parar', 'pausa'],
+  play: ['play', 'resume', 'continue', 'toca', 'tocar', 'continua', 'continuar', 'retoma', 'retomar'],
+  next: ['next', 'skip', 'seguinte', 'proxima', 'passa', 'avanca'],
+  previous: ['previous', 'back', 'go back', 'anterior', 'volta', 'voltar'],
+  volumeUp: ['up', 'louder', 'increase', 'raise', 'aumenta', 'aumentar', 'sobe', 'subir', 'mais alto'],
+  volumeDown: ['down', 'lower', 'quieter', 'decrease', 'reduce', 'baixa', 'baixar', 'desce', 'descer', 'mais baixo'],
+  mute: ['mute', 'silence', 'silencio', 'mudo', 'sem som'],
+  unmute: ['unmute', 'com som', 'tira o mudo', 'tirar o mudo'],
+  standby: ['standby', 'stand by', 'em espera', 'modo de espera'],
+  wake: ['wake', 'wake up', 'acorda', 'acordar', 'liga o ecra']
+};
+
 export function parseVoiceCommand(raw) {
   const q = strip(raw || '');
   if (!q) return null;
 
-  // ── radio station (checked before the generic "play …") ──────────────────
-  // EN: "play radio comercial", "radio m80", "play station kiss fm"
-  // PT: "toca a radio comercial", "poe a radio m80", "radio observador"
-  let m = q.match(/^(?:play |tune (?:in )?(?:to )?|toca(?:r)? (?:a |na )?|poe (?:a |na )?|mete (?:a |na )?)?(?:radio|station|estacao) (.+)$/);
-  if (m) return { intent: 'playRadio', arg: m[1] };
-
-  // ── volume ────────────────────────────────────────────────────────────────
-  m = q.match(/volume (?:to |para |a )?(\d{1,3})\s?(?:%|percent|por ?cento)?$/);
-  if (m) return { intent: 'volumeSet', arg: Math.min(100, parseInt(m[1], 10)) };
-  if (/volume|som|sound/.test(q)) {
-    if (/\b(up|louder|increase|raise|aumenta|aumentar|sobe|subir|mais alto)\b/.test(q)) return { intent: 'volumeUp' };
-    if (/\b(down|lower|quieter|decrease|reduce|baixa|baixar|desce|descer|mais baixo)\b/.test(q)) return { intent: 'volumeDown' };
-  }
-  if (/^(louder|mais alto)$/.test(q)) return { intent: 'volumeUp' };
-  if (/^(quieter|lower|mais baixo)$/.test(q)) return { intent: 'volumeDown' };
-  if (/^(unmute|com som|tira o mudo|tirar o mudo)$/.test(q)) return { intent: 'unmute' };
-  if (/^(mute|silence|silencio|mudo|sem som)$/.test(q)) return { intent: 'mute' };
-
-  // ── sleep timer ──────────────────────────────────────────────────────────
-  m = q.match(/(?:sleep|dormir|temporizador)(?: timer)?(?: in| em| de)? (\d{1,3})(?: ?min(?:utes|utos)?)?$/);
+  // ── 1. Sleep timer ───────────────────────────────────────────────────────
+  let m = q.match(/(?:sleep|dormir|temporizador)(?: timer)?(?: in| em| de)? (\d{1,3})(?: ?min(?:utes|utos)?)?$/);
   if (m) return { intent: 'sleepTimer', arg: parseInt(m[1], 10) };
   if (/^(?:sleep timer|temporizador) (?:off|cancel|desligado|cancelar)$/.test(q)) return { intent: 'sleepTimer', arg: 0 };
 
-  // ── standby / wake ───────────────────────────────────────────────────────
-  if (/^(standby|stand by|em espera|modo de espera)$/.test(q)) return { intent: 'standby' };
-  if (/^(wake|wake up|acorda|acordar|liga o ecra)$/.test(q)) return { intent: 'wake' };
+  // ── 2. Volume ────────────────────────────────────────────────────────────
+  m = q.match(/volume (?:to |para |a )?(\d{1,3})\s?(?:%|percent|por ?cento)?$/);
+  if (m) return { intent: 'volumeSet', arg: Math.min(100, parseInt(m[1], 10)) };
 
-  // ── source switching ─────────────────────────────────────────────────────
+  const checkIntentGroup = (group) => new RegExp(`\\b(${group.join('|')})\\b`).test(q);
+  if (/volume|som|sound/.test(q)) {
+    if (checkIntentGroup(INTENT_MAPPINGS.volumeUp)) return { intent: 'volumeUp' };
+    if (checkIntentGroup(INTENT_MAPPINGS.volumeDown)) return { intent: 'volumeDown' };
+  }
+  if (checkIntentGroup(INTENT_MAPPINGS.volumeUp) && INTENT_MAPPINGS.volumeUp.includes(q)) return { intent: 'volumeUp' };
+  if (checkIntentGroup(INTENT_MAPPINGS.volumeDown) && INTENT_MAPPINGS.volumeDown.includes(q)) return { intent: 'volumeDown' };
+  if (checkIntentGroup(INTENT_MAPPINGS.unmute) && INTENT_MAPPINGS.unmute.includes(q)) return { intent: 'unmute' };
+  if (checkIntentGroup(INTENT_MAPPINGS.mute) && INTENT_MAPPINGS.mute.includes(q)) return { intent: 'mute' };
+
+  // ── 3. Standby / Wake ────────────────────────────────────────────────────
+  if (checkIntentGroup(INTENT_MAPPINGS.standby) && INTENT_MAPPINGS.standby.includes(q)) return { intent: 'standby' };
+  if (checkIntentGroup(INTENT_MAPPINGS.wake) && INTENT_MAPPINGS.wake.includes(q)) return { intent: 'wake' };
+
+  // ── 4. Source switching ──────────────────────────────────────────────────
   m = q.match(/^(?:switch to|change to|muda para|mudar para|fonte) (\w+)$/);
   if (m && SOURCES[m[1]]) return { intent: 'source', arg: SOURCES[m[1]] };
   if (SOURCES[q]) return { intent: 'source', arg: SOURCES[q] };
 
-  // ── transport ────────────────────────────────────────────────────────────
-  if (/^(pause|stop|para|parar|pausa)(?: (?:the )?(?:music|song|playback|musica))?$/.test(q)) return { intent: 'pause' };
-  if (/^(play|resume|continue|toca|tocar|continua|continuar|retoma|retomar)$/.test(q)) return { intent: 'play' };
-  if (/^(next|skip|seguinte|proxima|passa|avanca)(?: (?:track|song|faixa|musica))?$/.test(q)) return { intent: 'next' };
-  if (/^(previous|back|go back|anterior|volta|voltar)(?: (?:track|song|faixa|musica))?$/.test(q)) return { intent: 'previous' };
+  // ── 5. Radio station ─────────────────────────────────────────────────────
+  m = q.match(/^(?:play |tune (?:in )?(?:to )?|toca(?:r)? (?:a |na )?|poe (?:a |na )?|mete (?:a |na )?)?(?:radio|station|estacao) (.+)$/);
+  if (m) return { intent: 'playRadio', arg: m[1] };
 
-  // ── generic "play <query>" → music search (last: catches everything else) ─
+  // ── 6. Transport controls ────────────────────────────────────────────────
+  const musicSuffix = '(?: (?:the )?(?:music|song|playback|musica))?';
+  const trackSuffix = '(?: (?:track|song|faixa|musica))?';
+
+  if (new RegExp(`^(${INTENT_MAPPINGS.pause.join('|')})${musicSuffix}$`).test(q)) return { intent: 'pause' };
+  if (new RegExp(`^(${INTENT_MAPPINGS.play.join('|')})${musicSuffix}$`).test(q)) return { intent: 'play' };
+  if (new RegExp(`^(${INTENT_MAPPINGS.next.join('|')})${trackSuffix}$`).test(q)) return { intent: 'next' };
+  if (new RegExp(`^(${INTENT_MAPPINGS.previous.join('|')})${trackSuffix}$`).test(q)) return { intent: 'previous' };
+
+  // ── 7. Generic "play QUERY" ──────────────────────────────────────────────
   m = q.match(/^(?:play|toca(?:r)?|poe|poe a tocar|mete) (.+)$/);
   if (m) return { intent: 'playMusic', arg: m[1] };
 
