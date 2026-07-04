@@ -507,17 +507,17 @@ div[data-active-theme="origami"] .vu-readout-line span {
 }
 
 /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-   SPECTRUM VISUALIZER — ink-wash bars instead of amber neon
+   SPECTRUM VISUALIZER — ink-wash bars instead of amber neon, half-width
    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
 
 div[data-active-theme="origami"] .spectrum-visualizer {
-  --spectrum-bg: transparent;
-  --spectrum-grid-color: rgba(13, 12, 9, 0.03);
-  --spectrum-gradient-start: #121317;
-  --spectrum-gradient-end: #323B42;
-  --spectrum-glow-color: rgba(13, 12, 9, 0.12);
-  --spectrum-peak-color: var(--ori-gold-mid);
-  --spectrum-bar-width-scale: 0.5;
+  --spectrum-bg: transparent !important;
+  --spectrum-gradient-start: #121317 !important;
+  --spectrum-gradient-mid: #22272C !important;
+  --spectrum-gradient-end: #323B42 !important;
+  --spectrum-glow-color: rgba(13, 12, 9, 0.15) !important;
+  --spectrum-bar-width-scale: 0.5 !important;
+  border-color: var(--crease) !important;
 }
 
 /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

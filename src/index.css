@@ -183,6 +183,48 @@ body {
   --color-faded: #6a6866;
 }
 
+/* 7-band digital visualizer (PlayerDisplay.jsx) — bar gradient/glow/width
+   read from these custom properties via getComputedStyle, so each accent
+   (and each visual theme, see origami.css) can restyle the bars in CSS
+   alone instead of editing the canvas draw loop. Defaults below = amber. */
+.spectrum-visualizer {
+  --spectrum-bg: rgba(0, 0, 0, 0.2);
+  --spectrum-gradient-start: rgba(217, 119, 6, 0.8);
+  --spectrum-gradient-mid: #f59e0b;
+  --spectrum-gradient-end: #fcd307;
+  --spectrum-glow-color: rgba(245, 158, 11, 0.4);
+  --spectrum-bar-width-scale: 1;
+  background: var(--spectrum-bg);
+}
+
+[data-theme="emerald"] .spectrum-visualizer {
+  --spectrum-gradient-start: rgba(5, 150, 105, 0.8);
+  --spectrum-gradient-mid: #10b981;
+  --spectrum-gradient-end: #34d399;
+  --spectrum-glow-color: rgba(16, 185, 129, 0.4);
+}
+
+[data-theme="cyan"] .spectrum-visualizer {
+  --spectrum-gradient-start: rgba(8, 145, 178, 0.8);
+  --spectrum-gradient-mid: #06b6d4;
+  --spectrum-gradient-end: #22d3ee;
+  --spectrum-glow-color: rgba(6, 182, 212, 0.4);
+}
+
+[data-theme="amethyst"] .spectrum-visualizer {
+  --spectrum-gradient-start: rgba(124, 58, 237, 0.8);
+  --spectrum-gradient-mid: #a855f7;
+  --spectrum-gradient-end: #c084fc;
+  --spectrum-glow-color: rgba(168, 85, 247, 0.4);
+}
+
+[data-theme="ruby"] .spectrum-visualizer {
+  --spectrum-gradient-start: rgba(220, 38, 38, 0.8);
+  --spectrum-gradient-mid: #ef4444;
+  --spectrum-gradient-end: #f87171;
+  --spectrum-glow-color: rgba(239, 68, 68, 0.4);
+}
+
 /* Theme Utility Helper Classes */
 .theme-text {
   color: var(--theme-color) !important;
@@ -572,20 +614,6 @@ div[data-theme="ruby"] *::selection {
   70% { transform: translateX(-50%) rotate(-2deg); }
   85% { transform: translateX(-50%) rotate(-25deg); }
   100% { transform: translateX(-50%) rotate(-8deg); }
-}
-
-/* SpectrumVisualizer — canvas colors/proportions are read from these custom
-   properties (via getComputedStyle) so each theme can restyle the bars in
-   CSS alone, same pattern as the VU meter's --theme-color overrides. */
-.spectrum-visualizer {
-  --spectrum-bg: rgba(0, 0, 0, 0.45);
-  --spectrum-grid-color: rgba(245, 158, 11, 0.03);
-  --spectrum-gradient-start: rgba(217, 119, 6, 0.8);  /* Amber-600, bottom of bar */
-  --spectrum-gradient-end: rgba(252, 211, 7, 1.0);    /* Yellow-300, top of bar */
-  --spectrum-glow-color: rgba(245, 158, 11, 0.4);
-  --spectrum-peak-color: rgba(251, 191, 36, 0.9);
-  --spectrum-bar-width-scale: 1;
-  background: var(--spectrum-bg);
 }
 
 .music-controls {

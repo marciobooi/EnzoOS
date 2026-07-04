@@ -295,15 +295,19 @@ const PlayerDisplay = React.memo(function PlayerDisplay({
     };
     window.addEventListener('resonance-audio-levels', handleLevels);
 
-    // Dynamic color maps matching THEME_COLORS
-    const colorMap = {
-      amber: { base: 'rgba(217, 119, 6, 0.8)', mid: '#f59e0b', peak: '#fcd307', glow: 'rgba(245, 158, 11, 0.4)' },
-      emerald: { base: 'rgba(5, 150, 105, 0.8)', mid: '#10b981', peak: '#34d399', glow: 'rgba(16, 185, 129, 0.4)' },
-      cyan: { base: 'rgba(8, 145, 178, 0.8)', mid: '#06b6d4', peak: '#22d3ee', glow: 'rgba(6, 182, 212, 0.4)' },
-      amethyst: { base: 'rgba(124, 58, 237, 0.8)', mid: '#a855f7', peak: '#c084fc', glow: 'rgba(168, 85, 247, 0.4)' },
-      ruby: { base: 'rgba(220, 38, 38, 0.8)', mid: '#ef4444', peak: '#f87171', glow: 'rgba(239, 68, 68, 0.4)' }
+    // Bar gradient/glow/width come from the --spectrum-* custom properties on
+    // the .spectrum-visualizer wrapper (defaults + per-accent overrides in
+    // index.css, origami override in origami.css) instead of a hardcoded JS
+    // map, so any theme can restyle the bars in CSS alone.
+    const barStyle = getComputedStyle(canvas);
+    const readVar = (name, fallback) => barStyle.getPropertyValue(name).trim() || fallback;
+    const activeColor = {
+      base: readVar('--spectrum-gradient-start', 'rgba(217, 119, 6, 0.8)'),
+      mid: readVar('--spectrum-gradient-mid', '#f59e0b'),
+      peak: readVar('--spectrum-gradient-end', '#fcd307'),
+      glow: readVar('--spectrum-glow-color', 'rgba(245, 158, 11, 0.4)'),
     };
-    const activeColor = colorMap[theme] || colorMap.amber;
+    const barWidthScale = parseFloat(readVar('--spectrum-bar-width-scale', '1')) || 1;
 
     let animationId;
 
@@ -365,7 +369,7 @@ const PlayerDisplay = React.memo(function PlayerDisplay({
       }
 
       const isDotMatrix = activeTheme.includes('dot') || activeTheme.includes('matrix');
-      const barWidth = Math.floor((rect.width - (numBars - 1) * gap) / numBars);
+      const barWidth = Math.floor((rect.width - (numBars - 1) * gap) / numBars * barWidthScale);
       const totalWidth = numBars * barWidth + (numBars - 1) * gap;
       const startX = (rect.width - totalWidth) / 2;
 
@@ -803,7 +807,7 @@ const PlayerDisplay = React.memo(function PlayerDisplay({
                     </div>
                   </>
                 ) : (
-                  <div className="w-full h-full p-1 relative overflow-hidden flex items-center justify-center bg-black/20 rounded-xl border border-white/5">
+                  <div className="spectrum-visualizer w-full h-full p-1 relative overflow-hidden flex items-center justify-center rounded-xl border border-white/5">
                     <canvas 
                       ref={canvasRef} 
                       className="w-full h-full block"
