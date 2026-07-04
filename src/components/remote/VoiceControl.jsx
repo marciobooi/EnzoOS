@@ -92,6 +92,61 @@ export default function VoiceControl({ onClose }) {
         case 'sleepTimer':
           c.handleSetSleepTimer(cmd.arg);
           return finish(cmd.arg ? t('voice.sleepSet', { m: cmd.arg }) : t('voice.sleepOff'));
+        case 'shuffle': {
+          if (!c.spotify || !c.token) return finish(t('voice.notConnected'), false, 2000);
+          if (cmd.arg === 'on' && c.shuffleState) return finish(t('voice.shuffleOn'));
+          if (cmd.arg === 'off' && !c.shuffleState) return finish(t('voice.shuffleOff'));
+          const willBeOn = !c.shuffleState;
+          await c.handleShuffle();
+          return finish(willBeOn ? t('voice.shuffleOn') : t('voice.shuffleOff'));
+        }
+        case 'repeat': {
+          if (!c.spotify || !c.token) return finish(t('voice.notConnected'), false, 2000);
+          const mode = cmd.arg || { off: 'context', context: 'track', track: 'off' }[c.repeatState] || 'off';
+          await api.setRepeat(c.token, mode);
+          c.requestWSStateSync();
+          const key = mode === 'off' ? 'repeatOff' : mode === 'track' ? 'repeatTrack' : 'repeatAll';
+          return finish(t(`voice.${key}`));
+        }
+        case 'favorite':
+        case 'unfavorite': {
+          if (!c.trackName || c.trackName === 'Nothing playing') return finish(t('voice.nothingPlaying'), false, 2000);
+          if (c.source === 'radio') {
+            const url = c.currentTrack?.url;
+            if (!url) return finish(t('voice.nothingPlaying'), false, 2000);
+            if (cmd.intent === 'favorite' && c.isCurrentFav) return finish(t('voice.alreadyFavorite'));
+            if (cmd.intent === 'unfavorite' && !c.isCurrentFav) return finish(t('voice.notFavorite'));
+            await c.handleToggleFavRadio({ name: c.trackName, url, favicon: c.albumImage || '', country: '', tags: '' });
+            return finish(cmd.intent === 'favorite' ? t('voice.favorited') : t('voice.unfavorited'));
+          }
+          const uri = c.currentTrack?.uri || c.currentTrack?.url || '';
+          if (!uri) return finish(t('voice.nothingPlaying'), false, 2000);
+          const isFav = c.favorites?.some(f => f.source === c.source && f.uri === uri);
+          if (cmd.intent === 'favorite' && isFav) return finish(t('voice.alreadyFavorite'));
+          if (cmd.intent === 'unfavorite' && !isFav) return finish(t('voice.notFavorite'));
+          await c.handleToggleFavorite({
+            source: c.source, uri, title: c.trackName, artist: c.trackArtist,
+            album: c.currentTrack?.album?.name || '', cover: c.albumImage,
+          });
+          return finish(cmd.intent === 'favorite' ? t('voice.favorited') : t('voice.unfavorited'));
+        }
+        case 'nowPlaying': {
+          if (!c.trackName || c.trackName === 'Nothing playing') return finish(t('voice.nothingPlaying'), false, 2000);
+          return finish(c.trackArtist ? `${c.trackName} — ${c.trackArtist}` : c.trackName, true, 2600);
+        }
+        case 'routeHere': {
+          if (!c.token || !c.resonanceDevice?.id) return finish(t('voice.routeUnavailable'), false, 2200);
+          await c.handleTransferPlayback(c.resonanceDevice.id);
+          return finish(t('voice.routedHere'));
+        }
+        case 'seekForward':
+        case 'seekBack': {
+          if (!c.trackDuration) return finish(t('voice.nothingPlaying'), false, 2000);
+          const deltaMs = cmd.arg * 1000 * (cmd.intent === 'seekBack' ? -1 : 1);
+          const newMs = Math.max(0, Math.min(c.trackDuration, (c.trackPosition || 0) + deltaMs));
+          await c.handleSeek({ target: { value: String(newMs) } });
+          return finish(cmd.intent === 'seekForward' ? t('voice.seekForward', { s: cmd.arg }) : t('voice.seekBack', { s: cmd.arg }));
+        }
         case 'playRadio': {
           const r = await fetch(`/api/player/radio-search?q=${encodeURIComponent(cmd.arg)}&limit=1`);
           const stations = await r.json();
@@ -101,6 +156,16 @@ export default function VoiceControl({ onClose }) {
           c.handleToggleSource('radio');
           await api.localPlayRadio(s.url_resolved || s.url, s.name, s.favicon);
           return finish(t('voice.playingRadio', { name: s.name }));
+        }
+        case 'playArtist': {
+          if (!c.token) return finish(t('voice.notConnected'), false, 2200);
+          const d = await api.searchAll(c.token, cmd.arg, 'artist', 1);
+          const artist = d?.artists?.items?.[0];
+          if (!artist) return finish(t('voice.noResults', { q: cmd.arg }), false, 2200);
+          c.wakeKiosk?.();
+          if (c.source !== 'spotify') c.handleToggleSource('spotify');
+          await c.handlePlayContext(artist.uri);
+          return finish(t('voice.playingTrack', { name: artist.name }));
         }
         case 'playMusic': {
           if (!c.token) return finish(t('voice.notConnected'), false, 2200);
