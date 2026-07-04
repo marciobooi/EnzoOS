@@ -272,8 +272,8 @@ div[data-active-theme="origami"] .status-dot {
 
 /* ── Chapter mark + title + hairline rule: the chapter opening ───────────── */
 div[data-active-theme="origami"] .title-container {
-  padding-bottom: 0.45rem !important;
-  margin-bottom: 0.35rem !important;
+  /* padding-bottom: 0.45rem !important; */
+  /* margin-bottom: 0.35rem !important; */
   /* Gold hairline under the title — chapter-break rule */
   border-bottom: 0.5px solid var(--crease-rule) !important;
   position: relative;
@@ -349,17 +349,19 @@ div[data-active-theme="origami"] .volume-popup {
 
 /* ── Volume popup — Kindle-style reading notification ──────────────────── */
 div[data-active-theme="origami"] .volume-feedback {
-  font-family: 'Cormorant Garamond', Georgia, serif !important;
-  font-style: italic !important;
-  font-weight: 700 !important;
-  font-size: 2rem !important;
-  color: var(--ori-gold) !important;
-  background: var(--paper-mat) !important;
-  border: 1px solid var(--crease) !important;
-  box-shadow:
-    3px 3px 0   rgba(13,12,9,0.10),
-    0 6px 16px  rgba(13,12,9,0.10) !important;
-  border-radius: 1px !important;
+    color: var(--ori-gold) !important;
+    /* background: var(--paper-mat) !important; */
+    border: 1px solid var(--crease) !important;
+    border-radius: 1px !important;
+    font-family: Cormorant Garamond, Georgia, serif !important;
+    font-size: 1.5rem !important;
+    font-style: italic !important;
+    font-weight: 700 !important;
+    box-shadow: 3px 3px #0d0c091a, 0 6px 16px #0d0c091a !important;
+    transform: translate(15px, -10px);
+    padding: 0 1rem;
+    text-transform: lowercase;
+    text-align: center;
 }
 
 /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
