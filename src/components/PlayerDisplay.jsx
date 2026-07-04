@@ -270,7 +270,12 @@ const PlayerDisplay = React.memo(function PlayerDisplay({
     if (!ctx) return;
 
     const dpr = window.devicePixelRatio || 1;
-    const rect = canvas.getBoundingClientRect();
+    // Mutable, not a snapshot — the ResizeObserver below keeps this current so
+    // the bar-centering math never draws against a stale width (this used to
+    // be captured once and reused for the whole animation, so a layout shift
+    // right as playback started — before this effect's first paint settled —
+    // left the bars centered against the wrong, smaller width forever).
+    let rect = canvas.getBoundingClientRect();
     canvas.width = rect.width * dpr;
     canvas.height = rect.height * dpr;
     ctx.scale(dpr, dpr);
@@ -454,6 +459,7 @@ const PlayerDisplay = React.memo(function PlayerDisplay({
     const resizeObserver = new ResizeObserver((entries) => {
       for (let entry of entries) {
         const { width, height } = entry.contentRect;
+        rect = entry.contentRect;
         canvas.width = width * dpr;
         canvas.height = height * dpr;
         ctx.resetTransform();
