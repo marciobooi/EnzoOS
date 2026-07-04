@@ -512,13 +512,15 @@ div[data-active-theme="origami"] .vu-readout-line span {
 
 div[data-active-theme="origami"] .spectrum-visualizer {
   --spectrum-bg: transparent !important;
-  --spectrum-gradient-start: #121317 !important;
-  --spectrum-gradient-mid: #22272C !important;
+  /* Updated to fade from a solid color to a near-transparent version of the same color */
+  --spectrum-gradient-start: rgba(18, 19, 23, 0.1) !important;
+  --spectrum-gradient-mid: rgba(34, 39, 44, 0.5) !important;
   --spectrum-gradient-end: #323B42 !important;
   --spectrum-glow-color: rgba(13, 12, 9, 0.15) !important;
   --spectrum-bar-width-scale: 0.5 !important;
   border-color: var(--crease) !important;
 }
+
 
 /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
    CONTROLS COLUMN — inside cover / endpaper
