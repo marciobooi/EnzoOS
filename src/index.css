@@ -574,6 +574,20 @@ div[data-theme="ruby"] *::selection {
   100% { transform: translateX(-50%) rotate(-8deg); }
 }
 
+/* SpectrumVisualizer — canvas colors/proportions are read from these custom
+   properties (via getComputedStyle) so each theme can restyle the bars in
+   CSS alone, same pattern as the VU meter's --theme-color overrides. */
+.spectrum-visualizer {
+  --spectrum-bg: rgba(0, 0, 0, 0.45);
+  --spectrum-grid-color: rgba(245, 158, 11, 0.03);
+  --spectrum-gradient-start: rgba(217, 119, 6, 0.8);  /* Amber-600, bottom of bar */
+  --spectrum-gradient-end: rgba(252, 211, 7, 1.0);    /* Yellow-300, top of bar */
+  --spectrum-glow-color: rgba(245, 158, 11, 0.4);
+  --spectrum-peak-color: rgba(251, 191, 36, 0.9);
+  --spectrum-bar-width-scale: 1;
+  background: var(--spectrum-bg);
+}
+
 .music-controls {
   display: flex;
   align-items: center;

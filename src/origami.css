@@ -507,6 +507,20 @@ div[data-active-theme="origami"] .vu-readout-line span {
 }
 
 /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   SPECTRUM VISUALIZER — ink-wash bars instead of amber neon
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+
+div[data-active-theme="origami"] .spectrum-visualizer {
+  --spectrum-bg: transparent;
+  --spectrum-grid-color: rgba(13, 12, 9, 0.03);
+  --spectrum-gradient-start: #121317;
+  --spectrum-gradient-end: #323B42;
+  --spectrum-glow-color: rgba(13, 12, 9, 0.12);
+  --spectrum-peak-color: var(--ori-gold-mid);
+  --spectrum-bar-width-scale: 0.5;
+}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
    CONTROLS COLUMN — inside cover / endpaper
    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
 

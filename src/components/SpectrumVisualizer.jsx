@@ -1,6 +1,23 @@
 import { useEffect, useRef } from 'react';
 
-export default function SpectrumVisualizer({ isPlaying }) {
+// Colors and bar proportions come from CSS custom properties on the
+// `.spectrum-visualizer` container (defaults in src/index.css) so each
+// theme can restyle the canvas from CSS alone — see the origami.css
+// override for an example (dark ink-wash gradient, half-width bars).
+function readThemeVars(el) {
+  const style = getComputedStyle(el);
+  const read = (name, fallback) => style.getPropertyValue(name).trim() || fallback;
+  return {
+    gridColor: read('--spectrum-grid-color', 'rgba(245, 158, 11, 0.03)'),
+    gradientStart: read('--spectrum-gradient-start', 'rgba(217, 119, 6, 0.8)'),
+    gradientEnd: read('--spectrum-gradient-end', 'rgba(252, 211, 7, 1.0)'),
+    glowColor: read('--spectrum-glow-color', 'rgba(245, 158, 11, 0.4)'),
+    peakColor: read('--spectrum-peak-color', 'rgba(251, 191, 36, 0.9)'),
+    barWidthScale: parseFloat(read('--spectrum-bar-width-scale', '1')) || 1,
+  };
+}
+
+export default function SpectrumVisualizer({ isPlaying, activeTheme }) {
   const canvasRef = useRef(null);
   const animationRef = useRef(null);
 
@@ -18,10 +35,11 @@ export default function SpectrumVisualizer({ isPlaying }) {
     canvas.height = rect.height * dpr;
     ctx.scale(dpr, dpr);
 
+    let theme = readThemeVars(canvas);
+
     const numBars = 24;
-    const barWidth = 6;
+    const baseBarWidth = 6;
     const gap = 4;
-    const totalWidth = numBars * barWidth + (numBars - 1) * gap;
 
     // Visualizer state
     const heights = new Array(numBars).fill(0);
@@ -34,11 +52,14 @@ export default function SpectrumVisualizer({ isPlaying }) {
     const beatInterval = 500; // 120 BPM
 
     const animate = (time) => {
+      const barWidth = baseBarWidth * theme.barWidthScale;
+      const totalWidth = numBars * barWidth + (numBars - 1) * gap;
+
       // Clear canvas
       ctx.clearRect(0, 0, rect.width, rect.height);
 
       // Draw background pattern (matrix grid lines)
-      ctx.strokeStyle = 'rgba(245, 158, 11, 0.03)';
+      ctx.strokeStyle = theme.gridColor;
       ctx.lineWidth = 1;
       for (let y = 4; y < rect.height; y += 4) {
         ctx.beginPath();
@@ -103,21 +124,20 @@ export default function SpectrumVisualizer({ isPlaying }) {
 
       // Draw the bars
       const startX = (rect.width - totalWidth) / 2;
-      
+
       for (let i = 0; i < numBars; i++) {
         const x = startX + i * (barWidth + gap);
         const barHeight = heights[i] * (rect.height - 8);
         const y = rect.height - 4 - barHeight;
 
         // Draw bar shadow/glow
-        ctx.shadowColor = 'rgba(245, 158, 11, 0.4)';
+        ctx.shadowColor = theme.glowColor;
         ctx.shadowBlur = 6;
 
-        // Create amber gradient for the bar
+        // Theme-driven gradient for the bar
         const gradient = ctx.createLinearGradient(x, rect.height - 4, x, y);
-        gradient.addColorStop(0, 'rgba(217, 119, 6, 0.8)');   // Amber-600
-        gradient.addColorStop(0.6, 'rgba(245, 158, 11, 0.9)'); // Amber-500
-        gradient.addColorStop(1.0, 'rgba(252, 211, 7, 1.0)');  // Yellow-300
+        gradient.addColorStop(0, theme.gradientStart);
+        gradient.addColorStop(1.0, theme.gradientEnd);
 
         ctx.fillStyle = gradient;
 
@@ -131,12 +151,12 @@ export default function SpectrumVisualizer({ isPlaying }) {
         ctx.fill();
 
         // Draw peak dot
-        ctx.shadowColor = 'rgba(251, 191, 36, 0.6)';
+        ctx.shadowColor = theme.peakColor;
         ctx.shadowBlur = 4;
-        ctx.fillStyle = 'rgba(251, 191, 36, 0.9)'; // Amber peak dots
+        ctx.fillStyle = theme.peakColor;
 
         const peakY = rect.height - 4 - (peaks[i] * (rect.height - 8));
-        
+
         ctx.beginPath();
         if (ctx.roundRect) {
           ctx.roundRect(x, Math.max(0, peakY - 2), barWidth, 1.5, 0.5);
@@ -171,14 +191,16 @@ export default function SpectrumVisualizer({ isPlaying }) {
       cancelAnimationFrame(animationRef.current);
       resizeObserver.disconnect();
     };
-  }, [isPlaying]);
+    // activeTheme isn't read directly, but re-running the effect re-reads the
+    // CSS custom properties so a live theme switch re-colors the canvas.
+  }, [isPlaying, activeTheme]);
 
   return (
-    <div className="w-full h-12 bg-black/45 border border-slate-900/60 rounded-xl p-1 mb-6 relative overflow-hidden flex items-center justify-center">
+    <div className="spectrum-visualizer w-full h-12 border border-slate-900/60 rounded-xl p-1 mb-6 relative overflow-hidden flex items-center justify-center">
       {/* CRT scan lines texture */}
       <div className="absolute inset-0 bg-radial-gradient(var(--color-amber-matrix-dim) 15%, transparent 15%) bg-[size:4px_4px] pointer-events-none opacity-40 z-10" />
-      <canvas 
-        ref={canvasRef} 
+      <canvas
+        ref={canvasRef}
         className="w-full h-full block"
         style={{ imageRendering: 'pixelated' }}
       />
