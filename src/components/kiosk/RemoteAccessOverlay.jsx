@@ -3,8 +3,10 @@ import { QRCodeSVG } from 'qrcode.react';
 import { Smartphone, Check, Clock } from 'lucide-react';
 import { Kk } from './KioskContext';
 import { S, cardShadow } from '../../styles/stone';
+import { useI18n } from '../../i18n';
 
 export default function RemoteAccessOverlay() {
+  const { t } = useI18n();
   const {
     isRemoteAccessOpen,
     setIsRemoteAccessOpen,
@@ -86,14 +88,14 @@ export default function RemoteAccessOverlay() {
             <Smartphone className="w-3.5 h-3.5" strokeWidth={1} style={{ color: S.label }} />
           </div>
           <span className="text-sm font-light tracking-[0.25em] uppercase underline underline-offset-8 decoration-[#2a2826] decoration-1" style={{ color: S.label }}>
-            remote access panel
+            {t('remoteAccess.title')}
           </span>
         </div>
         <button
           onClick={() => setIsRemoteAccessOpen(false)}
           className="cursor-pointer px-4 py-1.5 rounded-full transition-all active:scale-95 active:opacity-80 text-sm font-extrabold"
           style={{ background: S.accent, color: S.accentFg, border: 'none' }}>
-          CLOSE
+          {t('remoteAccess.close')}
         </button>
       </div>
 
@@ -108,12 +110,12 @@ export default function RemoteAccessOverlay() {
             <div className="w-2.5 h-2.5 rounded-full shrink-0 transition-colors"
               style={{ background: remoteAccessEnabled ? '#1a9e6a' : S.track }} />
             <span className="text-base font-semibold" style={{ color: remoteAccessEnabled ? S.strong : S.muted }}>
-              {remoteAccessEnabled ? 'Access Enabled' : 'Access Disabled'}
+              {remoteAccessEnabled ? t('remoteAccess.enabled') : t('remoteAccess.disabled')}
             </span>
           </div>
 
           <p className="text-sm font-light leading-relaxed" style={{ color: S.label }}>
-            Allow mobile devices on the same Wi-Fi to connect and control this player.
+            {t('remoteAccess.description')}
           </p>
 
           <div className="flex gap-2 mt-auto">
@@ -125,7 +127,7 @@ export default function RemoteAccessOverlay() {
                 color: remoteAccessEnabled ? S.accentFg : S.muted,
                 boxShadow: remoteAccessEnabled ? 'none' : cardShadow,
               }}>
-              Enable Remote
+              {t('remoteAccess.enableBtn')}
               {remoteAccessEnabled && <Check className="w-4 h-4" strokeWidth={1.5} />}
             </button>
             <button onClick={() => toggle(false)}
@@ -136,7 +138,7 @@ export default function RemoteAccessOverlay() {
                 color: !remoteAccessEnabled ? S.errorHot : S.muted,
                 boxShadow: remoteAccessEnabled ? cardShadow : 'none',
               }}>
-              Disable Remote
+              {t('remoteAccess.disableBtn')}
             </button>
           </div>
         </div>
@@ -145,7 +147,7 @@ export default function RemoteAccessOverlay() {
         <div className="flex flex-col items-center justify-center gap-3 rounded-2xl p-4 overflow-hidden min-h-0"
           style={{ background: S.surface, border: `1px solid ${S.border}` }}>
           <p className="text-sm font-light tracking-[0.25em] uppercase shrink-0" style={{ color: S.label }}>
-            scan to connect
+            {t('remoteAccess.scanToConnect')}
           </p>
           <div className="rounded-2xl p-3 transition-opacity duration-300 w-[50%] flex-1 flex items-center justify-center min-h-0"
             style={{
@@ -164,8 +166,7 @@ export default function RemoteAccessOverlay() {
           </div>
           {qrForbidden && (
             <p className="text-[11px] text-center leading-relaxed shrink-0 px-2" style={{ color: S.muted }}>
-              Pairing is only available on the HiFi's own screen — open this
-              panel there to get a working QR code and pairing code.
+              {t('remoteAccess.qrForbidden')}
             </p>
           )}
           {/* Countdown badge */}
@@ -184,7 +185,7 @@ export default function RemoteAccessOverlay() {
           {pairCode && remoteAccessEnabled && (
             <div className="flex flex-col items-center gap-0.5 shrink-0">
               <span className="text-[9px] uppercase tracking-wider" style={{ color: S.label }}>
-                or enter code
+                {t('remoteAccess.orEnterCode')}
               </span>
               <span className="text-lg font-bold tabular-nums tracking-[0.15em]" style={{ color: S.strong }}>
                 {pairCode}
@@ -199,7 +200,7 @@ export default function RemoteAccessOverlay() {
 
           <div className="shrink-0">
             <p className="text-sm font-light tracking-[0.25em] uppercase mb-1.5" style={{ color: S.label }}>
-              remote url
+              {t('remoteAccess.remoteUrl')}
             </p>
             <p className="text-base font-bold break-all leading-snug" style={{ color: S.strong }}>
               {remoteUrl || '—'}
@@ -208,16 +209,16 @@ export default function RemoteAccessOverlay() {
 
           <div className="flex flex-col gap-2 min-h-0 pb-6">
             <p className="text-sm font-light tracking-[0.25em] uppercase shrink-0" style={{ color: S.label }}>
-              how to connect
+              {t('remoteAccess.howToConnect')}
             </p>
             {[
-              'Point your phone camera at the QR code',
-              'The link opens and connects automatically',
-              'Already added to your Home Screen? Use the code instead — the installed app can\'t follow the QR link',
-              'Both devices must be on the same Wi-Fi',
-              'QR refreshes every 10 minutes — scan anytime',
-            ].map((step, i) => (
-              <div key={i} className="flex items-center gap-3 p-2.5 rounded-xl shrink-0"
+              t('remoteAccess.step1'),
+              t('remoteAccess.step2'),
+              t('remoteAccess.step3'),
+              t('remoteAccess.step4'),
+              t('remoteAccess.step5'),
+            ].map((step, i, arr) => (
+              <div key={i} className={`flex items-center gap-3 p-2.5 rounded-xl shrink-0 ${i === arr.length - 1 ? 'mb-2' : ''}`}
                 style={{ background: S.surfaceLo, border: `1px solid ${S.border}` }}>
                 <span className="text-xs font-black shrink-0 w-5 h-5 rounded-full flex items-center justify-center"
                   style={{ background: S.accent, color: S.accentFg }}>{i + 1}</span>

@@ -11,14 +11,16 @@ Core audio: bit-perfect rate-following, CamillaDSP room-correction wizard,
 dither/headroom control, Pure Direct, RT-kernel tuning, DSD path, per-source
 routing through a single volume master. Sources: Spotify Connect, Tidal,
 Qobuz, web radio (search + country browse), local MPD library, AirPlay 2
-(shairport-sync 5), UPnP, Bluetooth **in**. Convenience already shipped that
-the old analysis listed as missing or didn't credit: synced lyrics (LRCLIB),
-listening stats (`/api/player/stats`), play history + smart playlists
-(most-played / recently-added), ReplayGain / crossfade / gapless toggles,
-sleep timer, DB backup & restore (`/api/system/backup`), storage stats,
-factory reset, OTA updates, onboarding wizard, EN/PT i18n, installable PWA
-remote with QR/6-digit pairing, HTTPS remote port, universal search across
-all five sources.
+(shairport-sync 5), UPnP, Bluetooth **in and out** (headphones/speakers).
+External storage: USB drive auto-play and NAS (SMB/NFS) shares, both managed
+from the app with no SSH. Convenience already shipped that the old analysis
+listed as missing or didn't credit: synced lyrics (LRCLIB), listening stats
+(`/api/player/stats`), play history + smart playlists (most-played /
+recently-added), ReplayGain / crossfade / gapless toggles, sleep timer, DB
+backup & restore (`/api/system/backup`), storage stats, factory reset, OTA
+updates, onboarding wizard, EN/PT i18n, installable PWA remote with
+QR/6-digit pairing, HTTPS remote port, universal search across all five
+sources.
 
 **Scope decision (2026-07-03):** Resonance is a **single-zone streamer by
 design** — one Pi, one room, one output. Multi-room grouping, stereo pairing,
@@ -96,12 +98,25 @@ by theme. Priority key: **P1** (high value, moderate effort) · **P2**
   via `GET/PUT/DELETE /api/player/presets[/:n]`.
 - ~~**Guest / permission tiers**~~ — SKIPPED by user decision (2026-07-03).
 - ~~**IR remote support**~~ — SKIPPED by user decision (2026-07-03).
-- [ ] **Bluetooth OUT (headphones)** — WiiM and Sonos (Ace) now do private
-  late-night listening to BT headphones. PipeWire can source a `bluez_output`
-  sink post-CamillaDSP; needs a UI toggle + pairing flow. New since last
-  analysis.
-- [ ] **USB drive auto-play** — WiiM/BluOS auto-mount a USB stick and index
-  it. udev automount + MPD library path + rescan trigger.
+- [x] **Bluetooth OUT (headphones)** — SHIPPED 2026-07-05: Settings →
+  Bluetooth Output (remote) scans/pairs/connects a BT sink and switches
+  CamillaDSP's playback device to it — the paired device's `bluez_output`
+  PipeWire node, reached via the `pipewire-alsa` plugin
+  (`pcm.camilla_bt_output` in `/etc/asound.conf`, generated in
+  `server/camilla-config.js`), instead of the physical DAC. New routes under
+  `/api/player/bluetooth-out/*` in `server/player.js`, alongside the existing
+  A2DP-input section. Not physically exercised on the dev VM (no BT adapter
+  there) — implemented and route-tested against the documented PipeWire/
+  BlueZ APIs; needs a final check on real Pi hardware with a BT radio.
+- [x] **USB drive auto-play** — SHIPPED 2026-07-05: a new udev rule
+  (`scripts/usb-automount.sh`) mounts an inserted USB partition with
+  `udisksctl` and symlinks it into `/var/lib/mpd/music/usb`, then runs a
+  targeted `mpc update` — instantly browsable, no restart. (MPD's own native
+  `mount`/`unmount` protocol commands looked like the more obvious fit but
+  need a `cache_directory` this project's packaged MPD 0.23.14 doesn't
+  support — confirmed live — hence the symlink approach instead, which needs
+  nothing beyond `follow_outside_symlinks "yes"` in mpd.conf.) Status/eject in
+  `server/storage.js`.
 - [ ] **HDMI-ARC / TV input** — hardware-dependent stretch goal (needs a DAC
   hat with HDMI); keep parked.
 
@@ -110,23 +125,28 @@ by theme. Priority key: **P1** (high value, moderate effort) · **P2**
 - [x] **Degraded-network indicator** — SHIPPED 2026-07-03: the remote's
   top-bar status pulses amber "Reconnecting…" while the WS retry loop is
   down instead of showing a static "Offline".
-- [ ] **NAS share management from the app** — BluOS adds SMB/NFS shares from
-  the phone with no SSH. Resonance's library path is fixed at install time
-  in `/etc/mpd.conf`; a Settings "Add network share" flow (mount.cifs/autofs
-  + MPD rescan) removes the SSH requirement.
+- [x] **NAS share management from the app** — SHIPPED 2026-07-05: Settings →
+  Network Shares (remote) adds/removes SMB or NFS shares with no SSH —
+  `mount.cifs`/`mount.nfs` run via scoped sudo rules (mount targets confined
+  to `/mnt/resonance-nas/*`), SMB credentials staged as a tempfile and
+  installed into a root-owned 0700 dir atomically (`sudo install -m 600`),
+  then symlinked into the library the same way as USB auto-play. The share
+  list (without passwords) persists in the settings table and remounts
+  automatically on every boot. `server/storage.js`.
 
 ---
 
-## Suggested sequencing (updated 2026-07-03)
+## Suggested sequencing (updated 2026-07-05)
 
 Shipped in the 2026-07-03 batch: push-to-talk voice with the liquid-orb
 animation, radio genre/trending directory, quick-access presets, outbound
 webhooks, reconnecting indicator, Spotify like-sync, Last.fm scrobbling.
-Skipped by user decision: wake/alarm scheduling, guest permission tiers,
-IR remote.
+Shipped in the 2026-07-05 batch: Bluetooth output, USB drive auto-play, NAS
+share management from the app. Skipped by user decision: wake/alarm
+scheduling, guest permission tiers, IR remote.
 
 What remains:
-1. **P1 medium** — podcasts, Bluetooth OUT (headphones), Home Assistant
-   component/MQTT bridge on top of the shipped webhook.
-2. **P2 / long tail** — Deezer/SoundCloud, audiobooks, USB auto-play, NAS
-   share UI, Cast receiver, Tidal like-sync, HDMI-ARC.
+1. **P1 medium** — podcasts, Home Assistant component/MQTT bridge on top of
+   the shipped webhook.
+2. **P2 / long tail** — Deezer/SoundCloud, audiobooks, Cast receiver, Tidal
+   like-sync, HDMI-ARC.
