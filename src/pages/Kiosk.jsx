@@ -73,6 +73,16 @@ export default function Kiosk() {
   const [isWifiOpen, setIsWifiOpen] = useState(false);
   const [isSystemAdminOpen, setIsSystemAdminOpen] = useState(false);
 
+  // Populates the Remote Access panel's QR code + "remote url" display —
+  // was declared but never actually fetched, so that panel always showed
+  // "—" with no IP. One-shot on mount: the LAN IP doesn't change mid-session.
+  useEffect(() => {
+    fetch('/api/system/lan-url')
+      .then(r => r.json())
+      .then(d => { if (d?.url) setRemoteUrl(d.url); })
+      .catch(() => {});
+  }, []);
+
   const themeSyncTimeout = useRef(null);
   const queueThemeSync = (themeColor, activeThemeVal, brightnessVal, visualizerModeVal) => {
     if (themeSyncTimeout.current) clearTimeout(themeSyncTimeout.current);
