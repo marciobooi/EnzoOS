@@ -96,9 +96,15 @@ export default function SystemSettings() {
     try {
       if (btOutStatus?.mac) await api.bluetoothOutDisconnect(btOutStatus.mac);
       else await api.bluetoothOutSelect(null, null, false);
-      setBtOutStatus(await api.bluetoothOutStatus());
       toast.success(t('settings.btOutUsingDac'));
-    } catch (e) { reportError(e.message); }
+    } catch (e) {
+      reportError(e.message);
+    } finally {
+      // Always re-sync, success or failure — the toggle looking permanently
+      // "stuck" after a transient error (e.g. a BlueZ-level hiccup with no
+      // adapter present) is worse than a status read that might briefly lag.
+      try { setBtOutStatus(await api.bluetoothOutStatus()); } catch {}
+    }
   };
 
   // ── NAS shares (SMB/NFS) ───────────────────────────────────────────────────────

@@ -1078,7 +1078,15 @@ router.post('/bluetooth-out/disconnect', async (req, res) => {
       await setSetting('bluetooth_output', JSON.stringify({ enabled: false, mac: null, name: null }));
       await updateCamillaConfigFromSettings();
     }
-    await execFilePromise('bluetoothctl', ['disconnect', mac]);
+    // Best-effort: the switch back to the DAC above is the part that actually
+    // matters (and has already succeeded by this point). If the BlueZ-level
+    // disconnect itself fails — no adapter, device already gone, a stack
+    // hiccup — that shouldn't turn the whole request into an error and leave
+    // the toggle stuck showing "active" after the client never gets to
+    // re-fetch status. Caught live: exactly this, on a box with no adapter.
+    await execFilePromise('bluetoothctl', ['disconnect', mac]).catch(err =>
+      console.warn('[Bluetooth Out] bluetoothctl disconnect failed (non-fatal):', err.message)
+    );
     res.json({ success: true });
   } catch (err) {
     sendError(res, err);
