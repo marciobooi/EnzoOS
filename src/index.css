@@ -188,17 +188,18 @@ body {
    (and each visual theme, see origami.css) can restyle the bars in CSS
    alone instead of editing the canvas draw loop. Defaults below = amber. */
 .spectrum-visualizer {
-  --spectrum-bg: rgba(0, 0, 0, 0.2);
-  --spectrum-gradient-start: rgba(217, 119, 6, 0.8);
-  --spectrum-gradient-mid: #f59e0b;
-  --spectrum-gradient-end: #fcd307;
+  --spectrum-bg: transparent;
+  --spectrum-gradient-start: rgba(18, 19, 23, 0.1) !important;
+  --spectrum-gradient-mid: rgba(34, 39, 44, 0.5) !important;
+  --spectrum-gradient-end: #323B42 !important;
   --spectrum-glow-color: rgba(245, 158, 11, 0.4);
   --spectrum-bar-width-scale: 1;
   /* Unlit dot in the dot-matrix "isDotMatrix" render mode (activeTheme
      containing "dot" or "matrix") — the faint LED-off tone behind the
      active/peak dots. */
-  --spectrum-dot-inactive-color: rgba(255, 255, 255, 0.05);
+  --spectrum-dot-inactive-color: rgb(180, 180, 176);
   background: var(--spectrum-bg);
+  border: 1px solid rgb(180, 180, 176) !important;
 }
 
 [data-theme="emerald"] .spectrum-visualizer {
