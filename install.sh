@@ -497,6 +497,14 @@ playlist_directory      "/var/lib/mpd/playlists"
 db_file                 "/var/lib/mpd/tag_cache"
 state_file              "/var/lib/mpd/state"
 sticker_file            "/var/lib/mpd/sticker.sql"
+# USB auto-play and NAS shares (server/storage.js) add a symlink under
+# music_directory pointing at the actual mount (udisksctl / mount.cifs /
+# mount.nfs), then just \`mpc update <name>\` — MPD's "mount" protocol command
+# needs a cache_directory this package's MPD 0.23.14 build doesn't actually
+# support ("unrecognized parameter"), so a plain symlink into the regular
+# library is the reliable path instead. Requires this to be "yes" since the
+# symlink target lives outside music_directory.
+follow_outside_symlinks "yes"
 
 # Loopback only — nothing off-box needs MPD (upmpdcli connects to
 # 127.0.0.1, the server and kiosk are local, mpc defaults to localhost).
@@ -533,6 +541,16 @@ audio_output {
     enabled         "no"
 }
 MPDEOF
+# The mpd package's own postinst chowns /etc/mpd.conf to mpd:audio, mode 640
+# (only the "mpd" system user or "audio" group members can read it) — but
+# this project overrides MPD to run as $TARGET_USER instead (see the
+# systemd drop-in below, needed for the PipeWire socket), so without this
+# fix the service fails immediately with "Failed to open '/etc/mpd.conf':
+# Permission denied". Live-caught on a fresh install — the leftover
+# mpd:audio 640 ownership only ever went unnoticed on machines that had
+# manually had this fixed once already.
+chown "$TARGET_USER:$TARGET_USER" /etc/mpd.conf
+chmod 644 /etc/mpd.conf
 
 # MPD must run as TARGET_USER to access the PipeWire socket (/run/user/<uid>/pipewire-0).
 # Override the systemd service User and inject PipeWire environment variables.

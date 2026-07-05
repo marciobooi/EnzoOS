@@ -1,13 +1,18 @@
 // server/storage.js
 // External storage: USB drive auto-play status/eject, and NAS (SMB/NFS) share
-// management. Both ride on MPD 0.23's "local" storage plugin (mount/unmount/
-// listmounts protocol commands) so a mounted path becomes instantly browsable
-// in the MPD library without touching music_directory or restarting MPD.
+// management. Both end up browsable in the MPD library the same way: a
+// symlink under music_directory pointing at the real mount, then a targeted
+// `mpc update <name>`. MPD's own pluggable "mount" protocol command (nfs://,
+// smb://, udisks://) looked like the more idiomatic route, but it requires a
+// `cache_directory` that this project's packaged MPD 0.23.14 build doesn't
+// actually support ("unrecognized parameter" — confirmed live) — so this
+// falls back to the plain symlink-into-the-regular-library approach, which
+// only needs `follow_outside_symlinks "yes"` in mpd.conf (see install.sh).
 //
 // USB: scripts/usb-automount.sh (run as root via a udev rule — see install.sh)
-// does the actual udisksctl mount + `mpc mount usb <path>` on device insert; this
-// file only reports status and handles eject. It also POSTs here on mount/
-// remove so connected clients get a live update.
+// does the actual udisksctl mount + creates the symlink on device insert;
+// this file only reports status and handles eject. It also POSTs here on
+// mount/remove so connected clients get a live update.
 //
 // NAS: mounting a network share needs root (mount.cifs/mount.nfs), so this
 // runs those via sudo (scoped sudoers entries — see install.sh) and persists
@@ -31,6 +36,7 @@ const router = express.Router();
 const USB_MARKER = '/run/resonance-usb-mount';
 const NAS_MOUNT_ROOT = '/mnt/resonance-nas';
 const NAS_CRED_DIR = '/etc/resonance-nas-credentials';
+const MPD_MUSIC_DIR = '/var/lib/mpd/music';
 
 async function dfStats(mountPoint) {
   try {
@@ -43,12 +49,21 @@ async function dfStats(mountPoint) {
   }
 }
 
+// A symlink under music_directory + a targeted update — see the file header
+// for why this replaced MPD's own mount/unmount/listmounts commands.
 async function mpdMount(name, absPath) {
-  await execFileP('mpc', ['mount', name, absPath]);
+  const linkPath = path.join(MPD_MUSIC_DIR, name);
+  try { fs.unlinkSync(linkPath); } catch {} // clear a stale symlink from a previous mount
+  fs.symlinkSync(absPath, linkPath);
   await execFileP('mpc', ['update', name]).catch(() => {});
 }
 async function mpdUnmount(name) {
-  await execFileP('mpc', ['unmount', name]).catch(() => {});
+  const linkPath = path.join(MPD_MUSIC_DIR, name);
+  try { fs.unlinkSync(linkPath); } catch {}
+  // Full rescan (no path arg): the symlink is already gone, so a targeted
+  // `update <name>` has nothing left to walk — only a full update reliably
+  // prunes the now-missing subtree from the database.
+  await execFileP('mpc', ['update']).catch(() => {});
 }
 
 // ── USB drive (auto-mounted by scripts/usb-automount.sh via udev) ───────────
