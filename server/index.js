@@ -61,22 +61,33 @@ app.use(helmet({
 app.use(cors());
 app.use(express.json());
 
-// A browser that reaches the plain-HTTP kiosk port (5000) over the LAN,
-// without a loopback origin or a paired remote_token/Authorization header,
-// is almost never the kiosk itself — it's someone who typed
-// http://resonance.local:5000 instead of the paired HTTPS remote. Serving
-// them the app shell anyway means every subsequent /api call 401s (this
-// port's API is loopback-only by design — see auth.js) and the page looks
-// entirely broken with no explanation. Bounce them to the HTTPS remote's
-// pairing gate instead. Runs before express.static so it also catches the
-// very first `/` request (static's own index.html lookup would otherwise
-// serve the shell before this ever gets a chance to run).
+// A browser that reaches the plain-HTTP kiosk port (5000) over the LAN, or
+// requests the /kiosk path on ANY port, without a loopback origin or a
+// paired remote_token/Authorization header, is almost never the kiosk
+// itself — it's someone who typed http://resonance.local:5000 (or appended
+// /kiosk out of curiosity) instead of using the paired HTTPS remote. Serving
+// the app shell anyway means every /api call 401s (both that port and that
+// path assume loopback trust — see auth.js) with no explanation. Bounce them
+// to the HTTPS remote's pairing gate instead. A device that's already
+// paired (has the cookie/header) falls straight through unaffected — the
+// global fetch/WS interceptors (authFetch.js, websocket.js) attach that
+// token automatically no matter which page it's on. Runs before
+// express.static so it also catches the very first `/` request (static's
+// own index.html lookup would otherwise serve the shell before this ever
+// gets a chance to run).
 app.use((req, res, next) => {
-  if (!httpsAvailable || req.method !== 'GET' || req.socket.localPort !== PORT) return next();
+  if (req.method !== 'GET') return next();
   if (isLoopback(req) || req.path === '/ca.crt' || req.path.startsWith('/api')) return next();
+
+  const onPlainHttp = req.socket.localPort === PORT;
+  const onKioskPath = req.path === '/kiosk';
+  if (!onPlainHttp && !onKioskPath) return next();
+  if (!httpsAvailable) return next();
+
   const hasCookie = /(?:^|;\s*)remote_token=/.test(req.headers.cookie || '');
   const hasBearer = /^Bearer\s+/i.test(req.headers.authorization || '');
   if (hasCookie || hasBearer) return next();
+
   res.redirect(`https://${req.hostname}:${HTTPS_PORT}/remote`);
 });
 
