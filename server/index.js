@@ -20,7 +20,7 @@ import { setupWebSocket, stopAudioLevelMonitor } from './websocket.js';
 import { loadStateFromDB } from './event-service.js';
 import { closeDB } from './db.js';
 import { stopTokenRefresh } from './spotify-auth.js';
-import { requireAuth, isWsAuthorized } from './auth.js';
+import { requireAuth, isWsAuthorized, isLoopback } from './auth.js';
 import { errorHandler } from './lib/errors.js';
 import { rateLimit } from 'express-rate-limit';
 
@@ -34,6 +34,9 @@ if (!process.env.SPOTIFY_CLIENT_ID) {
 const app = express();
 const PORT = process.env.PORT || 5000;
 const HTTPS_PORT = process.env.HTTPS_PORT || 5001;
+const certPath = path.join(__dirname, '../certs/cert.pem');
+const keyPath  = path.join(__dirname, '../certs/key.pem');
+const httpsAvailable = fs.existsSync(certPath) && fs.existsSync(keyPath);
 
 // CSP is disabled: the UI relies heavily on inline `style={{...}}` props
 // throughout (Tailwind covers layout/utility classes, but per-theme colors
@@ -46,9 +49,8 @@ const HTTPS_PORT = process.env.HTTPS_PORT || 5001;
 //
 // Cross-Origin-Opener-Policy and Origin-Agent-Cluster are also disabled:
 // both are meaningless without HTTPS (or localhost) — the browser just
-// logs a console warning and ignores them on the plain-HTTP kiosk port
-// (http://resonance.local:5000, http://<lan-ip>:5000) this app is served
-// on day-to-day. Neither protects anything this app needs (no
+// logs a console warning and ignores them on plain HTTP (the loopback-only
+// kiosk port, 5000). Neither protects anything this app needs (no
 // SharedArrayBuffer / cross-origin isolation usage) — the HTTPS remote
 // port (5001) doesn't need them either, since it's single-origin.
 app.use(helmet({
@@ -58,6 +60,25 @@ app.use(helmet({
 }));
 app.use(cors());
 app.use(express.json());
+
+// A browser that reaches the plain-HTTP kiosk port (5000) over the LAN,
+// without a loopback origin or a paired remote_token/Authorization header,
+// is almost never the kiosk itself — it's someone who typed
+// http://resonance.local:5000 instead of the paired HTTPS remote. Serving
+// them the app shell anyway means every subsequent /api call 401s (this
+// port's API is loopback-only by design — see auth.js) and the page looks
+// entirely broken with no explanation. Bounce them to the HTTPS remote's
+// pairing gate instead. Runs before express.static so it also catches the
+// very first `/` request (static's own index.html lookup would otherwise
+// serve the shell before this ever gets a chance to run).
+app.use((req, res, next) => {
+  if (!httpsAvailable || req.method !== 'GET' || req.socket.localPort !== PORT) return next();
+  if (isLoopback(req) || req.path === '/ca.crt' || req.path.startsWith('/api')) return next();
+  const hasCookie = /(?:^|;\s*)remote_token=/.test(req.headers.cookie || '');
+  const hasBearer = /^Bearer\s+/i.test(req.headers.authorization || '');
+  if (hasCookie || hasBearer) return next();
+  res.redirect(`https://${req.hostname}:${HTTPS_PORT}/remote`);
+});
 
 // Serve static assets from Vite's production build folder
 app.use(express.static(path.join(__dirname, '../dist')));
@@ -170,10 +191,8 @@ process.on('SIGINT', shutdown);
 
 // HTTPS server for remote devices (phones on LAN).
 // Both HTTP and HTTPS share the same wss instance so broadcast reaches all clients.
-const certPath = path.join(__dirname, '../certs/cert.pem');
-const keyPath  = path.join(__dirname, '../certs/key.pem');
 
-if (fs.existsSync(certPath) && fs.existsSync(keyPath)) {
+if (httpsAvailable) {
   const httpsServer = https.createServer({
     cert: fs.readFileSync(certPath),
     key:  fs.readFileSync(keyPath),
