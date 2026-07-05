@@ -1082,6 +1082,19 @@ cp "$PROJECT_DIR/scripts/xinitrc" "$USER_HOME/.xinitrc"
 chmod +x "$USER_HOME/.xinitrc"
 chown "$TARGET_USER:$TARGET_USER" "$USER_HOME/.xinitrc"
 
+# The chromium-browser apt package is a transitional stub that pulls in the
+# real browser as a snap — snapd's own install hook pre-creates
+# ~/snap/chromium/<rev> as root before $TARGET_USER ever runs it. Normally an
+# interactive first login fixes this via snap's user-session setup, but the
+# kiosk launches chromium non-interactively from .xinitrc, so it never gets
+# the chance — left as root:root, $TARGET_USER can't create its own profile
+# dir there and chromium exits immediately ("Permission denied"), which
+# .xinitrc's restart loop then repeats forever = kiosk stuck on a black
+# screen with X/openbox up but no browser. Live-caught on a fresh install.
+if [ -d "$USER_HOME/snap" ]; then
+  chown -R "$TARGET_USER:$TARGET_USER" "$USER_HOME/snap"
+fi
+
 # Deploy Openbox configuration to remove window decorations
 echo -e "${YELLOW}Deploying Openbox config to disable window decorations...${NC}"
 mkdir -p "$USER_HOME/.config/openbox"
