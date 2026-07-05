@@ -32,8 +32,8 @@ if (!process.env.SPOTIFY_CLIENT_ID) {
 }
 
 const app = express();
-const PORT = process.env.PORT || 5000;
-const HTTPS_PORT = process.env.HTTPS_PORT || 5001;
+const PORT = Number(process.env.PORT) || 5000;
+const HTTPS_PORT = Number(process.env.HTTPS_PORT) || 5001;
 const certPath = path.join(__dirname, '../certs/cert.pem');
 const keyPath  = path.join(__dirname, '../certs/key.pem');
 const httpsAvailable = fs.existsSync(certPath) && fs.existsSync(keyPath);
