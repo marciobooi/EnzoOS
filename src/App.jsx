@@ -33,7 +33,16 @@ export default function App() {
     return () => { active = false; window.removeEventListener('resonance:show-welcome', reopen); };
   }, []);
 
-  const isRemote = currentPath === '/remote';
+  // The physical kiosk is the only context that ever requests the exact
+  // `/kiosk` path (hardcoded in scripts/xinitrc's --app= URL, loopback-only
+  // per server/auth.js). Every other path — bare `/`, `/remote`, or anything
+  // a LAN device lands on after the server's loopback-redirect — must get
+  // RemoteControl instead: it's the only one of the two that gates itself
+  // behind the QR/token pairing flow. Kiosk assumes it's always trusted and
+  // has no such gate, so defaulting *it* to "anything unrecognized" meant a
+  // stray non-loopback request (e.g. the bare HTTPS root) rendered Kiosk and
+  // 401-stormed every API call instead of showing the pairing screen.
+  const isRemote = currentPath !== '/kiosk';
 
   return (
     <>
