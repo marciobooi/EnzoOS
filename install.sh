@@ -831,8 +831,8 @@ $TARGET_USER ALL=(ALL) NOPASSWD: /usr/bin/systemctl restart resonance-api, /bin/
 # NAS shares (server/storage.js) — mount targets scoped to our own directories
 # so a compromised resonance-api process can only mount/unmount into paths it
 # already controls, not arbitrary system locations.
-$TARGET_USER ALL=(ALL) NOPASSWD: /usr/bin/mount -t cifs //* /mnt/resonance-nas/* -o *, /bin/mount -t cifs //* /mnt/resonance-nas/* -o *
-$TARGET_USER ALL=(ALL) NOPASSWD: /usr/bin/mount -t nfs *\:/* /mnt/resonance-nas/* -o *, /bin/mount -t nfs *\:/* /mnt/resonance-nas/* -o *
+$TARGET_USER ALL=(ALL) NOPASSWD: /usr/bin/timeout 20 mount -t cifs //* /mnt/resonance-nas/* -o *, /bin/timeout 20 mount -t cifs //* /mnt/resonance-nas/* -o *
+$TARGET_USER ALL=(ALL) NOPASSWD: /usr/bin/timeout 20 mount -t nfs *\:/* /mnt/resonance-nas/* -o *, /bin/timeout 20 mount -t nfs *\:/* /mnt/resonance-nas/* -o *
 $TARGET_USER ALL=(ALL) NOPASSWD: /usr/bin/umount /mnt/resonance-nas/*, /bin/umount /mnt/resonance-nas/*
 $TARGET_USER ALL=(ALL) NOPASSWD: /usr/bin/mkdir -p /mnt/resonance-nas/*, /bin/mkdir -p /mnt/resonance-nas/*
 $TARGET_USER ALL=(ALL) NOPASSWD: /usr/bin/rmdir /mnt/resonance-nas/*, /bin/rmdir /mnt/resonance-nas/*

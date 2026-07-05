@@ -128,12 +128,26 @@ async function mountShare(share, password) {
         fs.unlinkSync(tempPath);
       }
     }
+    // `timeout` (not just execFile's own timeout option) is the difference
+    // that matters here: a mount to a host that's silently unreachable
+    // (dropped packets, not even "connection refused") leaves mount.cifs/
+    // mount.nfs blocked in an uninterruptible kernel wait — SIGTERM alone
+    // doesn't reliably reach through sudo into that state, but wrapping the
+    // whole invocation in coreutils' timeout (which escalates to SIGKILL)
+    // does. Verified live: an unreachable NFS host without this hung for
+    // several minutes; with it, the route below gets its error back in ~20s.
     await execFileP('sudo', [
-      'mount', '-t', 'cifs', `//${share.host}/${share.share}`, mountPoint,
+      'timeout', '20', 'mount', '-t', 'cifs', `//${share.host}/${share.share}`, mountPoint,
       '-o', `credentials=${credPath},uid=1000,gid=1000,iocharset=utf8,vers=3.0,ro`,
     ]);
   } else {
-    await execFileP('sudo', ['mount', '-t', 'nfs', `${share.host}:/${share.share}`, mountPoint, '-o', 'ro,soft,timeo=30']);
+    // nfsvers=4 skips the old rpcbind/portmapper handshake (NFSv3) that's
+    // the usual source of long hangs against an unresponsive host — v4
+    // connects straight to TCP 2049, so a dead host fails fast instead.
+    await execFileP('sudo', [
+      'timeout', '20', 'mount', '-t', 'nfs', `${share.host}:/${share.share}`, mountPoint,
+      '-o', 'ro,soft,timeo=30,nfsvers=4,mountproto=tcp',
+    ]);
   }
   await mpdMount(share.id, mountPoint);
 }
