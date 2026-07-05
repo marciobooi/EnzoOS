@@ -14,6 +14,7 @@ import { fileURLToPath } from 'url';
 import YAML from 'yaml';
 import { getSetting, setSetting } from './db.js';
 import { sendCamillaCommand } from './camilla-ws.js';
+import { getCachedVolumeDb } from './event-service.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
