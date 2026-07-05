@@ -1,12 +1,30 @@
 import { Sliders, RotateCcw, Flame, AudioLines, Sparkles } from 'lucide-react';
 import { S, cardShadow } from '../styles/stone';
 
+// Bands map to fixed filters server-side: Lowshelf@60Hz, Peaking@250Hz/1kHz/4kHz,
+// Highshelf@16kHz (see generateCamillaConfig in server/player.js) — these gains
+// are the *actual* applied curve now, not just a display value, so they're kept
+// deliberately restrained (mostly ±1-3dB, one ±5dB shelf) with cuts alongside
+// boosts rather than one-directional "boost everything" moves. preAmp is left
+// at 0 for every preset: auto-headroom already computes the exact attenuation
+// needed to keep each curve's peak at unity, so a hand-tuned trim on top would
+// only add clip risk or waste headroom for no audible benefit.
 export const EQ_PRESETS = [
-  { name: 'Clinical Reference', bands: [0, 0, 0, 0, 0], saturation: 0, noiseFloor: 0, preAmp: 0.0 },
-  { name: 'Warm Valve',         bands: [3, 2, 0, -1, 1], saturation: 6, noiseFloor: 2, preAmp: 1.5 },
-  { name: 'Bass Boost',         bands: [6, 4, 1, 0, -1], saturation: 4, noiseFloor: 1, preAmp: 2.0 },
-  { name: 'Vocal Clarity',      bands: [-2, 1, 4, 3, 1], saturation: 2, noiseFloor: 1, preAmp: 0.5 },
-  { name: 'Hi-Fi Spatial',      bands: [2, 1, 0, 2, 5],  saturation: 5, noiseFloor: 3, preAmp: -1.0 },
+  // Flat — reference monitoring, no coloration.
+  { name: 'Clinical Reference', bands: [0, 0, 0, 0, 0],   saturation: 0, noiseFloor: 0, preAmp: 0.0 },
+  // Gentle low lift, upper-mid/treble eased back — classic tube/tape smoothing
+  // without burying detail. Moderate 2nd/3rd-harmonic saturation for glow.
+  { name: 'Warm Valve',         bands: [2, 1, 0, -2, -2], saturation: 6, noiseFloor: 2, preAmp: 0.0 },
+  // Sub-bass lift paired with a 250Hz cut so the extra low end stays punchy
+  // instead of turning muddy/boomy; a small 4kHz nudge keeps the mix from
+  // getting buried under the added bass.
+  { name: 'Bass Boost',         bands: [5, -2, 0, 1, 0],  saturation: 5, noiseFloor: 1, preAmp: 0.0 },
+  // Declutter the boxy low-mids, lift vocal fundamental + consonant presence,
+  // gentle air on top — no saturation, kept clean for speech/vocals.
+  { name: 'Vocal Clarity',      bands: [-1, -2, 2, 3, 1], saturation: 0, noiseFloor: 0, preAmp: 0.0 },
+  // Slight bass foundation, small 1kHz scoop to open up perceived space,
+  // extended treble shelf for air/sparkle, subtle shimmer via saturation.
+  { name: 'Hi-Fi Spatial',      bands: [2, 0, -1, 1, 3],  saturation: 3, noiseFloor: 1, preAmp: 0.0 },
 ];
 
 const BAND_LABELS = ['60 Hz', '250 Hz', '1 kHz', '4 kHz', '16 kHz'];
