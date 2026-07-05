@@ -11,6 +11,7 @@ import updateRouter from './update.js';
 import systemRouter from './system.js';
 import spotifyAuthRouter from './spotify-auth.js';
 import playerRouter, { startMpdRateWatcher, applyPersistedMpdSettings } from './player.js';
+import storageRouter, { remountPersistedNasShares } from './storage.js';
 import spotifyDaemonRouter from './spotify-daemon.js';
 import statusRouter from './status.js';
 import metadataRouter from './metadata.js';
@@ -106,6 +107,10 @@ app.use('/auth/spotify', spotifyAuthRouter);
 
 // Local player control routes
 app.use('/api/player', requireAuth, playerRouter);
+// USB auto-play status/eject + NAS (SMB/NFS) share management — same base
+// path, separate router (both live under /api/player/* alongside the rest of
+// the storage-and-library surface).
+app.use('/api/player', requireAuth, storageRouter);
 
 // Spotify Connect daemon configuration routes
 app.use('/api/spotify', requireAuth, spotifyDaemonRouter);
@@ -148,6 +153,8 @@ server.listen(PORT, () => {
   startMpdRateWatcher();
   // Re-apply crossfade / ReplayGain — MPD doesn't persist these across restarts.
   applyPersistedMpdSettings();
+  // Re-mount any saved NAS shares — mount.cifs/mount.nfs don't survive a reboot.
+  remountPersistedNasShares();
 });
 
 const shutdown = async () => {

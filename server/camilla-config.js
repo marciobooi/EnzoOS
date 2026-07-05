@@ -263,7 +263,7 @@ export function getLastHeadroomDb() { return _lastHeadroomDb; }
 // balance: -12..+12 dB. Positive = right louder (attenuate left). Negative = left louder (attenuate right).
 // phaseLeft/phaseRight: invert polarity of that channel
 // autoHeadroom = true: attenuate pre-amp by the computed EQ peak instead of the static preset value
-function generateCamillaConfig(answers, eqSettings, dacInfo, { pureDirect = false, balance = 0, phaseLeft = false, phaseRight = false, bitPerfect = true, autoHeadroom = true } = {}) {
+function generateCamillaConfig(answers, eqSettings, dacInfo, { pureDirect = false, balance = 0, phaseLeft = false, phaseRight = false, bitPerfect = true, autoHeadroom = true, btOutputActive = false } = {}) {
   const isDspActive = answers && (answers[0] === 'dsp' || answers['0'] === 'dsp');
   const isSubwooferSetup = answers && answers.q1_setup === "2 Speakers + 1 Subwoofer";
 
@@ -355,12 +355,20 @@ function generateCamillaConfig(answers, eqSettings, dacInfo, { pureDirect = fals
       // Audio reaches here via: PipeWire → ResonanceInput virtual sink
       //   → PW loopback module → hw:Loopback,0,0 → ALSA dsnoop (loop_dsnoop)
       capture: { type: "Alsa", channels: 2, device: "loop_dsnoop", format: captureFormat },
-      playback: {
-        type: "Alsa",
-        channels: dacInfo.channels || 2,
-        device: dacInfo.device || "hw:CARD=DAC,DEV=0",
-        format: dacInfo.format || "S24_3_LE"
-      },
+      // Bluetooth output routes through the "camilla_bt_output" ALSA PCM
+      // (pipewire-alsa plugin → the paired device's bluez_output PipeWire
+      // node — see ensureAsoundConf) instead of the physical DAC. A2DP is a
+      // 16-bit lossy link regardless of source bit-depth, and PipeWire itself
+      // resamples for the actual Bluetooth transmission, so there's nothing
+      // bit-perfect to preserve here — plain S16_LE keeps it simple.
+      playback: btOutputActive
+        ? { type: "Alsa", channels: 2, device: "camilla_bt_output", format: "S16_LE" }
+        : {
+            type: "Alsa",
+            channels: dacInfo.channels || 2,
+            device: dacInfo.device || "hw:CARD=DAC,DEV=0",
+            format: dacInfo.format || "S24_3_LE"
+          },
       // Absorbs clock drift between the ALSA loopback's timer and the DAC's
       // own clock (measured live ~20 ppm on the dev VM: capture settles at
       // 48001 Hz vs 48000 nominal) — without this, that drift caused
@@ -571,7 +579,7 @@ function generateCamillaConfig(answers, eqSettings, dacInfo, { pureDirect = fals
 // PipeWire owns the default ALSA device (via /usr/share/alsa/alsa.conf.d/99-pipewire-default.conf).
 // We only need to keep loop_dsnoop so CamillaDSP (ALSA-only build) can still capture audio.
 // PipeWire's loopback module bridges ResonanceInput.monitor → hw:Loopback,0,0 for CamillaDSP.
-async function ensureAsoundConf(bitPerfect = true) {
+async function ensureAsoundConf(bitPerfect = true, btOutputNode = null) {
   const asoundConfPath = '/etc/asound.conf';
   // Bit-perfect: 32-bit container so source depth survives, and NO forced rate
   // on the dsnoop/dmix slaves — they inherit whatever rate PipeWire opened the
@@ -630,7 +638,16 @@ ${rateLine}        format ${loopFormat}
         period_size 1024
     }
 }
-`;
+${btOutputNode ? `
+# Bluetooth output — CamillaDSP writes here instead of the DAC when a paired
+# device is selected as the active output. pipewire-alsa forwards straight
+# into the bluez_output node WirePlumber created for that device; no extra
+# loopback/dmix needed since this is a single dedicated writer.
+pcm.camilla_bt_output {
+    type pipewire
+    playback_node "${btOutputNode}"
+}
+` : ''}`;
 
   try {
     let currentContent = '';
@@ -668,13 +685,14 @@ ${rateLine}        format ${loopFormat}
 
 // Exportable helper to update configuration on any settings change
 export async function updateCamillaConfigFromSettings({ skipAlsa = false, samplerate = null, pureDirect = false } = {}) {
-  const [dspVal, eqVal, balanceVal, phaseVal, bitPerfectVal, headroomVal] = await Promise.all([
+  const [dspVal, eqVal, balanceVal, phaseVal, bitPerfectVal, headroomVal, btOutVal] = await Promise.all([
     getSetting('dsp_calibration'),
     getSetting('eq_settings'),
     getSetting('balance'),
     getSetting('phase'),
     getSetting('bitperfect'),
     getSetting('auto_headroom'),
+    getSetting('bluetooth_output'),
   ]);
   // Dynamic peak pre-attenuation is the default — set to "false"/"0" to fall back
   // to each preset's static manually-tuned headroom.
@@ -689,9 +707,15 @@ export async function updateCamillaConfigFromSettings({ skipAlsa = false, sample
   // 48 kHz pipeline if a particular DAC mishandles loopback rate switching.
   const bitPerfect = !(bitPerfectVal === 'false' || bitPerfectVal === '0');
 
+  // Bluetooth output: { enabled, mac, name } — mac uses colons (BlueZ form);
+  // the bluez_output PipeWire node WirePlumber creates for it uses underscores.
+  const btOut = btOutVal ? JSON.parse(btOutVal) : null;
+  const btOutputActive = !!(btOut?.enabled && btOut?.mac);
+  const btOutputNode = btOutputActive ? `bluez_output.${btOut.mac.replace(/:/g, '_')}.1` : null;
+
   // Auto-configure ALSA Loopback routing — skip during EQ updates since
   // ALSA config never changes when only EQ bands/levels are adjusted
-  if (!skipAlsa) await ensureAsoundConf(bitPerfect);
+  if (!skipAlsa) await ensureAsoundConf(bitPerfect, btOutputNode);
 
   // Scan for DAC capability automatically
   const dacInfo = detectDac();
@@ -720,7 +744,7 @@ export async function updateCamillaConfigFromSettings({ skipAlsa = false, sample
 
   // Generate CamillaDSP yaml configuration
   const configObj = generateCamillaConfig(answers, eqSettings, dacInfo, {
-    pureDirect, balance, phaseLeft: phase.left, phaseRight: phase.right, bitPerfect, autoHeadroom,
+    pureDirect, balance, phaseLeft: phase.left, phaseRight: phase.right, bitPerfect, autoHeadroom, btOutputActive,
   });
   const yamlString = YAML.stringify(configObj, { indent: 2 });
 

@@ -103,4 +103,63 @@ export const playerApi = {
     const r = await fetch(`/api/player/lyrics?${params}`);
     return handleJson(r);
   },
+
+  // ── USB drive (auto-mounted by udev, see scripts/usb-automount.sh) ──────────
+  async getUsbStatus() {
+    const r = await fetch('/api/player/usb/status');
+    return handleJson(r);
+  },
+  async ejectUsb() {
+    const r = await fetch('/api/player/usb/eject', { method: 'POST' });
+    return handleJson(r);
+  },
+
+  // ── NAS shares (SMB/NFS) ──────────────────────────────────────────────────────
+  async getNasShares() {
+    const r = await fetch('/api/player/nas-shares');
+    return handleJson(r);
+  },
+  async addNasShare({ name, type, host, share, username, password }) {
+    const r = await fetch('/api/player/nas-shares', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, type, host, share, username, password }),
+    });
+    return handleJson(r);
+  },
+  async removeNasShare(id) {
+    const r = await fetch(`/api/player/nas-shares/${id}`, { method: 'DELETE' });
+    return handleJson(r);
+  },
+
+  // ── Bluetooth output (headphones/speakers) ───────────────────────────────────
+  async bluetoothOutScan() {
+    const r = await fetch('/api/player/bluetooth-out/scan');
+    return handleJson(r);
+  },
+  async bluetoothOutPaired() {
+    const r = await fetch('/api/player/bluetooth-out/paired');
+    return handleJson(r);
+  },
+  async bluetoothOutPair(mac) {
+    const r = await fetch('/api/player/bluetooth-out/pair', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ mac }),
+    });
+    return handleJson(r);
+  },
+  async bluetoothOutDisconnect(mac) {
+    const r = await fetch('/api/player/bluetooth-out/disconnect', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ mac }),
+    });
+    return handleJson(r);
+  },
+  async bluetoothOutSelect(mac, name, enabled) {
+    const r = await fetch('/api/player/bluetooth-out/select', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ mac, name, enabled }),
+    });
+    return handleJson(r);
+  },
+  async bluetoothOutStatus() {
+    const r = await fetch('/api/player/bluetooth-out/status');
+    return handleJson(r);
+  },
 };

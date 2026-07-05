@@ -1,6 +1,7 @@
 import { useContext, useState, useRef } from 'react';
 import {
   RefreshCw, HardDrive, RotateCcw, Download, Sparkles, Power, Music, Sliders, Webhook, ShieldCheck,
+  Usb, Bluetooth, BluetoothConnected, Server, FolderPlus, Trash2, Search,
 } from 'lucide-react';
 import { toast } from '../../../lib/toast';
 import { reportError } from '../../../lib/errors';
@@ -49,6 +50,86 @@ export default function SystemSettings() {
       if (!url) setShowWebhook(false);
     } catch (e) { reportError(e.message); }
     finally { setWebhookBusy(false); }
+  };
+
+  // ── USB drive ────────────────────────────────────────────────────────────────
+  const [showUsb, setShowUsb] = useState(false);
+  const [usbStatus, setUsbStatus] = useState(null);
+  const handleOpenUsb = async () => {
+    if (showUsb) { setShowUsb(false); return; }
+    try { setUsbStatus(await api.getUsbStatus()); } catch { setUsbStatus({ mounted: false }); }
+    setShowUsb(true);
+  };
+  const handleEjectUsb = async () => {
+    try { await api.ejectUsb(); setUsbStatus({ mounted: false }); toast.success(t('settings.usbEjected')); }
+    catch (e) { reportError(e.message); }
+  };
+
+  // ── Bluetooth output (headphones/speakers) ──────────────────────────────────
+  const [showBtOut, setShowBtOut]     = useState(false);
+  const [btOutStatus, setBtOutStatus] = useState(null);
+  const [btDevices, setBtDevices]     = useState([]);
+  const [btScanning, setBtScanning]   = useState(false);
+  const [btBusyMac, setBtBusyMac]     = useState(null);
+  const handleOpenBtOut = async () => {
+    if (showBtOut) { setShowBtOut(false); return; }
+    try { setBtOutStatus(await api.bluetoothOutStatus()); } catch { setBtOutStatus({ enabled: false }); }
+    setShowBtOut(true);
+  };
+  const handleScanBt = async () => {
+    setBtScanning(true);
+    try { const d = await api.bluetoothOutScan(); setBtDevices(d.devices || []); }
+    catch (e) { reportError(e.message); }
+    finally { setBtScanning(false); }
+  };
+  const handlePairBt = async (device) => {
+    setBtBusyMac(device.mac);
+    try {
+      await api.bluetoothOutPair(device.mac);
+      await api.bluetoothOutSelect(device.mac, device.name, true);
+      setBtOutStatus(await api.bluetoothOutStatus());
+      toast.success(t('settings.btOutConnected', { name: device.name }));
+    } catch (e) { reportError(e.message); }
+    finally { setBtBusyMac(null); }
+  };
+  const handleUseDac = async () => {
+    try {
+      if (btOutStatus?.mac) await api.bluetoothOutDisconnect(btOutStatus.mac);
+      else await api.bluetoothOutSelect(null, null, false);
+      setBtOutStatus(await api.bluetoothOutStatus());
+      toast.success(t('settings.btOutUsingDac'));
+    } catch (e) { reportError(e.message); }
+  };
+
+  // ── NAS shares (SMB/NFS) ───────────────────────────────────────────────────────
+  const [showNas, setShowNas]         = useState(false);
+  const [nasShares, setNasShares]     = useState([]);
+  const [showAddNas, setShowAddNas]   = useState(false);
+  const [nasBusy, setNasBusy]         = useState(false);
+  const [nasForm, setNasForm] = useState({ name: '', type: 'smb', host: '', share: '', username: '', password: '' });
+  const handleOpenNas = async () => {
+    if (showNas) { setShowNas(false); return; }
+    try { const d = await api.getNasShares(); setNasShares(d.shares || []); } catch { setNasShares([]); }
+    setShowNas(true);
+  };
+  const handleAddNas = async () => {
+    if (!nasForm.name || !nasForm.host || !nasForm.share) return;
+    setNasBusy(true);
+    try {
+      await api.addNasShare(nasForm);
+      const d = await api.getNasShares();
+      setNasShares(d.shares || []);
+      setShowAddNas(false);
+      setNasForm({ name: '', type: 'smb', host: '', share: '', username: '', password: '' });
+      toast.success(t('settings.nasAdded'));
+    } catch (e) { reportError(e.message); }
+    finally { setNasBusy(false); }
+  };
+  const handleRemoveNas = async (id) => {
+    try {
+      await api.removeNasShare(id);
+      setNasShares(prev => prev.filter(s => s.id !== id));
+    } catch (e) { reportError(e.message); }
   };
 
   const {
@@ -159,6 +240,142 @@ export default function SystemSettings() {
             </p>
           </div>
         )}
+
+        <Row label={t('settings.usb')} sub={usbStatus?.mounted ? usbStatus.label : t('settings.usbNone')}
+          icon={<Usb className="h-4 w-4" style={{ color: usbStatus?.mounted ? C.champagne : C.text4 }} />}
+          onPress={handleOpenUsb} />
+        {showUsb && (
+          <div className="mx-4 mb-3 rounded-xl p-4 flex flex-col gap-2" style={cardWhite}>
+            {usbStatus?.mounted ? (
+              <>
+                <p className="text-[12px]" style={{ color: C.text3 }}>
+                  {usbStatus.freeMb} / {usbStatus.totalMb} MB {t('settings.usbFree')}
+                </p>
+                <button onClick={handleEjectUsb}
+                  className="py-2.5 rounded-xl text-[13px] font-semibold active:scale-95 transition-all"
+                  style={{ background: C.containerLow, color: C.error, border: `0.5px solid ${C.outline}` }}>
+                  {t('settings.usbEject')}
+                </button>
+              </>
+            ) : (
+              <p className="text-[12px]" style={{ color: C.text3 }}>{t('settings.usbHint')}</p>
+            )}
+          </div>
+        )}
+
+        <Row label={t('settings.nas')} sub={nasShares.length ? t('settings.nasCount', { n: nasShares.length }) : t('settings.nasNone')}
+          icon={<Server className="h-4 w-4" style={{ color: nasShares.length ? C.champagne : C.text4 }} />}
+          onPress={handleOpenNas} />
+        {showNas && (
+          <div className="mx-4 mb-3 rounded-xl p-4 flex flex-col gap-2" style={cardWhite}>
+            {nasShares.map(s => (
+              <div key={s.id} className="flex items-center justify-between px-3 py-2 rounded-xl"
+                style={{ background: C.containerLow, border: `0.5px solid ${C.outline}` }}>
+                <div className="min-w-0">
+                  <p className="text-[13px] font-semibold truncate" style={{ color: C.text1 }}>{s.name}</p>
+                  <p className="text-[11px] truncate" style={{ color: C.text3 }}>{s.type.toUpperCase()} · //{s.host}/{s.share}</p>
+                </div>
+                <button onClick={() => handleRemoveNas(s.id)} className="shrink-0 p-2 -m-2">
+                  <Trash2 className="h-4 w-4" style={{ color: C.error }} />
+                </button>
+              </div>
+            ))}
+            {!showAddNas ? (
+              <button onClick={() => setShowAddNas(true)}
+                className="flex items-center justify-center gap-2 py-2.5 rounded-xl text-[13px] font-semibold active:scale-95 transition-all"
+                style={{ background: C.champagne, color: '#1a1c1c' }}>
+                <FolderPlus className="h-4 w-4" /> {t('settings.nasAdd')}
+              </button>
+            ) : (
+              <div className="flex flex-col gap-2 mt-1">
+                <input type="text" placeholder={t('settings.nasNameField')} value={nasForm.name}
+                  onChange={e => setNasForm(f => ({ ...f, name: e.target.value }))}
+                  className="px-3 py-2 rounded-xl text-[13px] focus:outline-none"
+                  style={{ background: C.container, color: C.text1, border: `0.5px solid ${C.outline}` }} />
+                <div className="flex gap-2">
+                  {['smb', 'nfs'].map(ty => (
+                    <button key={ty} onClick={() => setNasForm(f => ({ ...f, type: ty }))}
+                      className="flex-1 py-2 rounded-xl text-[12px] font-semibold uppercase tracking-wide"
+                      style={nasForm.type === ty
+                        ? { background: C.champagne, color: '#1a1c1c' }
+                        : { background: C.container, color: C.text3, border: `0.5px solid ${C.outline}` }}>
+                      {ty}
+                    </button>
+                  ))}
+                </div>
+                <input type="text" placeholder={t('settings.nasHost')} value={nasForm.host}
+                  autoCapitalize="none" autoComplete="off"
+                  onChange={e => setNasForm(f => ({ ...f, host: e.target.value }))}
+                  className="px-3 py-2 rounded-xl text-[13px] focus:outline-none"
+                  style={{ background: C.container, color: C.text1, border: `0.5px solid ${C.outline}` }} />
+                <input type="text" placeholder={t('settings.nasShareField')} value={nasForm.share}
+                  autoCapitalize="none" autoComplete="off"
+                  onChange={e => setNasForm(f => ({ ...f, share: e.target.value }))}
+                  className="px-3 py-2 rounded-xl text-[13px] focus:outline-none"
+                  style={{ background: C.container, color: C.text1, border: `0.5px solid ${C.outline}` }} />
+                {nasForm.type === 'smb' && (
+                  <>
+                    <input type="text" placeholder={t('settings.nasUser')} value={nasForm.username}
+                      autoCapitalize="none" autoComplete="off"
+                      onChange={e => setNasForm(f => ({ ...f, username: e.target.value }))}
+                      className="px-3 py-2 rounded-xl text-[13px] focus:outline-none"
+                      style={{ background: C.container, color: C.text1, border: `0.5px solid ${C.outline}` }} />
+                    <input type="password" placeholder={t('settings.nasPassword')} value={nasForm.password}
+                      onChange={e => setNasForm(f => ({ ...f, password: e.target.value }))}
+                      className="px-3 py-2 rounded-xl text-[13px] focus:outline-none"
+                      style={{ background: C.container, color: C.text1, border: `0.5px solid ${C.outline}` }} />
+                  </>
+                )}
+                <div className="flex gap-2 mt-1">
+                  <button onClick={handleAddNas} disabled={nasBusy || !nasForm.name || !nasForm.host || !nasForm.share}
+                    className="flex-1 py-2.5 rounded-xl text-[13px] font-semibold active:scale-95 transition-all disabled:opacity-40"
+                    style={{ background: C.champagne, color: '#1a1c1c' }}>
+                    {nasBusy ? '…' : t('settings.nasConnect')}
+                  </button>
+                  <button onClick={() => setShowAddNas(false)}
+                    className="px-4 py-2.5 rounded-xl text-[13px] font-semibold active:scale-95 transition-all"
+                    style={{ background: C.containerLow, color: C.text3, border: `0.5px solid ${C.outline}` }}>
+                    {t('settings.nasCancel')}
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        <Row label={t('settings.btOut')}
+          sub={btOutStatus?.enabled ? (btOutStatus.connected ? btOutStatus.name : t('settings.btOutDisconnected', { name: btOutStatus.name })) : t('settings.btOutOff')}
+          icon={btOutStatus?.enabled && btOutStatus?.connected
+            ? <BluetoothConnected className="h-4 w-4" style={{ color: C.champagne }} />
+            : <Bluetooth className="h-4 w-4" style={{ color: C.text4 }} />}
+          onPress={handleOpenBtOut} />
+        {showBtOut && (
+          <div className="mx-4 mb-3 rounded-xl p-4 flex flex-col gap-2" style={cardWhite}>
+            {btOutStatus?.enabled && (
+              <button onClick={handleUseDac}
+                className="py-2.5 rounded-xl text-[13px] font-semibold active:scale-95 transition-all"
+                style={{ background: C.containerLow, color: C.error, border: `0.5px solid ${C.outline}` }}>
+                {t('settings.btOutUseDacBtn')}
+              </button>
+            )}
+            <button onClick={handleScanBt} disabled={btScanning}
+              className="flex items-center justify-center gap-2 py-2.5 rounded-xl text-[13px] font-semibold active:scale-95 transition-all disabled:opacity-40"
+              style={{ background: C.champagne, color: '#1a1c1c' }}>
+              <Search className="h-4 w-4" /> {btScanning ? t('settings.btOutScanning') : t('settings.btOutScan')}
+            </button>
+            {btDevices.map(d => (
+              <button key={d.mac} onClick={() => handlePairBt(d)} disabled={btBusyMac === d.mac}
+                className="flex items-center justify-between px-3 py-2.5 rounded-xl text-left disabled:opacity-50"
+                style={btOutStatus?.mac === d.mac
+                  ? { background: C.champagne, color: '#1a1c1c' }
+                  : { background: C.containerLow, color: C.text2, border: `0.5px solid ${C.outline}` }}>
+                <span className="text-[13px] font-medium truncate">{d.name}</span>
+                <span className="text-[11px] opacity-70">{btBusyMac === d.mac ? '…' : t('settings.btOutConnectBtn')}</span>
+              </button>
+            ))}
+          </div>
+        )}
+
         <Row label={t('settings.secureRemote')} sub={window.isSecureContext ? t('settings.secureRemoteOn') : t('settings.secureRemoteOff')}
           icon={<ShieldCheck className="h-4 w-4" style={{ color: window.isSecureContext ? '#22c55e' : C.text4 }} />}
           onPress={() => setShowSecure(s => !s)} />

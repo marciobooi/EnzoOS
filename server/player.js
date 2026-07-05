@@ -987,6 +987,134 @@ router.get('/bluetooth/status', async (req, res) => {
   res.json({ active });
 });
 
+// ── Bluetooth OUTPUT (headphones/speakers — private listening) ──────────────
+// Distinct from the A2DP INPUT above (a phone streaming INTO Resonance): here
+// Resonance is the source and a paired BT device is the sink. WirePlumber
+// creates a "bluez_output.<MAC>.1" PipeWire node once connected; switching
+// output to it re-points CamillaDSP's playback device at that node via the
+// pipewire-alsa plugin (see camilla-config.js's ensureAsoundConf/
+// generateCamillaConfig) instead of the physical DAC.
+const MAC_RE = /^([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}$/;
+
+async function readBluetoothOutputSetting() {
+  try {
+    const raw = await getSetting('bluetooth_output');
+    return raw ? JSON.parse(raw) : { enabled: false, mac: null, name: null };
+  } catch { return { enabled: false, mac: null, name: null }; }
+}
+
+// GET /api/player/bluetooth-out/scan — power on + scan for ~8s, return discovered devices
+router.get('/bluetooth-out/scan', async (req, res) => {
+  try {
+    await execFilePromise('bluetoothctl', ['power', 'on']);
+    await execFilePromise('bluetoothctl', ['scan', 'on']).catch(() => {});
+    await new Promise(r => setTimeout(r, 8000));
+    await execFilePromise('bluetoothctl', ['scan', 'off']).catch(() => {});
+    const { stdout } = await execFilePromise('bluetoothctl', ['devices']);
+    const devices = stdout.trim().split('\n').filter(Boolean).map(line => {
+      const m = line.match(/^Device\s+([0-9A-Fa-f:]{17})\s+(.*)$/);
+      return m ? { mac: m[1], name: m[2] } : null;
+    }).filter(Boolean);
+    res.json({ devices });
+  } catch (err) {
+    console.error('[Bluetooth Out] Scan failed:', err.message);
+    sendError(res, err);
+  }
+});
+
+// GET /api/player/bluetooth-out/paired — already-paired devices (no scan needed)
+router.get('/bluetooth-out/paired', async (req, res) => {
+  try {
+    const { stdout } = await execFilePromise('bluetoothctl', ['paired-devices']);
+    const devices = stdout.trim().split('\n').filter(Boolean).map(line => {
+      const m = line.match(/^Device\s+([0-9A-Fa-f:]{17})\s+(.*)$/);
+      return m ? { mac: m[1], name: m[2] } : null;
+    }).filter(Boolean);
+    res.json({ devices });
+  } catch (err) {
+    sendError(res, err);
+  }
+});
+
+// POST /api/player/bluetooth-out/pair — pair + trust + connect a scanned device
+router.post('/bluetooth-out/pair', async (req, res) => {
+  const { mac } = req.body || {};
+  if (!MAC_RE.test(mac || '')) return sendError(res, badRequest('Invalid MAC address'));
+  try {
+    await execFilePromise('bluetoothctl', ['pair', mac]).catch(err => {
+      // Already paired isn't a failure — bluetoothctl exits non-zero either way
+      if (!/already exists|already paired/i.test(err.stdout || err.message || '')) throw err;
+    });
+    await execFilePromise('bluetoothctl', ['trust', mac]);
+    await execFilePromise('bluetoothctl', ['connect', mac]);
+    res.json({ success: true });
+  } catch (err) {
+    console.error('[Bluetooth Out] Pair failed:', err.message);
+    sendError(res, err);
+  }
+});
+
+// POST /api/player/bluetooth-out/connect — (re)connect an already-paired device
+router.post('/bluetooth-out/connect', async (req, res) => {
+  const { mac } = req.body || {};
+  if (!MAC_RE.test(mac || '')) return sendError(res, badRequest('Invalid MAC address'));
+  try {
+    await execFilePromise('bluetoothctl', ['connect', mac]);
+    res.json({ success: true });
+  } catch (err) {
+    sendError(res, err);
+  }
+});
+
+// POST /api/player/bluetooth-out/disconnect
+router.post('/bluetooth-out/disconnect', async (req, res) => {
+  const { mac } = req.body || {};
+  if (!MAC_RE.test(mac || '')) return sendError(res, badRequest('Invalid MAC address'));
+  try {
+    // Falling back to the DAC first avoids a moment where CamillaDSP's
+    // playback device points at a bluez_output node that's about to vanish.
+    const current = await readBluetoothOutputSetting();
+    if (current.mac === mac) {
+      await setSetting('bluetooth_output', JSON.stringify({ enabled: false, mac: null, name: null }));
+      await updateCamillaConfigFromSettings();
+    }
+    await execFilePromise('bluetoothctl', ['disconnect', mac]);
+    res.json({ success: true });
+  } catch (err) {
+    sendError(res, err);
+  }
+});
+
+// POST /api/player/bluetooth-out/select — make a paired+connected device the
+// active CamillaDSP output (or switch back to the DAC when enabled=false)
+router.post('/bluetooth-out/select', async (req, res) => {
+  const { mac, name, enabled } = req.body || {};
+  if (enabled && !MAC_RE.test(mac || '')) return sendError(res, badRequest('Invalid MAC address'));
+  try {
+    await setSetting('bluetooth_output', JSON.stringify(enabled ? { enabled: true, mac, name: name || mac } : { enabled: false, mac: null, name: null }));
+    const dacInfo = await updateCamillaConfigFromSettings();
+    res.json({ success: true, dacInfo });
+  } catch (err) {
+    console.error('[Bluetooth Out] Select failed:', err.message);
+    sendError(res, err);
+  }
+});
+
+// GET /api/player/bluetooth-out/status
+router.get('/bluetooth-out/status', async (req, res) => {
+  try {
+    const setting = await readBluetoothOutputSetting();
+    let connected = false;
+    if (setting.mac) {
+      const { stdout } = await execFilePromise('bluetoothctl', ['info', setting.mac]).catch(() => ({ stdout: '' }));
+      connected = /Connected:\s*yes/i.test(stdout);
+    }
+    res.json({ ...setting, connected });
+  } catch (err) {
+    sendError(res, err);
+  }
+});
+
 // Play a resolved hi-res stream URL through MPD — reuses the exact path web radio
 // uses (MPD → ALSA loopback → CamillaDSP → DAC), so EQ/DSP/volume all apply.
 async function playStreamUrl(url, meta, source) {

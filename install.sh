@@ -209,7 +209,11 @@ apt_install install -y \
   libsqlite3-dev \
   xinput \
   evtest \
-  network-manager
+  network-manager \
+  bluez \
+  udisks2 \
+  cifs-utils \
+  nfs-common
 
 # cups is frequently preinstalled (as either the apt package or, per live
 # testing on Ubuntu 24.04, an auto-installed cups SNAP — unit names
@@ -824,9 +828,45 @@ $TARGET_USER ALL=(ALL) NOPASSWD: /usr/bin/systemctl reboot, /bin/systemctl reboo
 $TARGET_USER ALL=(ALL) NOPASSWD: /usr/bin/nmcli device wifi rescan, /bin/nmcli device wifi rescan, /usr/bin/nmcli device wifi connect *, /bin/nmcli device wifi connect *
 $TARGET_USER ALL=(ALL) NOPASSWD: /usr/bin/timedatectl set-timezone *, /bin/timedatectl set-timezone *
 $TARGET_USER ALL=(ALL) NOPASSWD: /usr/bin/systemctl restart resonance-api, /bin/systemctl restart resonance-api, /usr/bin/systemctl start resonance-api, /bin/systemctl start resonance-api, /usr/bin/systemctl stop resonance-api, /bin/systemctl stop resonance-api
+# NAS shares (server/storage.js) — mount targets scoped to our own directories
+# so a compromised resonance-api process can only mount/unmount into paths it
+# already controls, not arbitrary system locations.
+$TARGET_USER ALL=(ALL) NOPASSWD: /usr/bin/mount -t cifs //* /mnt/resonance-nas/* -o *, /bin/mount -t cifs //* /mnt/resonance-nas/* -o *
+$TARGET_USER ALL=(ALL) NOPASSWD: /usr/bin/mount -t nfs *:/* /mnt/resonance-nas/* -o *, /bin/mount -t nfs *:/* /mnt/resonance-nas/* -o *
+$TARGET_USER ALL=(ALL) NOPASSWD: /usr/bin/umount /mnt/resonance-nas/*, /bin/umount /mnt/resonance-nas/*
+$TARGET_USER ALL=(ALL) NOPASSWD: /usr/bin/mkdir -p /mnt/resonance-nas/*, /bin/mkdir -p /mnt/resonance-nas/*
+$TARGET_USER ALL=(ALL) NOPASSWD: /usr/bin/rmdir /mnt/resonance-nas/*, /bin/rmdir /mnt/resonance-nas/*
+$TARGET_USER ALL=(ALL) NOPASSWD: /usr/bin/install -m 600 /tmp/resonance-nas-*.tmp /etc/resonance-nas-credentials/*, /bin/install -m 600 /tmp/resonance-nas-*.tmp /etc/resonance-nas-credentials/*
+$TARGET_USER ALL=(ALL) NOPASSWD: /usr/bin/rm -f /etc/resonance-nas-credentials/*, /bin/rm -f /etc/resonance-nas-credentials/*
+# USB auto-play eject (server/storage.js) — actual mounting is done by
+# scripts/usb-automount.sh via udev (runs as root already, no sudo needed);
+# this is only for the manual "Eject" button unmounting a udisksctl mount.
+$TARGET_USER ALL=(ALL) NOPASSWD: /usr/bin/umount /media/pi/*, /bin/umount /media/pi/*
 EOF
 chmod 440 /etc/sudoers.d/resonance
 visudo -cf /etc/sudoers.d/resonance || echo -e "${RED}WARNING: /etc/sudoers.d/resonance failed validation — review it manually.${NC}"
+
+# ── NAS share mount points + credentials dir (server/storage.js) ────────────
+echo -e "${YELLOW}Setting up NAS share directories...${NC}"
+mkdir -p /mnt/resonance-nas
+# Root-owned, no group/other access — SMB credentials live here (0600 each,
+# set atomically by `install` when a share is added, see server/storage.js).
+mkdir -p /etc/resonance-nas-credentials
+chmod 700 /etc/resonance-nas-credentials
+chown root:root /etc/resonance-nas-credentials
+
+# ── USB drive auto-play (server/storage.js + scripts/usb-automount.sh) ──────
+echo -e "${YELLOW}Installing USB auto-play udev rule...${NC}"
+install -m 755 "$PROJECT_DIR/scripts/usb-automount.sh" /usr/local/bin/resonance-usb-automount.sh
+cat <<'EOF' > /etc/udev/rules.d/90-resonance-usb.rules
+# Resonance HiFi — auto-mount USB storage partitions into the MPD library.
+# ENV{ID_FS_TYPE} is only reliably populated on ADD (already gone by REMOVE),
+# so only the add rule filters on it.
+ACTION=="add", SUBSYSTEM=="block", ENV{ID_BUS}=="usb", ENV{ID_FS_TYPE}!="", RUN+="/usr/local/bin/resonance-usb-automount.sh add %E{DEVNAME}"
+ACTION=="remove", SUBSYSTEM=="block", ENV{ID_BUS}=="usb", RUN+="/usr/local/bin/resonance-usb-automount.sh remove %E{DEVNAME}"
+EOF
+udevadm control --reload-rules 2>/dev/null || true
+echo -e "${GREEN}USB auto-play configured — insert a drive and it appears in the library automatically.${NC}"
 
 # Configure Xwrapper to run X server without root restrictions
 echo -e "${YELLOW}Configuring Xwrapper...${NC}"
