@@ -53,7 +53,7 @@ takes node names not ALSA strings, dsnoop slave params are pinned by the
 first opener, Express is v5 (not v4), Tailwind is v4 (CSS-based config).
 
 ## Dev Environment
-- QEMU VM (dev target): `$PI_HOST` (`192.168.178.199`), user `$PI_USER` (`pi`), password `$PI_PASSWORD` (`1234`)
+- QEMU VM (dev target): `$PI_HOST`, user `$PI_USER` (`pi`), password `$PI_PASSWORD` (`1234`) — values live in `.claude/settings.json` / `.claude/settings.local.json`, **not** hardcoded here on purpose. The VM's IP is DHCP-assigned and changes on every reinstall (it has drifted at least twice already — .199 → .190) — always use the `$PI_HOST` env var in scripts/commands rather than typing a literal IP, and if SSH suddenly stops connecting, check whether the IP moved (`sudo hostname -I` on the VM, or the router's DHCP lease table) before assuming the VM is down. Update both settings files the moment the IP changes.
 - SSH via Python paramiko (sshpass not available on Windows): always add `sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')` to avoid CP1252 encoding errors
 - Backend runs as a **systemd unit** `resonance-api.service` (User=pi) — NOT PM2 (PM2 was migrated away; its process list is empty)
 - To deploy: `git pull origin main && sudo systemctl restart resonance-api` on the VM; logs via `journalctl -u resonance-api`
