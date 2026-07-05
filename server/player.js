@@ -552,70 +552,6 @@ context.properties = {
   }
 }
 
-// --- 1. ADVANCED ANALOG & DIGITAL PROFILE DATABASE (5 BANDS + GAIN + ANALOG)
-const presetDatabase = {
-  "Clinical Reference": {
-    preampGain: 0.0,         // Pure studio transparency, no attenuation needed
-    noiseFloorLevel: null,   // Dead silent digital black background
-    useSaturation: false,
-    bands: [
-      { type: "Highpass", freq: 30, q: 0.707 },
-      { type: "Lowshelf", freq: 105, gain: -1.5, q: 0.707 },
-      { type: "Peaking", freq: 250, gain: -1.0, q: 0.5 },
-      { type: "Peaking", freq: 3200, gain: 1.0, q: 1.0 },
-      { type: "Highshelf", freq: 10000, gain: 0.0, q: 0.707 }
-    ]
-  },
-  "Warm Valve": {
-    preampGain: -2.5,        // Headroom buffer for the tube bass shelves
-    noiseFloorLevel: -85.0,  // Subtle, lush organic analog tube glow hiss
-    useSaturation: true,     // Excite lower-octave tube warmth
-    bands: [
-      { type: "Lowshelf", freq: 40, gain: 2.0, q: 0.707 },
-      { type: "Peaking", freq: 120, gain: 1.5, q: 0.6 },
-      { type: "Peaking", freq: 400, gain: 1.0, q: 0.8 },
-      { type: "Peaking", freq: 3000, gain: -1.5, q: 1.0 },
-      { type: "Highshelf", freq: 8500, gain: -2.5, q: 0.5 }
-    ]
-  },
-  "Bass Boost": {
-    preampGain: -6.0,        // Hard compression headroom safeguard against clipping
-    noiseFloorLevel: -95.0,  // Low tape-saturation floor
-    useSaturation: true,     // Heavy punch transformer saturation element
-    bands: [
-      { type: "Peaking", freq: 45, gain: 5.5, q: 1.2 },
-      { type: "Lowshelf", freq: 110, gain: 3.5, q: 0.707 },
-      { type: "Peaking", freq: 280, gain: -2.5, q: 1.0 },
-      { type: "Peaking", freq: 2500, gain: 1.0, q: 0.7 },
-      { type: "Highshelf", freq: 12000, gain: 1.5, q: 0.707 }
-    ]
-  },
-  "Vocal Clarity": {
-    preampGain: -4.0,        // Attenuation security for peak upper-mid clarity
-    noiseFloorLevel: -100.0, // Pristine, deep, isolated vocal backdrop
-    useSaturation: false,    // No harmonic distortion on human vocals
-    bands: [
-      { type: "Highpass", freq: 100, q: 0.707 },
-      { type: "Peaking", freq: 160, gain: -1.5, q: 1.0 },
-      { type: "Peaking", freq: 900, gain: 1.8, q: 0.8 },
-      { type: "Peaking", freq: 3500, gain: 4.0, q: 1.2 },
-      { type: "Peaking", freq: 7200, gain: -2.5, q: 2.0 }
-    ]
-  },
-  "Hi-Fi Spatial": {
-    preampGain: -5.0,        // Secure attenuation layout for cinema scale extensions
-    noiseFloorLevel: -90.0,  // Light premium vinyl background
-    useSaturation: true,     // Upper register high-frequency spatial acoustic exciter
-    bands: [
-      { type: "Lowshelf", freq: 50, gain: 4.5, q: 0.707 },
-      { type: "Peaking", freq: 130, gain: 1.0, q: 0.8 },
-      { type: "Peaking", freq: 1000, gain: -2.0, q: 0.5 },
-      { type: "Peaking", freq: 6500, gain: 2.2, q: 1.2 },
-      { type: "Highshelf", freq: 15000, gain: 4.0, q: 0.707 }
-    ]
-  }
-};
-
 // ── Dynamic peak pre-attenuation (auto-headroom) ──────────────────────────────
 // A static -1 dB (or a conservative per-preset) deduction wastes resolution on
 // gentle content while still risking clipping on aggressive EQ. Instead we
@@ -688,28 +624,30 @@ function generateCamillaConfig(answers, eqSettings, dacInfo, { pureDirect = fals
   // proven fixed-rate fallback also benefits (S32 instead of the old S16_LE).
   const captureFormat = bitPerfect ? "S32_LE" : "S16_LE";
 
-  const selectedPresetName = eqSettings?.preset || "Clinical Reference";
-  
-  let profile;
-  if (selectedPresetName === 'Custom' && eqSettings) {
-    const bandGains = (eqSettings.bands || [0,0,0,0,0]).map(Number);
-    // Auto-headroom: subtract the largest positive band boost from pre-amp to prevent clipping.
-    const maxBoost = Math.max(0, ...bandGains);
-    profile = {
-      preampGain: (Number(eqSettings.preAmp) || 0.0) - maxBoost,
-      noiseFloorLevel: (eqSettings.noiseFloor > 0) ? (-105.0 + (Number(eqSettings.noiseFloor) * 2.0)) : null,
-      useSaturation: (eqSettings.saturation > 0),
-      bands: [
-        { type: "Lowshelf", freq: 60,    gain: bandGains[0], q: 0.707 },
-        { type: "Peaking",  freq: 250,   gain: bandGains[1], q: 0.707 },
-        { type: "Peaking",  freq: 1000,  gain: bandGains[2], q: 0.707 },
-        { type: "Peaking",  freq: 4000,  gain: bandGains[3], q: 0.707 },
-        { type: "Highshelf",freq: 16000, gain: bandGains[4], q: 0.707 },
-      ]
-    };
-  } else {
-    profile = presetDatabase[selectedPresetName] || presetDatabase["Clinical Reference"];
-  }
+  // Named presets and "Custom" are the same code path: the client always
+  // sends bands/preAmp/noiseFloor/saturation alongside the preset name (see
+  // EQ_PRESETS in src/components/EqualizerControl.jsx), so a preset IS just
+  // those five numbers. Previously a named preset used a hand-tuned, totally
+  // unrelated filter curve from `presetDatabase` (different frequencies,
+  // filter types, and preampGain) while only "Custom" honored eqSettings —
+  // the instant you nudged one slider, the whole curve and gain staging
+  // jumped from the preset's bespoke values to the slider-derived ones,
+  // which is exactly the "boosts 20x" discontinuity this fixes.
+  const bandGains = (eqSettings?.bands || [0, 0, 0, 0, 0]).map(Number);
+  // Auto-headroom: subtract the largest positive band boost from pre-amp to prevent clipping.
+  const maxBoost = Math.max(0, ...bandGains);
+  const profile = {
+    preampGain: (Number(eqSettings?.preAmp) || 0.0) - maxBoost,
+    noiseFloorLevel: (eqSettings?.noiseFloor > 0) ? (-105.0 + (Number(eqSettings.noiseFloor) * 2.0)) : null,
+    useSaturation: (eqSettings?.saturation > 0),
+    bands: [
+      { type: "Lowshelf", freq: 60,    gain: bandGains[0], q: 0.707 },
+      { type: "Peaking",  freq: 250,   gain: bandGains[1], q: 0.707 },
+      { type: "Peaking",  freq: 1000,  gain: bandGains[2], q: 0.707 },
+      { type: "Peaking",  freq: 4000,  gain: bandGains[3], q: 0.707 },
+      { type: "Highshelf",freq: 16000, gain: bandGains[4], q: 0.707 },
+    ]
+  };
 
   // Compute per-channel balance gains (applied in mixer)
   const balL = balance > 0 ? -Math.abs(balance) : 0;
@@ -808,17 +746,10 @@ function generateCamillaConfig(answers, eqSettings, dacInfo, { pureDirect = fals
     }
   });
 
-  // Build Saturation filter
+  // Build Saturation filter — one formula for every preset name, same
+  // reasoning as the band unification above.
   if (profile.useSaturation) {
-    if (selectedPresetName === "Warm Valve") {
-      config.filters.analog_saturation = { type: "Biquad", parameters: { type: "Peaking", freq: 45, gain: 1.5, q: 2.0 } };
-    } else if (selectedPresetName === "Bass Boost") {
-      config.filters.analog_saturation = { type: "Biquad", parameters: { type: "Peaking", freq: 60, gain: 1.5, q: 1.5 } };
-    } else if (selectedPresetName === "Hi-Fi Spatial") {
-      config.filters.analog_saturation = { type: "Biquad", parameters: { type: "Peaking", freq: 12000, gain: 1.0, q: 2.5 } };
-    } else if (selectedPresetName === "Custom" && eqSettings) {
-      config.filters.analog_saturation = { type: "Biquad", parameters: { type: "Peaking", freq: 80, gain: Number(eqSettings.saturation) * 0.25, q: 1.5 } };
-    }
+    config.filters.analog_saturation = { type: "Biquad", parameters: { type: "Peaking", freq: 80, gain: Number(eqSettings?.saturation || 0) * 0.25, q: 1.5 } };
   }
 
   // analog_noise_floor intentionally omitted: a series Gain filter at -95dB attenuates
@@ -946,7 +877,7 @@ function generateCamillaConfig(answers, eqSettings, dacInfo, { pureDirect = fals
     const fs = dacInfo?.samplerate || 48000;
     let peak = computeEqPeakDb(profile.bands || [], fs);
     if (profile.useSaturation) peak += 2.0;
-    const userPreAmp = (selectedPresetName === 'Custom') ? (Number(eqSettings?.preAmp) || 0) : 0;
+    const userPreAmp = Number(eqSettings?.preAmp) || 0;
     baseGainDb = userPreAmp - peak;
     _lastHeadroomDb = Math.round(peak * 10) / 10;
   } else {
