@@ -372,6 +372,38 @@ router.post('/pure-direct', async (req, res) => {
   }
 });
 
+// POST /api/player/dsp-calibration -> Save user DSP calibration answers & generate configuration
+router.post('/dsp-calibration', async (req, res) => {
+  const { answers } = req.body;
+  if (!answers) {
+    return sendError(res, badRequest('Answers are required'));
+  }
+  try {
+    await setSetting('dsp_calibration', JSON.stringify(answers));
+    console.log('[CamillaDSP] Saved calibration profile:', answers);
+
+    const dacInfo = await updateCamillaConfigFromSettings();
+
+    // Broadcast DSP_CALIBRATION to all WS clients via EventService
+    await emit('DSP_CALIBRATION', answers);
+
+    res.json({ success: true, dacInfo });
+  } catch (err) {
+    console.error('[CamillaDSP] Error compiling tuning configuration:', err);
+    sendError(res, err);
+  }
+});
+
+// GET /api/player/dsp-calibration -> Retrieve calibration
+router.get('/dsp-calibration', async (req, res) => {
+  try {
+    const data = await getSetting('dsp_calibration');
+    res.json(data ? JSON.parse(data) : null);
+  } catch (err) {
+    sendError(res, err);
+  }
+});
+
 /**
  * Read current audio format from MPD (rate:bits:channels).
  * Returns null when MPD is stopped or unreachable.
