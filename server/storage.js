@@ -141,12 +141,15 @@ async function mountShare(share, password) {
       '-o', `credentials=${credPath},uid=1000,gid=1000,iocharset=utf8,vers=3.0,ro`,
     ]);
   } else {
-    // nfsvers=4 skips the old rpcbind/portmapper handshake (NFSv3) that's
-    // the usual source of long hangs against an unresponsive host — v4
-    // connects straight to TCP 2049, so a dead host fails fast instead.
+    // Deliberately not forcing nfsvers=4: tried it as a "fails faster on a
+    // dead host" optimization, but it broke against this very test rig
+    // ("Protocol not supported") — not every NFS server/client combo
+    // supports it, and it's not worth the compatibility risk when the
+    // `timeout` wrapper above already bounds the worst case either way.
+    // Let the kernel negotiate whatever version the server actually offers.
     await execFileP('sudo', [
       'timeout', '20', 'mount', '-t', 'nfs', `${share.host}:/${share.share}`, mountPoint,
-      '-o', 'ro,soft,timeo=30,nfsvers=4,mountproto=tcp',
+      '-o', 'ro,soft,timeo=30',
     ]);
   }
   await mpdMount(share.id, mountPoint);
@@ -214,6 +217,9 @@ router.post('/nas-shares', async (req, res) => {
     res.json({ success: true, share: entry });
   } catch (err) {
     console.error('[NAS] Mount failed:', err.message);
+    // Best-effort cleanup of the now-orphaned empty mount-point dir (mkdir
+    // succeeds before the mount attempt that just failed).
+    execFileP('sudo', ['rmdir', path.join(NAS_MOUNT_ROOT, id)]).catch(() => {});
     sendError(res, err);
   }
 });
