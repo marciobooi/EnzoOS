@@ -226,6 +226,7 @@ export default function RemoteAccessOverlay() {
               </div>
             ))}
           </div>
+          <div className="h-6 shrink-0" /> 
         </div>
       </div>
     </div>
