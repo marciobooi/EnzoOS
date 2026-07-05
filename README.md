@@ -24,6 +24,9 @@ Resonance HiFi is an open-source, self-hosted audio streaming platform for Raspb
 - **Tidal** — hi-res streaming up to 24-bit/192 kHz
 - **Qobuz** — lossless streaming up to 24-bit/192 kHz
 
+### Audio Output
+- **Bluetooth OUT (headphones / speakers)** — scan, pair, and switch CamillaDSP's playback device to a Bluetooth sink from Settings → Bluetooth Output; audio is routed to the paired device's `bluez_output` PipeWire node via the `pipewire-alsa` plugin instead of the physical DAC, with one tap back to "Use DAC" to return to wired output
+
 ### Audio Quality
 - **Bit-perfect playback** — PipeWire `clock.allowed-rates` switches the graph clock to the source's native sample rate (44.1 / 48 / 88.2 / 96 / 176.4 / 192 kHz), eliminating inter-domain resampling. Allowed rates are derived from the detected DAC's actual hardware capabilities — no rate is advertised that the DAC cannot handle. The full PipeWire → loopback → CamillaDSP bridge runs in a **32-bit** container so source bit-depth survives (no 16-bit truncation). Bit-perfect rate-following is on by default; a one-tap **Fixed 48 kHz fallback** (Settings → DSP → Bit-Perfect) covers DACs that mishandle loopback rate switching. *Rate-following behaviour is hardware-dependent — validate with your specific DAC.*
 - **Automatic DAC detection** — scans `/proc/asound` at startup to detect the connected DAC's card name, supported formats (S16/S24/S32), and all supported sample rates
@@ -110,6 +113,8 @@ Resonance HiFi is an open-source, self-hosted audio streaming platform for Raspb
 
 ### System & Connectivity
 - **Wi-Fi from the UI** — scan for nearby networks, connect with a password, and view signal strength; all via `nmcli` from the Settings panel (requires `network-manager`)
+- **USB drive auto-play** — insert a USB drive and its music is browsable within seconds, no restart: a udev rule (`scripts/usb-automount.sh`) mounts the partition with `udisksctl`, symlinks it into the MPD library, and runs a targeted library update. Eject from Settings → Storage before pulling the drive
+- **NAS share management from the app** — add SMB or NFS network shares (server, share name, optional credentials) from Settings → Network Shares with no SSH required; shares are mounted read-only into the library, persist across reboots, and remount automatically on boot
 - **Storage stats** — live disk usage (used / total / free) for the Pi's SD card, shown in Settings
 - **Settings backup / restore** — export all settings to a JSON file and restore them later; covers EQ bands, calibration profile, volume, theme, and all preferences
 - **Factory reset from UI** — wipe all stored settings and favourites from the Settings panel with a single tap; server resets to defaults and broadcasts a state refresh
@@ -119,6 +124,7 @@ Resonance HiFi is an open-source, self-hosted audio streaming platform for Raspb
 - **UPnP/DLNA — LAN only** — SSDP discovery is multicast and LAN-bound by protocol; invisible outside the local subnet
 - **Bluetooth — confirmation pairing** — `bt-agent` uses `DisplayYesNo` capability; connecting device shows a 6-digit code the user must confirm. Silent auto-accept (`NoInputNoOutput`) is disabled
 - **On-demand activation** — AirPlay, UPnP, and Bluetooth services are stopped at boot and only started when the user explicitly activates them from the kiosk menu
+- **Scoped NAS credentials** — SMB passwords are staged in a pi-owned tempfile, then installed into a root-owned, mode-0600 credentials directory via a narrowly scoped sudoers rule (`sudo install`); the Node process never holds the cleartext password beyond the request, and mount targets are confined by sudoers to `/mnt/resonance-nas/*`
 - **Remote web interface** — HTTPS with QR-code token authentication (no username/password); self-signed certificate; accessible only on the local network. Each QR code is single-use and expires in 10 minutes; redeemed sessions last 30 days
 - **Rate limiting** — `express-rate-limit` guards the API: a generous global cap (DoS), a strict cap on token issuance (`/api/auth`, brute-force), and a tight limiter on destructive system actions (reboot, shutdown, factory-reset, Wi-Fi connect)
 - **Hardened shell calls** — all `nmcli` / `systemctl` invocations use `execFile` with an argv array (no shell), so SSID/password/service inputs can never be interpreted as commands
@@ -632,10 +638,17 @@ Spotify auth uses the **Authorization Code + PKCE** flow, so **no client secret 
 | Bluetooth | A2DP via PipeWire + BlueALSA | LDAC / AAC / aptX |
 | Web Radio | HTTP streams (MPD) | AAC / MP3 / FLAC |
 | Local files | FLAC / ALAC / WAV / MP3 (MPD) | Lossless |
+| USB drive | Auto-mounted on insert (MPD) | Lossless |
+| NAS (SMB/NFS) | Mounted network share (MPD) | Lossless |
 | Tidal | Tidal streaming API | 24-bit / 192 kHz |
 | Qobuz | Qobuz streaming API | 24-bit / 192 kHz |
 
 Streaming sources (AirPlay, UPnP, Bluetooth) are activated on demand — they do not run at boot unless selected.
+
+| Output | Protocol / Service | Notes |
+|--------|--------------------|-------|
+| Wired DAC | USB or I²S, via CamillaDSP | Default output |
+| Bluetooth OUT | A2DP sink via PipeWire + `pipewire-alsa` | Headphones / speakers, switchable from Settings |
 
 ---
 
