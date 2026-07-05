@@ -87,5 +87,16 @@
    the amber/emerald/cyan/amethyst/ruby accents use, see index.css.
    ───────────────────────────────────────────────────────────────────────── */
 div[data-active-theme="dot-matrix"] .spectrum-visualizer {
-  --spectrum-dot-inactive-color: rgba(255, 255, 255, 0.05);
+  --spectrum-bg: transparent;
+  --spectrum-gradient-start: rgba(18, 19, 23, 0.1) !important;
+  --spectrum-gradient-mid: rgba(34, 39, 44, 0.5) !important;
+  --spectrum-gradient-end: #323B42 !important;
+  --spectrum-glow-color: rgba(245, 158, 11, 0.4);
+  --spectrum-bar-width-scale: 1;
+  /* Unlit dot in the dot-matrix "isDotMatrix" render mode (activeTheme
+     containing "dot" or "matrix") — the faint LED-off tone behind the
+     active/peak dots. */
+  --spectrum-dot-inactive-color: rgb(180, 180, 176);
+  background: var(--spectrum-bg);
+  border: 1px solid rgb(180, 180, 176) !important;
 }
