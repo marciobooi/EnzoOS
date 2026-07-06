@@ -6,13 +6,19 @@ export const spotifyApi = {
    * Save a track to the user's Spotify library (like-sync for favorites).
    * Spotify's Feb 2026 API changes retired the track-specific /me/tracks
    * endpoint in favor of a unified /me/library one that takes full URIs
-   * (not bare IDs) in a JSON body instead of a query string.
+   * (not bare IDs), comma-separated in the `uris` query param — verified
+   * directly against Spotify's reference docs and a live round-trip test;
+   * it is NOT a JSON body despite the migration guide's prose implying one.
+   * `body: ''` is required, not cosmetic: Spotify's edge rejects a
+   * PUT/DELETE with no Content-Length header at all (411), which is what a
+   * `fetch()` with no `body` key sends — an explicit empty-string body is
+   * what actually gets a browser to attach `Content-Length: 0`.
    */
   async saveTrack(token, trackId) {
-    const response = await fetch(`${SPOTIFY_API_URL}/me/library`, {
+    const response = await fetch(`${SPOTIFY_API_URL}/me/library?uris=${encodeURIComponent(`spotify:track:${trackId}`)}`, {
       method: 'PUT',
-      headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ uris: [`spotify:track:${trackId}`] }),
+      headers: { 'Authorization': `Bearer ${token}` },
+      body: '',
     });
     if (!response.ok) throw new Error(`Spotify save failed (${response.status})`);
     return true;
@@ -20,10 +26,10 @@ export const spotifyApi = {
 
   /** Remove a track from the user's Spotify library. */
   async removeSavedTrack(token, trackId) {
-    const response = await fetch(`${SPOTIFY_API_URL}/me/library`, {
+    const response = await fetch(`${SPOTIFY_API_URL}/me/library?uris=${encodeURIComponent(`spotify:track:${trackId}`)}`, {
       method: 'DELETE',
-      headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ uris: [`spotify:track:${trackId}`] }),
+      headers: { 'Authorization': `Bearer ${token}` },
+      body: '',
     });
     if (!response.ok) throw new Error(`Spotify unsave failed (${response.status})`);
     return true;
