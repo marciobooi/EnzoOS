@@ -1,6 +1,6 @@
 #!/bin/bash
 # ─────────────────────────────────────────────────────────────────────────────
-# Resonance HiFi — Real-time audio tuning (interrupts + CPU topology)
+# Resonance HiFi — Real-time audio tuning (interrupts + scheduling priority)
 # ─────────────────────────────────────────────────────────────────────────────
 # Idempotent. Safe to re-run on every install and OTA update. Requires root.
 #
@@ -14,26 +14,29 @@
 #                     HIGHER than the network (Wi-Fi/Ethernet) and storage
 #                     (SD/USB) drivers, which keep default non-RT scheduling.
 #
-#   3. isolcpus     — kernel boot parameter removing cores 2 & 3 from the Linux
-#                     load balancer so the scheduler never migrates processes
-#                     onto them. Prevents L1/L2 cache invalidation on the audio
-#                     pipeline from core hopping. Companion rcu_nocbs offloads
-#                     RCU callbacks off the isolated cores.
+#   3. rtkit + SCHED_FIFO — instead of statically walling off 2 of the Pi 4's
+#                     4 cores for audio (the previous isolcpus=2,3 approach),
+#                     audio gets real-time *scheduling priority* so the kernel
+#                     preempts whatever else is running the instant CamillaDSP
+#                     or PipeWire need CPU, without permanently reserving cores
+#                     that sit >90% idle in practice. This is the same
+#                     mechanism desktop pro-audio stacks use (rtkit is what
+#                     PipeWire/JACK/PulseAudio call into on every normal Linux
+#                     desktop). Measured live: with isolcpus, CamillaDSP+
+#                     PipeWire used under 10% of their two dedicated cores
+#                     combined while Chromium+X were squeezed onto the
+#                     remaining two and stayed near saturated — a bad trade
+#                     for touch/UI responsiveness. All 4 cores are now
+#                     available to everything; audio just always wins the
+#                     scheduler when it actually needs to run.
 #
-#   4. CPU affinity — asymmetric workload split across the 4 Pi cores:
-#                       Cores 0 & 1 → OS, Node API, database, Chromium kiosk
-#                                     (default — everything non-isolated lands
-#                                      here automatically thanks to isolcpus)
-#                       Core 2      → PipeWire + CamillaDSP audio pipeline
-#                       Core 3      → source streaming daemons
-#                                     (raspotify/librespot, shairport-sync)
+# Boot-parameter changes (1) take effect after a reboot. rtirq, rtkit, and the
+# CamillaDSP priority drop-in apply immediately. On non-Pi hosts (no
+# cmdline.txt) the boot-param step is skipped gracefully.
 #
-# Boot-parameter changes (1 & 3) take effect after a reboot. Service affinity
-# and rtirq apply immediately. On non-Pi / QEMU hosts (no cmdline.txt, or fewer
-# than 4 cores) the relevant steps are skipped gracefully.
-#
-# The kiosk/app user for the PipeWire user-service drop-in is taken from
-# $RT_TARGET_USER, falling back to the owner of the repository directory.
+# Idempotent migration: earlier installs used isolcpus=2,3 + rcu_nocbs=2,3 and
+# static per-service CPUAffinity= pins. Both are actively removed here so
+# upgrading in place doesn't leave stale cores/pins fighting the new setup.
 # ─────────────────────────────────────────────────────────────────────────────
 set -u
 
@@ -48,7 +51,7 @@ if [ "${EUID:-$(id -u)}" -ne 0 ]; then
   exit 0
 fi
 
-# Resolve the kiosk/app user (owns PipeWire) for user-service affinity.
+# Resolve the kiosk/app user (owns PipeWire) for cleaning up old user drop-ins.
 TARGET_USER="${RT_TARGET_USER:-$(stat -c '%U' "$PROJECT_DIR" 2>/dev/null || echo root)}"
 [ "$TARGET_USER" = "root" ] && TARGET_USER="${SUDO_USER:-root}"
 
@@ -64,41 +67,33 @@ CMDLINE_TXT="/boot/firmware/cmdline.txt"
 # stay a single space-separated line). Idempotent via word-boundary match.
 add_cmdline_token() {
   local token="$1" key="${1%%=*}"
-  # Replace any existing occurrence of the same key (e.g. isolcpus=...) then add.
   if grep -qw -- "$token" "$CMDLINE_TXT"; then
     echo -e "  '$token' already present in $CMDLINE_TXT"
     return
   fi
-  # Drop a stale value for this key if one exists with a different value.
   sed -i -E "1 s/[[:space:]]*${key}=[^[:space:]]*//g" "$CMDLINE_TXT"
   sed -i '1 s/[[:space:]]*$//' "$CMDLINE_TXT"
   sed -i "1 s/\$/ ${token}/" "$CMDLINE_TXT"
   echo -e "  ${GREEN}Added '$token' to $CMDLINE_TXT (reboot to apply).${NC}"
 }
 
-# Write a systemd drop-in pinning a system service to specific CPU core(s).
-pin_service() {
-  local unit="$1" cpus="$2"
-  local dir="/etc/systemd/system/${unit}.d"
-  mkdir -p "$dir"
-  cat > "$dir/10-resonance-cpu-affinity.conf" <<PINEOF
-[Service]
-# Resonance HiFi — pin audio workload to isolated core(s)
-CPUAffinity=${cpus}
-PINEOF
-  echo -e "  ${GREEN}Pinned ${unit} → CPU ${cpus}.${NC}"
+# Remove a key=value token (any value) from the boot cmdline — migration path
+# for the isolcpus/rcu_nocbs approach this script used to write.
+remove_cmdline_token() {
+  local key="$1"
+  if grep -qw -E "${key}=[^[:space:]]*" "$CMDLINE_TXT"; then
+    sed -i -E "1 s/[[:space:]]*${key}=[^[:space:]]*//g" "$CMDLINE_TXT"
+    sed -i '1 s/[[:space:]]*$//' "$CMDLINE_TXT"
+    echo -e "  ${GREEN}Removed stale '${key}=...' from $CMDLINE_TXT (reboot to apply).${NC}"
+  fi
 }
 
-# ── 1 & 3. Kernel boot parameters ─────────────────────────────────────────────
+# ── 1. Kernel boot parameters ─────────────────────────────────────────────────
 if [ -f "$CMDLINE_TXT" ]; then
   cp "$CMDLINE_TXT" "${CMDLINE_TXT}.resonance.bak" 2>/dev/null || true
   add_cmdline_token "threadirqs"
-  if [ "$CORES" -ge 4 ]; then
-    add_cmdline_token "isolcpus=2,3"
-    add_cmdline_token "rcu_nocbs=2,3"
-  else
-    echo -e "  ${YELLOW}Fewer than 4 cores — skipping isolcpus (needs a quad-core Pi).${NC}"
-  fi
+  remove_cmdline_token "isolcpus"
+  remove_cmdline_token "rcu_nocbs"
 else
   echo -e "  ${YELLOW}cmdline.txt not found (QEMU/non-Pi) — skipping kernel boot params.${NC}"
 fi
@@ -156,53 +151,73 @@ else
   echo -e "  ${YELLOW}rtirq service not found — threadirqs still applies after reboot.${NC}"
 fi
 
-# ── 4. CPU affinity — asymmetric workload split ───────────────────────────────
-# Only meaningful once cores 2 & 3 are isolated (quad-core). On non-isolated
-# hosts these drop-ins would force processes onto cores that may not exist, so
-# we gate the whole block on a quad-core CPU.
-if [ "$CORES" -ge 4 ]; then
-  # Core 2 — audio pipeline: CamillaDSP + PipeWire
-  pin_service "camilladsp.service" "2"
-
-  # Core 3 — source streaming daemons. Drop-ins are created unconditionally so
-  # they also apply to units installed later in the run (e.g. shairport-sync,
-  # built from source after this step) the moment those units appear.
-  for unit in raspotify.service shairport-sync.service; do
-    pin_service "$unit" "3"
-  done
-
-  systemctl daemon-reload 2>/dev/null || true
-  systemctl try-restart camilladsp.service >/dev/null 2>&1 || true
-  systemctl try-restart raspotify.service  >/dev/null 2>&1 || true
-  systemctl try-restart shairport-sync.service >/dev/null 2>&1 || true
-
-  # PipeWire runs as a per-user service — write a user drop-in for the app user
-  # so its real-time graph also lands on the dedicated audio core (core 2).
-  USER_HOME="$(getent passwd "$TARGET_USER" | cut -d: -f6)"
-  if [ -n "$USER_HOME" ] && [ -d "$USER_HOME" ]; then
-    for usvc in pipewire.service pipewire-pulse.service wireplumber.service; do
-      udir="$USER_HOME/.config/systemd/user/${usvc}.d"
-      mkdir -p "$udir"
-      cat > "$udir/10-resonance-cpu-affinity.conf" <<PWEOF
-[Service]
-# Resonance HiFi — pin PipeWire audio graph to the dedicated audio core
-CPUAffinity=2
-PWEOF
-    done
-    chown -R "$TARGET_USER":"$TARGET_USER" "$USER_HOME/.config/systemd" 2>/dev/null || true
-    # Best-effort live reload of the user manager (applies fully on next boot).
-    UID_NUM="$(id -u "$TARGET_USER" 2>/dev/null || echo "")"
-    if [ -n "$UID_NUM" ] && [ -d "/run/user/$UID_NUM" ]; then
-      sudo -u "$TARGET_USER" XDG_RUNTIME_DIR="/run/user/$UID_NUM" \
-        systemctl --user daemon-reload >/dev/null 2>&1 || true
-    fi
-    echo -e "  ${GREEN}Pinned PipeWire (user: $TARGET_USER) → CPU 2.${NC}"
-  else
-    echo -e "  ${YELLOW}Could not resolve home for '$TARGET_USER' — PipeWire pin skipped.${NC}"
-  fi
+# ── 3. rtkit — sandboxed real-time priority broker for PipeWire ─────────────
+# PipeWire already requests SCHED_FIFO for its audio thread via rtkit
+# automatically the moment the daemon is reachable — no PipeWire-side config
+# needed. Without it (the previous state on this image: package installed but
+# service never enabled), PipeWire ran plain SCHED_OTHER at priority 0, so the
+# isolcpus wall was the *only* thing protecting it from scheduling jitter.
+if command -v rtkit-daemon >/dev/null 2>&1 || [ -x /usr/lib/rtkit-daemon ] || dpkg -s rtkit >/dev/null 2>&1; then
+  systemctl enable --now rtkit-daemon >/dev/null 2>&1 \
+    && echo -e "  ${GREEN}rtkit-daemon enabled — PipeWire will get real-time priority automatically.${NC}" \
+    || echo -e "  ${YELLOW}Could not start rtkit-daemon — PipeWire stays SCHED_OTHER.${NC}"
 else
-  echo -e "  ${YELLOW}Fewer than 4 cores — skipping CPU affinity assignment.${NC}"
+  echo -e "  Installing rtkit..."
+  DEBIAN_FRONTEND=noninteractive apt-get -o DPkg::Lock::Timeout=300 install -y rtkit \
+    && systemctl enable --now rtkit-daemon >/dev/null 2>&1 \
+    && echo -e "  ${GREEN}rtkit installed and enabled.${NC}" \
+    || echo -e "  ${YELLOW}rtkit unavailable via apt — PipeWire stays SCHED_OTHER.${NC}"
 fi
 
+# ── 4. CamillaDSP — explicit real-time scheduling priority ──────────────────
+# CamillaDSP is the final DSP/mixing stage feeding the DAC — the one place an
+# underrun is actually audible as a click/dropout. Priority 70 sits below the
+# audio hardware IRQ threads (51-90 from rtirq above, so the interrupt that
+# moves samples in/out of the ring buffer always preempts DSP compute) and
+# comfortably above Chromium/Node's normal SCHED_OTHER (priority 0), so it
+# always gets the CPU the instant it needs it regardless of what else is
+# running on the (no longer isolated) cores.
+mkdir -p /etc/systemd/system/camilladsp.service.d
+cat > /etc/systemd/system/camilladsp.service.d/10-resonance-rt-priority.conf <<'RTEOF'
+[Service]
+# Resonance HiFi — real-time scheduling priority (replaces core isolation)
+CPUSchedulingPolicy=fifo
+CPUSchedulingPriority=70
+RTEOF
+echo -e "  ${GREEN}CamillaDSP → SCHED_FIFO priority 70.${NC}"
+
+# ── 5. Clean up the old core-isolation drop-ins from earlier installs ───────
+for unit in camilladsp.service raspotify.service shairport-sync.service; do
+  old="/etc/systemd/system/${unit}.d/10-resonance-cpu-affinity.conf"
+  if [ -f "$old" ]; then
+    rm -f "$old"
+    echo -e "  ${GREEN}Removed stale CPU-pin drop-in for ${unit}.${NC}"
+  fi
+done
+
+USER_HOME="$(getent passwd "$TARGET_USER" | cut -d: -f6)"
+if [ -n "$USER_HOME" ] && [ -d "$USER_HOME" ]; then
+  for usvc in pipewire.service pipewire-pulse.service wireplumber.service; do
+    old="$USER_HOME/.config/systemd/user/${usvc}.d/10-resonance-cpu-affinity.conf"
+    if [ -f "$old" ]; then
+      rm -f "$old"
+      echo -e "  ${GREEN}Removed stale CPU-pin drop-in for ${usvc} (user: $TARGET_USER).${NC}"
+    fi
+  done
+  UID_NUM="$(id -u "$TARGET_USER" 2>/dev/null || echo "")"
+  if [ -n "$UID_NUM" ] && [ -d "/run/user/$UID_NUM" ]; then
+    sudo -u "$TARGET_USER" XDG_RUNTIME_DIR="/run/user/$UID_NUM" \
+      systemctl --user daemon-reload >/dev/null 2>&1 || true
+  fi
+fi
+
+systemctl daemon-reload 2>/dev/null || true
+systemctl try-restart camilladsp.service >/dev/null 2>&1 || true
+systemctl try-restart raspotify.service  >/dev/null 2>&1 || true
+systemctl try-restart shairport-sync.service >/dev/null 2>&1 || true
+
 echo -e "${GREEN}[rt-audio] Real-time audio tuning complete.${NC}"
+if [ -f "$CMDLINE_TXT" ]; then
+  echo -e "${YELLOW}[rt-audio] Reboot required to release cores 2/3 from the old isolcpus setting.${NC}"
+fi
 exit 0

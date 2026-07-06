@@ -1009,12 +1009,13 @@ if [ -f "$UDEV_TOUCH" ]; then
   udevadm control --reload-rules 2>/dev/null && udevadm trigger 2>/dev/null || true
 fi
 
-# ── Real-time audio tuning (threadirqs + rtirq + isolcpus + CPU affinity) ──────
+# ── Real-time audio tuning (threadirqs + rtirq + rtkit + SCHED_FIFO) ───────────
 # Thread hardware IRQs (threadirqs), pin the audio IRQ above network/storage
-# (rtirq), isolate cores 2 & 3 from the scheduler (isolcpus), and split the
-# workload: cores 0/1 → OS+API+kiosk, core 2 → PipeWire+CamillaDSP, core 3 →
-# source daemons. Idempotent helper — shared with scripts/update.sh.
-echo -e "\n${GREEN}[5c/7] Configuring real-time audio tuning (IRQ priority + CPU isolation)...${NC}"
+# (rtirq), and give CamillaDSP/PipeWire real-time scheduling priority via
+# rtkit/SCHED_FIFO so they preempt everything else on demand — all 4 cores
+# stay available to Chromium/Node/X instead of 2 being walled off and mostly
+# idle. Idempotent helper — shared with scripts/update.sh.
+echo -e "\n${GREEN}[5c/7] Configuring real-time audio tuning (IRQ + scheduling priority)...${NC}"
 chmod +x "$PROJECT_DIR/scripts/setup-rtaudio.sh"
 RT_TARGET_USER="$TARGET_USER" bash "$PROJECT_DIR/scripts/setup-rtaudio.sh" || \
   echo -e "${YELLOW}  Real-time audio tuning reported an issue — continuing install.${NC}"
