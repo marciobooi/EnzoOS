@@ -142,16 +142,17 @@ function FrequencyBandWide({ stations, onPlay }) {
     return Math.round(Math.max(0, Math.min(1, (clientX - rect.left) / rect.width)) * (stations.length - 1));
   }, [stations.length]);
 
+  // On this touchscreen, dragging across the dial makes Chromium's own touch-slop
+  // logic reclassify the gesture partway through — the browser delivers the END of
+  // a real drag as pointercancel, not pointerup (pointerup only shows up for a
+  // stationary tap with no movement). Treating cancel as "discard, don't play"
+  // (tried earlier) made every drag-to-scan gesture go silent after the first plain
+  // tap, since cancel is how this hardware actually reports "finger lifted" once
+  // there's been real movement. Both events represent the finger leaving the glass
+  // from the user's point of view, so both commit — the same handler for either.
   const handlePointerDown = (e) => { isDragging.current = true; bandRef.current?.setPointerCapture(e.pointerId); const idx = getIdxFromX(e.clientX); if (idx !== null) setNeedleIdx(idx); };
   const handlePointerMove = (e) => { if (!isDragging.current) return; const idx = getIdxFromX(e.clientX); if (idx !== null) setNeedleIdx(idx); };
-  // A genuine release commits to playing whatever the needle landed on.
-  const handlePointerUp   = () => { isDragging.current = false; if (needleIdx !== null && stations[needleIdx]) { setPlayedIdx(needleIdx); onPlay(stations[needleIdx]); } setNeedleIdx(null); };
-  // pointercancel means the browser aborted the gesture (touch-slop reclassifying it
-  // as a scroll, a second touch point, etc.) — NOT a deliberate release. Reusing
-  // handlePointerUp here used to fire onPlay on an aborted touch, which is exactly
-  // the "activates before I actually let go" behavior reported on the Waveshare
-  // touchscreen. Just drop the in-progress selection instead.
-  const handlePointerCancel = () => { isDragging.current = false; setNeedleIdx(null); };
+  const handlePointerEnd  = () => { isDragging.current = false; if (needleIdx !== null && stations[needleIdx]) { setPlayedIdx(needleIdx); onPlay(stations[needleIdx]); } setNeedleIdx(null); };
 
   const needlePct  = activeIdx !== null && stations.length > 1 ? (activeIdx / (stations.length - 1)) * 100 : null;
   const tooltipPct = needleIdx !== null && stations.length > 1 ? (needleIdx / (stations.length - 1)) * 100 : null;
@@ -176,7 +177,7 @@ function FrequencyBandWide({ stations, onPlay }) {
         </div>
         <div ref={bandRef} className="relative rounded-xl overflow-hidden cursor-pointer select-none touch-none"
           style={{ height: 70, background: S.surfaceLo, border: `1px solid ${S.border}`, boxShadow: `inset 0 2px 10px rgba(42,40,38,0.10), inset 0 -1px 4px rgba(42,40,38,0.05), ${cardShadow}` }}
-          onPointerDown={handlePointerDown} onPointerMove={handlePointerMove} onPointerUp={handlePointerUp} onPointerCancel={handlePointerCancel}>
+          onPointerDown={handlePointerDown} onPointerMove={handlePointerMove} onPointerUp={handlePointerEnd} onPointerCancel={handlePointerEnd}>
           <div className="absolute inset-0 pointer-events-none" style={{ backgroundImage: `repeating-linear-gradient(0deg, transparent, transparent 3px, rgba(42,40,38,0.03) 3px, rgba(42,40,38,0.03) 4px)`, zIndex: 3 }} />
           <div className="absolute inset-x-0 pointer-events-none" style={{ top: '50%', height: 1, background: `linear-gradient(90deg, transparent, ${S.borderHi} 10%, ${S.border} 50%, ${S.borderHi} 90%, transparent)`, transform: 'translateY(-50%)', zIndex: 1 }} />
           {needlePct !== null && <div className="absolute inset-y-0 pointer-events-none" style={{ left: `${needlePct}%`, width: 80, transform: 'translateX(-50%)', background: S.accent, opacity: 0.07, filter: 'blur(12px)' }} />}
