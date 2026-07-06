@@ -993,24 +993,21 @@ if [ -f "$CMDLINE_TXT" ] && grep -qE 'video=[^ ]*,rotate[0-9]+' "$CMDLINE_TXT"; 
   sed -i -E 's/(video=[^ ]*),rotate[0-9]+/\1/' "$CMDLINE_TXT"
 fi
 
-# ── udev rule — persistent touch rotation for Waveshare USB capacitive panel ─
-# The USB HID panel identifies itself with these names/VIDs on known firmware.
-# LIBINPUT_CALIBRATION_MATRIX applies 90° CW rotation so X/Y match landscape.
-# If touches are mirrored after install, try swapping to: 0 -1 1  1 0 0  0 0 1
+# ── Touch rotation: handled in scripts/xinitrc via `xinput map-to-output` ────
+# Earlier installer versions wrote a LIBINPUT_CALIBRATION_MATRIX udev rule
+# here to rotate touch coordinates. That was wrong on real hardware: the udev
+# matrix stacked on top of the xinitrc's own xinput matrix, and neither
+# accounted for the xrandr screen rotation (absolute touch devices don't
+# follow output rotation automatically) — touch was unusable. The xinitrc now
+# resets all matrices to identity and uses `xinput map-to-output`, which lets
+# X compute the correct transform for the active rotation. Remove the stale
+# udev rule from older installs so it can't reappear on device re-enumeration.
 UDEV_TOUCH="/etc/udev/rules.d/99-waveshare-touch.rules"
-cat > "$UDEV_TOUCH" <<'UDEVEOF'
-# Waveshare 11.9" HDMI LCD — USB capacitive touch rotation (90° CW landscape)
-# Matches by device name (varies by panel firmware revision)
-ATTRS{name}=="WaveShare*",  ENV{LIBINPUT_CALIBRATION_MATRIX}="0 1 0 -1 0 1 0 0 1"
-ATTRS{name}=="Waveshare*",  ENV{LIBINPUT_CALIBRATION_MATRIX}="0 1 0 -1 0 1 0 0 1"
-ATTRS{name}=="ILITEK*",     ENV{LIBINPUT_CALIBRATION_MATRIX}="0 1 0 -1 0 1 0 0 1"
-ATTRS{name}=="Goodix*",     ENV{LIBINPUT_CALIBRATION_MATRIX}="0 1 0 -1 0 1 0 0 1"
-# Fallback: match by USB Vendor ID 0x0EEF (eGalax, used on many Waveshare panels)
-ATTRS{idVendor}=="0eef",    ENV{LIBINPUT_CALIBRATION_MATRIX}="0 1 0 -1 0 1 0 0 1"
-UDEVEOF
-chmod 644 "$UDEV_TOUCH"
-udevadm control --reload-rules 2>/dev/null && udevadm trigger 2>/dev/null || true
-echo -e "${GREEN}  Touch udev rule written to $UDEV_TOUCH${NC}"
+if [ -f "$UDEV_TOUCH" ]; then
+  echo -e "${YELLOW}  Removing legacy touch-rotation udev rule (superseded by map-to-output in xinitrc)...${NC}"
+  rm -f "$UDEV_TOUCH"
+  udevadm control --reload-rules 2>/dev/null && udevadm trigger 2>/dev/null || true
+fi
 
 # ── Real-time audio tuning (threadirqs + rtirq + isolcpus + CPU affinity) ──────
 # Thread hardware IRQs (threadirqs), pin the audio IRQ above network/storage
