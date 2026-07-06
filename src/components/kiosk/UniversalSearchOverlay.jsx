@@ -61,7 +61,7 @@ function ResultCard({ result }) {
 }
 
 function PlaylistCard({ item }) {
-  const { title, subtitle, image, source, onPlay } = item;
+  const { title, subtitle, image, source, onPlay, heart } = item;
   const color = SOURCE_COLORS[source];
 
   return (
@@ -69,7 +69,11 @@ function PlaylistCard({ item }) {
       className="shrink-0 flex flex-col rounded-xl overflow-hidden active:opacity-70 transition-opacity text-left"
       style={{ width: 100, background: S.surface, border: `1px solid ${S.border}` }}>
       <div className="relative shrink-0" style={{ height: 68, overflow: 'hidden' }}>
-        {image
+        {heart
+          ? <div className="w-full h-full flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #450af5, #c4efd9)' }}>
+              <Heart className="h-6 w-6 fill-current" style={{ color: '#fff' }} />
+            </div>
+          : image
           ? <img src={image} alt="" className="w-full h-full object-cover"
               onError={e => { e.target.style.display = 'none'; }} />
           : <div className="w-full h-full flex items-center justify-center" style={{ background: S.border }}>
@@ -183,6 +187,16 @@ export default function UniversalSearchOverlay() {
     } catch (e) { reportError(e.message); }
   };
 
+  const playLikedSongs = async () => {
+    try {
+      const data = await api.getSavedTracks(token, 50);
+      const uris = (data?.items || []).map(i => i.track?.uri).filter(Boolean);
+      if (!uris.length) { reportError('Your Liked Songs is empty.'); return; }
+      await api.play(token, null, null, uris);
+      setIsSearchOpen(false);
+    } catch (e) { reportError(e.message); }
+  };
+
   const playRadio = async (station) => {
     try { await api.localPlayRadio(station.url_resolved || station.url, station.name, station.favicon); handleToggleSource('radio'); setIsSearchOpen(false); }
     catch (e) { reportError(e.message); }
@@ -234,6 +248,14 @@ export default function UniversalSearchOverlay() {
       key: 'smart-recently-added', source: 'local', title: 'Recently Added', subtitle: 'Auto-generated',
       image: null, onPlay: () => playSmartPlaylist('recently-added'),
     },
+    // "Liked Songs" is a library collection, not a real playlist — Spotify's
+    // /me/playlists endpoint never includes it, so it's fetched via a
+    // separate call (getSavedTracks) and played as an explicit URI list
+    // rather than a context_uri (it has no ordinary spotify:playlist: URI).
+    ...(token ? [{
+      key: 'liked-songs', source: 'spotify', title: 'Liked Songs', subtitle: null,
+      heart: true, onPlay: playLikedSongs,
+    }] : []),
     ...playlists.spotify.map(pl => ({
       key: `sp-${pl.id}`, source: 'spotify', title: pl.name,
       subtitle: pl.tracks?.total ? `${pl.tracks.total} tracks` : null,

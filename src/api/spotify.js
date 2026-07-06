@@ -169,6 +169,21 @@ export const spotifyApi = {
   },
 
   /**
+   * Fetches the user's saved ("Liked Songs") tracks. This is a library
+   * collection, not a real playlist — Spotify's /me/playlists endpoint has
+   * never included it, by design, which is why it's fetched separately here.
+   * Untouched by the Feb 2026 API changes (those only renamed the *mutating*
+   * save/remove/contains calls to /me/library; GET /me/tracks for listing is
+   * unaffected — verified live against the real API).
+   */
+  async getSavedTracks(token, limit = 50) {
+    const response = await fetch(`${SPOTIFY_API_URL}/me/tracks?limit=${limit}`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    return handleResponse(response);
+  },
+
+  /**
    * Fetches tracks from a specific playlist. Spotify's Feb 2026 API changes
    * renamed this endpoint from /playlists/{id}/tracks to /playlists/{id}/items
    * — each returned entry's `track` field is now called `item` too (see
