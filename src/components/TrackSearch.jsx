@@ -206,7 +206,7 @@ export default function TrackSearch({ token, onPlayTrack, onPlayContext, isDrawe
     setIsLoading(true);
     try {
       const data = await api.getPlaylistTracks(token, pl.id, 50);
-      setDrilldownTracks((data?.items || []).map(i => i.track).filter(Boolean));
+      setDrilldownTracks((data?.items || []).map(i => i.item).filter(Boolean));
       setDrilldownTitle(pl.name);
       setDrilldownImage(pl.images?.[0]?.url || '');
       setDrilldownUri(pl.uri);

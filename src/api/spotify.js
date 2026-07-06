@@ -2,11 +2,17 @@
 import { SPOTIFY_API_URL, handleResponse } from './_client';
 
 export const spotifyApi = {
-  /** Save a track to the user's Spotify library (like-sync for favorites). */
+  /**
+   * Save a track to the user's Spotify library (like-sync for favorites).
+   * Spotify's Feb 2026 API changes retired the track-specific /me/tracks
+   * endpoint in favor of a unified /me/library one that takes full URIs
+   * (not bare IDs) in a JSON body instead of a query string.
+   */
   async saveTrack(token, trackId) {
-    const response = await fetch(`${SPOTIFY_API_URL}/me/tracks?ids=${trackId}`, {
+    const response = await fetch(`${SPOTIFY_API_URL}/me/library`, {
       method: 'PUT',
-      headers: { 'Authorization': `Bearer ${token}` },
+      headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ uris: [`spotify:track:${trackId}`] }),
     });
     if (!response.ok) throw new Error(`Spotify save failed (${response.status})`);
     return true;
@@ -14,9 +20,10 @@ export const spotifyApi = {
 
   /** Remove a track from the user's Spotify library. */
   async removeSavedTrack(token, trackId) {
-    const response = await fetch(`${SPOTIFY_API_URL}/me/tracks?ids=${trackId}`, {
+    const response = await fetch(`${SPOTIFY_API_URL}/me/library`, {
       method: 'DELETE',
-      headers: { 'Authorization': `Bearer ${token}` },
+      headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ uris: [`spotify:track:${trackId}`] }),
     });
     if (!response.ok) throw new Error(`Spotify unsave failed (${response.status})`);
     return true;
@@ -155,9 +162,14 @@ export const spotifyApi = {
     return handleResponse(response);
   },
 
-  /** Fetches tracks from a specific playlist. */
+  /**
+   * Fetches tracks from a specific playlist. Spotify's Feb 2026 API changes
+   * renamed this endpoint from /playlists/{id}/tracks to /playlists/{id}/items
+   * — each returned entry's `track` field is now called `item` too (see
+   * callers of this function).
+   */
   async getPlaylistTracks(token, playlistId, limit = 50) {
-    const response = await fetch(`${SPOTIFY_API_URL}/playlists/${playlistId}/tracks?limit=${limit}`, {
+    const response = await fetch(`${SPOTIFY_API_URL}/playlists/${playlistId}/items?limit=${limit}`, {
       headers: { 'Authorization': `Bearer ${token}` }
     });
     return handleResponse(response);
