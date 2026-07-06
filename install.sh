@@ -124,6 +124,23 @@ SPOTIFY_CLIENT_ID="${SPOTIFY_CLIENT_ID:-71498cccddf44bbd9696e5373bd44031}"
 
 # 4. System Updates & Prerequisites
 echo -e "\n${GREEN}[2/7] Updating system package repositories...${NC}"
+
+# Ubuntu's official Raspberry Pi 4 image ships /etc/apt/sources.list.d/ubuntu.sources
+# with ONLY the `noble` and `noble-security` suites enabled — `noble-updates` and
+# `noble-backports` are missing entirely. This is invisible until a package's
+# dependency can only be satisfied by a version that lives in noble-updates:
+# confirmed live (2026-07) as `dpkg-dev : Depends: bzip2 but it is not installable`
+# on a fresh Pi 4 flash — bzip2 itself has a noble/main candidate, but not one
+# recent enough to satisfy dpkg-dev's constraint. Since build-essential (needed
+# below) pulls in dpkg-dev, every from-scratch real-hardware install hits this
+# same wall. Only touches the file if it still has the stock single-suite line
+# (idempotent / no-op on re-run or on a sources file that's already been edited).
+UBUNTU_SOURCES="/etc/apt/sources.list.d/ubuntu.sources"
+if [ -f "$UBUNTU_SOURCES" ] && grep -q '^Suites: noble$' "$UBUNTU_SOURCES"; then
+  echo -e "${YELLOW}Enabling noble-updates/noble-backports (missing from the stock Pi image)...${NC}"
+  sed -i 's/^Suites: noble$/Suites: noble noble-updates noble-backports/' "$UBUNTU_SOURCES"
+fi
+
 stop_apt_daemons
 apt_install update
 apt_install install -y ca-certificates curl gnupg git build-essential
