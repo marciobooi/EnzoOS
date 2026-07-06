@@ -11,7 +11,9 @@
 /usr/local/bin/kiosk-wake-monitor.sh &
 
 # Hide mouse cursor after 0.5s of inactivity
-unclutter -idle 0.5 -root &
+# TEMP: disabled during VM debugging so the cursor stays visible on-screen —
+# re-enable (uncomment) once done.
+# unclutter -idle 0.5 -root &
 
 # ── Resolution setup (skip gracefully on VMs / unsupported displays) ─────────
 # Waveshare 11.9" HDMI LCD: native portrait 320×1480, used in landscape 1480×320
