@@ -643,11 +643,18 @@ export default function Kiosk() {
       // Skip if window dimensions haven't been reported yet (Chromium startup race)
       if (window.innerWidth === 0 || window.innerHeight === 0) return;
 
-      // Calculate target scale based on 1400x320 design dimensions
-      const containerWidth = window.innerWidth - 48;
-      const containerHeight = window.innerHeight - 48;
+      // Calculate target scale based on the 1480x320 design canvas, which
+      // matches the Waveshare panel's actual driven resolution exactly (both
+      // the real hardware's rotated mode and the QEMU dev VM's custom
+      // modeline are 1480x320). No margin is subtracted here: on the target
+      // hardware this makes scale resolve to exactly 1 with zero letterboxing.
+      // The previous 1400x320 canvas plus a 48px margin was narrower than the
+      // real panel's aspect ratio, so scale ended up height-bound and left
+      // large empty gutters on the left/right (visually confirmed on real Pi 4).
+      const containerWidth = window.innerWidth;
+      const containerHeight = window.innerHeight;
 
-      const scaleX = containerWidth / 1400;
+      const scaleX = containerWidth / 1480;
       const scaleY = containerHeight / 320;
 
       // Clamp to a safe minimum so we never get a zero or negative scale
@@ -1335,7 +1342,7 @@ export default function Kiosk() {
     <div
       data-theme={theme}
       data-active-theme={activeTheme}
-      className="w-screen h-screen flex items-center justify-center relative overflow-hidden p-6 select-none font-sans"
+      className="w-screen h-screen flex items-center justify-center relative overflow-hidden select-none font-sans"
       style={{ '--album-art-url': `url(${albumImage})` }}
     >
       
@@ -1355,7 +1362,7 @@ export default function Kiosk() {
           '--scale-kiosk': scale,
           transform: `scale(${scale})`,
           transformOrigin: 'center center',
-          width: '1400px',
+          width: '1480px',
           height: '320px',
           display: 'flex',
           alignItems: 'center',

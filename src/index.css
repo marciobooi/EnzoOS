@@ -282,7 +282,7 @@ div[data-theme="ruby"] *::selection {
 }
 
 .music-player {
-  width: 1400px;
+  width: 1480px;
   height: 320px;
   display: grid;
   grid-template-columns: 240px minmax(0, 1fr) 124px;
