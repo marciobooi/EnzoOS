@@ -7,12 +7,28 @@ import { emit } from './event-service.js';
 
 const router = express.Router();
 
-// Build the redirect URI for the current request.
-// HTTPS requests (remote browsers on LAN) can use any host — Spotify accepts them.
-// HTTP requests must use 127.0.0.1 (the only non-HTTPS host Spotify allows).
+// Build the redirect URI for the current request, per Spotify's current
+// requirements (developer.spotify.com/documentation/web-api/concepts/redirect_uri)
+// and RFC 8252 §7.3 (OAuth for native apps): HTTPS everywhere except loopback,
+// and loopback must use the literal IP — Spotify rejects "localhost" outright,
+// since a hosts-file edit or DNS spoof could remap it, whereas 127.0.0.1 cannot.
+//
+// The HTTPS/remote case is deliberately NOT built from the incoming request's
+// Host header. That header can be a raw LAN IP (mDNS resolution is flaky on
+// plenty of phones) or, in dev, an IP that changes on every VM reinstall — and
+// Spotify's redirect URI allowlist requires an exact string match. Deriving it
+// from the request meant every new IP/host a device happened to use needed its
+// own manual dashboard entry, which is exactly the "redirect_uri: not matching
+// configuration" wall a phone hit. install.sh hardcodes the system hostname
+// (`hostnamectl set-hostname resonance`) on every install, so `resonance.local`
+// is always a stable, resolvable value — exactly one HTTPS redirect URI ever
+// needs to be registered with Spotify, independent of the LAN IP or which host
+// a given device used to reach the box.
+const REMOTE_REDIRECT_HOST = `resonance.local:${process.env.HTTPS_PORT || 5001}`;
+
 function getRedirectUri(req) {
   if (req.secure) {
-    return `https://${req.get('host')}/auth/spotify/callback`;
+    return `https://${REMOTE_REDIRECT_HOST}/auth/spotify/callback`;
   }
   const port = (req.get('host') || '').split(':')[1] || '5000';
   return `http://127.0.0.1:${port}/auth/spotify/callback`;

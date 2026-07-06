@@ -88,7 +88,13 @@ app.use((req, res, next) => {
   const hasBearer = /^Bearer\s+/i.test(req.headers.authorization || '');
   if (hasCookie || hasBearer) return next();
 
-  res.redirect(`https://${req.hostname}:${HTTPS_PORT}/remote`);
+  // Preserve the original path + query string when just moving a request
+  // from plain HTTP to HTTPS — a scanned QR code's `?qr=<token>` must survive
+  // this hop or the pairing flow silently loses the token. /kiosk is the one
+  // exception: it always lands on /remote instead, since Kiosk has no
+  // pairing gate at all and re-serving it on the new port changes nothing.
+  const target = onKioskPath ? '/remote' : req.originalUrl;
+  res.redirect(`https://${req.hostname}:${HTTPS_PORT}${target}`);
 });
 
 // Serve static assets from Vite's production build folder

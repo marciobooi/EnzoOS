@@ -159,8 +159,21 @@ router.post('/client-viewport-debug', (req, res) => {
   res.json({ success: true });
 });
 
-// GET /api/system/lan-url — returns the LAN-accessible remote URL for QR code generation
+// GET /api/system/lan-url — returns the LAN-accessible remote URL for QR code
+// generation. Prefers the fixed HTTPS host (install.sh hardcodes the system
+// hostname to "resonance" on every install, so resonance.local is always
+// resolvable) over a raw LAN IP on plain HTTP — the IP changes across
+// reinstalls/DHCP renewals, and the plain-HTTP kiosk port requires an extra
+// redirect hop (server/index.js's loopback guard) to reach the actual paired
+// remote. Falls back to the old IP:port scheme only if TLS certs aren't
+// generated yet (pre-install.sh-completion edge case).
+const CERT_PATH = path.join(__dirname, '../certs/cert.pem');
+const KEY_PATH  = path.join(__dirname, '../certs/key.pem');
 router.get('/lan-url', (req, res) => {
+  if (fs.existsSync(CERT_PATH) && fs.existsSync(KEY_PATH)) {
+    const httpsPort = process.env.HTTPS_PORT || 5001;
+    return res.json({ url: `https://resonance.local:${httpsPort}/remote`, host: 'resonance.local', port: httpsPort });
+  }
   const port = process.env.PORT || 5000;
   const ifaces = os.networkInterfaces();
   const lanIp = Object.values(ifaces)
