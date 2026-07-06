@@ -968,6 +968,25 @@ else
   echo -e "${YELLOW}  /boot/firmware/config.txt not found — skipping HDMI config (QEMU/non-Pi).${NC}"
 fi
 
+# ── Strip a stray rotate= from a pre-existing kernel cmdline video= token ────
+# Raspberry Pi Imager's own OS-customization step can pre-bake a
+# `video=HDMI-A-1:<res>@<hz>,rotateNNN` token into cmdline.txt independent of
+# anything this installer writes. Confirmed live on a real Pi 4 + this exact
+# Waveshare panel: X/xrandr correctly reports the panel's own native
+# 1480x320 landscape mode active with a "normal" (unrotated) state, but the
+# kernel DRM layer was *also* rotating the physical scanout 270° underneath
+# that — two layers fighting, appearing as a fully vertical screen. Waveshare's
+# own docs describe this panel as portrait by default needing "software
+# config for landscape", with no specific rotation documented — so a leftover
+# rotate token here is very likely wrong rather than intentional. Only strips
+# the rotate suffix (keeps the resolution/refresh the token already requests);
+# no-op if cmdline.txt has no video= token at all (most installs don't).
+CMDLINE_TXT="/boot/firmware/cmdline.txt"
+if [ -f "$CMDLINE_TXT" ] && grep -qE 'video=[^ ]*,rotate[0-9]+' "$CMDLINE_TXT"; then
+  echo -e "${YELLOW}  Removing stray rotate=NNN from cmdline.txt's video= parameter (conflicts with the landscape mode above)...${NC}"
+  sed -i -E 's/(video=[^ ]*),rotate[0-9]+/\1/' "$CMDLINE_TXT"
+fi
+
 # ── udev rule — persistent touch rotation for Waveshare USB capacitive panel ─
 # The USB HID panel identifies itself with these names/VIDs on known firmware.
 # LIBINPUT_CALIBRATION_MATRIX applies 90° CW rotation so X/Y match landscape.
