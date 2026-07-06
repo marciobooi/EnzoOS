@@ -1020,6 +1020,17 @@ chmod +x "$PROJECT_DIR/scripts/setup-rtaudio.sh"
 RT_TARGET_USER="$TARGET_USER" bash "$PROJECT_DIR/scripts/setup-rtaudio.sh" || \
   echo -e "${YELLOW}  Real-time audio tuning reported an issue — continuing install.${NC}"
 
+# ── Wi-Fi under NetworkManager (kiosk network panel depends on nmcli) ──────────
+# Stock Ubuntu Server images run Wi-Fi through netplan → systemd-networkd,
+# leaving the device "unmanaged" for NetworkManager — every nmcli call the
+# app's network panel makes then returns nothing (no scan results, no current
+# connection). Re-renders just the wifis: section through NM, preserving the
+# imaged SSID/PSK. Idempotent — no-op once migrated or without Wi-Fi hardware.
+echo -e "\n${GREEN}[5c2/7] Handing Wi-Fi to NetworkManager (app network panel)...${NC}"
+chmod +x "$PROJECT_DIR/scripts/setup-wifi-nm.sh"
+bash "$PROJECT_DIR/scripts/setup-wifi-nm.sh" || \
+  echo -e "${YELLOW}  Wi-Fi manager migration reported an issue — continuing install.${NC}"
+
 # ── File system & storage silence (noatime,nodiratime + log2ram) ───────────────
 # Stop read-timestamp writes to flash on every track load and route /var/log
 # into a RAM disk so playback never triggers SD/SSD writes. Idempotent helper —

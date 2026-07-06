@@ -113,7 +113,15 @@ export async function isWsAuthorized(request) {
 }
 
 // ─── QR token store ────────────────────────────────────────────────────────────
-// In-memory map: token → expiresAt (ms). Single-use; auto-pruned every minute.
+// Map: token → expiresAt (ms). Single-use; auto-pruned every minute.
+//
+// DB-backed (write-through cache over the settings table): these used to be
+// purely in-memory, which meant every server restart — OTA update, deploy,
+// crash recovery — silently invalidated whatever QR/pairing code the kiosk
+// was displaying at that moment. The user then scanned a perfectly
+// fresh-looking code and got "invalid or expired" (hit live on the real Pi
+// after a deploy restart). Tokens are only 10-minute/single-use so the
+// store stays tiny; persisting it makes pairing indifferent to restarts.
 
 const qrTokens = new Map();
 // 6-digit fallback code → full token. iOS home-screen PWAs use a data store
@@ -128,10 +136,38 @@ const qrTokens = new Map();
 // plain fetch() from within its own already-open page.
 const qrCodes = new Map();
 
+let qrStoreLoaded = false;
+
+async function loadQrStore() {
+  if (qrStoreLoaded) return;
+  qrStoreLoaded = true;
+  try {
+    const raw = await getSetting('qr_token_store');
+    if (!raw) return;
+    const { tokens = {}, codes = {} } = JSON.parse(raw);
+    const now = Date.now();
+    for (const [t, exp] of Object.entries(tokens)) if (exp > now) qrTokens.set(t, exp);
+    for (const [code, t] of Object.entries(codes)) if (qrTokens.has(t)) qrCodes.set(code, t);
+  } catch (err) {
+    console.warn('[Auth] Could not load QR token store:', err.message);
+  }
+}
+
+function persistQrStore() {
+  const payload = JSON.stringify({
+    tokens: Object.fromEntries(qrTokens),
+    codes: Object.fromEntries(qrCodes),
+  });
+  setSetting('qr_token_store', payload).catch(err =>
+    console.warn('[Auth] Could not persist QR token store:', err.message));
+}
+
 setInterval(() => {
   const now = Date.now();
-  for (const [t, exp] of qrTokens) if (exp <= now) qrTokens.delete(t);
-  for (const [code, t] of qrCodes) if (!qrTokens.has(t)) qrCodes.delete(code);
+  let changed = false;
+  for (const [t, exp] of qrTokens) if (exp <= now) { qrTokens.delete(t); changed = true; }
+  for (const [code, t] of qrCodes) if (!qrTokens.has(t)) { qrCodes.delete(code); changed = true; }
+  if (changed) persistQrStore();
 }, 60_000);
 
 /**
@@ -141,12 +177,14 @@ setInterval(() => {
  * Returns { token, code, expiresAt, ttlSeconds } — caller appends token to
  * the remote URL and displays code alongside the QR image.
  */
-export function generateQrToken() {
+export async function generateQrToken() {
+  await loadQrStore();
   const token = crypto.randomBytes(24).toString('hex');
   const code = String(crypto.randomInt(100000, 1000000));
   const expiresAt = Date.now() + QR_TTL_MS;
   qrTokens.set(token, expiresAt);
   qrCodes.set(code, token);
+  persistQrStore();
   return { token, code, expiresAt, ttlSeconds: QR_TTL_MS / 1000 };
 }
 
@@ -156,12 +194,14 @@ export function generateQrToken() {
  */
 export async function redeemQrToken(qrToken) {
   if (!qrToken || typeof qrToken !== 'string') return null;
+  await loadQrStore();
   const exp = qrTokens.get(qrToken);
   if (!exp || Date.now() > exp) {
-    qrTokens.delete(qrToken);
+    if (qrTokens.delete(qrToken)) persistQrStore();
     return null;
   }
   qrTokens.delete(qrToken); // one-time use
+  persistQrStore();
   return issueToken();
 }
 
@@ -172,8 +212,9 @@ export async function redeemQrToken(qrToken) {
  */
 export async function redeemPairCode(code) {
   if (!code || typeof code !== 'string') return null;
+  await loadQrStore();
   const token = qrCodes.get(code);
   if (!token) return null;
   qrCodes.delete(code);
-  return redeemQrToken(token);
+  return redeemQrToken(token); // persists via redeemQrToken
 }

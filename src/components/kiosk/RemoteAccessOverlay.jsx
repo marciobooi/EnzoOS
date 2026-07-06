@@ -47,7 +47,12 @@ export default function RemoteAccessOverlay() {
         setSecondsLeft(Math.floor(d.ttlSeconds));
         // Refresh 30 s before expiry so the QR is always valid while visible.
         refreshTimeout = setTimeout(doFetch, Math.max(0, d.ttlSeconds - 30) * 1000);
-      } catch {}
+      } catch {
+        // Server unreachable (e.g. mid-restart during an OTA update). Without
+        // this retry the refresh chain died here permanently and the overlay
+        // kept showing a stale QR that would never redeem.
+        if (alive) refreshTimeout = setTimeout(doFetch, 5000);
+      }
     };
 
     doFetch();

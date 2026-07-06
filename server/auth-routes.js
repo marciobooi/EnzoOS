@@ -6,9 +6,13 @@ const router = express.Router();
 
 // GET /api/auth/qr-token — kiosk only (loopback-trusted origin).
 // Returns a fresh short-lived token so the kiosk can build a QR URL.
-router.get('/qr-token', (req, res) => {
+router.get('/qr-token', async (req, res) => {
   if (!isLoopback(req)) return sendError(res, forbidden('kiosk only'));
-  res.json(generateQrToken());
+  try {
+    res.json(await generateQrToken());
+  } catch (err) {
+    sendError(res, err);
+  }
 });
 
 // POST /api/auth/qr-redeem — public (the remote page calls this before it has a token).
