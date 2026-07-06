@@ -146,11 +146,21 @@ echo "[Resonance] Using browser: $CHROMIUM_BIN"
 export DBUS_SESSION_BUS_ADDRESS=autolaunch:
 
 # ── Kiosk restart loop ────────────────────────────────────────────────────────
+# --use-gl=angle --use-angle=gl-egl: without this, Chromium's default ANGLE
+# backend selection fails to create a GL context on the Pi's vc4/v3d driver
+# ("Could not create a backing OpenGL context" in the log) and silently falls
+# back to software rendering (SwiftShader) — functional but CPU-expensive,
+# and the main cause of sluggish/laggy touch response on real hardware
+# (confirmed live: without this flag the GPU process opens no /dev/dri file
+# descriptors at all; with it, it holds open handles to card0 + renderD128
+# and loads libEGL_mesa.so instead of software GL).
 while true; do
   "$CHROMIUM_BIN" \
     --kiosk \
     --app=http://localhost:5000/kiosk \
     --window-size=1480,320 \
+    --use-gl=angle \
+    --use-angle=gl-egl \
     --autoplay-policy=no-user-gesture-required \
     --touch-events=enabled \
     --user-data-dir="$HOME/snap/chromium/common/kiosk-profile" \

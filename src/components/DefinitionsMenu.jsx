@@ -5,6 +5,7 @@ import { S } from '../styles/stone';
 import { useI18n } from '../i18n';
 
 export default function DefinitionsMenu({
+  isMenuOpen,
   token,
   handleLogout,
   theme,
@@ -54,8 +55,14 @@ export default function DefinitionsMenu({
     checkInitialUpdates();
   }, [setUpdateStatus]);
 
-  // Poll system health metrics
+  // Poll system health metrics — only while this panel is actually visible.
+  // DefinitionsMenu stays mounted at all times (SettingsMenuOverlay just
+  // toggles opacity/scale for the fade transition), so without this gate the
+  // health endpoint got hit every 5s for the kiosk's entire uptime even
+  // though the numbers are only ever looked at while the panel is open.
   useEffect(() => {
+    if (!isMenuOpen) return;
+
     const fetchHealth = async () => {
       try {
         const data = await api.getSystemHealth();
@@ -74,7 +81,7 @@ export default function DefinitionsMenu({
     fetchHealth();
     const interval = setInterval(fetchHealth, 5000);
     return () => clearInterval(interval);
-  }, []);
+  }, [isMenuOpen]);
 
   // Theme Cycler Logic
   const themesList = ['amber', 'emerald', 'cyan', 'amethyst', 'ruby'];

@@ -74,6 +74,7 @@ export default function SettingsMenuOverlay() {
       {/* Horizontally Scrollable Content */}
       <div className="flex-grow overflow-x-auto overflow-y-hidden stone-scrollbar">
         <DefinitionsMenu key={animKey}
+          isMenuOpen={isMenuOpen}
           token={token}
           handleLogout={handleLogout}
           devices={devices}
