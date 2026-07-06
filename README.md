@@ -753,6 +753,7 @@ TIDAL_CLIENT_SECRET=…       # public tidalapi TV-client secret (see .env.examp
 | `scripts/setup-ram-preload.sh` | RAM preloading — `mlockall` shim + `LimitMEMLOCK` drop-ins + PipeWire mlock to keep audio daemons resident in RAM (idempotent; run by installer and OTA update) |
 | `scripts/setup-service.sh` | Registers the backend as a native `resonance-api` systemd unit (replaces PM2); migrates an existing PM2 install on re-run |
 | `scripts/verify-install.sh` | Post-install verification — reports active/pending/skipped/failed state of every install step and optimization (`npm run verify`) |
+| `scripts/cleanup-build-deps.sh` | Optional, run once post-install — removes the `-dev` headers/build toolchain (autoconf, meson, pkg-config, ...) used only to compile NQPTP/shairport-sync/upmpdcli from source; reclaims disk space on real hardware. Deliberately keeps `build-essential`/`libsqlite3-dev` (needed if a future OTA `npm install` has to rebuild a native Node addon) |
 | `.github/workflows/ci.yml` | CI — build, server `node --check`, script `bash -n`, advisory lint + shellcheck |
 | `scripts/resonance-mlockall.c` | `LD_PRELOAD` shim source — `mlockall(MCL_CURRENT\|MCL_FUTURE)` constructor, compiled to `/usr/local/lib/resonance-mlockall.so` at install |
 | `scripts/kiosk-power.sh` | Display standby: `vcgencmd` on Pi, `xset dpms` on QEMU |
