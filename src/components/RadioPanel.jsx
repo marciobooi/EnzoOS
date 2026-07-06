@@ -175,8 +175,13 @@ function FrequencyBandWide({ stations, onPlay }) {
             <span key={l} className="font-mono" style={{ fontSize: 8, color: S.label, letterSpacing: '0.04em' }}>{l} MHz</span>
           ))}
         </div>
-        <div ref={bandRef} className="relative rounded-xl overflow-hidden cursor-pointer select-none touch-none"
-          style={{ height: 70, background: S.surfaceLo, border: `1px solid ${S.border}`, boxShadow: `inset 0 2px 10px rgba(42,40,38,0.10), inset 0 -1px 4px rgba(42,40,38,0.05), ${cardShadow}` }}
+        {/* touchAction must be inline: the un-layered `.cursor-pointer { touch-action:
+            manipulation }` rule at the end of index.css beats Tailwind's layered
+            `touch-none` utility (cascade layers lose to un-layered CSS), and
+            `manipulation` lets Chromium claim the drag as a pan gesture — it fired
+            pointercancel one station into every scan, killing the drag. */}
+        <div ref={bandRef} className="relative rounded-xl overflow-hidden cursor-pointer select-none"
+          style={{ touchAction: 'none', height: 70, background: S.surfaceLo, border: `1px solid ${S.border}`, boxShadow: `inset 0 2px 10px rgba(42,40,38,0.10), inset 0 -1px 4px rgba(42,40,38,0.05), ${cardShadow}` }}
           onPointerDown={handlePointerDown} onPointerMove={handlePointerMove} onPointerUp={handlePointerEnd} onPointerCancel={handlePointerEnd}>
           <div className="absolute inset-0 pointer-events-none" style={{ backgroundImage: `repeating-linear-gradient(0deg, transparent, transparent 3px, rgba(42,40,38,0.03) 3px, rgba(42,40,38,0.03) 4px)`, zIndex: 3 }} />
           <div className="absolute inset-x-0 pointer-events-none" style={{ top: '50%', height: 1, background: `linear-gradient(90deg, transparent, ${S.borderHi} 10%, ${S.border} 50%, ${S.borderHi} 90%, transparent)`, transform: 'translateY(-50%)', zIndex: 1 }} />
