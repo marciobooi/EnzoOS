@@ -27,7 +27,12 @@ const COUNTRIES = [
   { code: 'US', name: 'United States',  flag: '🇺🇸' },
 ];
 
-// ── Station avatar — favicon with Stone fallback ───────────────────────────
+// ── Station avatar — favicon with initials-on-gradient fallback ───────────
+// No favicon (or a broken one, e.g. a station's own malformed image URL —
+// seen live from radio-browser.info/Bauer Radio data) gets the station's
+// initials on a dark gradient instead of an empty tile.
+const STATION_GRADIENT = 'linear-gradient(135deg, #121317, #323B42)';
+
 function StationAvatar({ station, size = 38 }) {
   const [failed, setFailed] = useState(false);
   const initials = station.name.trim().split(/\s+/).slice(0, 2).map(w => w[0]).join('').toUpperCase() || '??';
@@ -42,9 +47,11 @@ function StationAvatar({ station, size = 38 }) {
       {station.favicon && !failed
         ? <img src={station.favicon} alt="" className="w-full h-full object-cover"
             onError={() => setFailed(true)} />
-        : <span className="font-extrabold tracking-tighter" style={{ fontSize: Math.max(9, size * 0.3), color: S.accent }}>
-            {initials}
-          </span>
+        : <div className="w-full h-full flex items-center justify-center" style={{ background: STATION_GRADIENT }}>
+            <span className="font-extrabold tracking-tighter" style={{ fontSize: Math.max(9, size * 0.3), color: '#fff' }}>
+              {initials}
+            </span>
+          </div>
       }
     </div>
   );

@@ -1,5 +1,5 @@
 import { useContext, useState, useEffect, useRef } from 'react';
-import { Search, X, Disc3, Music2, Radio, Heart, ListMusic } from 'lucide-react';
+import { Search, X, Disc3, Music2, Heart, ListMusic } from 'lucide-react';
 import { Kk } from './KioskContext';
 import { S } from '../../styles/stone';
 import { api } from '../../api';
@@ -21,22 +21,34 @@ const SOURCE_LABELS = {
 };
 const PILLS = ['all', 'spotify', 'local', 'tidal', 'qobuz', 'radio'];
 
+// Radio stations with no favicon (or a broken one — seen live from
+// radio-browser.info/Bauer Radio data returning malformed image URLs) get
+// their initials on a dark gradient instead of a generic icon/empty tile.
+const STATION_GRADIENT = 'linear-gradient(135deg, #121317, #323B42)';
+const stationInitials = (name) =>
+  (name || '').trim().split(/\s+/).slice(0, 2).map(w => w[0]).join('').toUpperCase() || '??';
+
 function ResultCard({ result }) {
   const { title, artist, image, source, onPlay, isRadio, isFav, onToggleFav } = result;
   const color = SOURCE_COLORS[source];
+  const [imgFailed, setImgFailed] = useState(false);
 
   return (
     <div className="shrink-0 flex flex-col rounded-xl overflow-hidden"
       style={{ width: 128, background: S.surface, border: `1px solid ${S.border}` }}>
       <button onClick={onPlay} className="relative active:opacity-70 transition-opacity shrink-0"
         style={{ height: 88, overflow: 'hidden' }}>
-        {image
+        {image && !imgFailed
           ? <img src={image} alt="" className="w-full h-full object-cover"
-              onError={e => { e.target.style.display = 'none'; }} />
+              onError={() => setImgFailed(true)} />
+          : isRadio
+          ? <div className="w-full h-full flex items-center justify-center" style={{ background: STATION_GRADIENT }}>
+              <span className="font-extrabold tracking-tighter text-lg" style={{ color: '#fff' }}>
+                {stationInitials(title)}
+              </span>
+            </div>
           : <div className="w-full h-full flex items-center justify-center" style={{ background: S.border }}>
-              {isRadio
-                ? <Radio className="h-6 w-6" style={{ color: S.muted }} />
-                : <Music2 className="h-6 w-6" style={{ color: S.muted }} />}
+              <Music2 className="h-6 w-6" style={{ color: S.muted }} />
             </div>}
         <span className="absolute top-1 right-1 px-1.5 py-0.5 rounded text-[8px] font-bold uppercase"
           style={{ background: color + '33', color, backdropFilter: 'blur(4px)' }}>
@@ -63,6 +75,7 @@ function ResultCard({ result }) {
 function PlaylistCard({ item }) {
   const { title, subtitle, image, source, onPlay, heart } = item;
   const color = SOURCE_COLORS[source];
+  const [imgFailed, setImgFailed] = useState(false);
 
   return (
     <button onClick={onPlay}
@@ -73,9 +86,15 @@ function PlaylistCard({ item }) {
           ? <div className="w-full h-full flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #450af5, #c4efd9)' }}>
               <Heart className="h-6 w-6 fill-current" style={{ color: '#fff' }} />
             </div>
-          : image
+          : image && !imgFailed
           ? <img src={image} alt="" className="w-full h-full object-cover"
-              onError={e => { e.target.style.display = 'none'; }} />
+              onError={() => setImgFailed(true)} />
+          : source === 'radio'
+          ? <div className="w-full h-full flex items-center justify-center" style={{ background: STATION_GRADIENT }}>
+              <span className="font-extrabold tracking-tighter text-base" style={{ color: '#fff' }}>
+                {stationInitials(title)}
+              </span>
+            </div>
           : <div className="w-full h-full flex items-center justify-center" style={{ background: S.border }}>
               <ListMusic className="h-5 w-5" style={{ color: S.muted }} />
             </div>}

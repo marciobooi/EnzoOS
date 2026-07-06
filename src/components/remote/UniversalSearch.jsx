@@ -14,6 +14,13 @@ const GENRES = [
   { id: 'ambient',     label: 'Ambient',             bg: '#0a0e2a', accent: '#60a5fa' },
 ];
 
+// Radio stations with no favicon (or a broken one — seen live from
+// radio-browser.info/Bauer Radio data returning malformed image URLs) get
+// their initials on a dark gradient instead of a generic icon/empty tile.
+const STATION_GRADIENT = 'linear-gradient(135deg, #121317, #323B42)';
+const stationInitials = (name) =>
+  (name || '').trim().split(/\s+/).slice(0, 2).map(w => w[0]).join('').toUpperCase() || '??';
+
 function Section({ C, label, icon, children }) {
   return (
     <div className="flex flex-col gap-1">
@@ -48,13 +55,16 @@ function TrackRow({ C, title, artist, image, onPlay, divider }) {
 
 function StationRow({ C, station, onPlay, isFav, onToggleFav, divider }) {
   const name = station.name?.length > 30 ? station.name.slice(0, 28) + '…' : station.name;
+  const [imgFailed, setImgFailed] = useState(false);
   return (
     <div className="flex items-center gap-3 px-4 py-3 cursor-pointer"
       style={{ borderTop: divider ? `0.5px solid ${C.outline}` : 'none' }}>
-      {station.favicon
-        ? <img src={station.favicon} alt="" className="w-10 h-10 rounded-lg shrink-0 object-cover" onError={e => { e.target.style.display = 'none'; }} />
-        : <div className="w-10 h-10 rounded-lg shrink-0 flex items-center justify-center" style={{ background: C.container }}>
-            <Radio className="h-4 w-4" style={{ color: C.text4 }} />
+      {station.favicon && !imgFailed
+        ? <img src={station.favicon} alt="" className="w-10 h-10 rounded-lg shrink-0 object-cover" onError={() => setImgFailed(true)} />
+        : <div className="w-10 h-10 rounded-lg shrink-0 flex items-center justify-center" style={{ background: STATION_GRADIENT }}>
+            <span className="font-extrabold tracking-tighter text-[11px]" style={{ color: '#fff' }}>
+              {stationInitials(station.name)}
+            </span>
           </div>}
       <button onClick={onPlay} className="flex-1 min-w-0 text-left active:opacity-60 transition-opacity">
         <p className="text-[14px] font-medium truncate" style={{ color: C.text1 }}>{name}</p>
@@ -69,6 +79,7 @@ function StationRow({ C, station, onPlay, isFav, onToggleFav, divider }) {
 
 function PlaylistCard({ C, item }) {
   const { title, subtitle, image, color, label, onPlay, heart } = item;
+  const [imgFailed, setImgFailed] = useState(false);
   return (
     <button onClick={onPlay}
       className="shrink-0 flex flex-col rounded-2xl overflow-hidden active:opacity-60 transition-opacity text-left"
@@ -78,8 +89,14 @@ function PlaylistCard({ C, item }) {
           ? <div className="w-full h-full flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #450af5, #c4efd9)' }}>
               <Heart className="h-6 w-6 fill-current" style={{ color: '#fff' }} />
             </div>
-          : image
-          ? <img src={image} alt="" className="w-full h-full object-cover" onError={e => { e.target.style.display = 'none'; }} />
+          : image && !imgFailed
+          ? <img src={image} alt="" className="w-full h-full object-cover" onError={() => setImgFailed(true)} />
+          : label === 'Radio'
+          ? <div className="w-full h-full flex items-center justify-center" style={{ background: STATION_GRADIENT }}>
+              <span className="font-extrabold tracking-tighter text-sm" style={{ color: '#fff' }}>
+                {stationInitials(title)}
+              </span>
+            </div>
           : <div className="w-full h-full flex items-center justify-center" style={{ background: C.container }}>
               <ListMusic className="h-5 w-5" style={{ color: C.text4 }} />
             </div>}
