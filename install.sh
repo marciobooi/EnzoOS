@@ -765,9 +765,15 @@ apt_install install -y raspotify
 # Assign hardware permissions to the target user. `input` is required for
 # scripts/kiosk-wake-monitor.sh to read /dev/input/event* (root:input, mode
 # 660) — without it, touch/keyboard display-wake silently fails even once
-# the evtest invocation itself is fixed.
-echo -e "${YELLOW}Adding user '$TARGET_USER' to audio/video/input groups...${NC}"
-usermod -aG audio,video,dialout,input "$TARGET_USER"
+# the evtest invocation itself is fixed. `render` is required for Chromium's
+# GPU process to open /dev/dri/renderD* for hardware-accelerated EGL/GBM
+# rendering — `video` alone covers the legacy /dev/dri/card0 (master) node,
+# not the unprivileged render node. Confirmed live on a real Pi 4: without
+# it, Chromium's GPU process logs "eglInitialize: Could not create a
+# backing OpenGL context" / EGL_NOT_INITIALIZED and the kiosk screen stays
+# fully black even though X, openbox, and Chromium are all running fine.
+echo -e "${YELLOW}Adding user '$TARGET_USER' to audio/video/render/input groups...${NC}"
+usermod -aG audio,video,render,dialout,input "$TARGET_USER"
 
 # Enable and start SSH service
 echo -e "${YELLOW}Configuring SSH daemon...${NC}"
