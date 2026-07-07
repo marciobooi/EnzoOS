@@ -119,6 +119,14 @@ router.post('/volume', async (req, res) => {
   try {
     await setCamillaVolume(toDb(vol));
     setVolumeState(vol, vol <= 0);
+    // Unlike /spotify-volume (below), this route never broadcast the change —
+    // the ONLY way another connected client learned about a volume set from
+    // here was the sender's own client-side WS send, which is itself gated on
+    // a track being loaded (so nothing propagates at all while idle) and racy
+    // with the 180ms debounce every slider caller uses. Kiosk/remote volume
+    // sync was reported as laggy/inconsistent; this was the actual gap — the
+    // one route that unconditionally changes the volume never told anyone.
+    emit('SET_VOLUME', { volume: vol, is_muted: vol <= 0 });
     res.json({ success: true });
   } catch (err) {
     console.error('[Volume] Failed:', err);
