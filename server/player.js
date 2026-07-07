@@ -1007,14 +1007,28 @@ async function readBluetoothOutputSetting() {
 router.get('/bluetooth-out/scan', async (req, res) => {
   try {
     await execFilePromise('bluetoothctl', ['power', 'on']);
-    await execFilePromise('bluetoothctl', ['scan', 'on']).catch(() => {});
-    await new Promise(r => setTimeout(r, 8000));
-    await execFilePromise('bluetoothctl', ['scan', 'off']).catch(() => {});
+    // `bluetoothctl scan on` as a bare one-shot command only sets a discovery
+    // filter and returns immediately — it does NOT keep discovery running.
+    // Verified live: `Discovering: no` right after that call finished, so the
+    // old scan-on/sleep/scan-off pattern here never actually discovered
+    // anything for the whole 8s wait; every scan just returned whatever was
+    // already sitting in BlueZ's device cache from earlier (which is why
+    // AirPods pairing showed one stale, unnamed, unrelated entry). `--timeout`
+    // is bluetoothctl's own documented flag for a real, blocking, non-interactive
+    // discovery session — it genuinely finds nearby devices for the duration.
+    await execFilePromise('bluetoothctl', ['--timeout', '8', 'scan', 'on']).catch(() => {});
     const { stdout } = await execFilePromise('bluetoothctl', ['devices']);
+    // A real scan now genuinely finds everything broadcasting nearby — often a
+    // dozen-plus BLE devices (phones, watches, smart bulbs) that have no
+    // resolved name, which bluetoothctl lists with the MAC itself (dashes
+    // instead of colons) standing in for the name. Those aren't identifiable
+    // or reliably pairable from the UI, so they're filtered out rather than
+    // burying the handful of devices someone could actually recognize and pick.
+    const MAC_AS_NAME_RE = /^([0-9A-Fa-f]{2}-){5}[0-9A-Fa-f]{2}$/;
     const devices = stdout.trim().split('\n').filter(Boolean).map(line => {
       const m = line.match(/^Device\s+([0-9A-Fa-f:]{17})\s+(.*)$/);
       return m ? { mac: m[1], name: m[2] } : null;
-    }).filter(Boolean);
+    }).filter(d => d && !MAC_AS_NAME_RE.test(d.name));
     res.json({ devices });
   } catch (err) {
     console.error('[Bluetooth Out] Scan failed:', err.message);
