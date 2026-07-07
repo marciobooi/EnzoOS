@@ -38,6 +38,24 @@ fi
 NETPLAN_DIR="/etc/netplan"
 TARGET="$NETPLAN_DIR/90-resonance-nm-wifi.yaml"
 
+# Always disable NM's Wi-Fi power saving (Ubuntu ships
+# default-wifi-powersave-on.conf which turns it ON). On the Pi 4's brcmfmac
+# this caused multi-second latency spikes and dropped SSH/remote connections
+# the moment NM took over wlan0 — observed live. 2 = disable. Written before
+# any migration so the very first NM association already runs without it.
+PS_CONF="/etc/NetworkManager/conf.d/91-resonance-wifi-powersave-off.conf"
+if [ ! -f "$PS_CONF" ]; then
+  mkdir -p /etc/NetworkManager/conf.d
+  cat > "$PS_CONF" <<'PSEOF'
+# Resonance HiFi — always-on appliance: Wi-Fi power saving causes latency
+# spikes and dropped connections on the Pi's brcmfmac. 2 = disable.
+[connection]
+wifi.powersave = 2
+PSEOF
+  systemctl reload NetworkManager 2>/dev/null || true
+  echo -e "  ${GREEN}Disabled NM Wi-Fi power saving ($PS_CONF).${NC}"
+fi
+
 # Nothing to do unless a Wi-Fi device is presently locked out of NM.
 UNMANAGED_WIFI="$(nmcli -t -f DEVICE,TYPE,STATE device 2>/dev/null | awk -F: '$2=="wifi" && $3=="unmanaged"{print $1; exit}')"
 if [ -z "$UNMANAGED_WIFI" ]; then

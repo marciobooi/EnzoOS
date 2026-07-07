@@ -5,6 +5,7 @@ import { toast } from '../../lib/toast';
 import { api } from '../../api';
 import { S, cardShadow } from '../../styles/stone';
 import { useI18n } from '../../i18n';
+import OnScreenKeyboard from './OnScreenKeyboard';
 
 export default function WifiOverlay() {
   const { isWifiOpen, setIsWifiOpen } = useContext(Kk);
@@ -16,6 +17,10 @@ export default function WifiOverlay() {
   const [password, setPassword]   = useState('');
   const [connecting, setConnecting] = useState(false);
   const [scanned, setScanned]     = useState(false);
+  // Which field the on-screen keyboard is editing ('ssid' | 'password' | null).
+  // The kiosk is touch-only — without this, tapping the password input did
+  // nothing (Chromium --kiosk on X11 has no system keyboard to summon).
+  const [kbField, setKbField]     = useState(null);
 
   const scan = async () => {
     setScanning(true);
@@ -126,27 +131,33 @@ export default function WifiOverlay() {
           })}
         </div>
 
-        {/* Connect form */}
-        <div className="flex flex-col gap-3 rounded-2xl p-4 min-h-0"
+        {/* Connect form — scrolls: on the 320px-tall panel the two inputs plus
+            button overflow the column, and without overflow-y-auto the connect
+            button below the fold was simply unreachable by touch. */}
+        <div className="flex flex-col gap-3 rounded-2xl p-4 min-h-0 overflow-y-auto stone-scrollbar"
           style={{ background: S.surface, border: `1px solid ${S.border}` }}>
           <span className="text-sm font-light tracking-[0.2em] uppercase shrink-0" style={{ color: S.label }}>
             {t('net.connect')}
           </span>
 
+          {/* Inputs are readOnly + tap-to-edit: the kiosk has no physical
+              keyboard, so tapping opens the on-screen keyboard overlay. */}
           <div className="flex flex-col gap-2 shrink-0">
             <label className="text-sm font-light" style={{ color: S.muted }}>{t('net.ssid')}</label>
-            <input type="text" value={ssid} onChange={e => setSsid(e.target.value)}
+            <input type="text" value={ssid} readOnly
+              onClick={() => setKbField('ssid')}
               placeholder={t('net.ssid')}
-              className="px-3 py-2.5 rounded-xl text-sm focus:outline-none"
-              style={{ background: S.bg, color: S.strong, border: `1px solid ${S.track}` }} />
+              className="px-3 py-2.5 rounded-xl text-sm focus:outline-none cursor-pointer"
+              style={{ background: S.bg, color: S.strong, border: `1px solid ${kbField === 'ssid' ? S.accent : S.track}` }} />
           </div>
 
           <div className="flex flex-col gap-2 shrink-0">
             <label className="text-sm font-light" style={{ color: S.muted }}>{t('net.password')}</label>
-            <input type="password" value={password} onChange={e => setPassword(e.target.value)}
+            <input type="password" value={password} readOnly
+              onClick={() => setKbField('password')}
               placeholder={t('net.password')}
-              className="px-3 py-2.5 rounded-xl text-sm focus:outline-none"
-              style={{ background: S.bg, color: S.strong, border: `1px solid ${S.track}` }} />
+              className="px-3 py-2.5 rounded-xl text-sm focus:outline-none cursor-pointer"
+              style={{ background: S.bg, color: S.strong, border: `1px solid ${kbField === 'password' ? S.accent : S.track}` }} />
           </div>
 
           <button onClick={connect} disabled={connecting || !ssid}
@@ -156,6 +167,16 @@ export default function WifiOverlay() {
           </button>
         </div>
       </div>
+
+      {/* On-screen keyboard — covers the whole panel while editing a field */}
+      {kbField && (
+        <OnScreenKeyboard
+          label={kbField === 'ssid' ? t('net.ssid') : t('net.password')}
+          value={kbField === 'ssid' ? ssid : password}
+          onChange={v => (kbField === 'ssid' ? setSsid(v) : setPassword(v))}
+          onDone={() => setKbField(null)}
+        />
+      )}
     </div>
   );
 }
