@@ -1221,6 +1221,9 @@ router.get('/tidal/search', async (req, res) => {
   try {
     res.json(await tidalSearch(q, Math.min(parseInt(req.query.limit, 10) || 25, 50)));
   } catch (err) {
+    // Expired/revoked session → empty results, not a per-keystroke 502
+    // (same rationale as qobuz/search below).
+    if (/auth|401|credential/i.test(err.message)) return res.json([]);
     sendError(res, badGateway(err.message));
   }
 });
@@ -1287,6 +1290,11 @@ router.get('/qobuz/search', async (req, res) => {
   try {
     res.json(await qobuzSearch(q, Math.min(parseInt(req.query.limit, 10) || 25, 50)));
   } catch (err) {
+    // Stored credentials that no longer authenticate (stale password, expired
+    // token) make qobuzConnected() pass while the real call 401s — from the
+    // search box's perspective that's still just "this source has nothing",
+    // not a gateway error to spam the console with on every keystroke.
+    if (/auth|401|credential/i.test(err.message)) return res.json([]);
     sendError(res, badGateway(err.message));
   }
 });
