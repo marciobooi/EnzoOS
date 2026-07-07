@@ -321,17 +321,30 @@ export default function RemoteControl() {
       } catch { /* keep last known value */ }
     };
     poll();
-    const id = setInterval(poll, 5000);
+    // Sample rate/DSP path only actually change on a track or source switch,
+    // so this doesn't need the sub-10s freshness the Spotify playback poll does.
+    const id = setInterval(poll, 10000);
     return () => clearInterval(id);
   }, [isAuthenticated]);
   useEffect(() => { if (source === 'radio' && !hasCheckedSource.current) { setActiveTab('source'); hasCheckedSource.current = true; } }, [source]);
   useEffect(() => { if (isConnected) { fetchFavorites(); checkUpdates(); } }, [isConnected]);
   useEffect(() => { if (!radioSearch.trim()) setStationsList(favoriteStations); }, [radioSearch, favoriteStations]);
+  // Playback state (/me/player) and the device list (/me/player/devices) used to
+  // poll together every 3s. Playback state needs that cadence — Spotify Connect
+  // has no push mechanism for third parties, so polling is the only way to
+  // notice a track/pause/seek change made from another Spotify client. The
+  // device list barely ever changes and only feeds device-transfer UI, which
+  // doesn't need sub-10s freshness — split onto its own slower interval instead
+  // of doubling every playback-state poll's request count for no visible benefit.
   useEffect(() => {
     if (!spotify || !isAuthenticated || !token) return;
-    fetchDevices(); localSync();
-    const id = setInterval(() => { fetchDevices(); localSync(); }, 3000);
-    return () => clearInterval(id);
+    localSync();
+    const stateId = setInterval(localSync, 3000);
+
+    fetchDevices();
+    const devicesId = setInterval(fetchDevices, 15000);
+
+    return () => { clearInterval(stateId); clearInterval(devicesId); };
   }, [token, isAuthenticated, spotify]);
   // Allow the Spotify device to be re-pinned to unity next time it becomes active.
   useEffect(() => { if (!spotify) spotifyVolPinned.current = false; }, [spotify]);

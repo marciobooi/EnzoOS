@@ -336,18 +336,29 @@ export default function Kiosk() {
   // Set up periodic device list and state fetching — only while source is Spotify.
   // Must depend on `spotify` so the interval is torn down when switching away from Spotify;
   // otherwise the stale closure keeps polling and overwrites non-Spotify playback state.
+  //
+  // Playback state (/me/player) and the device list (/me/player/devices) used to
+  // poll together every 3s. Playback state genuinely needs that cadence — it's
+  // the only way to notice a track/pause/seek change made from another Spotify
+  // client (Spotify's Connect API has no push mechanism for third parties).
+  // The device list barely ever changes (only raspotify restarting, or another
+  // device connecting/disconnecting) and only feeds the auto-reclaim check a
+  // few effects down, which doesn't need sub-10s responsiveness — so it's now
+  // on its own much slower interval instead of doubling every playback-state
+  // poll's request count for no visible benefit.
   useEffect(() => {
     if (!token || !spotify) return;
 
-    fetchDevices();
     syncCurrentState();
+    const stateIntervalId = setInterval(syncCurrentState, 3000);
 
-    const pollIntervalId = setInterval(() => {
-      fetchDevices();
-      syncCurrentState();
-    }, 3000);
+    fetchDevices();
+    const devicesIntervalId = setInterval(fetchDevices, 15000);
 
-    return () => clearInterval(pollIntervalId);
+    return () => {
+      clearInterval(stateIntervalId);
+      clearInterval(devicesIntervalId);
+    };
   }, [token, spotify]);
 
   // Poll MPD ICY metadata for radio source — some stations send StreamTitle
@@ -475,7 +486,9 @@ export default function Kiosk() {
     }
   }, [isConnected]);
 
-  // Poll /api/player/signal-path every 5 s — live rate, clipping, and path info
+  // Poll /api/player/signal-path — live rate, clipping, and path info. Sample
+  // rate/DSP path only actually change on a track or source switch, so this
+  // doesn't need sub-10s freshness the way the Spotify playback-state poll does.
   useEffect(() => {
     const poll = async () => {
       try {
@@ -484,7 +497,7 @@ export default function Kiosk() {
       } catch {}
     };
     poll();
-    const id = setInterval(poll, 5000);
+    const id = setInterval(poll, 10000);
     return () => clearInterval(id);
   }, []);
 
