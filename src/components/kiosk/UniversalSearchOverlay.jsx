@@ -157,6 +157,21 @@ export default function UniversalSearchOverlay() {
     return () => { alive = false; };
   }, [token]);
 
+  // Only query Tidal/Qobuz when connected — see remote UniversalSearch for
+  // rationale (an unlinked account made every search fire doomed requests).
+  const streamingAvailRef = useRef({ tidal: false, qobuz: false });
+  useEffect(() => {
+    Promise.allSettled([
+      fetch('/api/player/tidal/status').then(r => r.json()),
+      fetch('/api/player/qobuz/status').then(r => r.json()),
+    ]).then(([t, q]) => {
+      streamingAvailRef.current = {
+        tidal: !!t.value?.connected,
+        qobuz: !!q.value?.connected,
+      };
+    });
+  }, []);
+
   const doSearch = async (q) => {
     const id = ++searchIdRef.current;
     if (!q.trim()) { setResults({ spotify: [], local: [], tidal: [], qobuz: [], radio: [] }); setLoading(false); return; }
@@ -165,8 +180,8 @@ export default function UniversalSearchOverlay() {
       token ? api.searchAll(token, q, 'track', 8).then(d => d.tracks?.items || []) : Promise.resolve([]),
       api.searchLibrary(q, 8),
       fetch(`/api/player/radio-search?q=${encodeURIComponent(q)}&limit=6`).then(r => r.json()),
-      api.tidalSearch(q),
-      api.qobuzSearch(q),
+      streamingAvailRef.current.tidal ? api.tidalSearch(q) : Promise.resolve([]),
+      streamingAvailRef.current.qobuz ? api.qobuzSearch(q) : Promise.resolve([]),
     ]);
     if (id !== searchIdRef.current) return; // a newer search already superseded this one
     setResults({

@@ -1214,6 +1214,10 @@ router.post('/tidal/poll', async (req, res) => {
 router.get('/tidal/search', async (req, res) => {
   const q = (req.query.q || '').trim();
   if (!q) return res.json([]);
+  // Not connected → no results, not an error. The universal search fires this
+  // on every keystroke regardless of connection state, and an unlinked Tidal
+  // account was filling the browser console with a 502 per keypress.
+  if (!(await tidalConnected())) return res.json([]);
   try {
     res.json(await tidalSearch(q, Math.min(parseInt(req.query.limit, 10) || 25, 50)));
   } catch (err) {
@@ -1278,6 +1282,8 @@ router.post('/qobuz/auth', async (req, res) => {
 router.get('/qobuz/search', async (req, res) => {
   const q = (req.query.q || '').trim();
   if (!q) return res.json([]);
+  // Not connected → no results, not an error (same rationale as tidal/search).
+  if (!(await qobuzConnected())) return res.json([]);
   try {
     res.json(await qobuzSearch(q, Math.min(parseInt(req.query.limit, 10) || 25, 50)));
   } catch (err) {

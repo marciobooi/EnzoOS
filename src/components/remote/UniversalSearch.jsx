@@ -213,6 +213,23 @@ export default function UniversalSearch() {
     if (p.type === 'smart') return playSmartPlaylist(p.payload.kind);
   };
 
+  // Only query Tidal/Qobuz when they're actually connected — searching fired
+  // both on every debounced keystroke regardless, so an unlinked account
+  // produced a request (and, before the server-side guard, a 502) per search.
+  // Ref, not state: it only gates fetches inside doSearch, no re-render needed.
+  const streamingAvailRef = useRef({ tidal: false, qobuz: false });
+  useEffect(() => {
+    Promise.allSettled([
+      fetch('/api/player/tidal/status').then(r => r.json()),
+      fetch('/api/player/qobuz/status').then(r => r.json()),
+    ]).then(([t, q]) => {
+      streamingAvailRef.current = {
+        tidal: !!t.value?.connected,
+        qobuz: !!q.value?.connected,
+      };
+    });
+  }, []);
+
   const doSearch = async (q) => {
     const id = ++searchIdRef.current;
     if (!q.trim()) {
@@ -225,8 +242,8 @@ export default function UniversalSearch() {
       spotify && token ? api.searchAll(token, q, 'track', 8).then(d => d.tracks?.items || []) : Promise.resolve([]),
       api.searchLibrary(q, 8),
       fetch(`/api/player/radio-search?q=${encodeURIComponent(q)}&limit=6`).then(r => r.json()),
-      api.tidalSearch(q),
-      api.qobuzSearch(q),
+      streamingAvailRef.current.tidal ? api.tidalSearch(q) : Promise.resolve([]),
+      streamingAvailRef.current.qobuz ? api.qobuzSearch(q) : Promise.resolve([]),
     ]);
     if (id !== searchIdRef.current) return; // a newer search already superseded this one
     setResults({
