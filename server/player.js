@@ -1003,7 +1003,7 @@ async function readBluetoothOutputSetting() {
   } catch { return { enabled: false, mac: null, name: null }; }
 }
 
-// GET /api/player/bluetooth-out/scan — power on + scan for ~8s, return discovered devices
+// GET /api/player/bluetooth-out/scan — power on + scan, return discovered devices
 router.get('/bluetooth-out/scan', async (req, res) => {
   try {
     await execFilePromise('bluetoothctl', ['power', 'on']);
@@ -1011,12 +1011,20 @@ router.get('/bluetooth-out/scan', async (req, res) => {
     // filter and returns immediately — it does NOT keep discovery running.
     // Verified live: `Discovering: no` right after that call finished, so the
     // old scan-on/sleep/scan-off pattern here never actually discovered
-    // anything for the whole 8s wait; every scan just returned whatever was
-    // already sitting in BlueZ's device cache from earlier (which is why
-    // AirPods pairing showed one stale, unnamed, unrelated entry). `--timeout`
-    // is bluetoothctl's own documented flag for a real, blocking, non-interactive
-    // discovery session — it genuinely finds nearby devices for the duration.
-    await execFilePromise('bluetoothctl', ['--timeout', '8', 'scan', 'on']).catch(() => {});
+    // anything; every scan just returned whatever was already sitting in
+    // BlueZ's device cache from earlier. `--timeout` is bluetoothctl's own
+    // documented flag for a real, blocking, non-interactive discovery
+    // session — it genuinely finds nearby devices for the duration.
+    //
+    // 15s, not 8: classic BR/EDR inquiry (what a device in Bluetooth *pairing*
+    // mode uses — AirPods, most headphones/speakers) needs a full ~10.24s
+    // cycle per the Bluetooth spec to reliably enumerate, and BlueZ's default
+    // "auto" transport interleaves that with LE scanning rather than running
+    // it back-to-back. An 8s window reliably caught fast-advertising BLE
+    // peripherals (which is why the fix above already surfaced smart bulbs
+    // etc.) but cut off before a classic inquiry cycle completed — exactly
+    // why AirPods still didn't show up even once scanning was actually working.
+    await execFilePromise('bluetoothctl', ['--timeout', '15', 'scan', 'on']).catch(() => {});
     const { stdout } = await execFilePromise('bluetoothctl', ['devices']);
     // A real scan now genuinely finds everything broadcasting nearby — often a
     // dozen-plus BLE devices (phones, watches, smart bulbs) that have no
