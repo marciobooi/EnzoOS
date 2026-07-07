@@ -352,8 +352,8 @@ export default function Kiosk() {
     syncCurrentState();
     const stateIntervalId = setInterval(syncCurrentState, 3000);
 
-    fetchDevices();
-    const devicesIntervalId = setInterval(fetchDevices, 15000);
+    fetchDevices({ silent: true });
+    const devicesIntervalId = setInterval(() => fetchDevices({ silent: true }), 15000);
 
     return () => {
       clearInterval(stateIntervalId);
@@ -854,17 +854,29 @@ export default function Kiosk() {
     return () => clearInterval(progressInterval.current);
   }, [playbackState, trackDuration]);
 
-  // Refresh Spotify Connect devices list
-  const fetchDevices = useStableCallback(async () => {
+  // Refresh Spotify Connect devices list. `silent` is used by the background
+  // poll (see the effect above) so it doesn't toggle isFetchingDevices — that
+  // flag only drives a spinner on the manual refresh button in
+  // OutputPatchBay, which nobody is looking at during an unattended 15s poll,
+  // and both it and `devices` are kioskCtx dependencies, so flipping them
+  // needlessly recomputes that memo and re-renders every overlay for nothing.
+  const fetchDevices = useStableCallback(async ({ silent = false } = {}) => {
     if (!token) return;
     try {
-      setIsFetchingDevices(true);
+      if (!silent) setIsFetchingDevices(true);
       const data = await api.getDevices(token);
-      setDevices(data.devices || []);
+      const next = data.devices || [];
+      // Also skip replacing the array reference when the list is unchanged —
+      // the common case for a 15s poll — for the same reason.
+      setDevices(prev => {
+        const same = prev.length === next.length && prev.every((d, i) =>
+          d.id === next[i]?.id && d.is_active === next[i]?.is_active && d.name === next[i]?.name);
+        return same ? prev : next;
+      });
     } catch (err) {
       console.error('Error fetching devices:', err);
     } finally {
-      setIsFetchingDevices(false);
+      if (!silent) setIsFetchingDevices(false);
     }
   });
 
@@ -1163,20 +1175,40 @@ export default function Kiosk() {
             }
           }
         };
-        setPlaybackState(newState);
+        // trackPosition/trackDuration are cheap, page-local state (not read by
+        // the kioskCtx memo below) — the local 1s ticker already advances
+        // position smoothly between polls, so these are just periodic drift
+        // correction and can update unconditionally every poll.
         setTrackPosition(state.progress_ms);
         setTrackDuration(state.item?.duration_ms || 0);
         setShuffleState(state.shuffle_state);
         setRepeatState(state.repeat_state);
+
+        // playbackState feeds trackArtist/currentTrack/albumImage, which are
+        // dependencies of the big kioskCtx useMemo every overlay subscribes
+        // to via useContext(Kk) — replacing it with a fresh object on every
+        // poll (even one that found nothing new) recomputed that memo and
+        // re-rendered every overlay in the tree on a fixed ~3s cadence,
+        // which showed up as a visible stutter in kiosk animations exactly
+        // synced with each poll (reported live as "choking"). Only replace
+        // it, and only broadcast to other clients, when something a viewer
+        // would actually notice changed.
+        const prevTrack = playbackState?.track_window?.current_track;
+        const nextTrack = newState.track_window.current_track;
+        const changed = !playbackState
+          || prevTrack?.uri !== nextTrack.uri
+          || playbackState.paused !== newState.paused;
+        if (changed) {
+          setPlaybackState(newState);
+          if (ws.current && ws.current.readyState === WebSocket.OPEN) {
+            ws.current.send(JSON.stringify({ type: 'BROADCAST_STATE', payload: newState }));
+          }
+        }
+
         // Keep Resonance Connect pinned at 100% on every poll — CamillaDSP is the
         // single gain master. librespot uses VOLUME_CTRL=fixed so this is a safety net.
         if (state.device?.name === 'Resonance Connect' && state.device?.volume_percent !== 100) {
           api.setVolume(token, 100).catch(() => {});
-        }
-
-        // Broadcast current state to other connected clients via WebSocket
-        if (ws.current && ws.current.readyState === WebSocket.OPEN) {
-          ws.current.send(JSON.stringify({ type: 'BROADCAST_STATE', payload: newState }));
         }
       }
     } catch (err) {
@@ -1214,14 +1246,16 @@ export default function Kiosk() {
     lastVolumeChangeTime.current = Date.now();
     if (vol > 0) lastNonZeroVolume.current = vol;
 
-    // Only broadcast a playback payload when a track is present — a trackless
-    // {volume} payload would blank the "now playing" card on other clients.
-    if (playbackState?.track_window?.current_track && ws.current && ws.current.readyState === WebSocket.OPEN) {
-      ws.current.send(JSON.stringify({
-        type: 'BROADCAST_STATE',
-        payload: { ...playbackState, volume: vol, is_muted: vol === 0 }
-      }));
-    }
+    // No client-side broadcast here on purpose: this fires on every onChange
+    // tick while dragging (unlike the debounced REST call below), and used to
+    // send a full playbackState-replacing BROADCAST_STATE per tick — on other
+    // connected screens that meant replacing playbackState (a kioskCtx/
+    // ctxValue dependency) dozens of times in a couple of seconds during a
+    // single smooth drag, each one cascading a full re-render across the
+    // whole overlay tree. The server's /api/player/volume route now
+    // broadcasts a lightweight SET_VOLUME event itself (once, debounced,
+    // decoupled from playbackState) — see the setTimeout below — which is
+    // sufficient for other screens to reflect the new volume within ~180ms.
 
     if (volumeApiTimeout.current) {
       clearTimeout(volumeApiTimeout.current);
@@ -1243,14 +1277,10 @@ export default function Kiosk() {
     const targetVolume = newMuteState ? 0 : (lastNonZeroVolume.current || 30);
     if (!newMuteState) setVolume(targetVolume);
 
-    if (playbackState?.track_window?.current_track) {
-      sendUpdate('BROADCAST_STATE', {
-        ...playbackState,
-        volume: targetVolume,
-        is_muted: newMuteState
-      });
-    }
-
+    // No client-side broadcast here — /api/player/volume (called below)
+    // already broadcasts a lightweight SET_VOLUME event server-side, which
+    // is sufficient for other screens; see handleVolumeChange above for why
+    // replacing playbackState over WS for a volume-only change was removed.
     try {
       await api.localSetVolume(targetVolume);
     } catch (err) {

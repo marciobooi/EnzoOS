@@ -341,8 +341,8 @@ export default function RemoteControl() {
     localSync();
     const stateId = setInterval(localSync, 3000);
 
-    fetchDevices();
-    const devicesId = setInterval(fetchDevices, 15000);
+    fetchDevices({ silent: true });
+    const devicesId = setInterval(() => fetchDevices({ silent: true }), 15000);
 
     return () => { clearInterval(stateId); clearInterval(devicesId); };
   }, [token, isAuthenticated, spotify]);
@@ -466,7 +466,22 @@ export default function RemoteControl() {
     try { setFavoriteStations(await api.getFavoriteRadios() || []); } catch {}
     try { setFavorites(await api.getFavorites() || []); } catch {}
   };
-  const fetchDevices      = async () => { if (!token) return; setIsFetchingDevices(true); try { setDevices((await api.getDevices(token)).devices || []); } catch {} finally { setIsFetchingDevices(false); } };
+  // `silent` skips the isFetchingDevices spinner flag for the background poll
+  // (see the effect above) — both it and `devices` are ctxValue dependencies,
+  // and this poll almost always finds an unchanged list, so toggling them
+  // recomputes that memo and re-renders every remote screen for nothing.
+  const fetchDevices      = async ({ silent = false } = {}) => {
+    if (!token) return;
+    if (!silent) setIsFetchingDevices(true);
+    try {
+      const next = (await api.getDevices(token)).devices || [];
+      setDevices(prev => {
+        const same = prev.length === next.length && prev.every((d, i) =>
+          d.id === next[i]?.id && d.is_active === next[i]?.is_active && d.name === next[i]?.name);
+        return same ? prev : next;
+      });
+    } catch {} finally { if (!silent) setIsFetchingDevices(false); }
+  };
   const fetchSystemHealth = async () => { try { setSystemHealth(await api.getSystemHealth()); } catch {} };
   const fetchServices     = async () => { try { setServices((await api.getServices()).services || {}); } catch {} };
 
@@ -485,11 +500,24 @@ export default function RemoteControl() {
     try {
       const s = await api.getPlaybackState(token);
       if (!s) return;
-      // Volume is intentionally NOT read from Spotify's device here — CamillaDSP is
-      // the single master volume stage. The slider is hydrated from /api/status.
-      setPlaybackState({ paused: !s.is_playing, position: s.progress_ms, duration: s.item?.duration_ms || 0, shuffle_state: s.shuffle_state, repeat_state: s.repeat_state, volume, is_muted: isMuted, track_window: { current_track: { uri: s.item?.uri, name: s.item?.name, album: { name: s.item?.album?.name, images: s.item?.album?.images || [] }, artists: s.item?.artists || [] } } });
+      // trackPosition/trackDuration/shuffleState/repeatState are cheap,
+      // page-local state (not ctxValue dependencies) — update unconditionally.
       setTrackPosition(s.progress_ms); setTrackDuration(s.item?.duration_ms || 0);
       setShuffleState(s.shuffle_state); setRepeatState(s.repeat_state);
+      // playbackState feeds currentTrack/albumImage/trackName/trackArtist,
+      // which ARE ctxValue dependencies every remote screen subscribes to via
+      // useContext(Tk) — replacing it with a fresh object on every 3s poll
+      // even when nothing changed recomputes that memo and re-renders the
+      // whole remote UI for no reason (the same "choking" bug found and
+      // fixed on the kiosk side). Only replace it when something a viewer
+      // would actually notice changed.
+      const prevTrack = playbackState?.track_window?.current_track;
+      const nextPaused = !s.is_playing;
+      if (!playbackState || prevTrack?.uri !== s.item?.uri || playbackState.paused !== nextPaused) {
+        // Volume is intentionally NOT read from Spotify's device here — CamillaDSP is
+        // the single master volume stage. The slider is hydrated from /api/status.
+        setPlaybackState({ paused: nextPaused, position: s.progress_ms, duration: s.item?.duration_ms || 0, shuffle_state: s.shuffle_state, repeat_state: s.repeat_state, volume, is_muted: isMuted, track_window: { current_track: { uri: s.item?.uri, name: s.item?.name, album: { name: s.item?.album?.name, images: s.item?.album?.images || [] }, artists: s.item?.artists || [] } } });
+      }
       // Keep Resonance Connect pinned at 100% on every poll — CamillaDSP is the
       // single gain master. librespot uses VOLUME_CTRL=fixed so this is a safety net.
       if (s.device?.name === 'Resonance Connect' && s.device?.volume_percent !== 100) {
@@ -578,13 +606,18 @@ export default function RemoteControl() {
   // Volume is owned by the CamillaDSP master stage for EVERY source (incl. Spotify),
   // so a single persisted level survives source switches, reboot and wake without
   // the double-attenuation that came from also driving Spotify's device volume.
+  // No client-side BROADCAST_STATE here on purpose: handleVolumeChange fires on
+  // every onChange tick while dragging (unlike the debounced REST call below),
+  // and used to send a full playbackState-replacing broadcast per tick — on
+  // other connected screens that meant replacing playbackState (a ctxValue
+  // dependency) dozens of times in a couple of seconds during one smooth drag,
+  // each cascading a full re-render across the whole remote UI. The server's
+  // /api/player/volume route now broadcasts a lightweight SET_VOLUME event
+  // itself (once, debounced, decoupled from playbackState), which is
+  // sufficient for other screens to reflect the new volume within ~180ms.
   const handleVolumeChange = e => {
     const v = parseInt(e.target.value, 10); setVolume(v); setIsMuted(v === 0); lastVolumeChangeTime.current = Date.now();
     if (v > 0) lastNonZeroVolume.current = v;
-    // Only broadcast a playback payload when there is a real track — otherwise a
-    // trackless {volume} payload wipes the "now playing" card on other clients.
-    if (currentTrack && ws.current?.readyState === WebSocket.OPEN)
-      ws.current.send(JSON.stringify({ type: 'BROADCAST_STATE', payload: { ...playbackState, volume: v, is_muted: v === 0 } }));
     clearTimeout(volumeApiTimeout.current);
     volumeApiTimeout.current = setTimeout(async () => { try { await api.localSetVolume(v); } catch {} }, 180);
   };
@@ -592,8 +625,6 @@ export default function RemoteControl() {
     const m = !isMuted; setIsMuted(m); lastVolumeChangeTime.current = Date.now();
     const tv = m ? 0 : (lastNonZeroVolume.current || 30);
     if (!m) setVolume(tv);
-    if (currentTrack && ws.current?.readyState === WebSocket.OPEN)
-      ws.current.send(JSON.stringify({ type: 'BROADCAST_STATE', payload: { ...playbackState, volume: tv, is_muted: m } }));
     try { await api.localSetVolume(tv); } catch {}
   };
   const handleToggleFavRadio = async station => {
