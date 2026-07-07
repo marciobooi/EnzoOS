@@ -923,7 +923,19 @@ ExecStart=-/sbin/agetty --autologin $TARGET_USER --noclear %I \$TERM
 EOF
 
 # Configure friendly hostname for local mDNS resolution (resonance.local)
+# Raspberry Pi Imager seeds cloud-init with `hostname: pi` and cloud-init's
+# set_hostname/update_hostname modules re-apply that seed on EVERY boot
+# (preserve_hostname defaults to false) — so hostnamectl alone here only
+# lasts until the next reboot, silently reverting avahi back to
+# advertising pi.local instead of resonance.local. Hit live: a phone
+# scanning the kiosk's QR code got DNS_PROBE_FINISHED_NXDOMAIN for
+# resonance.local after a routine reboot, with avahi's own log showing
+# "Host name is pi.local". The cloud.cfg.d override stops cloud-init from
+# touching the hostname again after this one-time set.
 echo -e "${YELLOW}Configuring system hostname to 'resonance'...${NC}"
+if [ -d /etc/cloud/cloud.cfg.d ]; then
+  echo 'preserve_hostname: true' > /etc/cloud/cloud.cfg.d/99-resonance-preserve-hostname.cfg
+fi
 hostnamectl set-hostname resonance || true
 sed -i 's/127.0.1.1.*/127.0.1.1\tresonance/g' /etc/hosts || true
 
