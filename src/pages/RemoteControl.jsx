@@ -152,8 +152,14 @@ export default function RemoteControl() {
   }, []);
 
   // ── radio ─────────────────────────────────────────────────────────────────
-  const [radioSearch, setRadioSearch]           = useState('');
-  const [stationsList, setStationsList]         = useState([]);
+  const [radioSearch, setRadioSearchState]      = useState('');
+  // Search RESULTS only (null = no active search). What screens actually render
+  // is the derived `stationsList` below — favourites until a search has run.
+  // This replaces a useEffect that synced favourites into stationsList whenever
+  // the search box emptied: stationsList/radioSearch/favoriteStations are all
+  // ctxValue dependencies, so that effect was an avoidable extra render +
+  // full-context recompute per keystroke-clear (derived-state audit).
+  const [searchStations, setSearchStations]     = useState(null);
   const [isSearching, setIsSearching]           = useState(false);
   const [favoriteStations, setFavoriteStations] = useState([]);
 
@@ -328,7 +334,11 @@ export default function RemoteControl() {
   }, [isAuthenticated]);
   useEffect(() => { if (source === 'radio' && !hasCheckedSource.current) { setActiveTab('source'); hasCheckedSource.current = true; } }, [source]);
   useEffect(() => { if (isConnected) { fetchFavorites(); checkUpdates(); } }, [isConnected]);
-  useEffect(() => { if (!radioSearch.trim()) setStationsList(favoriteStations); }, [radioSearch, favoriteStations]);
+  // Displayed station list, computed during render — no state sync needed.
+  const stationsList = radioSearch.trim() && searchStations ? searchStations : favoriteStations;
+  // Clearing the input drops stale search results immediately (event-driven,
+  // not an Effect), so retyping doesn't flash the previous query's results.
+  const setRadioSearch = (v) => { setRadioSearchState(v); if (!String(v).trim()) setSearchStations(null); };
   // Playback state (/me/player) and the device list (/me/player/devices) used to
   // poll together every 3s. Playback state needs that cadence — Spotify Connect
   // has no push mechanism for third parties, so polling is the only way to
@@ -653,9 +663,9 @@ export default function RemoteControl() {
     } catch (e) { reportError(e.message); }
   };
   const handleRadioSearch = async () => {
-    const q = radioSearch.trim(); if (!q) { setStationsList(favoriteStations); return; }
+    const q = radioSearch.trim(); if (!q) { setSearchStations(null); return; }
     setIsSearching(true);
-    try { const r = await fetch(`/api/player/radio-search?q=${encodeURIComponent(q)}&limit=25`); const d = await r.json(); const f = d.map(s => ({ name: s.name.length > 26 ? s.name.substring(0, 24) + '…' : s.name, url: s.url_resolved || s.url, favicon: s.favicon, country: s.country, tags: s.tags })); if (!f.length) reportError('No stations found.'); else setStationsList(f); } catch { reportError('Search failed.'); } finally { setIsSearching(false); }
+    try { const r = await fetch(`/api/player/radio-search?q=${encodeURIComponent(q)}&limit=25`); const d = await r.json(); const f = d.map(s => ({ name: s.name.length > 26 ? s.name.substring(0, 24) + '…' : s.name, url: s.url_resolved || s.url, favicon: s.favicon, country: s.country, tags: s.tags })); if (!f.length) reportError('No stations found.'); else setSearchStations(f); } catch { reportError('Search failed.'); } finally { setIsSearching(false); }
   };
   const handlePlayTrack   = async uri => { try { await api.play(token, activeDevice?.id || resonanceDevice?.id || null, null, [uri]); setActiveTab('player'); setTimeout(() => { localSync(); requestWSStateSync(); }, 800); } catch (e) { reportError(e.message); } };
   const handlePlayContext = async uri => { try { await api.play(token, activeDevice?.id || resonanceDevice?.id || null, uri); setActiveTab('player'); setTimeout(() => { localSync(); requestWSStateSync(); }, 800); } catch (e) { reportError(e.message); } };

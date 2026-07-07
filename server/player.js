@@ -8,7 +8,7 @@ import {
   addPlayHistory, getPlayHistory, clearPlayHistory, getMostPlayedTracks,
   getFavorites, addFavorite, removeFavorite, removeFavoriteByUri, isFavorite,
 } from './db.js';
-import { emit, getStandbyState, getCachedVolumeDb, setVolumeState } from './event-service.js';
+import { emit, getStandbyState, setVolumeState } from './event-service.js';
 import {
   qobuzLogin, qobuzSearch, qobuzTrackUrl, qobuzConnected, clearQobuz,
   tidalDeviceAuth, tidalPollToken, tidalSearch, tidalTrackUrl, tidalConnected, clearTidal,

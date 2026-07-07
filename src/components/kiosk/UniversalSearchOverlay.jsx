@@ -229,6 +229,14 @@ export default function UniversalSearchOverlay() {
     try { await api.qobuzPlayTrack(track); setIsSearchOpen(false); } catch (e) { reportError(e.message); }
   };
 
+  // Sources that actually returned results. The filter the UI honours is
+  // derived at render time: if the selected tab has no results it silently
+  // acts as 'all' — this used to be a useEffect that watched `results` and
+  // called setFilter('all'), i.e. state repaired after the fact with an
+  // extra render (derived-state audit).
+  const activeSources = Object.entries(results).filter(([, v]) => v.length > 0).map(([k]) => k);
+  const effectiveFilter = activeFilter === 'all' || activeSources.includes(activeFilter) ? activeFilter : 'all';
+
   const flatResults = [
     ...results.spotify.map(t => ({
       source: 'spotify', title: t.name, artist: t.artists?.[0]?.name,
@@ -254,7 +262,7 @@ export default function UniversalSearchOverlay() {
       onPlay: () => playRadio(s),
       onToggleFav: () => handleToggleFavoriteRadio(s),
     })),
-  ].filter(r => activeFilter === 'all' || r.source === activeFilter);
+  ].filter(r => effectiveFilter === 'all' || r.source === effectiveFilter);
 
   // Combined "your playlists" row — Spotify library playlists, saved local
   // MPD playlists, and favorited radio stations, shown regardless of query.
@@ -291,14 +299,6 @@ export default function UniversalSearchOverlay() {
       onPlay: () => playRadio(s),
     })),
   ];
-
-  // Sources that actually returned results
-  const activeSources = Object.entries(results).filter(([, v]) => v.length > 0).map(([k]) => k);
-
-  // If the selected filter has no results, fall back to 'all'
-  useEffect(() => {
-    if (activeFilter !== 'all' && !activeSources.includes(activeFilter)) setFilter('all');
-  }, [results]);
 
   return (
     <div className="absolute inset-0 rounded-3xl z-50 flex flex-col overflow-hidden"
@@ -337,7 +337,7 @@ export default function UniversalSearchOverlay() {
         {activeSources.length > 0 && (
           <button key="all" onClick={() => setFilter('all')}
             className="px-2.5 py-1 rounded-full text-[9px] font-bold uppercase tracking-wider cursor-pointer active:scale-95 transition-all shrink-0"
-            style={activeFilter === 'all'
+            style={effectiveFilter === 'all'
               ? { background: S.accent, color: S.accentFg }
               : { background: S.surface, color: S.muted, border: `1px solid ${S.border}` }}>
             All
@@ -346,7 +346,7 @@ export default function UniversalSearchOverlay() {
         {PILLS.filter(p => p !== 'all' && activeSources.includes(p)).map(p => (
           <button key={p} onClick={() => setFilter(p)}
             className="px-2.5 py-1 rounded-full text-[9px] font-bold uppercase tracking-wider cursor-pointer active:scale-95 transition-all shrink-0"
-            style={activeFilter === p
+            style={effectiveFilter === p
               ? { background: S.accent, color: S.accentFg }
               : { background: S.surface, color: S.muted, border: `1px solid ${S.border}` }}>
             {SOURCE_LABELS[p]}

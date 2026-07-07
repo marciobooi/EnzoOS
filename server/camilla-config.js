@@ -12,7 +12,7 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import YAML from 'yaml';
-import { getSetting, setSetting } from './db.js';
+import { getSetting } from './db.js';
 import { sendCamillaCommand } from './camilla-ws.js';
 import { getCachedVolumeDb } from './event-service.js';
 

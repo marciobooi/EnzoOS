@@ -285,9 +285,11 @@ export default function Kiosk() {
     return () => clearTimeout(t);
   }, []);
 
-  useEffect(() => {
-    if (!radioCountry) setStationsList([]);
-  }, [radioCountry]);
+  // (An effect that reset stationsList when radioCountry was cleared used to
+  // live here — but setRadioCountry is only ever called from CountryPicker
+  // with a real country name, so it only fired once on mount, setting [] to
+  // the [] it was already initialised to: a pointless extra render + kioskCtx
+  // memo recompute. Removed in the derived-state audit.)
 
 
 
