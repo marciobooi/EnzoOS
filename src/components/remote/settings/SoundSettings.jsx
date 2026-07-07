@@ -29,6 +29,16 @@ function AdvancedAudioSettings() {
   const [autoHeadroom, setAutoHeadroom] = useState(true);
   const [headroomDb, setHeadroomDb]   = useState(0);
   const balanceDebounce = useRef(null);
+  // Switching this setting rewrites /etc/asound.conf immediately, but the
+  // PipeWire clock config it must agree with is only applied on the next
+  // PipeWire session start (restarting PipeWire live would drop MPD's
+  // connection) — so between the toggle and a reboot, the ALSA loopback
+  // slaves and PipeWire's actual running clock can disagree on the sample
+  // rate, which silences audio outright ("PCM Slave Active" goes off). A
+  // toast alone was too easy to miss before that happened; this makes the
+  // reboot requirement a persistent, one-tap action instead.
+  const [needsReboot, setNeedsReboot] = useState(false);
+  const [rebooting, setRebooting]     = useState(false);
 
   useEffect(() => {
     api.getReplayGain().then(d => setReplayGain(d.mode || 'off')).catch(() => {});
@@ -83,8 +93,14 @@ function AdvancedAudioSettings() {
     setBitPerfect(next);
     try {
       await api.setBitPerfect(next);
-      toast.success(next ? 'Bit-perfect on — reboot to apply' : 'Fixed 48 kHz mode — reboot to apply');
+      setNeedsReboot(true);
     } catch (e) { setBitPerfect(!next); reportError(e.message); }
+  };
+
+  const handleRebootNow = async () => {
+    setRebooting(true);
+    try { await api.rebootSystem(); toast.success(t('settings.rebooting')); }
+    catch (e) { setRebooting(false); reportError(e.message); }
   };
 
   const handleAutoHeadroomToggle = async () => {
@@ -177,6 +193,21 @@ function AdvancedAudioSettings() {
           value={bitPerfect ? t('common.on') : 'Fixed 48k'}
           chevron={false}
           onPress={handleBitPerfectToggle} />
+        {needsReboot && (
+          <div className="mx-4 mb-3 rounded-xl p-3 flex items-center justify-between gap-3" style={card}>
+            <p className="text-[12px] leading-snug" style={{ color: C.text2 }}>
+              {bitPerfect
+                ? 'Bit-perfect mode needs a reboot before it takes full effect — audio may cut out until then.'
+                : 'Fixed 48 kHz needs a reboot before it takes full effect — audio may cut out until then.'}
+            </p>
+            <button onClick={handleRebootNow} disabled={rebooting}
+              className="shrink-0 px-3 py-2 rounded-xl text-[12px] font-semibold active:scale-95 transition-all disabled:opacity-50 flex items-center gap-1.5"
+              style={{ background: C.champagne, color: '#1a1c1c' }}>
+              <RefreshCw className={`h-3.5 w-3.5 ${rebooting ? 'animate-spin' : ''}`} />
+              {rebooting ? t('settings.rebooting') : 'Reboot now'}
+            </button>
+          </div>
+        )}
         <Row label={t('settings.dsdBypass')}
           icon={<Disc3 className="h-4 w-4" style={{ color: dsdBypass ? C.champagne : C.text4 }} />}
           value={dsdBypass ? 'Native' : 'PCM'}
