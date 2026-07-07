@@ -730,6 +730,19 @@ Type=simple
 # running it as root was still unnecessary privilege for a process that
 # accepts reconfiguration commands over that socket.
 User=$TARGET_USER
+# A bare system-service User=, unlike an interactive login session, does NOT
+# get XDG_RUNTIME_DIR set by PAM — so the pipewire-alsa plugin CamillaDSP
+# uses whenever playback is a "type: pipewire" device (currently only the
+# Bluetooth-output path — the physical DAC opens raw ALSA hw: and never
+# needed this) can't find the user's PipeWire session socket at all. Hit
+# live: selecting a Bluetooth output made CamillaDSP crash-loop forever on
+# "ALSA function 'snd_pcm_open' failed with error 'Host is down (112)'",
+# silently killing audio AND (via the resulting PipeWire graph churn)
+# knocking Raspotify's Spotify Connect device offline. Manually running the
+# exact same aplay/speaker-test command from an actual login shell (which
+# does have XDG_RUNTIME_DIR) worked fine — confirming the gap was this
+# service's environment, not the PipeWire device itself.
+Environment=XDG_RUNTIME_DIR=/run/user/$(id -u "$TARGET_USER")
 WorkingDirectory=$PROJECT_DIR
 ExecStart=/usr/bin/camilladsp $PROJECT_DIR/camilladsp.yml -p 1234
 Restart=always
