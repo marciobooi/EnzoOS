@@ -429,8 +429,15 @@ export default {
     originally: 'Originally',
     onTour: 'On Tour',
     formed: 'Formed {year}',
+    born: 'Born {year}',
     members: '{count} members',
     officialSite: 'Official site',
+    listen: 'Listen & follow',
+    discography: 'Discography',
+    albums: '{count} albums',
+    singlesEps: '{count} singles/EPs',
+    latest: 'Latest: {title} ({year})',
+    findTickets: 'Find tickets',
   },
 
   settings: {

@@ -96,8 +96,18 @@ function cleanBio(text) {
 
 async function fromMusicBrainz(artist, album) {
   const search = await mbThrottle(() =>
-    mbApi.search('release', { query: `artist:"${artist}" AND release:"${album}"`, limit: 1 }));
-  const rel = search.releases?.[0];
+    mbApi.search('release', { query: `artist:"${artist}" AND release:"${album}"`, limit: 5 }));
+  // Pick the most complete candidate rather than blindly taking the first
+  // hit: search results already carry label-info/barcode/date, and MB often
+  // lists a barebones digital release first while a properly documented CD
+  // pressing sits at #2 — that's why label/catalog/barcode came back null
+  // for many albums even though MB has the data.
+  const score = (r) =>
+    (r['label-info']?.some((li) => li.label?.name) ? 4 : 0) +
+    (r['label-info']?.some((li) => li['catalog-number']) ? 2 : 0) +
+    (r.barcode ? 2 : 0) + (r.date ? 1 : 0) +
+    (r.status === 'Official' ? 2 : 0);
+  const rel = (search.releases || []).slice().sort((a, b) => score(b) - score(a))[0];
   if (!rel) return null;
   const detail = await mbThrottle(() =>
     mbApi.lookup('release', rel.id, ['artists', 'labels', 'release-groups', 'genres']));
@@ -110,6 +120,7 @@ async function fromMusicBrainz(artist, album) {
   const trackCount = (detail.media || []).reduce((n, m) => n + (m['track-count'] || 0), 0) || detail['track-count'] || null;
   return {
     mbid: detail.id,
+    releaseGroupMbid: rg.id || null,
     artistMbid: detail['artist-credit']?.[0]?.artist?.id || null,
     title: detail.title,
     releaseDate: detail.date || rg['first-release-date'] || null,
@@ -123,6 +134,67 @@ async function fromMusicBrainz(artist, album) {
     discCount: (detail.media || []).length || null,
     trackCount,
     genres,
+  };
+}
+
+// ── MusicBrainz artist-level enrichment ──────────────────────────────────────
+// Two extra throttled lookups (≈1.1 s each, results cached for 30 days like
+// everything else) that unlock the "relational" layer the flat album snapshot
+// was missing: official/streaming/social links and a discography summary.
+
+// Map an artist's URL-relations to named links by hostname. MB relation type
+// strings vary ("social network", "streaming", "free streaming", …) so the
+// hostname is the more reliable discriminator.
+async function fromMusicBrainzArtistLinks(artistMbid) {
+  if (!artistMbid) return null;
+  const detail = await mbThrottle(() => mbApi.lookup('artist', artistMbid, ['url-rels']));
+  const links = { streaming: {}, socials: {} };
+  let discogsArtistId = null;
+  for (const rel of detail.relations || []) {
+    const url = rel.url?.resource;
+    if (!url || rel.ended) continue;
+    let host = '';
+    try { host = new URL(url).hostname.replace(/^www\./, ''); } catch { continue; }
+    if (host.includes('spotify.com'))            links.streaming.spotify    ??= url;
+    else if (host === 'music.apple.com')         links.streaming.appleMusic ??= url;
+    else if (host.includes('youtube.com') || host === 'youtu.be') links.streaming.youtube ??= url;
+    else if (host.endsWith('bandcamp.com'))      links.streaming.bandcamp   ??= url;
+    else if (host.includes('soundcloud.com'))    links.streaming.soundcloud ??= url;
+    else if (host.includes('tidal.com'))         links.streaming.tidal      ??= url;
+    else if (host.includes('deezer.com'))        links.streaming.deezer     ??= url;
+    else if (host.includes('instagram.com'))     links.socials.instagram    ??= url;
+    else if (host.includes('twitter.com') || host === 'x.com') links.socials.twitter ??= url;
+    else if (host.includes('tiktok.com'))        links.socials.tiktok       ??= url;
+    else if (host.includes('facebook.com'))      links.socials.facebook     ??= url;
+    else if (host.includes('discogs.com')) {
+      const m = url.match(/discogs\.com\/artist\/(\d+)/);
+      if (m) discogsArtistId = Number(m[1]);
+    }
+    else if (rel.type === 'official homepage')   links.homepage ??= url;
+  }
+  return { links, discogsArtistId };
+}
+
+// Discography summary from the artist's release-groups: how many proper
+// albums vs singles/EPs exist, and the most recent release of any kind.
+async function fromMusicBrainzDiscography(artistMbid) {
+  if (!artistMbid) return null;
+  const res = await mbThrottle(() =>
+    mbApi.browse('release-group', { artist: artistMbid, limit: 100 }));
+  const groups = res['release-groups'] || [];
+  const isPlain = (rg) => !(rg['secondary-types'] || []).length; // exclude live/comp/remix
+  const albums = groups.filter((rg) => rg['primary-type'] === 'Album' && isPlain(rg));
+  const singlesEps = groups.filter((rg) => ['Single', 'EP'].includes(rg['primary-type']) && isPlain(rg));
+  const dated = groups.filter((rg) => rg['first-release-date']);
+  const latest = dated.sort((a, b) => (b['first-release-date'] || '').localeCompare(a['first-release-date'] || ''))[0];
+  return {
+    totalAlbums: albums.length,
+    totalSinglesEPs: singlesEps.length,
+    latestRelease: latest ? {
+      title: latest.title,
+      type: latest['primary-type'] || 'Release',
+      date: latest['first-release-date'],
+    } : null,
   };
 }
 
@@ -152,6 +224,11 @@ async function fromLastfm(artist, album, key, lang = 'en') {
     playcount: album_?.playcount ? Number(album_.playcount) : null,
     tags: (album_?.tags?.tag || artist_?.tags?.tag || []).map((t) => t.name).slice(0, 6),
     similar: (artist_?.similar?.artist || []).map((a) => a.name).slice(0, 6),
+    // Deep-linked variant of `similar` (name-only array kept for the existing
+    // UIs): Last.fm returns each similar artist's page URL alongside the name.
+    similarArtists: (artist_?.similar?.artist || [])
+      .map((a) => ({ name: a.name, url: a.url || null }))
+      .filter((a) => a.name).slice(0, 6),
     tracks,
     onTour: artist_?.ontour === '1',
   };
@@ -171,8 +248,13 @@ async function fromAudioDB(artist, album, key, lang = 'en') {
   // back to English when that translation is absent.
   const LL = (lang || 'en').toUpperCase();
   const localized = (obj, field) => obj?.[`${field}${LL}`] || obj?.[`${field}EN`] || null;
+  // TheAudioDB stores socials as bare domains ("facebook.com/yungblud") — normalise.
+  const soc = (v) => (v ? (String(v).startsWith('http') ? v : `https://${v}`) : null);
   return {
     // artist / band
+    theaudiodbArtistId: num(a?.idArtist),
+    facebook: soc(a?.strFacebook),
+    twitter: soc(a?.strTwitter),
     artistBio: localized(a, 'strBiography'),
     artistThumb: a?.strArtistThumb || null,
     artistBanner: a?.strArtistBanner || null,
@@ -209,6 +291,16 @@ async function aggregate(artist, album, keys, lang = 'en') {
   const MB = mb.status === 'fulfilled' ? mb.value : null;
   const LF = lf.status === 'fulfilled' ? lf.value : null;
   const ADB = adb.status === 'fulfilled' ? adb.value : null;
+
+  // Artist-level enrichment rides on the release lookup's artist MBID. These
+  // run after the three primary sources (MB calls are serialised at 1 req/s
+  // anyway) and each failure degrades gracefully to null.
+  const [linksRes, discoRes] = await Promise.allSettled([
+    fromMusicBrainzArtistLinks(MB?.artistMbid),
+    fromMusicBrainzDiscography(MB?.artistMbid),
+  ]);
+  const LINKS = linksRes.status === 'fulfilled' ? linksRes.value : null;
+  const DISCO = discoRes.status === 'fulfilled' ? discoRes.value : null;
 
   // Prefer the richest biography/review available; merge factual + editorial.
   const biography = ADB?.artistBio || LF?.artistBio || null;
@@ -255,18 +347,60 @@ async function aggregate(artist, album, keys, lang = 'en') {
     tracks: LF?.tracks || [],                    // [{ name, duration }]
     // ── band facts ──
     origin: ADB?.origin || null,                // where the band is from
-    formedYear: ADB?.formedYear || ADB?.bornYear || null,
+    // formedYear is strictly the band-formation year now. It previously fell
+    // back to bornYear, which conflated a solo artist's BIRTH year with when
+    // their career started ("Formed 1997" for someone born in 1997). The two
+    // are exposed separately; isSolo lets the UI pick the right label.
+    formedYear: ADB?.formedYear || null,
+    bornYear: ADB?.bornYear || null,
+    isSolo: ADB?.members === 1,
     diedYear: ADB?.diedYear || null,
     members: ADB?.members || null,
-    website: ADB?.website || null,
+    website: LINKS?.links?.homepage || ADB?.website || null,
     style: ADB?.style || null,
     mood: ADB?.mood || null,
     // ── popularity / discovery ──
     listeners: LF?.listeners || null,
     playcount: LF?.playcount || null,
     onTour: LF?.onTour || false,
-    similar: LF?.similar || [],
+    similar: LF?.similar || [],                  // names only (legacy UIs)
+    similarArtists: LF?.similarArtists || [],    // [{ name, url }]
+    // ── explicit ID namespaces ──
+    // `mbid` (the release MBID) is kept for backwards compatibility, but ids{}
+    // disambiguates what each identifier refers to.
     mbid: MB?.mbid || null,
+    ids: {
+      releaseMbid: MB?.mbid || null,
+      releaseGroupMbid: MB?.releaseGroupMbid || null,
+      artistMbid: MB?.artistMbid || null,
+      discogsArtistId: LINKS?.discogsArtistId || null,
+      theaudiodbArtistId: ADB?.theaudiodbArtistId || null,
+    },
+    // ── links (MusicBrainz URL-relations, TheAudioDB socials as fallback) ──
+    streamingLinks: LINKS?.links?.streaming && Object.keys(LINKS.links.streaming).length
+      ? LINKS.links.streaming : null,
+    socials: (() => {
+      const s = { ...(LINKS?.links?.socials || {}) };
+      if (!s.facebook && ADB?.facebook) s.facebook = ADB.facebook;
+      if (!s.twitter && ADB?.twitter) s.twitter = ADB.twitter;
+      return Object.keys(s).length ? s : null;
+    })(),
+    // ── discography summary (MusicBrainz release-groups) ──
+    discography: DISCO,
+    // ── structured classification (from data already fetched — no new APIs) ──
+    classifications: {
+      primaryGenre: genres[0] || ADB?.genre || null,
+      subGenres: genres.slice(1),
+      vibeTags: [...new Set([ADB?.mood, ADB?.theme, ...(LF?.tags || [])].filter(Boolean))].slice(0, 8),
+    },
+    // ── tour utility ──
+    // Last.fm only says WHETHER the artist tours; next-show data needs a
+    // Bandsintown/Ticketmaster API key. These search deep-links need none.
+    tour: {
+      onTour: LF?.onTour || false,
+      bandsintownSearchUrl: `https://www.bandsintown.com/en/search?query=${enc(artist)}`,
+      ticketmasterSearchUrl: `https://www.ticketmaster.com/search?q=${enc(artist)}`,
+    },
     sources,
     fetchedAt: Date.now(),
   };
@@ -287,7 +421,9 @@ router.get('/album', async (req, res) => {
 
   const keys = await resolveKeys();
   const lastfmConfigured = !!keys.lastfm;
-  const cacheKey = `album:${artist}|${album}|${lang}`.toLowerCase();
+  // v2: schema gained ids/links/discography/classifications — the version bump
+  // makes stale flat-schema cache entries miss so they re-fetch enriched.
+  const cacheKey = `album:v2:${artist}|${album}|${lang}`.toLowerCase();
   try {
     // L1: in-memory.
     const mem = memGet(cacheKey);

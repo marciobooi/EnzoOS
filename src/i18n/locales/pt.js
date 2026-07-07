@@ -427,8 +427,15 @@ export default {
     originally: 'Originalmente',
     onTour: 'Em Digressão',
     formed: 'Formado em {year}',
+    born: 'Nascido em {year}',
     members: '{count} membros',
     officialSite: 'Site oficial',
+    listen: 'Ouvir e seguir',
+    discography: 'Discografia',
+    albums: '{count} álbuns',
+    singlesEps: '{count} singles/EPs',
+    latest: 'Mais recente: {title} ({year})',
+    findTickets: 'Procurar bilhetes',
   },
 
   settings: {

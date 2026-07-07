@@ -197,6 +197,24 @@ export default function AlbumInfoOverlay() {
                 <Credit icon={<Globe className="w-3.5 h-3.5" style={{ color: S.label }} />} label={t('meta.country')} value={d.country} />
                 <Credit icon={<Disc3 className="w-3.5 h-3.5" style={{ color: S.label }} />} label={t('library.tracks')} value={d.trackCount} />
                 <Credit icon={<BarChart3 className="w-3.5 h-3.5" style={{ color: S.label }} />} label={t('meta.listeners')} value={fmtNum(d.listeners)} />
+                {/* Discography summary (kiosk shows facts only — no external
+                    links here: the kiosk browser must never navigate away) */}
+                {d.discography && (d.discography.totalAlbums || d.discography.totalSinglesEPs) > 0 && (
+                  <div className="mt-3">
+                    <p className="text-[11px] font-bold uppercase tracking-[0.2em] mb-1" style={{ color: S.strong }}>{t('meta.discography')}</p>
+                    <p className="text-[12px] font-light leading-relaxed" style={{ color: S.text }}>
+                      {[
+                        d.discography.totalAlbums ? t('meta.albums', { count: d.discography.totalAlbums }) : null,
+                        d.discography.totalSinglesEPs ? t('meta.singlesEps', { count: d.discography.totalSinglesEPs }) : null,
+                      ].filter(Boolean).join(' · ')}
+                    </p>
+                    {d.discography.latestRelease && (
+                      <p className="text-[11px] font-light mt-0.5" style={{ color: S.muted }}>
+                        {t('meta.latest', { title: d.discography.latestRelease.title, year: String(d.discography.latestRelease.date || '').slice(0, 4) })}
+                      </p>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
           )}

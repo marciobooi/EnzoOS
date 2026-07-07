@@ -190,16 +190,58 @@ export default function AlbumInfoSheet({ artist, album, albumImage, onClose }) {
                     )}
                   </div>
                   <div className="flex flex-wrap gap-x-5 gap-y-1.5 mb-2">
-                    {d.formedYear && <span className="inline-flex items-center gap-1.5 text-[13px]" style={{ color: C.text2 }}><Calendar className="h-3.5 w-3.5" style={{ color: C.text4 }} /> {t('meta.formed', { year: d.formedYear })}</span>}
+                    {/* Solo artists get "Born {year}" — formedYear used to be
+                        polluted by the birth year server-side (fixed there);
+                        show whichever fact actually applies. */}
+                    {(d.isSolo && d.bornYear)
+                      ? <span className="inline-flex items-center gap-1.5 text-[13px]" style={{ color: C.text2 }}><Calendar className="h-3.5 w-3.5" style={{ color: C.text4 }} /> {t('meta.born', { year: d.bornYear })}</span>
+                      : d.formedYear
+                        ? <span className="inline-flex items-center gap-1.5 text-[13px]" style={{ color: C.text2 }}><Calendar className="h-3.5 w-3.5" style={{ color: C.text4 }} /> {t('meta.formed', { year: d.formedYear })}</span>
+                        : null}
                     {d.origin && <span className="inline-flex items-center gap-1.5 text-[13px]" style={{ color: C.text2 }}><MapPin className="h-3.5 w-3.5" style={{ color: C.text4 }} /> {d.origin}</span>}
-                    {d.members && <span className="inline-flex items-center gap-1.5 text-[13px]" style={{ color: C.text2 }}><Users className="h-3.5 w-3.5" style={{ color: C.text4 }} /> {t('meta.members', { count: d.members })}</span>}
+                    {d.members > 1 && <span className="inline-flex items-center gap-1.5 text-[13px]" style={{ color: C.text2 }}><Users className="h-3.5 w-3.5" style={{ color: C.text4 }} /> {t('meta.members', { count: d.members })}</span>}
                   </div>
+                  {/* Discography summary (MusicBrainz release-groups) */}
+                  {d.discography && (d.discography.totalAlbums || d.discography.totalSinglesEPs) > 0 && (
+                    <p className="text-[13px] mb-2" style={{ color: C.text3 }}>
+                      {[
+                        d.discography.totalAlbums ? t('meta.albums', { count: d.discography.totalAlbums }) : null,
+                        d.discography.totalSinglesEPs ? t('meta.singlesEps', { count: d.discography.totalSinglesEPs }) : null,
+                        d.discography.latestRelease ? t('meta.latest', { title: d.discography.latestRelease.title, year: String(d.discography.latestRelease.date || '').slice(0, 4) }) : null,
+                      ].filter(Boolean).join(' · ')}
+                    </p>
+                  )}
                   {d.biography && <p className="text-[14px] leading-relaxed" style={{ color: C.text2 }}>{d.biography}</p>}
-                  {d.website && (
-                    <a href={d.website.startsWith('http') ? d.website : `https://${d.website}`} target="_blank" rel="noreferrer"
-                      className="inline-flex items-center gap-1 text-[13px] mt-2.5 active:opacity-60" style={{ color: C.champagne }}>
-                      {t('meta.officialSite')} <ExternalLink className="h-3 w-3" />
-                    </a>
+                  {/* Listen / follow links — MusicBrainz URL-relations */}
+                  {(d.website || d.streamingLinks || d.socials) && (
+                    <div className="flex flex-wrap gap-2 mt-3">
+                      {d.website && (
+                        <a href={d.website.startsWith('http') ? d.website : `https://${d.website}`} target="_blank" rel="noreferrer"
+                          className="inline-flex items-center gap-1 text-[12px] font-semibold px-3 py-1.5 rounded-full active:opacity-60"
+                          style={{ background: `${C.champagne}18`, color: C.champagne, border: `0.5px solid ${C.champagne}35` }}>
+                          {t('meta.officialSite')} <ExternalLink className="h-3 w-3" />
+                        </a>
+                      )}
+                      {Object.entries({ ...(d.streamingLinks || {}), ...(d.socials || {}) }).map(([name, url]) => (
+                        <a key={name} href={url} target="_blank" rel="noreferrer"
+                          className="inline-flex items-center gap-1 text-[12px] font-semibold px-3 py-1.5 rounded-full capitalize active:opacity-60"
+                          style={{ background: C.containerLow, color: C.text2, border: `0.5px solid ${C.outline}` }}>
+                          {name === 'appleMusic' ? 'Apple Music' : name} <ExternalLink className="h-3 w-3" />
+                        </a>
+                      ))}
+                    </div>
+                  )}
+                  {/* On tour → ticket search deep-links (no API key required) */}
+                  {d.onTour && d.tour && (
+                    <div className="flex flex-wrap gap-2 mt-2.5">
+                      {[['Bandsintown', d.tour.bandsintownSearchUrl], ['Ticketmaster', d.tour.ticketmasterSearchUrl]].map(([name, url]) => url && (
+                        <a key={name} href={url} target="_blank" rel="noreferrer"
+                          className="inline-flex items-center gap-1 text-[12px] font-semibold px-3 py-1.5 rounded-full active:opacity-60"
+                          style={{ background: `${C.champagne}18`, color: C.champagne, border: `0.5px solid ${C.champagne}35` }}>
+                          {t('meta.findTickets')} · {name} <ExternalLink className="h-3 w-3" />
+                        </a>
+                      ))}
+                    </div>
                   )}
                 </div>
               )}
@@ -212,13 +254,19 @@ export default function AlbumInfoSheet({ artist, album, albumImage, onClose }) {
                 </div>
               )}
 
-              {/* similar artists */}
-              {d.similar?.length > 0 && (
+              {/* similar artists — deep-linked to their Last.fm pages when available */}
+              {(d.similarArtists?.length > 0 || d.similar?.length > 0) && (
                 <div>
                   <p className="text-[11px] font-semibold uppercase tracking-widest mb-2 flex items-center gap-1.5" style={{ color: C.text3, fontFamily: C.fontLabel }}>
                     <Users className="h-3.5 w-3.5" /> {t('meta.fansAlsoLike')}
                   </p>
-                  <div className="flex flex-wrap gap-2">{d.similar.map((s) => <Chip key={s} C={C}>{s}</Chip>)}</div>
+                  <div className="flex flex-wrap gap-2">
+                    {d.similarArtists?.length > 0
+                      ? d.similarArtists.map((s) => s.url
+                          ? <a key={s.name} href={s.url} target="_blank" rel="noreferrer" className="active:opacity-60"><Chip C={C}>{s.name}</Chip></a>
+                          : <Chip key={s.name} C={C}>{s.name}</Chip>)
+                      : d.similar.map((s) => <Chip key={s} C={C}>{s}</Chip>)}
+                  </div>
                 </div>
               )}
 
