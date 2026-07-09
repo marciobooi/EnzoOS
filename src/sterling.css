@@ -102,20 +102,24 @@ div[data-active-theme="sterling"]::before {
    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
 
 /* Full-bleed chassis: on the physical 1480×320 panel this container IS the
-   entire screen, so the floating-device treatment it used to have (10px
-   rounded corners, 1px white/dark hairline borders, outer drop shadows)
-   showed up as blank/white lines along the screen edges (observed live).
-   Edge-to-edge champagne now; the dark display inset below keeps the
-   machined-device look. */
+   entire screen, so borders/radius/shadows read as blank lines at the edges.
+   Background is DARK (not champagne), and padding is 0, for a subtle reason
+   measured live on the panel: the base .music-player is itself fixed
+   1480×320 (it overflows any container padding, so a champagne "bezel" was
+   never visible anyway) AND it runs the player-subtle-shift anti-burn-in
+   drift, which slides the whole player by ±1px over 240s. Whatever the
+   drift exposes at the screen edges is THIS container's background — with
+   champagne behind a dark display that flashed as white hairlines along
+   the edges. Dark-on-dark makes the drift invisible. */
 div[data-active-theme="sterling"] .music-player-container {
-  background: linear-gradient(180deg, var(--chassis-hi) 0%, var(--chassis) 52%, var(--chassis-mid) 100%) !important;
+  background: var(--display-edge) !important;
   border: none !important;
   border-radius: 0 !important;
   box-shadow: none !important;
   overflow: hidden !important;
   position: relative;
   z-index: 2;
-  padding: 14px !important;
+  padding: 0 !important;
 }
 
 /* Warm brushed texture on chassis */
@@ -136,17 +140,22 @@ div[data-active-theme="sterling"] .music-player-container::before {
    DISPLAY PANEL — dark-warm matte screen inset into the chassis
    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
 
+/* Full-bleed display. `border: none` must cover ALL sides: the base
+   .music-player rule in index.css has a light 1px #bbbcb8 border, and the
+   previous top/bottom-only override left the light left/right borders
+   painting as vertical white hairlines at the screen edges (observed live —
+   the second of the two reported edge lines). Radius 0 for the same reason:
+   6px corners exposed the backdrop in every corner arc. Outer white
+   box-shadow dropped; only the inset depth shadows remain. */
 div[data-active-theme="sterling"] .music-player {
   background:
     radial-gradient(ellipse 110% 70% at 30% 25%, rgba(255,255,255,0.035) 0%, transparent 55%),
     linear-gradient(175deg, var(--display-top) 0%, var(--display-mid) 50%, var(--display-bot) 100%) !important;
-  border-radius: 6px !important;
-  border-top: 1px solid var(--display-edge) !important;
-  border-bottom: 1px solid rgba(255,255,255,0.10) !important;
+  border: none !important;
+  border-radius: 0 !important;
   box-shadow:
     inset 0 2px 12px rgba(0,0,0,0.55),
-    inset 0 -1px 0   rgba(255,255,255,0.08),
-    0 1px 0          rgba(255,255,255,0.60) !important;
+    inset 0 -1px 0   rgba(255,255,255,0.08) !important;
   position: relative;
   z-index: 2;
   overflow: hidden;
