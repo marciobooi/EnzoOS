@@ -1039,6 +1039,40 @@ if [ -f "$CMDLINE_TXT" ] && ! grep -qw 'fbcon=rotate:3' "$CMDLINE_TXT"; then
   sed -i -E '1 s/[[:space:]]*fbcon=rotate:[0-9]//g; 1 s/[[:space:]]*$//; 1 s/$/ fbcon=rotate:3/' "$CMDLINE_TXT"
 fi
 
+# ── Boot splash (Plymouth): Resonance logo + loading dots, no kernel text ────
+# End users shouldn't watch kernel lines scroll by on an appliance. Plymouth
+# draws a branded splash from early boot until X takes over; the theme itself
+# rotates its sprites 90° in software because the panel scans out portrait
+# until X's landscape rotation exists (same trick as fbcon=rotate above).
+# `quiet` hides the text that would otherwise flash before the splash starts,
+# and plymouth.ignore-serial-consoles is required because cmdline.txt carries
+# a console=ttyS0 — without it Plymouth falls back to text mode.
+if [ -f "$CMDLINE_TXT" ]; then
+  echo -e "${YELLOW}  Installing Plymouth boot splash (Resonance theme)...${NC}"
+  apt_install install -y plymouth plymouth-themes || \
+    echo -e "${YELLOW}  Plymouth unavailable — boot stays on the (rotated) text console.${NC}"
+  if command -v plymouth-set-default-theme >/dev/null 2>&1; then
+    mkdir -p /usr/share/plymouth/themes/resonance
+    cp "$PROJECT_DIR/scripts/plymouth/resonance/resonance.plymouth" \
+       "$PROJECT_DIR/scripts/plymouth/resonance/resonance.script" \
+       "$PROJECT_DIR/scripts/plymouth/resonance/dot.png" \
+       /usr/share/plymouth/themes/resonance/
+    cp "$PROJECT_DIR/public/icon-512.png" /usr/share/plymouth/themes/resonance/logo.png
+    # -R rebuilds the initramfs so the theme is available at early boot.
+    plymouth-set-default-theme -R resonance || \
+      echo -e "${YELLOW}  Could not set Plymouth theme — continuing.${NC}"
+    for tok in quiet splash plymouth.ignore-serial-consoles; do
+      grep -qw "$tok" "$CMDLINE_TXT" || \
+        sed -i -E "1 s/[[:space:]]*\$//; 1 s/\$/ $tok/" "$CMDLINE_TXT"
+    done
+    # Also silence the firmware's rainbow test square for a clean dark boot.
+    if [ -f "$CONFIG_TXT" ] && ! grep -q '^disable_splash=1' "$CONFIG_TXT"; then
+      echo 'disable_splash=1' >> "$CONFIG_TXT"
+    fi
+    echo -e "${GREEN}  Plymouth splash configured (theme: resonance).${NC}"
+  fi
+fi
+
 # ── Touch rotation: handled in scripts/xinitrc via `xinput map-to-output` ────
 # Earlier installer versions wrote a LIBINPUT_CALIBRATION_MATRIX udev rule
 # here to rotate touch coordinates. That was wrong on real hardware: the udev

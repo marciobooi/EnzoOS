@@ -1,0 +1,8 @@
+[Plymouth Theme]
+Name=Resonance HiFi
+Description=Resonance HiFi boot splash — logo + loading dots on the brand gradient
+ModuleName=script
+
+[script]
+ImageDir=/usr/share/plymouth/themes/resonance
+ScriptFile=/usr/share/plymouth/themes/resonance/resonance.script
