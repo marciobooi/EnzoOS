@@ -1,23 +1,14 @@
 import { useContext } from 'react';
-import { Music, Library, Layers, Sliders, Search } from 'lucide-react';
-import { Tk } from './shared';
+import { Tk, NAV_TABS } from './shared';
 import { useI18n } from '../../i18n';
 
-const BASE_TABS = [
-  { id: 'player',   Icon: Music,    labelKey: 'nav.player'   },
-  { id: 'library',  Icon: Library,  labelKey: 'nav.library'  },
-  { id: 'search',   Icon: Search,   labelKey: 'nav.search'   },
-  { id: 'source',   Icon: Layers,   labelKey: 'nav.source'   },
-  { id: 'settings', Icon: Sliders,  labelKey: 'nav.settings' },
-];
-
-const N = BASE_TABS.length;
+const N = NAV_TABS.length;
 
 export default function BottomNav({ navH }) {
   const { C, activeTab, setActiveTab, darkMode } = useContext(Tk);
   const { t } = useI18n();
 
-  const activeIdx = BASE_TABS.findIndex(t => t.id === activeTab);
+  const activeIdx = NAV_TABS.findIndex(t => t.id === activeTab);
 
   return (
     // Bar height grows by the home-indicator inset (iOS standalone/fullscreen
@@ -49,7 +40,7 @@ export default function BottomNav({ navH }) {
       />
 
       <div className="relative flex items-start justify-around pt-3 px-1">
-        {BASE_TABS.map(({ id, Icon, labelKey }) => {
+        {NAV_TABS.map(({ id, Icon, labelKey }) => {
           const active = activeTab === id;
           return (
             <button key={id} onClick={() => setActiveTab(id)}

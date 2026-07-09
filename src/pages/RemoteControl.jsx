@@ -7,6 +7,8 @@ import { useResonanceWS } from '../websocket';
 import { EQ_PRESETS } from '../components/EqualizerControl';
 import RemoteDspWizard from '../components/remote/RemoteDspWizard';
 import RemoteThemeSettings from '../components/remote/RemoteThemeSettings';
+import TabletShell from '../components/remote/tablet/TabletShell';
+import { useIsTabletViewport } from '../hooks/useTabletViewport';
 import '../remote.css';
 import { useI18n } from '../i18n';
 
@@ -31,6 +33,17 @@ export default function RemoteControl() {
   // ── dark mode ─────────────────────────────────────────────────────────────
   const [darkMode, setDarkMode] = useState(() => localStorage.getItem('resonance_remote_dark') === 'true');
   useEffect(() => { localStorage.setItem('resonance_remote_dark', darkMode); }, [darkMode]);
+
+  // iPad gets its own shell (TabletShell) — see src/hooks/useTabletViewport.js
+  // for the width threshold. body.remote-tablet-mode lets remote-tablet.css
+  // reach overlays that portal straight to document.body (Sheet, and by
+  // extension every settings/album-info/lyrics panel built on it), which a
+  // selector scoped to TabletShell's own DOM subtree could never reach.
+  const isTablet = useIsTabletViewport();
+  useEffect(() => {
+    document.body.classList.toggle('remote-tablet-mode', isTablet);
+    return () => document.body.classList.remove('remote-tablet-mode');
+  }, [isTablet]);
 
   // ── design tokens ─────────────────────────────────────────────────────────
   const C = darkMode ? {
@@ -817,41 +830,48 @@ export default function RemoteControl() {
   // ══════════════════════════════════════════════════════════════════════════
   return (
     <Tk.Provider value={ctxValue}>
-      <>
-        <div style={{ ...rcVars, fontFamily: C.font, background: C.bg, paddingTop: 'env(safe-area-inset-top)' }}
-          className="h-[100vh] remote-root fixed inset-0 flex flex-col overflow-hidden overflow-y-auto touch-manipulation select-none">
-
-          <TopBar darkMode={darkMode} setDarkMode={setDarkMode}
+      <div style={{ ...rcVars, fontFamily: C.font }}>
+        {isTablet ? (
+          <TabletShell darkMode={darkMode} setDarkMode={setDarkMode} tabDirection={tabDirection}
             onVoice={voiceSupported() ? () => setVoiceOpen(true) : undefined} />
+        ) : (
+          <div style={{ background: C.bg, paddingTop: 'env(safe-area-inset-top)' }}
+            className="h-[100vh] remote-root fixed inset-0 flex flex-col overflow-hidden overflow-y-auto touch-manipulation select-none">
 
-          <div className="flex-1 overflow-y-auto overscroll-none"
-            style={{ paddingBottom: `calc(${NAV_H + (activeTab !== 'player' ? 72 : 8)}px + env(safe-area-inset-bottom))` }}>
-            <div key={activeTab} className={`animate-tab-${tabDirection}`}>
-              {activeTab === 'player'   && <PlayerTab />}
-              {activeTab === 'library'  && <LibraryTab />}
-              {activeTab === 'search'   && <UniversalSearch />}
-              {activeTab === 'source'   && <SourceTab />}
-              {activeTab === 'settings' && <SettingsTab />}
+            <TopBar darkMode={darkMode} setDarkMode={setDarkMode}
+              onVoice={voiceSupported() ? () => setVoiceOpen(true) : undefined} />
+
+            <div className="flex-1 overflow-y-auto overscroll-none"
+              style={{ paddingBottom: `calc(${NAV_H + (activeTab !== 'player' ? 72 : 8)}px + env(safe-area-inset-bottom))` }}>
+              <div key={activeTab} className={`animate-tab-${tabDirection}`}>
+                {activeTab === 'player'   && <PlayerTab />}
+                {activeTab === 'library'  && <LibraryTab />}
+                {activeTab === 'search'   && <UniversalSearch />}
+                {activeTab === 'source'   && <SourceTab />}
+                {activeTab === 'settings' && <SettingsTab />}
+              </div>
             </div>
+
+            {activeTab !== 'player' && (
+              <div className="absolute left-0 right-0" style={{ bottom: `calc(${NAV_H}px + env(safe-area-inset-bottom))` }}>
+                <MiniPlayer />
+              </div>
+            )}
+
+            <BottomNav navH={NAV_H} />
           </div>
+        )}
 
-          {activeTab !== 'player' && (
-            <div className="absolute left-0 right-0" style={{ bottom: `calc(${NAV_H}px + env(safe-area-inset-bottom))` }}>
-              <MiniPlayer />
-            </div>
-          )}
-
-          <BottomNav navH={NAV_H} />
-        </div>
-
-        {/* ── Overlays ── */}
+        {/* ── Overlays — shared by phone and tablet; tablet-only floating-card
+             styling for the portaled ones (Sheet, DSP wizard, theme settings,
+             queue) comes from body.remote-tablet-mode in remote-tablet.css ── */}
         {isDspWizardOpen && (
           // z above 9999: Settings' own Sheet (Sound → Room Calibration lives
           // inside it) is portaled to document.body at that same z-index, and
           // since portals land after this non-portaled overlay in DOM order,
           // equal z-index meant the still-open Sound sheet painted on top and
           // swallowed clicks — the wizard was there, just hidden underneath.
-          <div className="remote-root fixed inset-0 z-[10010] flex flex-col"
+          <div className="remote-root rt-overlay-card fixed inset-0 z-[10010] flex flex-col"
             style={{ ...rcVars, background: C.bg, paddingTop: 'env(safe-area-inset-top)', paddingBottom: 'env(safe-area-inset-bottom)' }}>
             <RemoteDspWizard
               onClose={() => { setIsDspWizardOpen(false); api.getDspCalibration().then(c => setDspActive(c && c[0] === 'dsp')).catch(() => {}); }}
@@ -873,7 +893,7 @@ export default function RemoteControl() {
         {voiceOpen && <VoiceControl onClose={() => setVoiceOpen(false)} />}
 
         {isThemeSettingsOpen && (
-          <div className="remote-root fixed inset-0 z-[9999] flex flex-col overflow-y-auto"
+          <div className="remote-root rt-overlay-card fixed inset-0 z-[9999] flex flex-col overflow-y-auto"
             style={{ ...rcVars, background: C.bg, fontFamily: C.font, paddingTop: 'env(safe-area-inset-top)' }}>
             <div className="flex justify-between items-center px-5 pt-4 pb-4 sticky top-0 z-10 shrink-0"
               style={{ background: C.bg, borderBottom: `0.5px solid ${C.outline}` }}>
@@ -899,7 +919,7 @@ export default function RemoteControl() {
           </div>
         )}
 
-      </>
+      </div>
     </Tk.Provider>
   );
 }

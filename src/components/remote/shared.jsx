@@ -1,8 +1,18 @@
 import React, { createContext, useContext } from 'react';
 import { createPortal } from 'react-dom';
-import { ChevronRight, ChevronLeft } from 'lucide-react';
+import { ChevronRight, ChevronLeft, Music, Library, Layers, Sliders, Search } from 'lucide-react';
 
 export const Tk = createContext({});
+
+// Shared between BottomNav (phone) and the tablet sidebar — one source of
+// truth for tab identity/icon/order so the two shells can't drift apart.
+export const NAV_TABS = [
+  { id: 'player',   Icon: Music,    labelKey: 'nav.player'   },
+  { id: 'library',  Icon: Library,  labelKey: 'nav.library'  },
+  { id: 'search',   Icon: Search,   labelKey: 'nav.search'   },
+  { id: 'source',   Icon: Layers,   labelKey: 'nav.source'   },
+  { id: 'settings', Icon: Sliders,  labelKey: 'nav.settings' },
+];
 
 // Full-screen remote sheet — solid background (no dim), header with a back
 // button. Portaled to <body> so it escapes the tab-slide transform (a

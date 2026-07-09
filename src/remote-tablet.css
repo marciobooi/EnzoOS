@@ -1,0 +1,106 @@
+/* ════════════════════════════════════════════════════════════════════════════
+   Remote Control — iPad shell (>= 768px)
+   ----------------------------------------------------------------------------
+   The phone layout (remote.css + the JSX in RemoteControl.jsx's phone branch)
+   is untouched by anything in this file — every rule here is scoped under
+   `.remote-tablet-shell` (the tablet shell's own root) or `body.remote-tablet-mode`
+   (a class RemoteControl.jsx toggles on <body> so portaled/overlay pieces —
+   Sheet uses createPortal straight to document.body, so it sits OUTSIDE the
+   shell's own DOM subtree and can't be reached by a `.remote-tablet-shell …`
+   descendant selector — can still be reached).
+
+   One JSX tree serves BOTH iPad orientations: layout differences between
+   portrait and landscape are expressed here as `@media (orientation: …)`
+   rules, not as separate components, so rotating the device just reflows —
+   no re-render, no JS orientation branch to get out of sync.
+   ════════════════════════════════════════════════════════════════════════════ */
+
+.remote-tablet-shell {
+  display: grid;
+  grid-template-columns: 104px 1fr;
+  height: 100vh;
+  height: 100dvh;
+}
+
+/* ── Sidebar ─────────────────────────────────────────────────────────────── */
+.rt-sidebar {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: calc(1.5rem + env(safe-area-inset-top)) 0.5rem calc(1.25rem + env(safe-area-inset-bottom));
+  gap: 0.25rem;
+}
+.rt-sidebar-nav { display: flex; flex-direction: column; gap: 0.375rem; width: 100%; margin-top: 1.75rem; }
+.rt-sidebar-footer { margin-top: auto; display: flex; flex-direction: column; align-items: center; gap: 0.625rem; width: 100%; }
+
+/* ── Content column ──────────────────────────────────────────────────────── */
+.rt-content {
+  overflow-y: auto;
+  overscroll-behavior: none;
+  padding-top: env(safe-area-inset-top);
+}
+.rt-content-inner {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 2rem 3rem calc(2rem + env(safe-area-inset-bottom));
+}
+/* Non-player tabs read better with a narrower measure than the full
+   1180px hero column — 900 keeps list rows from stretching into
+   uncomfortably long tap targets while still using real iPad width. */
+.rt-content-inner--narrow { max-width: 900px; }
+
+/* ── Player hero — CSS Grid areas swap by orientation, one component ──────── */
+.rt-hero {
+  display: grid;
+  grid-template-columns: 1fr;
+  grid-template-areas: "art" "info";
+  gap: 2.5rem;
+  max-width: 640px;
+  margin: 0 auto;
+}
+@media (orientation: landscape) {
+  .rt-hero {
+    grid-template-columns: minmax(320px, 440px) 1fr;
+    grid-template-areas: "art info";
+    align-items: center;
+    max-width: 1180px;
+    gap: 4rem;
+  }
+}
+.rt-hero-art  { grid-area: art; }
+.rt-hero-info { grid-area: info; min-width: 0; }
+
+/* ── Persistent mini-player dock (non-player tabs, tablet only) ───────────── */
+.rt-dock { max-width: 900px; margin: 1.5rem auto 0; }
+
+/* ── Portaled overlays: float as centered cards instead of edge-to-edge ───── */
+body.remote-tablet-mode .remote-sheet-in {
+  top: 4vh !important;
+  bottom: 4vh !important;
+  left: 50% !important;
+  right: auto !important;
+  transform: translateX(-50%) !important;
+  width: min(640px, 92vw) !important;
+  border-radius: 28px !important;
+  box-shadow: 0 40px 90px rgba(0, 0, 0, 0.35) !important;
+  overflow: hidden !important;
+}
+body.remote-tablet-mode .rt-overlay-card {
+  top: 4vh !important;
+  bottom: 4vh !important;
+  left: 50% !important;
+  right: auto !important;
+  transform: translateX(-50%) !important;
+  width: min(640px, 92vw) !important;
+  border-radius: 28px !important;
+  box-shadow: 0 40px 90px rgba(0, 0, 0, 0.35) !important;
+  overflow: hidden !important;
+}
+body.remote-tablet-mode .queue-panel-in {
+  left: 50% !important;
+  right: auto !important;
+  transform: translateX(-50%) !important;
+  width: min(560px, 90vw) !important;
+  border-radius: 28px !important;
+  bottom: 4vh !important;
+}
