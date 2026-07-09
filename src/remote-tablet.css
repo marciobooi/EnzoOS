@@ -27,14 +27,43 @@
   display: flex;
   flex-direction: column;
   align-items: center;
+  height: 100%;
   padding: calc(1.5rem + env(safe-area-inset-top)) 0.5rem calc(1.25rem + env(safe-area-inset-bottom));
   gap: 0.25rem;
 }
-.rt-sidebar-nav { display: flex; flex-direction: column; gap: 0.375rem; width: 100%; margin-top: 1.75rem; }
-.rt-sidebar-footer { margin-top: auto; display: flex; flex-direction: column; align-items: center; gap: 0.625rem; width: 100%; }
+/* Nav is vertically centered in whatever room is left between the header
+   (logo + now-playing glimpse) and the footer, instead of being pinned
+   directly under the header — on a full iPad height that fixed-gap version
+   left an obviously "dead" empty band above the footer controls. */
+.rt-sidebar-nav {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0.5rem;
+  width: 100%;
+  min-height: 0;
+}
+.rt-sidebar-footer { display: flex; flex-direction: column; align-items: center; gap: 0.625rem; width: 100%; }
+.rt-sidebar-now-playing {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  border-radius: 16px;
+  overflow: hidden;
+  margin-top: 1.25rem;
+  cursor: pointer;
+}
 
 /* ── Content column ──────────────────────────────────────────────────────── */
-.rt-content {
+.rt-body {
+  display: flex;
+  min-height: 0;
+  overflow: hidden;
+}
+.rt-main {
+  flex: 1;
+  min-width: 0;
   overflow-y: auto;
   overscroll-behavior: none;
   padding-top: env(safe-area-inset-top);
@@ -42,12 +71,33 @@
 .rt-content-inner {
   max-width: 1180px;
   margin: 0 auto;
-  padding: 2rem 3rem calc(2rem + env(safe-area-inset-bottom));
+  padding: 2rem 2.5rem calc(2rem + env(safe-area-inset-bottom));
 }
 /* Non-player tabs read better with a narrower measure than the full
    1180px hero column — 900 keeps list rows from stretching into
-   uncomfortably long tap targets while still using real iPad width. */
+   uncomfortably long tap targets while still using real iPad width. When
+   the now-playing rail is also on screen (landscape), .rt-main is already
+   narrower than 900px itself, so this cap just becomes a no-op there. */
 .rt-content-inner--narrow { max-width: 900px; }
+
+/* ── Now-playing rail — persistent companion for non-player tabs ──────────
+   Portrait has no width to spare for a third column, so MiniPlayer's
+   bottom dock (in the normal content flow, see .rt-dock) covers that case
+   instead; landscape has room, so the rail replaces the dock there. Both
+   are always mounted — this is pure CSS visibility, no JS orientation
+   branch to fall out of sync on rotation. */
+.rt-rail {
+  display: none;
+  width: 320px;
+  flex-shrink: 0;
+  overflow-y: auto;
+  overscroll-behavior: none;
+  padding-top: env(safe-area-inset-top);
+}
+@media (orientation: landscape) {
+  .rt-rail { display: block; }
+  .rt-dock { display: none; }
+}
 
 /* ── Player hero — CSS Grid areas swap by orientation, one component ──────── */
 .rt-hero {

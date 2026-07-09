@@ -117,10 +117,10 @@ export default function SourceTab() {
         <h2 className="text-[24px] font-medium" style={{ color: C.text1, letterSpacing: '-0.01em' }}>{t('nav.source')}</h2>
       </div>
 
-      <div className="px-4 grid grid-cols-3 gap-3">
+      <div className="px-4 grid grid-cols-3 md:grid-cols-4 gap-3 md:gap-4">
         {sources.map(({ id, label, Icon }) => (
           <button key={id} onClick={() => handleSelect(id)}
-            className="relative flex flex-col items-center justify-center gap-3 py-7 rounded-2xl active:scale-95 transition-all cursor-pointer input-btn"
+            className="relative flex flex-col items-center justify-center gap-3 py-7 md:py-9 rounded-2xl active:scale-95 transition-all cursor-pointer input-btn"
             style={source === id ? { ...btnInset, border: `0.5px solid ${C.champagne}40` } : { ...card }}>
             <Icon />
             <span className="text-[12px] font-semibold uppercase tracking-wider"

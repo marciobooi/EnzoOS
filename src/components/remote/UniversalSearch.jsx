@@ -501,11 +501,11 @@ export default function UniversalSearch() {
             <div>
               <p className="text-[11px] font-semibold uppercase tracking-widest mb-2 px-1"
                 style={{ color: C.text3, fontFamily: C.fontLabel }}>{t('library.exploreAll')}</p>
-              <div className="grid grid-cols-2 gap-2.5">
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-2.5 md:gap-3">
                 {GENRES.map(g => (
                   <button key={g.id}
                     onClick={() => setQuery(g.label)}
-                    className="relative rounded-2xl overflow-hidden h-[68px] flex items-end p-3 active:scale-95 transition-all cursor-pointer text-left"
+                    className="relative rounded-2xl overflow-hidden h-[68px] md:h-24 flex items-end p-3 active:scale-95 transition-all cursor-pointer text-left"
                     style={{ background: g.bg, border: `0.5px solid ${g.accent}20` }}>
                     <div className="absolute inset-0"
                       style={{ background: `linear-gradient(135deg, ${g.bg} 30%, ${g.accent}25 100%)` }} />

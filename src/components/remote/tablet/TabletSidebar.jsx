@@ -1,5 +1,5 @@
 import { useContext } from 'react';
-import { Waves, Power, Sun, Moon, Mic } from 'lucide-react';
+import { Waves, Power, Sun, Moon, Mic, Music } from 'lucide-react';
 import { Tk, NAV_TABS } from '../shared';
 import { useI18n } from '../../../i18n';
 
@@ -8,14 +8,40 @@ import { useI18n } from '../../../i18n';
 // vertical space, and a vertical icon+label stack reads more like a native
 // iPad app (Music.app, Spotify) than a stretched phone tab bar would.
 export default function TabletSidebar({ darkMode, setDarkMode, onVoice }) {
-  const { C, btn, card, isConnected, standby, handleToggleStandby, activeTab, setActiveTab } = useContext(Tk);
+  const {
+    C, btn, card, isConnected, standby, handleToggleStandby, activeTab, setActiveTab,
+    albumImage, trackName, isPlaying,
+  } = useContext(Tk);
   const { t } = useI18n();
+  const hasTrack = trackName && trackName !== 'Nothing playing';
 
   return (
     <div className="rt-sidebar" style={{ background: C.bgWhite, borderRight: `0.5px solid ${C.outline}` }}>
       <div className="w-11 h-11 rounded-2xl flex items-center justify-center shrink-0" style={card}>
         <Waves className="h-5 w-5" style={{ color: C.champagne }} />
       </div>
+
+      {/* Now-playing glimpse — ties nav to what's actually playing instead of
+          the header sitting there as pure decoration, and (along with
+          centering the nav below) closes the "dead space" the sidebar had
+          when it was just a logo + tab list on a full iPad height. */}
+      {hasTrack && (
+        <button onClick={() => setActiveTab('player')} aria-label="Now playing"
+          className="rt-sidebar-now-playing active:scale-95 transition-all"
+          style={card}>
+          {albumImage
+            ? <img src={albumImage} alt="" className="w-full h-full object-cover" draggable={false} />
+            : (
+              <div className="w-full h-full flex items-center justify-center">
+                <Music className="h-4 w-4" style={{ color: C.text4 }} />
+              </div>
+            )}
+          {isPlaying && (
+            <span className="absolute bottom-1 right-1 w-2 h-2 rounded-full"
+              style={{ background: C.champagne, boxShadow: `0 0 4px ${C.champagne}` }} />
+          )}
+        </button>
+      )}
 
       <nav className="rt-sidebar-nav">
         {NAV_TABS.map(({ id, Icon, labelKey }) => {
