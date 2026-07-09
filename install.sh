@@ -1051,16 +1051,24 @@ if [ -f "$CMDLINE_TXT" ]; then
   echo -e "${YELLOW}  Installing Plymouth boot splash (Resonance theme)...${NC}"
   apt_install install -y plymouth plymouth-themes || \
     echo -e "${YELLOW}  Plymouth unavailable — boot stays on the (rotated) text console.${NC}"
-  if command -v plymouth-set-default-theme >/dev/null 2>&1; then
+  if [ -d /usr/share/plymouth/themes ]; then
     mkdir -p /usr/share/plymouth/themes/resonance
     cp "$PROJECT_DIR/scripts/plymouth/resonance/resonance.plymouth" \
        "$PROJECT_DIR/scripts/plymouth/resonance/resonance.script" \
        "$PROJECT_DIR/scripts/plymouth/resonance/dot.png" \
        /usr/share/plymouth/themes/resonance/
     cp "$PROJECT_DIR/public/icon-512.png" /usr/share/plymouth/themes/resonance/logo.png
-    # -R rebuilds the initramfs so the theme is available at early boot.
-    plymouth-set-default-theme -R resonance || \
+    # Ubuntu/Debian select the default theme via update-alternatives — the
+    # plymouth-set-default-theme helper is Fedora-only and does NOT exist here
+    # (found out the hard way: "command not found" on Ubuntu 24.04). The
+    # initramfs rebuild is what makes the theme available at early boot.
+    update-alternatives --install /usr/share/plymouth/themes/default.plymouth \
+      default.plymouth /usr/share/plymouth/themes/resonance/resonance.plymouth 200
+    update-alternatives --set default.plymouth \
+      /usr/share/plymouth/themes/resonance/resonance.plymouth || \
       echo -e "${YELLOW}  Could not set Plymouth theme — continuing.${NC}"
+    update-initramfs -u || \
+      echo -e "${YELLOW}  initramfs rebuild failed — splash appears only after a later rebuild.${NC}"
     for tok in quiet splash plymouth.ignore-serial-consoles; do
       grep -qw "$tok" "$CMDLINE_TXT" || \
         sed -i -E "1 s/[[:space:]]*\$//; 1 s/\$/ $tok/" "$CMDLINE_TXT"
