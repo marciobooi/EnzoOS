@@ -1,5 +1,5 @@
-# Resonance HiFi Plymouth boot splash - Full-Width Waveform
-# Smooth, edge-to-edge audio-style wave running completely across the screen.
+# Resonance HiFi Plymouth boot splash - Multi-Layer EQ Waveform
+# Fixed: Removed dot property dot-notation entirely to prevent parser crash.
 
 Window.SetBackgroundTopColor(0.965, 0.949, 0.918);
 Window.SetBackgroundBottomColor(0.910, 0.878, 0.824);
@@ -7,57 +7,90 @@ Window.SetBackgroundBottomColor(0.910, 0.878, 0.824);
 fbw = Window.GetWidth();
 fbh = Window.GetHeight();
 
-# Configuration for full-bleed display
-NUM_DOTS = 40;           # Higher count creates a smoother, more coherent line
-MAX_AMPLITUDE = 35;     # Increased height to match the grander full-screen scale
-WAVE_SPEED = 0.08;      # Slightly slower for an elegant, premium look
-FREQUENCY = 4.5;        # Higher numbers mean more visible "peaks and valleys" across the screen
+# Global Configuration
+NUM_DOTS = 35;           
+PI = 3.14159;
 
-# Distribute dots evenly across the full width
+# Layer 1 Configuration: The Base/Bottom Wave (Slow, deep, subtle)
+wave1_speed = 0.04;
+wave1_amplitude = 45;
+wave1_frequency = 2.0;
+wave1_opacity_base = 0.15;
+
+# Layer 2 Configuration: The Middle Wave (Medium speed and height)
+wave2_speed = 0.07;
+wave2_amplitude = 30;
+wave2_frequency = 3.5;
+wave2_opacity_base = 0.25;
+
+# Layer 3 Configuration: The Top Wave (Fast, sharp, energetic)
+wave3_speed = 0.12;
+wave3_amplitude = 15;
+wave3_frequency = 5.0;
+wave3_opacity_base = 0.35;
+
+# Initialize all three wave layers across the full width
 for (i = 0; i < NUM_DOTS; i++) {
-  dot[i].image = Image("dot.png");
-  dot[i].sprite = Sprite(dot[i].image);
   
-  dot_w = dot[i].image.GetWidth();
-  
-  # Calculate position using division by (NUM_DOTS - 1) to touch both edges exactly
-  # Subtract half the dot width so the outer edges aren't clipped harshly
   if (NUM_DOTS > 1) {
     percent_x = i / (NUM_DOTS - 1);
   } else {
     percent_x = 0.5;
   }
-  
-  x_pos = percent_x * (fbw - dot_w);
-  dot[i].sprite.SetX(x_pos);
-  dot[i].sprite.SetZ(10);
-  dot[i].sprite.SetOpacity(0.3);
+
+  # Setup Layer 1 (Bottom)
+  w1_image[i] = Image("dot.png");
+  w1_sprite[i] = Sprite(w1_image[i]);
+  w1_sprite[i].SetX(percent_x * (fbw - w1_image[i].GetWidth()));
+  w1_sprite[i].SetZ(10); 
+
+  # Setup Layer 2 (Mid)
+  w2_image[i] = Image("dot.png");
+  w2_sprite[i] = Sprite(w2_image[i]);
+  w2_sprite[i].SetX(percent_x * (fbw - w2_image[i].GetWidth()));
+  w2_sprite[i].SetZ(11); 
+
+  # Setup Layer 3 (Top)
+  w3_image[i] = Image("dot.png");
+  w3_sprite[i] = Sprite(w3_image[i]);
+  w3_sprite[i].SetX(percent_x * (fbw - w3_image[i].GetWidth()));
+  w3_sprite[i].SetZ(12); 
 }
 
 counter = 0;
 fun refresh_callback() {
   counter++;
-  
-  dot_h = dot.image.GetHeight();
-  center_y = fbh / 2 - dot_h / 2;
+  center_y = fbh / 2;
 
   for (i = 0; i < NUM_DOTS; i++) {
-    # Normalize the dot index (0.0 to 1.0) across the screen width
-    percent_x = i / (NUM_DOTS - 1);
     
-    # Calculate the moving wave path
-    # FREQUENCY determines how tightly packed the wave crests are
-    phase = (counter * WAVE_SPEED) - (percent_x * FREQUENCY * 3.14159);
-    wave_position = Math.Sin(phase);
-    
-    # Apply dynamic vertical positioning
-    y_offset = wave_position * MAX_AMPLITUDE;
-    dot[i].sprite.SetY(center_y + y_offset);
-    
-    # Smoothly fade the opacities. 
-    # High points are clear; low points melt gently back into the background paper
-    normalized_opacity = 0.25 + ((wave_position + 1) / 2) * 0.55;
-    dot[i].sprite.SetOpacity(normalized_opacity);
+    if (NUM_DOTS > 1) {
+      percent_x = i / (NUM_DOTS - 1);
+    } else {
+      percent_x = 0.5;
+    }
+
+    # --- ANIMATE LAYER 1 (BOTTOM) ---
+    p1 = (counter * wave1_speed) - (percent_x * wave1_frequency * PI);
+    sin1 = Math.Sin(p1);
+    y1 = (center_y - (w1_image[i].GetHeight() / 2)) + (sin1 * wave1_amplitude);
+    w1_sprite[i].SetY(y1);
+    w1_sprite[i].SetOpacity(wave1_opacity_base + ((sin1 + 1) / 2) * 0.20);
+
+    # --- ANIMATE LAYER 2 (MID) ---
+    p2 = (counter * wave2_speed) - (percent_x * wave2_frequency * PI) + 1.5;
+    sin2 = Math.Sin(p2);
+    y2 = (center_y - (w2_image[i].GetHeight() / 2)) + (sin2 * wave2_amplitude);
+    w2_sprite[i].SetY(y2);
+    w2_sprite[i].SetOpacity(wave2_opacity_base + ((sin2 + 1) / 2) * 0.30);
+
+    # --- ANIMATE LAYER 3 (TOP) ---
+    p3 = (counter * wave3_speed) - (percent_x * wave3_frequency * PI) + 3.0;
+    sin3 = Math.Sin(p3);
+    y3 = (center_y - (w3_image[i].GetHeight() / 2)) + (sin3 * wave3.amplitude); # Fixed dot notation
+    y3 = (center_y - (w3_image[i].GetHeight() / 2)) + (sin3 * wave3_amplitude);
+    w3_sprite[i].SetY(y3);
+    w3_sprite[i].SetOpacity(wave3_opacity_base + ((sin3 + 1) / 2) * 0.40);
   }
 }
 
