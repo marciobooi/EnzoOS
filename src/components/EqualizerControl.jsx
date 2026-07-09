@@ -25,6 +25,16 @@ export const EQ_PRESETS = [
   // Slight bass foundation, small 1kHz scoop to open up perceived space,
   // extended treble shelf for air/sparkle, subtle shimmer via saturation.
   { name: 'Hi-Fi Spatial',      bands: [2, 0, -1, 1, 3],  saturation: 3, noiseFloor: 1, preAmp: 0.0 },
+  // Concert venue simulation. The name is a server-side key: when
+  // eq_settings.preset === 'On Stage', generateCamillaConfig (see
+  // server/camilla-config.js) additionally builds a spatial pipeline —
+  // cross-fed damped early reflections for venue depth plus mid/side stage
+  // widening — on top of this tonal curve. The bands here stay restrained
+  // (PA-style low-end weight, 250Hz kept clean so the added reflections
+  // don't turn muddy, presence + air on top); touching any slider drops to
+  // 'Custom', which switches the spatial stage off — by design, since the
+  // sliders can't represent it.
+  { name: 'On Stage',           bands: [2, -1, 0, 1, 2],  saturation: 3, noiseFloor: 0, preAmp: 0.0 },
 ];
 
 const BAND_LABELS = ['60 Hz', '250 Hz', '1 kHz', '4 kHz', '16 kHz'];

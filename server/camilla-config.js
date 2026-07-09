@@ -263,9 +263,18 @@ export function getLastHeadroomDb() { return _lastHeadroomDb; }
 // balance: -12..+12 dB. Positive = right louder (attenuate left). Negative = left louder (attenuate right).
 // phaseLeft/phaseRight: invert polarity of that channel
 // autoHeadroom = true: attenuate pre-amp by the computed EQ peak instead of the static preset value
-function generateCamillaConfig(answers, eqSettings, dacInfo, { pureDirect = false, balance = 0, phaseLeft = false, phaseRight = false, bitPerfect = true, autoHeadroom = true, btOutputActive = false } = {}) {
+// Exported so the generated YAML can be validated offline against the real
+// binary (`camilladsp --check`) without touching the live service.
+export function generateCamillaConfig(answers, eqSettings, dacInfo, { pureDirect = false, balance = 0, phaseLeft = false, phaseRight = false, bitPerfect = true, autoHeadroom = true, btOutputActive = false } = {}) {
   const isDspActive = answers && (answers[0] === 'dsp' || answers['0'] === 'dsp');
   const isSubwooferSetup = answers && answers.q1_setup === "2 Speakers + 1 Subwoofer";
+  // 'On Stage' preset (EQ_PRESETS in src/components/EqualizerControl.jsx) keys
+  // the concert-venue spatial pipeline below by NAME — the client already
+  // stores the preset name in eq_settings, so no extra payload field is
+  // needed, and any slider tweak renames the preset to 'Custom' which
+  // switches the stage off automatically. Pure Direct early-returns before
+  // any of this, so it bypasses the stage like it bypasses all EQ.
+  const stageActive = (eqSettings?.preset || '') === 'On Stage';
 
   // Capture (loopback) sample format. In bit-perfect mode the whole bridge runs
   // at 32-bit so source bit-depth survives — no truncation to 16-bit. The
@@ -433,6 +442,66 @@ function generateCamillaConfig(answers, eqSettings, dacInfo, { pureDirect = fals
     };
   }
 
+  // --- STAGE S: 'ON STAGE' CONCERT-VENUE SPATIALIZATION ---
+  // Runs on the raw 2ch capture BEFORE speaker_map and the tonal EQ chains.
+  // Real-time stem separation ("put the bass player on the left") is not
+  // feasible in a low-latency DSP pipeline, so this recreates the two things
+  // the brain actually uses to feel "in the room with the band":
+  //
+  // 1. Early reflections — each output gets a quiet (-13 dB), delayed copy
+  //    of the OPPOSITE channel, like hearing the far side of the stage off
+  //    the venue walls. Delays sit in the Haas fusion zone (17/23 ms —
+  //    asymmetric like a real room, long enough for spaciousness, short
+  //    enough to fuse instead of echo), the copy is highpassed at 280 Hz so
+  //    the low end stays punchy instead of muddy, and high-shelved -7 dB
+  //    above 7.5 kHz because air absorbs treble over distance — the HF
+  //    roll-off is what makes the reflections read as "far walls".
+  // 2. Mid/side width — L/R is matrixed to mid/side (encode at -6.02 dB so
+  //    decode at unity reconstructs exactly), the side channel gets a gentle
+  //    +2.5 dB shelf above 300 Hz (bass stays mono/anchored, guitars/keys/
+  //    ambience spread beyond the speaker edges), then decodes back to L/R.
+  //    Vocals and drums live in the mid channel and stay locked center.
+  //
+  // CamillaDSP has no built-in "Crossfeed"/reverb filter type — this is the
+  // supported way to build the effect from Mixer + Delay + Biquad primitives.
+  if (stageActive) {
+    config.mixers.stage_reflect_split = {
+      channels: { in: 2, out: 4 },
+      mapping: [
+        { dest: 0, sources: [{ channel: 0, gain: 0 }] },
+        { dest: 1, sources: [{ channel: 1, gain: 0 }] },
+        { dest: 2, sources: [{ channel: 1, gain: -13 }] },  // L reflection ← R
+        { dest: 3, sources: [{ channel: 0, gain: -13 }] },  // R reflection ← L
+      ],
+    };
+    config.mixers.stage_reflect_merge = {
+      channels: { in: 4, out: 2 },
+      mapping: [
+        { dest: 0, sources: [{ channel: 0, gain: 0 }, { channel: 2, gain: 0 }] },
+        { dest: 1, sources: [{ channel: 1, gain: 0 }, { channel: 3, gain: 0 }] },
+      ],
+    };
+    config.mixers.stage_ms_encode = {
+      channels: { in: 2, out: 2 },
+      mapping: [
+        { dest: 0, sources: [{ channel: 0, gain: -6.02 }, { channel: 1, gain: -6.02 }] },                  // Mid
+        { dest: 1, sources: [{ channel: 0, gain: -6.02 }, { channel: 1, gain: -6.02, inverted: true }] },  // Side
+      ],
+    };
+    config.mixers.stage_ms_decode = {
+      channels: { in: 2, out: 2 },
+      mapping: [
+        { dest: 0, sources: [{ channel: 0, gain: 0 }, { channel: 1, gain: 0 }] },                  // L = M+S
+        { dest: 1, sources: [{ channel: 0, gain: 0 }, { channel: 1, gain: 0, inverted: true }] },  // R = M-S
+      ],
+    };
+    config.filters.stage_reflect_bass_cut = { type: "Biquad", parameters: { type: "Highpass", freq: 280, q: 0.707 } };
+    config.filters.stage_reflect_air_loss = { type: "Biquad", parameters: { type: "Highshelf", freq: 7500, gain: -7.0, q: 0.7 } };
+    config.filters.stage_reflect_delay_left  = { type: "Delay", parameters: { delay: 17, unit: "ms" } };
+    config.filters.stage_reflect_delay_right = { type: "Delay", parameters: { delay: 23, unit: "ms" } };
+    config.filters.stage_side_width = { type: "Biquad", parameters: { type: "Highshelf", freq: 300, gain: 2.5, q: 0.5 } };
+  }
+
   let leftPipeline = [];
   let rightPipeline = [];
   let subPipeline = [];
@@ -540,7 +609,11 @@ function generateCamillaConfig(answers, eqSettings, dacInfo, { pureDirect = fals
     baseGainDb = Number(profile.preampGain) || 0;
     _lastHeadroomDb = Math.max(0, -baseGainDb);
   }
-  const preampGainDb = Number(isDspActive ? (baseGainDb - 6.0) : baseGainDb) || 0;
+  let preampGainDb = Number(isDspActive ? (baseGainDb - 6.0) : baseGainDb) || 0;
+  // The 'On Stage' spatial pipeline adds energy the biquad-response headroom
+  // scan can't see: worst-case correlated reflection summing (+1.8 dB at
+  // -13 dB) plus the +2.5 dB side shelf on fully-side content ≈ +4.3 dB.
+  if (stageActive) preampGainDb -= 4.5;
   config.filters.preamp_gain = { type: "Gain", parameters: { gain: preampGainDb - 1.0, inverted: false, mute: false } };
   leftPipeline.push("preamp_gain");
   rightPipeline.push("preamp_gain");
@@ -565,6 +638,17 @@ function generateCamillaConfig(answers, eqSettings, dacInfo, { pureDirect = fals
   // --- STAGE F: COMPILE THE PIPELINE MATRIX ---
   // CamillaDSP v4: Filter steps use 'channels' (array) instead of v2's 'channel' (integer).
   // SetVolume controls the built-in main volume fader — no Volume filter needed in pipeline.
+  if (stageActive) {
+    config.pipeline.push(
+      { type: "Mixer", name: "stage_reflect_split" },
+      { type: "Filter", channels: [2], names: ["stage_reflect_bass_cut", "stage_reflect_air_loss", "stage_reflect_delay_left"] },
+      { type: "Filter", channels: [3], names: ["stage_reflect_bass_cut", "stage_reflect_air_loss", "stage_reflect_delay_right"] },
+      { type: "Mixer", name: "stage_reflect_merge" },
+      { type: "Mixer", name: "stage_ms_encode" },
+      { type: "Filter", channels: [1], names: ["stage_side_width"] },
+      { type: "Mixer", name: "stage_ms_decode" },
+    );
+  }
   config.pipeline.push({ type: "Mixer", name: "speaker_map" });
   config.pipeline.push({ type: "Filter", channels: [0], names: leftPipeline });
   config.pipeline.push({ type: "Filter", channels: [1], names: rightPipeline });
