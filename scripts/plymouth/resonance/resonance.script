@@ -1,12 +1,5 @@
-# Resonance HiFi Plymouth boot splash.
-#
-# Deliberately minimal: the same warm origami-paper surface the app's welcome
-# intro and the page background use (#F6F2EA → #E8E0D2), with three gold dots
-# stepping as the only motion. No logo here — the brand moment is the
-# paper-fold "res▶nance" animation the app plays seconds later, and showing a
-# different logo first made the boot feel stitched together (observed
-# feedback). Dots are round, so the panel's portrait-vs-landscape scanout
-# needs no rotation handling at all in this theme.
+# Resonance HiFi Plymouth boot splash - Full-Width Waveform
+# Smooth, edge-to-edge audio-style wave running completely across the screen.
 
 Window.SetBackgroundTopColor(0.965, 0.949, 0.918);
 Window.SetBackgroundBottomColor(0.910, 0.878, 0.824);
@@ -14,29 +7,58 @@ Window.SetBackgroundBottomColor(0.910, 0.878, 0.824);
 fbw = Window.GetWidth();
 fbh = Window.GetHeight();
 
-# Three gold dots along the panel's long axis (= the visual horizontal),
-# stepping like an ellipsis, centered on screen.
-for (i = 0; i < 3; i++) {
+# Configuration for full-bleed display
+NUM_DOTS = 40;           # Higher count creates a smoother, more coherent line
+MAX_AMPLITUDE = 35;     # Increased height to match the grander full-screen scale
+WAVE_SPEED = 0.08;      # Slightly slower for an elegant, premium look
+FREQUENCY = 4.5;        # Higher numbers mean more visible "peaks and valleys" across the screen
+
+# Distribute dots evenly across the full width
+for (i = 0; i < NUM_DOTS; i++) {
   dot[i].image = Image("dot.png");
   dot[i].sprite = Sprite(dot[i].image);
-  dot[i].sprite.SetX(fbw / 2 - dot[i].image.GetWidth() / 2);
-  dot[i].sprite.SetY(fbh / 2 + (i - 1) * 30 - dot[i].image.GetHeight() / 2);
+  
+  dot_w = dot[i].image.GetWidth();
+  
+  # Calculate position using division by (NUM_DOTS - 1) to touch both edges exactly
+  # Subtract half the dot width so the outer edges aren't clipped harshly
+  if (NUM_DOTS > 1) {
+    percent_x = i / (NUM_DOTS - 1);
+  } else {
+    percent_x = 0.5;
+  }
+  
+  x_pos = percent_x * (fbw - dot_w);
+  dot[i].sprite.SetX(x_pos);
   dot[i].sprite.SetZ(10);
-  dot[i].sprite.SetOpacity(0.25);
+  dot[i].sprite.SetOpacity(0.3);
 }
 
 counter = 0;
 fun refresh_callback() {
   counter++;
-  active = Math.Int(counter / 12) % 3;
-  for (i = 0; i < 3; i++) {
-    if (i == active)
-      dot[i].sprite.SetOpacity(1);
-    else
-      dot[i].sprite.SetOpacity(0.25);
+  
+  dot_h = dot.image.GetHeight();
+  center_y = fbh / 2 - dot_h / 2;
+
+  for (i = 0; i < NUM_DOTS; i++) {
+    # Normalize the dot index (0.0 to 1.0) across the screen width
+    percent_x = i / (NUM_DOTS - 1);
+    
+    # Calculate the moving wave path
+    # FREQUENCY determines how tightly packed the wave crests are
+    phase = (counter * WAVE_SPEED) - (percent_x * FREQUENCY * 3.14159);
+    wave_position = Math.Sin(phase);
+    
+    # Apply dynamic vertical positioning
+    y_offset = wave_position * MAX_AMPLITUDE;
+    dot[i].sprite.SetY(center_y + y_offset);
+    
+    # Smoothly fade the opacities. 
+    # High points are clear; low points melt gently back into the background paper
+    normalized_opacity = 0.25 + ((wave_position + 1) / 2) * 0.55;
+    dot[i].sprite.SetOpacity(normalized_opacity);
   }
 }
-Plymouth.SetRefreshFunction(refresh_callback);
 
-# Boot progress / password prompts are intentionally not rendered — sealed
-# appliance; systemd continues underneath and X takes over on the same paper.
+Plymouth.SetRefreshFunction(refresh_callback);
