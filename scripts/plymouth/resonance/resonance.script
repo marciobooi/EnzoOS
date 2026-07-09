@@ -1,5 +1,16 @@
-# Resonance HiFi Plymouth boot splash - Multi-Layer EQ Waveform
-# Fixed: Laid out horizontally across the full width of the screen.
+# Resonance HiFi Plymouth boot splash — three-layer EQ waveform on the same
+# warm origami paper the app uses (#F6F2EA → #E8E0D2).
+#
+# ORIENTATION — the gotcha that already bit this theme once: during early
+# boot the Waveshare 11.9" panel scans out in its NATIVE PORTRAIT orientation
+# (320×1480). fbcon=rotate:3 only rotates the *text* console; Plymouth draws
+# straight onto the DRM framebuffer. So in this script X runs along the
+# panel's short side (visual VERTICAL once the panel is mounted landscape)
+# and Y runs along the long side (visual HORIZONTAL). A wave laid out
+# "normally" along X therefore showed up as a vertical strip on the mounted
+# panel (observed live). Everything below is axis-aware: the wave runs along
+# whichever framebuffer axis is LONGER, so it reads horizontally both on the
+# real panel (portrait scanout) and on the QEMU dev VM (landscape scanout).
 
 Window.SetBackgroundTopColor(0.965, 0.949, 0.918);
 Window.SetBackgroundBottomColor(0.910, 0.878, 0.824);
@@ -7,97 +18,61 @@ Window.SetBackgroundBottomColor(0.910, 0.878, 0.824);
 fbw = Window.GetWidth();
 fbh = Window.GetHeight();
 
-# Global Configuration
-NUM_DOTS = 35;           
+portrait = (fbh > fbw);
+if (portrait) {
+  long_px = fbh;    # visual horizontal extent
+  short_px = fbw;   # visual vertical extent
+} else {
+  long_px = fbw;
+  short_px = fbh;
+}
+
+NUM_DOTS = 35;
 PI = 3.14159;
 
-# Layer 1 Configuration: The Base/Bottom Wave (Slow, deep, subtle)
-wave1_speed = 0.04;
-wave1_amplitude = 45;
-wave1_frequency = 2.0;
-wave1_opacity_base = 0.15;
+# Per-layer wave parameters — [0] slow deep base, [1] medium, [2] fast sharp.
+# Amplitudes are sized for the 320px visual-vertical extent of the panel.
+layer[0].speed = 0.04; layer[0].amp = 45; layer[0].freq = 2.0; layer[0].op = 0.15; layer[0].swing = 0.20; layer[0].phase = 0.0;
+layer[1].speed = 0.07; layer[1].amp = 30; layer[1].freq = 3.5; layer[1].op = 0.25; layer[1].swing = 0.30; layer[1].phase = 1.5;
+layer[2].speed = 0.12; layer[2].amp = 15; layer[2].freq = 5.0; layer[2].op = 0.35; layer[2].swing = 0.40; layer[2].phase = 3.0;
 
-# Layer 2 Configuration: The Middle Wave (Medium speed and height)
-wave2_speed = 0.07;
-wave2_amplitude = 30;
-wave2_frequency = 3.5;
-wave2_opacity_base = 0.25;
+dot_image = Image("dot.png");
+dot_size = dot_image.GetWidth();
 
-# Layer 3 Configuration: The Top Wave (Fast, sharp, energetic)
-wave3_speed = 0.12;
-wave3_amplitude = 15;
-wave3_frequency = 5.0;
-wave3_opacity_base = 0.35;
-
-# Initialize all three wave layers distributed horizontally across screen width
-for (i = 0; i < NUM_DOTS; i++) {
-  
-  if (NUM_DOTS > 1) {
-    percent_x = i / (NUM_DOTS - 1);
-  } else {
-    percent_x = 0.5;
+for (l = 0; l < 3; l++) {
+  for (i = 0; i < NUM_DOTS; i++) {
+    s = l * NUM_DOTS + i;
+    spr[s] = Sprite(dot_image);
+    spr[s].SetZ(10 + l);
   }
-
-  # Setup Layer 1 (Bottom)
-  w1_image[i] = Image("dot.png");
-  w1_sprite[i] = Sprite(w1_image[i]);
-  w1_sprite[i].SetX(percent_x * (fbw - w1_image[i].GetWidth()));
-  w1_sprite[i].SetZ(10); 
-
-  # Setup Layer 2 (Mid)
-  w2_image[i] = Image("dot.png");
-  w2_sprite[i] = Sprite(w2_image[i]);
-  w2_sprite[i].SetX(percent_x * (fbw - w2_image[i].GetWidth()));
-  w2_sprite[i].SetZ(11); 
-
-  # Setup Layer 3 (Top)
-  w3_image[i] = Image("dot.png");
-  w3_sprite[i] = Sprite(w3_image[i]);
-  w3_sprite[i].SetX(percent_x * (fbw - w3_image[i].GetWidth()));
-  w3_sprite[i].SetZ(12); 
 }
 
 counter = 0;
 fun refresh_callback() {
   counter++;
-  center_y = fbh / 2;
+  for (l = 0; l < 3; l++) {
+    for (i = 0; i < NUM_DOTS; i++) {
+      s = l * NUM_DOTS + i;
+      percent = i / (NUM_DOTS - 1);
+      sin_v = Math.Sin(counter * layer[l].speed - percent * layer[l].freq * PI + layer[l].phase);
 
-  for (i = 0; i < NUM_DOTS; i++) {
-    
-    if (NUM_DOTS > 1) {
-      percent_x = i / (NUM_DOTS - 1);
-    } else {
-      percent_x = 0.5;
+      # Dot index steps along the long axis; the sine displaces across the
+      # short axis, centered.
+      pos_long  = percent * (long_px - dot_size);
+      pos_short = (short_px - dot_size) / 2 + sin_v * layer[l].amp;
+
+      if (portrait) {
+        spr[s].SetX(pos_short);
+        spr[s].SetY(pos_long);
+      } else {
+        spr[s].SetX(pos_long);
+        spr[s].SetY(pos_short);
+      }
+      spr[s].SetOpacity(layer[l].op + ((sin_v + 1) / 2) * layer[l].swing);
     }
-
-    # --- ANIMATE LAYER 1 (BOTTOM) ---
-    p1 = (counter * wave1_speed) - (percent_x * wave1_frequency * PI);
-    sin1 = Math.Sin(p1);
-    y1 = (center_y - (w1_image[i].GetHeight() / 2)) + (sin1 * wave1_amplitude);
-    
-    # Ensure X stays locked to horizontal step, apply vertical wave to Y
-    w1_sprite[i].SetX(percent_x * (fbw - w1_image[i].GetWidth()));
-    w1_sprite[i].SetY(y1);
-    w1_sprite[i].SetOpacity(wave1_opacity_base + ((sin1 + 1) / 2) * 0.20);
-
-    # --- ANIMATE LAYER 2 (MID) ---
-    p2 = (counter * wave2_speed) - (percent_x * wave2_frequency * PI) + 1.5;
-    sin2 = Math.Sin(p2);
-    y2 = (center_y - (w2_image[i].GetHeight() / 2)) + (sin2 * wave2_amplitude);
-    
-    w2_sprite[i].SetX(percent_x * (fbw - w2_image[i].GetWidth()));
-    w2_sprite[i].SetY(y2);
-    w2_sprite[i].SetOpacity(wave2_opacity_base + ((sin2 + 1) / 2) * 0.30);
-
-    # --- ANIMATE LAYER 3 (TOP) ---
-    p3 = (counter * wave3_speed) - (percent_x * wave3_frequency * PI) + 3.0;
-    sin3 = Math.Sin(p3);
-    y3 = (center_y - (w3_image[i].GetHeight() / 2)) + (sin3 * wave3_amplitude);
-    
-    w3_sprite[i].SetX(percent_x * (fbw - w3_image[i].GetWidth()));
-    w3_sprite[i].SetY(y3);
-    w3_sprite[i].SetOpacity(wave3_opacity_base + ((sin3 + 1) / 2) * 0.40);
   }
 }
-
 Plymouth.SetRefreshFunction(refresh_callback);
+
+# Boot progress / password prompts are intentionally not rendered — sealed
+# appliance; systemd continues underneath and X takes over on the same paper.
