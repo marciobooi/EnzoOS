@@ -1018,6 +1018,27 @@ if [ -f "$CMDLINE_TXT" ] && grep -qE 'video=[^ ]*,rotate[0-9]+' "$CMDLINE_TXT"; 
   sed -i -E 's/(video=[^ ]*),rotate[0-9]+/\1/' "$CMDLINE_TXT"
 fi
 
+# The Imager also pre-bakes `video=HDMI-A-1:1480x320@60` (landscape) — the
+# panel's controller only accepts its native portrait 320x1480 timing, so the
+# kernel rejects this mode on every modeset ("User-defined mode not supported"
+# dmesg spam) and falls back to EDID anyway. Strip the whole token: EDID
+# detection is the path everything else (X, fbcon) already relies on.
+if [ -f "$CMDLINE_TXT" ] && grep -qE 'video=[^ ]*1480x320[^ ]*' "$CMDLINE_TXT"; then
+  echo -e "${YELLOW}  Removing invalid 1480x320 video= token from cmdline.txt (panel only accepts native portrait timing)...${NC}"
+  sed -i -E 's/ ?video=[^ ]*1480x320[^ ]*//' "$CMDLINE_TXT"
+fi
+
+# ── Rotate the boot console (fbcon) to match the kiosk's landscape ───────────
+# Without this, everything before X starts — kernel messages, fsck, the
+# login prompt on tty1 — renders in the panel's native portrait orientation
+# (sideways text down a 320px-wide strip). fbcon=rotate:3 turns the text
+# console 90° counterclockwise, the same direction as the kiosk session's
+# `xrandr --rotate left`. Console-only: X ignores fbcon entirely.
+if [ -f "$CMDLINE_TXT" ] && ! grep -qw 'fbcon=rotate:3' "$CMDLINE_TXT"; then
+  echo -e "${YELLOW}  Rotating the boot console to landscape (fbcon=rotate:3)...${NC}"
+  sed -i -E '1 s/[[:space:]]*fbcon=rotate:[0-9]//g; 1 s/[[:space:]]*$//; 1 s/$/ fbcon=rotate:3/' "$CMDLINE_TXT"
+fi
+
 # ── Touch rotation: handled in scripts/xinitrc via `xinput map-to-output` ────
 # Earlier installer versions wrote a LIBINPUT_CALIBRATION_MATRIX udev rule
 # here to rotate touch coordinates. That was wrong on real hardware: the udev
