@@ -1,5 +1,5 @@
 # Resonance HiFi Plymouth boot splash - Multi-Layer EQ Waveform
-# Fixed: Removed dot property dot-notation entirely to prevent parser crash.
+# Fixed: Laid out horizontally across the full width of the screen.
 
 Window.SetBackgroundTopColor(0.965, 0.949, 0.918);
 Window.SetBackgroundBottomColor(0.910, 0.878, 0.824);
@@ -29,7 +29,7 @@ wave3_amplitude = 15;
 wave3_frequency = 5.0;
 wave3_opacity_base = 0.35;
 
-# Initialize all three wave layers across the full width
+# Initialize all three wave layers distributed horizontally across screen width
 for (i = 0; i < NUM_DOTS; i++) {
   
   if (NUM_DOTS > 1) {
@@ -74,6 +74,9 @@ fun refresh_callback() {
     p1 = (counter * wave1_speed) - (percent_x * wave1_frequency * PI);
     sin1 = Math.Sin(p1);
     y1 = (center_y - (w1_image[i].GetHeight() / 2)) + (sin1 * wave1_amplitude);
+    
+    # Ensure X stays locked to horizontal step, apply vertical wave to Y
+    w1_sprite[i].SetX(percent_x * (fbw - w1_image[i].GetWidth()));
     w1_sprite[i].SetY(y1);
     w1_sprite[i].SetOpacity(wave1_opacity_base + ((sin1 + 1) / 2) * 0.20);
 
@@ -81,14 +84,17 @@ fun refresh_callback() {
     p2 = (counter * wave2_speed) - (percent_x * wave2_frequency * PI) + 1.5;
     sin2 = Math.Sin(p2);
     y2 = (center_y - (w2_image[i].GetHeight() / 2)) + (sin2 * wave2_amplitude);
+    
+    w2_sprite[i].SetX(percent_x * (fbw - w2_image[i].GetWidth()));
     w2_sprite[i].SetY(y2);
     w2_sprite[i].SetOpacity(wave2_opacity_base + ((sin2 + 1) / 2) * 0.30);
 
     # --- ANIMATE LAYER 3 (TOP) ---
     p3 = (counter * wave3_speed) - (percent_x * wave3_frequency * PI) + 3.0;
     sin3 = Math.Sin(p3);
-    y3 = (center_y - (w3_image[i].GetHeight() / 2)) + (sin3 * wave3.amplitude); # Fixed dot notation
     y3 = (center_y - (w3_image[i].GetHeight() / 2)) + (sin3 * wave3_amplitude);
+    
+    w3_sprite[i].SetX(percent_x * (fbw - w3_image[i].GetWidth()));
     w3_sprite[i].SetY(y3);
     w3_sprite[i].SetOpacity(wave3_opacity_base + ((sin3 + 1) / 2) * 0.40);
   }
