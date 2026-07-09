@@ -776,9 +776,14 @@ div[data-theme="ruby"] *::selection {
 
 /* Kiosk wake/sleep transition screens */
 @keyframes kiosk-welcome {
-  /* Fade IN only — dismissal is driven by video onEnded, not CSS timing */
-  0%   { opacity: 0; transform: scale(1.03); }
-  100% { opacity: 1; transform: scale(1); }
+  /* Opaque from the very first frame — the old fade-IN let the player skin
+     show through for half a second before the intro covered it (reported as
+     "player ui skin → resonance animation → player" on real-hardware boot).
+     The only transition is the fade-OUT at the end: the wordmark is in its
+     settled hold by then, so the intro dissolves into the live player.
+     Duration must match WELCOME_MS in StandbyOverlay.jsx (4.6s). */
+  0%, 92% { opacity: 1; }
+  100%    { opacity: 0; }
 }
 @keyframes kiosk-goodbye {
   0%   { opacity: 0; transform: translateY(18px); }
@@ -786,7 +791,7 @@ div[data-theme="ruby"] *::selection {
   75%  { opacity: 1; transform: translateY(0); }
   100% { opacity: 0; }
 }
-.animate-kiosk-welcome { animation: kiosk-welcome 0.6s ease-out both; }
+.animate-kiosk-welcome { animation: kiosk-welcome 4.6s ease-in both; }
 .animate-kiosk-goodbye { animation: kiosk-goodbye 2.2s cubic-bezier(0.4,0,0.2,1) both; }
 
 /* ── Remote tab slide animations ─────────────────────────────────────────── */

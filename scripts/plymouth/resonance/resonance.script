@@ -1,39 +1,28 @@
 # Resonance HiFi Plymouth boot splash.
 #
-# The Waveshare panel scans out in native PORTRAIT (320x1480) during early
-# boot — X's landscape rotation doesn't exist yet, and Plymouth draws straight
-# onto the DRM framebuffer. So every sprite here is rotated 90° in software to
-# read as landscape to the viewer, the same trick fbcon=rotate:3 does for the
-# text console.
-#
-# ROTATION DIRECTION: if the splash comes out upside down on some future
-# panel revision, flip `theta` to (3 * Math.Pi / 2) — nothing else changes.
-theta = Math.Pi / 2;
+# Deliberately minimal: the same warm origami-paper surface the app's welcome
+# intro and the page background use (#F6F2EA → #E8E0D2), with three gold dots
+# stepping as the only motion. No logo here — the brand moment is the
+# paper-fold "res▶nance" animation the app plays seconds later, and showing a
+# different logo first made the boot feel stitched together (observed
+# feedback). Dots are round, so the panel's portrait-vs-landscape scanout
+# needs no rotation handling at all in this theme.
 
-# Brand gradient (src/index.css --gradient-start/--gradient-end: #121317 → #323B42)
-Window.SetBackgroundTopColor(0.071, 0.075, 0.090);
-Window.SetBackgroundBottomColor(0.196, 0.231, 0.259);
+Window.SetBackgroundTopColor(0.965, 0.949, 0.918);
+Window.SetBackgroundBottomColor(0.910, 0.878, 0.824);
 
 fbw = Window.GetWidth();
 fbh = Window.GetHeight();
 
-# Logo: scaled to fit the 320px visual height with margin, then rotated.
-logo.image = Image("logo.png").Scale(220, 220).Rotate(theta);
-logo.sprite = Sprite(logo.image);
-logo.sprite.SetX(fbw / 2 - logo.image.GetWidth() / 2);
-logo.sprite.SetY(fbh / 2 - logo.image.GetHeight() / 2);
-logo.sprite.SetZ(10);
-
-# Loading indicator: three gold dots beside the logo along the panel's long
-# axis (= the visual horizontal), stepping like an ellipsis. Dots are round,
-# so they need no rotation — only their layout axis matters.
+# Three gold dots along the panel's long axis (= the visual horizontal),
+# stepping like an ellipsis, centered on screen.
 for (i = 0; i < 3; i++) {
   dot[i].image = Image("dot.png");
   dot[i].sprite = Sprite(dot[i].image);
   dot[i].sprite.SetX(fbw / 2 - dot[i].image.GetWidth() / 2);
-  dot[i].sprite.SetY(fbh / 2 + 160 + i * 30);
+  dot[i].sprite.SetY(fbh / 2 + (i - 1) * 30 - dot[i].image.GetHeight() / 2);
   dot[i].sprite.SetZ(10);
-  dot[i].sprite.SetOpacity(0.3);
+  dot[i].sprite.SetOpacity(0.25);
 }
 
 counter = 0;
@@ -44,10 +33,10 @@ fun refresh_callback() {
     if (i == active)
       dot[i].sprite.SetOpacity(1);
     else
-      dot[i].sprite.SetOpacity(0.3);
+      dot[i].sprite.SetOpacity(0.25);
   }
 }
 Plymouth.SetRefreshFunction(refresh_callback);
 
-# Boot progress / password prompts etc. are intentionally not rendered — this
-# is a sealed appliance; systemd continues underneath and X takes over.
+# Boot progress / password prompts are intentionally not rendered — sealed
+# appliance; systemd continues underneath and X takes over on the same paper.

@@ -16,7 +16,11 @@
     <meta name="format-detection" content="telephone=no" />
     <meta name="theme-color" media="(prefers-color-scheme: light)" content="#f9f9f9" />
     <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0a0f1e" />
-    <style>html,body,#root{margin:0;padding:0}</style>
+    <!-- First-paint background = the origami paper the boot splash and the
+         welcome intro both live on, so there is no white/black flash anywhere
+         between Plymouth and the player. Chromium is additionally launched
+         with --default-background-color to cover the pre-HTML frame. -->
+    <style>html,body,#root{margin:0;padding:0}body{background:#F0ECE4}</style>
     <title>resonance</title>
   </head>
   <body>

@@ -4,6 +4,11 @@
 
 # ── Display tuning ──────────────────────────────────────────────────────────
 
+# Paint the X root the same origami-paper tone the Plymouth splash, the page
+# background, and the welcome intro all use — X's default black root was one
+# of the visual "seams" in the boot flow (splash → black → UI).
+xsetroot -solid "#F0ECE4" 2>/dev/null || true
+
 # Start power manager (enables DPMS with 5-minute timeout)
 /usr/local/bin/kiosk-power.sh &
 
@@ -161,6 +166,7 @@ while true; do
     --window-size=1480,320 \
     --use-gl=angle \
     --use-angle=gl-egl \
+    --default-background-color=F0ECE4 \
     --autoplay-policy=no-user-gesture-required \
     --touch-events=enabled \
     --user-data-dir="$HOME/snap/chromium/common/kiosk-profile" \

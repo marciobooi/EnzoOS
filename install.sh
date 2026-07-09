@@ -1057,7 +1057,6 @@ if [ -f "$CMDLINE_TXT" ]; then
        "$PROJECT_DIR/scripts/plymouth/resonance/resonance.script" \
        "$PROJECT_DIR/scripts/plymouth/resonance/dot.png" \
        /usr/share/plymouth/themes/resonance/
-    cp "$PROJECT_DIR/public/icon-512.png" /usr/share/plymouth/themes/resonance/logo.png
     # Ubuntu/Debian select the default theme via update-alternatives — the
     # plymouth-set-default-theme helper is Fedora-only and does NOT exist here
     # (found out the hard way: "command not found" on Ubuntu 24.04). The
@@ -1241,19 +1240,28 @@ cp "$PROJECT_DIR/scripts/openbox_rc.xml" "$USER_HOME/.config/openbox/rc.xml"
 chown -R "$TARGET_USER:$TARGET_USER" "$USER_HOME/.config"
 chown -R "$TARGET_USER:$TARGET_USER" "$USER_HOME/.cache"
 
-# Automatically trigger X server when logging in on TTY1 console
+# Automatically trigger X server when logging in on TTY1 console.
+# `clear` + full output redirection: the moments between Plymouth quitting and
+# X's first frame used to show login/startx text on screen ("some linux
+# commands" in the boot-flow feedback) — an appliance boot should never show a
+# shell. Errors still land in /tmp/resonance_startx.log.
 AUTOSTART_X_BLOCK=$(cat <<'EOF'
 
 # Resonance HiFi - Autostart X Server on TTY1 Boot
 if [ -z "$DISPLAY" ] && [ "$(tty)" = "/dev/tty1" ]; then
+  clear
   while true; do
-    startx -- -nocursor 2>/tmp/resonance_startx.log
-    echo "[Resonance] X exited. Restarting in 3s..."
+    startx -- -nocursor >/tmp/resonance_startx.log 2>&1
     sleep 3
   done
 fi
 EOF
 )
+
+# Silence the login banner (motd/last-login) on the autologin console — it was
+# part of the text flash between the boot splash and the kiosk UI.
+touch "$USER_HOME/.hushlogin"
+chown "$TARGET_USER:$TARGET_USER" "$USER_HOME/.hushlogin"
 
 # CRITICAL FIX: Target .bashrc exclusively. Ubuntu updates ignore .bash_profile 
 # during automated tty1 tty agetty logins.
