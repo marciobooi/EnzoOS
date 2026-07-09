@@ -18,10 +18,16 @@ export const NAV_TABS = [
 // button. Portaled to <body> so it escapes the tab-slide transform (a
 // transformed ancestor would otherwise trap the fixed element inside the
 // content area, leaving the nav/mini-player visible underneath it).
-export function Sheet({ C, kicker, title, onBack, children, padded = true }) {
-  return createPortal(
-    <div className="remote-root remote-sheet-in fixed inset-0 z-[9999] flex flex-col"
-      style={{
+//
+// `inline`: tablet callers (SourceTab/UniversalSearch, passed a prop by
+// TabletShell) want this to replace their own content in place instead of
+// covering the whole screen as a modal — no portal, no fixed positioning,
+// just a normal block filling its parent. Phone never sets it, so phone
+// behavior is unchanged.
+export function Sheet({ C, kicker, title, onBack, children, padded = true, inline = false }) {
+  const content = (
+    <div className={inline ? 'remote-root h-full flex flex-col' : 'remote-root remote-sheet-in fixed inset-0 z-[9999] flex flex-col'}
+      style={inline ? { background: C.bg, fontFamily: C.font } : {
         '--rc-outline': C.outline, '--rc-champagne': C.champagne,
         '--rc-container': C.container, '--rc-bg-white': C.bgWhite,
         background: C.bg, fontFamily: C.font, paddingTop: 'env(safe-area-inset-top)',
@@ -42,7 +48,13 @@ export function Sheet({ C, kicker, title, onBack, children, padded = true }) {
       </div>
       <div className={`flex-1 overflow-y-auto ${padded ? 'p-5' : 'py-4'}`}
         style={{ paddingBottom: `calc(${padded ? '1.25rem' : '1rem'} + env(safe-area-inset-bottom))` }}>{children}</div>
-    </div>,
+    </div>
+  );
+
+  if (inline) return content;
+
+  return createPortal(
+    content,
     document.body,
   );
 }

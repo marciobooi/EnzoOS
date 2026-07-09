@@ -1,6 +1,7 @@
-import { useContext } from 'react';
-import { Play, Pause, SkipForward, SkipBack, Volume2, Music, ListMusic, ChevronRight } from 'lucide-react';
+import { useContext, useState } from 'react';
+import { Play, Pause, SkipForward, SkipBack, Volume2, Music, ListMusic, ChevronDown } from 'lucide-react';
 import { Tk, fmt } from '../shared';
+import TabletQueueList from './TabletQueueList';
 
 // Landscape-only (see .rt-rail in remote-tablet.css) persistent companion to
 // whatever's on screen — Library/Search/Source/Settings used to leave the
@@ -17,8 +18,9 @@ export default function TabletNowPlayingRail() {
     isPlaying, trackPosition, trackDuration, progressPct,
     volume, isMuted, handleVolumeChange,
     handlePlayPause, handleNext, handlePrevious, handleSeek,
-    setActiveTab, setQueueOpen, queue,
+    setActiveTab, queue,
   } = useContext(Tk);
+  const [showQueue, setShowQueue] = useState(false);
 
   const hasTrack = trackName && trackName !== 'Nothing playing';
   const upNext = spotify && Array.isArray(queue) ? queue.slice(0, 4) : [];
@@ -98,26 +100,34 @@ export default function TabletNowPlayingRail() {
       </div>
 
       {(spotify ? !!token : source !== 'radio') && (
-        <button onClick={() => setQueueOpen(true)}
-          className="rounded-2xl p-3.5 text-left active:scale-[0.98] transition-all cursor-pointer mt-auto"
-          style={cardWhite}>
-          <div className="flex items-center justify-between mb-1">
-            <span className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider" style={{ color: C.text3, fontFamily: C.fontLabel }}>
-              <ListMusic className="h-3.5 w-3.5" style={{ color: C.champagne }} />
-              Up Next
-            </span>
-            <ChevronRight className="h-3.5 w-3.5" style={{ color: C.outline }} />
-          </div>
-          {upNext.length > 0 ? (
-            <div className="mt-1.5 flex flex-col gap-1">
-              {upNext.map((tr, i) => (
-                <p key={`${tr.uri}-${i}`} className="text-[12px] truncate" style={{ color: C.text2 }}>{tr.name}</p>
-              ))}
+        <div className="rounded-2xl overflow-hidden mt-auto" style={{ ...cardWhite, maxHeight: showQueue ? '45vh' : undefined, display: 'flex', flexDirection: 'column' }}>
+          <button onClick={() => setShowQueue(v => !v)}
+            className="w-full p-3.5 text-left active:scale-[0.98] transition-all cursor-pointer shrink-0">
+            <div className="flex items-center justify-between">
+              <span className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider" style={{ color: C.text3, fontFamily: C.fontLabel }}>
+                <ListMusic className="h-3.5 w-3.5" style={{ color: C.champagne }} />
+                Up Next
+              </span>
+              <ChevronDown className="h-3.5 w-3.5 transition-transform" style={{ color: C.outline, transform: showQueue ? 'rotate(180deg)' : 'none' }} />
             </div>
-          ) : (
-            <p className="text-[12px] mt-1" style={{ color: C.text4 }}>View queue</p>
+            {!showQueue && (
+              upNext.length > 0 ? (
+                <div className="mt-1.5 flex flex-col gap-1">
+                  {upNext.map((tr, i) => (
+                    <p key={`${tr.uri}-${i}`} className="text-[12px] truncate" style={{ color: C.text2 }}>{tr.name}</p>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-[12px] mt-1" style={{ color: C.text4 }}>Nothing queued</p>
+              )
+            )}
+          </button>
+          {showQueue && (
+            <div className="px-3.5 pb-3 overflow-y-auto" style={{ borderTop: `0.5px solid ${C.outline}` }}>
+              <TabletQueueList />
+            </div>
           )}
-        </button>
+        </div>
       )}
     </div>
   );

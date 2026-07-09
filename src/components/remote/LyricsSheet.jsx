@@ -18,7 +18,10 @@ function parseSynced(lrc) {
   return lines.length ? lines : null;
 }
 
-export default function LyricsSheet({ title, artist, album, duration, position, onClose }) {
+// `inline`: the tablet shell wants this to replace the main content pane in
+// place instead of sliding up as a bottom-sheet modal over it — see
+// TabletPlayerHero, the only caller that passes it. Phone always omits it.
+export default function LyricsSheet({ title, artist, album, duration, position, onClose, inline = false }) {
   const { C, cardWhite } = useContext(Tk);
   const { t } = useI18n();
   const [loading, setLoading] = useState(true);
@@ -59,16 +62,18 @@ export default function LyricsSheet({ title, artist, album, duration, position, 
     lineRefs.current[idx]?.scrollIntoView({ block: 'center', behavior: 'smooth' });
   }, [position, synced]);
 
-  return (
-    <div className="fixed inset-0 z-[9998]" onClick={onClose}>
-      <div className="absolute inset-0" style={{ background: 'rgba(0,0,0,0.5)' }} />
-      <div className="absolute bottom-0 left-0 right-0 rounded-t-3xl overflow-hidden"
-        style={{ ...cardWhite, maxHeight: '85vh', display: 'flex', flexDirection: 'column' }}
-        onClick={e => e.stopPropagation()}>
+  const sheet = (
+    <div className="rounded-t-3xl overflow-hidden"
+      style={inline
+        ? { background: C.bg, height: '100%', display: 'flex', flexDirection: 'column', borderRadius: 0 }
+        : { ...cardWhite, maxHeight: '85vh', display: 'flex', flexDirection: 'column' }}
+      onClick={e => e.stopPropagation()}>
 
-        <div className="flex justify-center pt-3 pb-1 shrink-0">
-          <div className="w-9 h-1 rounded-full" style={{ background: C.outline }} />
-        </div>
+        {!inline && (
+          <div className="flex justify-center pt-3 pb-1 shrink-0">
+            <div className="w-9 h-1 rounded-full" style={{ background: C.outline }} />
+          </div>
+        )}
 
         <div className="flex items-center justify-between px-5 py-3 shrink-0">
           <div className="flex items-center gap-2">
@@ -127,6 +132,16 @@ export default function LyricsSheet({ title, artist, album, duration, position, 
             </div>
           )}
         </div>
+    </div>
+  );
+
+  if (inline) return sheet;
+
+  return (
+    <div className="fixed inset-0 z-[9998]" onClick={onClose}>
+      <div className="absolute inset-0" style={{ background: 'rgba(0,0,0,0.5)' }} />
+      <div className="absolute bottom-0 left-0 right-0" onClick={e => e.stopPropagation()}>
+        {sheet}
       </div>
     </div>
   );

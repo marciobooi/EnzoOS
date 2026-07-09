@@ -3,11 +3,16 @@
    ----------------------------------------------------------------------------
    The phone layout (remote.css + the JSX in RemoteControl.jsx's phone branch)
    is untouched by anything in this file — every rule here is scoped under
-   `.remote-tablet-shell` (the tablet shell's own root) or `body.remote-tablet-mode`
-   (a class RemoteControl.jsx toggles on <body> so portaled/overlay pieces —
-   Sheet uses createPortal straight to document.body, so it sits OUTSIDE the
-   shell's own DOM subtree and can't be reached by a `.remote-tablet-shell …`
-   descendant selector — can still be reached).
+   `.remote-tablet-shell`, the tablet shell's own root.
+
+   Settings groups, Album Info, Lyrics, the DSP wizard, theme settings, and
+   the queue used to reuse the phone's Sheet-style modal presentation,
+   floated as centered cards. That's gone: every one of those now swaps in
+   as the content of whichever pane it belongs to (TabletSettingsTab,
+   TabletPlayerHero, TabletNowPlayingRail) via an `inline` prop the phone
+   never sets, so there is nothing left in this file that targets a
+   portaled/floating overlay — if you're looking for that, it doesn't apply
+   to tablet anymore.
 
    One JSX tree serves BOTH iPad orientations: layout differences between
    portrait and landscape are expressed here as `@media (orientation: …)`
@@ -122,35 +127,3 @@
 
 /* ── Persistent mini-player dock (non-player tabs, tablet only) ───────────── */
 .rt-dock { max-width: 900px; margin: 1.5rem auto 0; }
-
-/* ── Portaled overlays: float as centered cards instead of edge-to-edge ───── */
-body.remote-tablet-mode .remote-sheet-in {
-  top: 4vh !important;
-  bottom: 4vh !important;
-  left: 50% !important;
-  right: auto !important;
-  transform: translateX(-50%) !important;
-  width: min(640px, 92vw) !important;
-  border-radius: 28px !important;
-  box-shadow: 0 40px 90px rgba(0, 0, 0, 0.35) !important;
-  overflow: hidden !important;
-}
-body.remote-tablet-mode .rt-overlay-card {
-  top: 4vh !important;
-  bottom: 4vh !important;
-  left: 50% !important;
-  right: auto !important;
-  transform: translateX(-50%) !important;
-  width: min(640px, 92vw) !important;
-  border-radius: 28px !important;
-  box-shadow: 0 40px 90px rgba(0, 0, 0, 0.35) !important;
-  overflow: hidden !important;
-}
-body.remote-tablet-mode .queue-panel-in {
-  left: 50% !important;
-  right: auto !important;
-  transform: translateX(-50%) !important;
-  width: min(560px, 90vw) !important;
-  border-radius: 28px !important;
-  bottom: 4vh !important;
-}

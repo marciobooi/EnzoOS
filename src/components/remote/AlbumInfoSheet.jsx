@@ -44,7 +44,12 @@ function Chip({ C, children, accent }) {
   );
 }
 
-export default function AlbumInfoSheet({ artist, album, albumImage, onClose }) {
+// `inline`: the tablet shell wants this to replace the main content pane in
+// place (sidebar/rail stay visible/interactive around it) instead of
+// covering the whole screen as a modal — see TabletPlayerHero, the only
+// caller that passes it. Phone always omits it, so it always gets the
+// original portaled full-screen sheet.
+export default function AlbumInfoSheet({ artist, album, albumImage, onClose, inline = false }) {
   const { C, cardWhite, darkMode } = useContext(Tk);
   const { lang, t } = useI18n();
   const [state, setState] = useState({ loading: true, error: null, data: null });
@@ -70,9 +75,9 @@ export default function AlbumInfoSheet({ artist, album, albumImage, onClose }) {
   const fmtNum = (n) => (n ? Number(n).toLocaleString() : null);
   const heroBg = d?.artistFanart || d?.artistBanner;
 
-  return createPortal(
-    <div className="remote-root remote-sheet-in fixed inset-0 z-[9999] flex flex-col"
-      style={{
+  const content = (
+    <div className={inline ? 'remote-root relative h-full flex flex-col' : 'remote-root remote-sheet-in fixed inset-0 z-[9999] flex flex-col'}
+      style={inline ? { background: C.bg, fontFamily: C.font } : {
         '--rc-outline': C.outline, '--rc-champagne': C.champagne,
         '--rc-container': C.container, '--rc-bg-white': C.bgWhite,
         background: C.bg, fontFamily: C.font, paddingTop: 'env(safe-area-inset-top)',
@@ -80,7 +85,7 @@ export default function AlbumInfoSheet({ artist, album, albumImage, onClose }) {
       {/* floating back button (overlays the hero) */}
       <button onClick={onClose} aria-label={t('common.back')}
         className="absolute left-4 z-10 w-10 h-10 rounded-full flex items-center justify-center active:scale-90 transition-all cursor-pointer"
-        style={{ top: 'calc(env(safe-area-inset-top) + 14px)', background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(8px)' }}>
+        style={{ top: inline ? '16px' : 'calc(env(safe-area-inset-top) + 14px)', background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(8px)' }}>
         <ChevronLeft className="h-5 w-5" style={{ color: '#fff' }} />
       </button>
 
@@ -281,7 +286,8 @@ export default function AlbumInfoSheet({ artist, album, albumImage, onClose }) {
           )}
         </div>
       </div>
-    </div>,
-    document.body,
+    </div>
   );
+
+  return inline ? content : createPortal(content, document.body);
 }

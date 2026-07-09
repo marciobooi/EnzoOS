@@ -1,5 +1,5 @@
 import { useContext, useState, useRef, useEffect } from 'react';
-import { Sliders, Cpu, Timer, Scale, RefreshCw, FlipHorizontal, RotateCcw, Disc3, SlidersHorizontal, Merge } from 'lucide-react';
+import { Sliders, Cpu, Timer, Scale, RefreshCw, FlipHorizontal, RotateCcw, Disc3, SlidersHorizontal, Merge, ChevronLeft } from 'lucide-react';
 import { toast } from '../../../lib/toast';
 import { reportError } from '../../../lib/errors';
 import { Tk, Row, Section, Sheet } from '../shared';
@@ -223,7 +223,10 @@ function AdvancedAudioSettings() {
   );
 }
 
-export default function SoundSettings() {
+// `inline`: TabletSettingsTab's master-detail pane wants "Advanced" to
+// replace its own content instead of opening a Sheet on top of it. Phone
+// always omits it, so Advanced still opens as a Sheet there.
+export default function SoundSettings({ inline = false }) {
   const { t } = useI18n();
   const [showAdvanced, setShowAdvanced] = useState(false);
   const {
@@ -237,6 +240,22 @@ export default function SoundSettings() {
     handleDeactivateDsp, handleSetSleepTimer,
     setIsDspWizardOpen,
   } = useContext(Tk);
+
+  if (inline && showAdvanced) {
+    return (
+      <div className="pt-1">
+        <div className="flex items-center gap-3 px-1 mb-3">
+          <button onClick={() => setShowAdvanced(false)} aria-label="Back"
+            className="w-9 h-9 rounded-full flex items-center justify-center active:scale-90 transition-all cursor-pointer shrink-0"
+            style={{ background: C.containerLow, border: `0.5px solid ${C.outline}` }}>
+            <ChevronLeft className="h-4 w-4" style={{ color: C.text3 }} />
+          </button>
+          <p className="text-[17px] font-medium" style={{ color: C.text1 }}>Advanced</p>
+        </div>
+        <AdvancedAudioSettings />
+      </div>
+    );
+  }
 
   return (
     <div className="pt-1">
@@ -296,7 +315,7 @@ export default function SoundSettings() {
           onPress={() => setShowAdvanced(true)} />
       </Section>
 
-      {showAdvanced && (
+      {!inline && showAdvanced && (
         <Sheet C={C} kicker={t('settings.sound')} title="Advanced" onBack={() => setShowAdvanced(false)} padded={false}>
           <AdvancedAudioSettings />
         </Sheet>

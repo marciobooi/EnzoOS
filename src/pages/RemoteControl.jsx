@@ -35,15 +35,8 @@ export default function RemoteControl() {
   useEffect(() => { localStorage.setItem('resonance_remote_dark', darkMode); }, [darkMode]);
 
   // iPad gets its own shell (TabletShell) — see src/hooks/useTabletViewport.js
-  // for the width threshold. body.remote-tablet-mode lets remote-tablet.css
-  // reach overlays that portal straight to document.body (Sheet, and by
-  // extension every settings/album-info/lyrics panel built on it), which a
-  // selector scoped to TabletShell's own DOM subtree could never reach.
+  // for the width threshold.
   const isTablet = useIsTabletViewport();
-  useEffect(() => {
-    document.body.classList.toggle('remote-tablet-mode', isTablet);
-    return () => document.body.classList.remove('remote-tablet-mode');
-  }, [isTablet]);
 
   // ── design tokens ─────────────────────────────────────────────────────────
   const C = darkMode ? {
@@ -709,7 +702,7 @@ export default function RemoteControl() {
     radioSearch, setRadioSearch, stationsList, isSearching,
     handleRadioSearch,
     eqPreset, eqBands, eqSaturation, eqNoiseFloor, eqPreAmp,
-    dspActive, showEq, setShowEq,
+    dspActive, setDspActive, showEq, setShowEq,
     isDspWizardOpen, setIsDspWizardOpen,
     pureDirect, handleTogglePureDirect,
     handleEqPresetChange, handleBandChange,
@@ -862,16 +855,23 @@ export default function RemoteControl() {
           </div>
         )}
 
-        {/* ── Overlays — shared by phone and tablet; tablet-only floating-card
-             styling for the portaled ones (Sheet, DSP wizard, theme settings,
-             queue) comes from body.remote-tablet-mode in remote-tablet.css ── */}
-        {isDspWizardOpen && (
+        {/* ── Overlays ── On tablet, the DSP wizard and theme settings render
+             INLINE inside TabletSettingsTab's own content pane instead (see
+             TabletShell/TabletSettingsTab) — "modals that don't make sense
+             when there's room to just navigate" was direct feedback, so
+             these two are suppressed here for tablet rather than also
+             floating as cards. QueuePanel similarly has no tablet path here:
+             TabletPlayerHero/TabletNowPlayingRail expand the queue in place
+             instead of ever setting queueOpen. Voice control stays a
+             overlay on both — it's a transient mic-listening state, not
+             navigable content. */}
+        {!isTablet && isDspWizardOpen && (
           // z above 9999: Settings' own Sheet (Sound → Room Calibration lives
           // inside it) is portaled to document.body at that same z-index, and
           // since portals land after this non-portaled overlay in DOM order,
           // equal z-index meant the still-open Sound sheet painted on top and
           // swallowed clicks — the wizard was there, just hidden underneath.
-          <div className="remote-root rt-overlay-card fixed inset-0 z-[10010] flex flex-col"
+          <div className="remote-root fixed inset-0 z-[10010] flex flex-col"
             style={{ ...rcVars, background: C.bg, paddingTop: 'env(safe-area-inset-top)', paddingBottom: 'env(safe-area-inset-bottom)' }}>
             <RemoteDspWizard
               onClose={() => { setIsDspWizardOpen(false); api.getDspCalibration().then(c => setDspActive(c && c[0] === 'dsp')).catch(() => {}); }}
@@ -882,7 +882,7 @@ export default function RemoteControl() {
           </div>
         )}
 
-        {queueOpen && (
+        {!isTablet && queueOpen && (
           <QueuePanel
             queue={queue}
             queueLoading={queueLoading}
@@ -892,8 +892,8 @@ export default function RemoteControl() {
 
         {voiceOpen && <VoiceControl onClose={() => setVoiceOpen(false)} />}
 
-        {isThemeSettingsOpen && (
-          <div className="remote-root rt-overlay-card fixed inset-0 z-[9999] flex flex-col overflow-y-auto"
+        {!isTablet && isThemeSettingsOpen && (
+          <div className="remote-root fixed inset-0 z-[9999] flex flex-col overflow-y-auto"
             style={{ ...rcVars, background: C.bg, fontFamily: C.font, paddingTop: 'env(safe-area-inset-top)' }}>
             <div className="flex justify-between items-center px-5 pt-4 pb-4 sticky top-0 z-10 shrink-0"
               style={{ background: C.bg, borderBottom: `0.5px solid ${C.outline}` }}>

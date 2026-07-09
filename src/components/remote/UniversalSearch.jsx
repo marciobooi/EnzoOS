@@ -111,7 +111,9 @@ function PlaylistCard({ C, item }) {
   );
 }
 
-export default function UniversalSearch() {
+// `inline`: tablet passes this so the preset-assign picker replaces search
+// results in place instead of opening as a modal Sheet. Phone always omits it.
+export default function UniversalSearch({ inline = false }) {
   const { t } = useI18n();
   const {
     C, token, spotify,
@@ -364,8 +366,15 @@ export default function UniversalSearch() {
     })),
   ];
 
+  // On tablet, the preset-assign picker REPLACES search results (inline
+  // swap) instead of covering them as a modal — phone always shows results
+  // underneath.
+  const hideResultsForInline = inline && assignSlot;
+
   return (
     <div className="flex flex-col h-full">
+      {!hideResultsForInline && (
+      <>
       {/* Search bar */}
       <div className="px-4 pt-4 pb-3 shrink-0">
         <div className="relative">
@@ -587,10 +596,12 @@ export default function UniversalSearch() {
           </div>
         )}
       </div>
+      </>
+      )}
 
       {/* Preset assignment sheet */}
       {assignSlot && (
-        <Sheet C={C} kicker={t('presets.title')} title={t('presets.assign', { n: assignSlot })}
+        <Sheet inline={inline} C={C} kicker={t('presets.title')} title={t('presets.assign', { n: assignSlot })}
           onBack={() => setAssignSlot(null)} padded={false}>
           {assignables.length === 0 ? (
             <p className="text-[14px] px-5 py-6 text-center" style={{ color: C.text3 }}>{t('presets.nothingToPin')}</p>

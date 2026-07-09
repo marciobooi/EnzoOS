@@ -1,11 +1,12 @@
 import { useContext, useState } from 'react';
 import {
   Play, Pause, SkipForward, SkipBack, Volume2, VolumeX,
-  Shuffle, Repeat, Music, Heart, Radio, ListMusic, Info, Mic2, ChevronRight,
+  Shuffle, Repeat, Music, Heart, Radio, ListMusic, Info, Mic2, ChevronDown,
 } from 'lucide-react';
 import { Tk, SpotifyIcon, fmt } from '../shared';
 import AlbumInfoSheet from '../AlbumInfoSheet';
 import LyricsSheet from '../LyricsSheet';
+import TabletQueueList from './TabletQueueList';
 import { useI18n } from '../../../i18n';
 
 // iPad's flagship "Now Playing" screen. Same data/handlers as the phone's
@@ -27,13 +28,14 @@ export default function TabletPlayerHero() {
     handleShuffle, handleRepeat, handleSeek,
     handleVolumeChange, handleMuteToggle,
     handleToggleFavRadio, setActiveTab,
-    setQueueOpen, queue,
+    queue,
     favorites, handleToggleFavorite,
     liveFormat,
   } = useContext(Tk);
 
   const [showInfo, setShowInfo]     = useState(false);
   const [showLyrics, setShowLyrics] = useState(false);
+  const [showQueue, setShowQueue]   = useState(false);
 
   const albumName = currentTrack?.album?.name || '';
   const canInfo   = source !== 'radio' && !!trackArtist && !!albumName && trackName !== 'Nothing playing';
@@ -64,6 +66,23 @@ export default function TabletPlayerHero() {
     }
     return source === 'spotify' ? 'SPOTIFY OGG' : 'STREAMING';
   })();
+
+  // Album info / lyrics replace the WHOLE main content pane on tablet
+  // (sidebar stays interactive around it) instead of covering the screen as
+  // a modal — see the `inline` prop on both components.
+  if (showInfo) {
+    return (
+      <AlbumInfoSheet inline artist={trackArtist} album={albumName} albumImage={albumImage}
+        onClose={() => setShowInfo(false)} />
+    );
+  }
+  if (showLyrics) {
+    return (
+      <LyricsSheet inline title={trackName} artist={trackArtist} album={albumName}
+        duration={trackDuration} position={trackPosition}
+        onClose={() => setShowLyrics(false)} />
+    );
+  }
 
   return (
     <div className="rt-hero">
@@ -264,43 +283,41 @@ export default function TabletPlayerHero() {
           </button>
         </div>
 
-        {/* up next — inline preview on tablet, tap opens the full queue */}
+        {/* up next — expands in place; no separate queue screen to navigate to */}
         {(spotify ? !!token : source !== 'radio') && (
-          <button onClick={() => setQueueOpen(true)}
-            className="rounded-2xl p-4 text-left active:scale-[0.99] transition-all cursor-pointer"
-            style={cardWhite}>
-            <div className="flex items-center justify-between mb-1">
-              <span className="flex items-center gap-2 text-[12px] font-semibold uppercase tracking-wider"
-                style={{ color: C.text3, fontFamily: C.fontLabel }}>
-                <ListMusic className="h-4 w-4" style={{ color: C.champagne }} />
-                {t('queue.upNext') || 'Up Next'}
-              </span>
-              <ChevronRight className="h-4 w-4" style={{ color: C.outline }} />
-            </div>
-            {upNext.length > 0 ? (
-              <div className="mt-2 flex flex-col gap-1.5">
-                {upNext.map((tr, i) => (
-                  <p key={`${tr.uri}-${i}`} className="text-[13px] truncate" style={{ color: C.text2 }}>
-                    {tr.name} <span style={{ color: C.text4 }}>· {tr.artists?.map(a => a.name).join(', ')}</span>
-                  </p>
-                ))}
+          <div className="rounded-2xl overflow-hidden" style={cardWhite}>
+            <button onClick={() => setShowQueue(v => !v)}
+              className="w-full p-4 text-left active:scale-[0.99] transition-all cursor-pointer">
+              <div className="flex items-center justify-between">
+                <span className="flex items-center gap-2 text-[12px] font-semibold uppercase tracking-wider"
+                  style={{ color: C.text3, fontFamily: C.fontLabel }}>
+                  <ListMusic className="h-4 w-4" style={{ color: C.champagne }} />
+                  {t('queue.upNext') || 'Up Next'}
+                </span>
+                <ChevronDown className="h-4 w-4 transition-transform" style={{ color: C.outline, transform: showQueue ? 'rotate(180deg)' : 'none' }} />
               </div>
-            ) : (
-              <p className="text-[13px] mt-1" style={{ color: C.text4 }}>View the full queue</p>
+              {!showQueue && (
+                upNext.length > 0 ? (
+                  <div className="mt-2 flex flex-col gap-1.5">
+                    {upNext.map((tr, i) => (
+                      <p key={`${tr.uri}-${i}`} className="text-[13px] truncate" style={{ color: C.text2 }}>
+                        {tr.name} <span style={{ color: C.text4 }}>· {tr.artists?.map(a => a.name).join(', ')}</span>
+                      </p>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-[13px] mt-1" style={{ color: C.text4 }}>Nothing queued</p>
+                )
+              )}
+            </button>
+            {showQueue && (
+              <div className="px-4 pb-3" style={{ borderTop: `0.5px solid ${C.outline}` }}>
+                <TabletQueueList />
+              </div>
             )}
-          </button>
+          </div>
         )}
       </div>
-
-      {showInfo && (
-        <AlbumInfoSheet artist={trackArtist} album={albumName} albumImage={albumImage}
-          onClose={() => setShowInfo(false)} />
-      )}
-      {showLyrics && (
-        <LyricsSheet title={trackName} artist={trackArtist} album={albumName}
-          duration={trackDuration} position={trackPosition}
-          onClose={() => setShowLyrics(false)} />
-      )}
     </div>
   );
 }

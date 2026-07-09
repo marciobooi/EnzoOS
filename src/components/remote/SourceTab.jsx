@@ -6,7 +6,10 @@ import { toast } from '../../lib/toast';
 import { reportError } from '../../lib/errors';
 import { useI18n } from '../../i18n';
 
-export default function SourceTab() {
+// `inline`: tablet passes this so the Qobuz/Tidal auth forms below replace
+// the source grid in place instead of opening as a modal Sheet. Phone
+// always omits it.
+export default function SourceTab({ inline = false }) {
   const { t } = useI18n();
   const {
     C, card, btnInset,
@@ -109,38 +112,46 @@ export default function SourceTab() {
 
   const inputStyle = { ...card, color: C.text1 };
 
+  // On tablet, an active auth form REPLACES the grid (inline swap) instead
+  // of covering it as a modal — phone always shows the grid underneath.
+  const hideGridForInline = inline && (qobuzModal || tidalAuth);
+
   return (
     <div className="flex flex-col pt-5 pb-2">
-      <div className="px-5 mb-5">
-        <p className="text-[11px] font-semibold uppercase tracking-widest mb-1"
-          style={{ color: C.champagne, fontFamily: C.fontLabel }}>{t('source.signalChain')}</p>
-        <h2 className="text-[24px] font-medium" style={{ color: C.text1, letterSpacing: '-0.01em' }}>{t('nav.source')}</h2>
-      </div>
+      {!hideGridForInline && (
+        <>
+          <div className="px-5 mb-5">
+            <p className="text-[11px] font-semibold uppercase tracking-widest mb-1"
+              style={{ color: C.champagne, fontFamily: C.fontLabel }}>{t('source.signalChain')}</p>
+            <h2 className="text-[24px] font-medium" style={{ color: C.text1, letterSpacing: '-0.01em' }}>{t('nav.source')}</h2>
+          </div>
 
-      <div className="px-4 grid grid-cols-3 md:grid-cols-4 gap-3 md:gap-4">
-        {sources.map(({ id, label, Icon }) => (
-          <button key={id} onClick={() => handleSelect(id)}
-            className="relative flex flex-col items-center justify-center gap-3 py-7 md:py-9 rounded-2xl active:scale-95 transition-all cursor-pointer input-btn"
-            style={source === id ? { ...btnInset, border: `0.5px solid ${C.champagne}40` } : { ...card }}>
-            <Icon />
-            <span className="text-[12px] font-semibold uppercase tracking-wider"
-              style={{ color: source === id ? C.champagne : C.text4, fontFamily: C.fontLabel }}>{label}</span>
-            {(id === 'tidal' || id === 'qobuz') && connected[id] && (
-              <span className="absolute top-2.5 right-2.5 h-2 w-2 rounded-full" style={{ background: '#1ed760' }} />
-            )}
-          </button>
-        ))}
-      </div>
+          <div className="px-4 grid grid-cols-3 md:grid-cols-4 gap-3 md:gap-4">
+            {sources.map(({ id, label, Icon }) => (
+              <button key={id} onClick={() => handleSelect(id)}
+                className="relative flex flex-col items-center justify-center gap-3 py-7 md:py-9 rounded-2xl active:scale-95 transition-all cursor-pointer input-btn"
+                style={source === id ? { ...btnInset, border: `0.5px solid ${C.champagne}40` } : { ...card }}>
+                <Icon />
+                <span className="text-[12px] font-semibold uppercase tracking-wider"
+                  style={{ color: source === id ? C.champagne : C.text4, fontFamily: C.fontLabel }}>{label}</span>
+                {(id === 'tidal' || id === 'qobuz') && connected[id] && (
+                  <span className="absolute top-2.5 right-2.5 h-2 w-2 rounded-full" style={{ background: '#1ed760' }} />
+                )}
+              </button>
+            ))}
+          </div>
 
-      {(connected.tidal || connected.qobuz) && (
-        <p className="px-5 mt-4 text-[11px]" style={{ color: C.text3 }}>
-          {t('source.connectedTip')}
-        </p>
+          {(connected.tidal || connected.qobuz) && (
+            <p className="px-5 mt-4 text-[11px]" style={{ color: C.text3 }}>
+              {t('source.connectedTip')}
+            </p>
+          )}
+        </>
       )}
 
       {/* Qobuz credentials */}
       {qobuzModal && (
-        <Sheet C={C} kicker={t('source.hiResSource')} title={t('source.connectQobuz')} onBack={() => !busy && setQobuzModal(false)}>
+        <Sheet inline={inline} C={C} kicker={t('source.hiResSource')} title={t('source.connectQobuz')} onBack={() => !busy && setQobuzModal(false)}>
           <form onSubmit={submitQobuz} className="flex flex-col gap-3 w-full max-w-sm mx-auto">
             <p className="text-[14px] mb-1" style={{ color: C.text4 }}>{t('source.qobuzSignIn')}</p>
             <input type="text" value={username} onChange={e => setUsername(e.target.value)} placeholder={t('wizard.connect.qobuzUser')}
@@ -157,7 +168,7 @@ export default function SourceTab() {
 
       {/* Tidal device flow */}
       {tidalAuth && (
-        <Sheet C={C} kicker={t('source.hiResSource')} title={t('source.connectTidal')}
+        <Sheet inline={inline} C={C} kicker={t('source.hiResSource')} title={t('source.connectTidal')}
           onBack={() => { clearInterval(pollRef.current); setTidalAuth(null); }}>
           <div className="flex flex-col items-center text-center gap-5 w-full max-w-sm mx-auto pt-4">
             <div className="w-14 h-14 rounded-2xl flex items-center justify-center"

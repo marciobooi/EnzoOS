@@ -13,15 +13,18 @@ import { useI18n } from '../../i18n';
 import LanguageChips from '../../i18n/LanguageChips';
 
 // Settings is an index of grouped categories — each opens as its own
-// full-screen Sheet — rather than one long undifferentiated scroll.
-const GROUPS = [
+// full-screen Sheet on phone — rather than one long undifferentiated scroll.
+// Exported so TabletSettingsTab (master-detail instead of a Sheet) can
+// reuse the exact same group list/content components instead of keeping a
+// second copy that could drift out of sync.
+export const GROUPS = [
   { id: 'sound',   labelKey: 'settings.sound',   icon: Sliders,           accent: undefined },
   { id: 'display', labelKey: 'settings.display', icon: Palette,           accent: '#8b5cf6' },
   { id: 'account', labelKey: 'settings.spotify', icon: Disc3,             accent: '#1ed760' },
   { id: 'system',  labelKey: 'settings.system',  icon: SlidersHorizontal, accent: undefined },
 ];
 
-const GROUP_COMPONENTS = {
+export const GROUP_COMPONENTS = {
   sound: SoundSettings,
   display: DisplaySettings,
   account: AccountSettings,

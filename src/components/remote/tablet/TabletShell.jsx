@@ -3,18 +3,27 @@ import { Tk } from '../shared';
 import TabletSidebar from './TabletSidebar';
 import TabletPlayerHero from './TabletPlayerHero';
 import TabletNowPlayingRail from './TabletNowPlayingRail';
+import TabletSettingsTab from './TabletSettingsTab';
 import LibraryTab from '../LibraryTab';
 import SourceTab from '../SourceTab';
 import UniversalSearch from '../UniversalSearch';
-import SettingsTab from '../SettingsTab';
 import MiniPlayer from '../MiniPlayer';
 import '../../../remote-tablet.css';
 
 // iPad shell (portrait AND landscape — see remote-tablet.css for the CSS
 // Grid/flex that reflow between them, no JS orientation branch anywhere
-// here). Same Tk.Provider context as the phone shell in RemoteControl.jsx;
-// every tab body below except the Player hero is the exact phone component,
-// reused verbatim inside `.rt-content-inner--narrow` rather than rewritten.
+// here). Same Tk.Provider context as the phone shell in RemoteControl.jsx.
+//
+// Library is the exact phone component, reused verbatim. Search and Source
+// are the phone components too, but take an `inline` prop — the one thing
+// each still opens as a Sheet (preset-assign, Qobuz/Tidal auth) now swaps
+// in as this pane's own content instead of covering it, since "modals that
+// don't make sense when there's room to just navigate" was direct
+// feedback. Settings is its own tablet-only master-detail component
+// (TabletSettingsTab) rather than the phone's Sheet-per-group SettingsTab,
+// for the same reason — see that file for how it also folds in the DSP
+// wizard and theme settings, which RemoteControl.jsx skips rendering as
+// global overlays when isTablet is true.
 //
 // Non-player tabs get TWO companions to fill what used to be dead space:
 // TabletNowPlayingRail (a persistent right-hand transport + queue glimpse,
@@ -22,14 +31,6 @@ import '../../../remote-tablet.css';
 // (portrait only, where there's no width left for a third column). They're
 // both always mounted; CSS orientation queries pick exactly one per
 // orientation, so there's no JS branch to fall out of sync on rotation.
-//
-// Overlays (queue sheet, DSP wizard, theme settings, voice control, and
-// every AlbumInfoSheet/LyricsSheet/Settings sub-panel built on the shared
-// `Sheet` component) stay mounted exactly where RemoteControl.jsx already
-// renders them — untouched — and pick up the floating-card tablet treatment
-// purely through the `body.remote-tablet-mode` CSS scope, since `Sheet`
-// portals to `document.body` and can't be reached by a selector scoped to
-// this component's own subtree.
 export default function TabletShell({ darkMode, setDarkMode, onVoice, tabDirection }) {
   const { C, activeTab, trackName } = useContext(Tk);
 
@@ -45,9 +46,9 @@ export default function TabletShell({ darkMode, setDarkMode, onVoice, tabDirecti
           <div key={activeTab} className={`rt-content-inner ${!isPlayerTab ? 'rt-content-inner--narrow' : ''} animate-tab-${tabDirection}`}>
             {activeTab === 'player'   && <TabletPlayerHero />}
             {activeTab === 'library'  && <LibraryTab />}
-            {activeTab === 'search'   && <UniversalSearch />}
-            {activeTab === 'source'   && <SourceTab />}
-            {activeTab === 'settings' && <SettingsTab />}
+            {activeTab === 'search'   && <UniversalSearch inline />}
+            {activeTab === 'source'   && <SourceTab inline />}
+            {activeTab === 'settings' && <TabletSettingsTab />}
 
             {showDock && (
               <div className="rt-dock">

@@ -19,7 +19,10 @@ function Step({ C, n, icon, children }) {
   );
 }
 
-export default function InstallGuide({ onClose }) {
+// `inline`: tablet's Settings pane wants this to replace its own content
+// instead of covering the whole screen — see TabletSettingsTab, the only
+// caller that passes it. Phone always omits it.
+export default function InstallGuide({ onClose, inline = false }) {
   const { C, cardWhite } = useContext(Tk);
   const [canPrompt, setCanPrompt] = useState(installAvailable());
   const installed = isStandalone();
@@ -54,9 +57,9 @@ export default function InstallGuide({ onClose }) {
     </>
   );
 
-  return createPortal(
-    <div className="remote-root remote-sheet-in fixed inset-0 z-[9999] flex flex-col"
-      style={{
+  const content = (
+    <div className={inline ? 'remote-root h-full flex flex-col' : 'remote-root remote-sheet-in fixed inset-0 z-[9999] flex flex-col'}
+      style={inline ? { background: C.bg, fontFamily: C.font } : {
         '--rc-outline': C.outline, '--rc-champagne': C.champagne,
         '--rc-container': C.container, '--rc-bg-white': C.bgWhite,
         background: C.bg, fontFamily: C.font, paddingTop: 'env(safe-area-inset-top)',
@@ -118,7 +121,8 @@ export default function InstallGuide({ onClose }) {
           </>
         )}
       </div>
-    </div>,
-    document.body,
+    </div>
   );
+
+  return inline ? content : createPortal(content, document.body);
 }

@@ -7,7 +7,10 @@ import { toast } from '../../lib/toast';
 import { reportError } from '../../lib/errors';
 import { useI18n } from '../../i18n';
 
-export default function MetadataKeysSheet({ onClose }) {
+// `inline`: tablet's Settings pane wants this to replace its own content
+// instead of covering the whole screen — see TabletSettingsTab, the only
+// caller that passes it. Phone always omits it.
+export default function MetadataKeysSheet({ onClose, inline = false }) {
   const { C, card } = useContext(Tk);
   const { t } = useI18n();
 
@@ -52,9 +55,9 @@ export default function MetadataKeysSheet({ onClose }) {
 
   const inputStyle = { ...card, color: C.text1 };
 
-  return createPortal(
-    <div className="remote-root remote-sheet-in fixed inset-0 z-[9999] flex flex-col"
-      style={{
+  const content = (
+    <div className={inline ? 'remote-root h-full flex flex-col' : 'remote-root remote-sheet-in fixed inset-0 z-[9999] flex flex-col'}
+      style={inline ? { background: C.bg, fontFamily: C.font } : {
         '--rc-outline': C.outline, '--rc-champagne': C.champagne,
         '--rc-container': C.container, '--rc-bg-white': C.bgWhite,
         background: C.bg, fontFamily: C.font, paddingTop: 'env(safe-area-inset-top)',
@@ -114,7 +117,8 @@ export default function MetadataKeysSheet({ onClose }) {
           {saving ? t('meta.saving') : t('meta.saveKeys')}
         </button>
       </div>
-    </div>,
-    document.body,
+    </div>
   );
+
+  return inline ? content : createPortal(content, document.body);
 }
