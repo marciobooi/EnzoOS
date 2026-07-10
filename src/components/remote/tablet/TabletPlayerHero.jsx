@@ -258,6 +258,7 @@ export default function TabletPlayerHero() {
 
     {/* info */}
     <div>
+      <div>
           {trackName && trackName !== 'Nothing playing' && (
             <div className="mt-3 flex items-center gap-3">
               <span className="px-2.5 py-1 rounded-full text-[11px] font-semibold uppercase tracking-wider"
@@ -309,6 +310,7 @@ export default function TabletPlayerHero() {
             onClick={() => handleVolumeChange({ target: { value: 100 } })}>
             <Volume2 className="h-4 w-4" />
           </button>
+        </div>
         </div>
 
         {/* up next — expands in place; no separate queue screen to navigate to */}
