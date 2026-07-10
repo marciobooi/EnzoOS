@@ -55,7 +55,7 @@
 .rt-sidebar-footer { display: flex; flex-direction: row; align-items: center; justify-content: center; gap: 0.625rem; width: 100%; }
 .rt-sidebar-now-playing {
   position: relative;
-  width: 100%;
+  width: 100vh;
   display: flex;
   align-items: center;
   gap: 0.625rem;
