@@ -101,7 +101,7 @@ export default function TabletPlayerHero() {
   }
 
   return (
-    <>
+    <div className="flex flex-col h-full">
     <div className="rt-hero">
 
       {/* ── Art ── */}
@@ -201,15 +201,15 @@ export default function TabletPlayerHero() {
 
         {source !== 'radio' ? (
           <div className="mb-6">
-            <div className="relative h-2 rounded-full mb-2" style={{ background: C.container }}>
+            <div className="relative h-1 rounded-full mb-3" style={{ background: C.container }}>
               <div className="absolute inset-y-0 left-0 rounded-full"
                 style={{ width: `${progressPct}%`, background: C.champagne }} />
-              <div className="absolute w-6 h-6 rounded-full top-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none"
-                style={{ left: `${progressPct}%`, background: '#ffffff', border: `2px solid ${C.champagne}`, boxShadow: '0 1px 4px rgba(0,0,0,0.28)' }} />
+              <div className="absolute w-4 h-4 rounded-full top-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none"
+                style={{ left: `${progressPct}%`, background: '#ffffff', border: `1.5px solid ${C.champagne}`, boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }} />
               <input type="range" min="0" max={trackDuration || 0} value={trackPosition}
                 onChange={handleSeek}
                 disabled={spotify ? !token || !trackDuration : !trackDuration}
-                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-default" />
+                className="absolute -inset-y-2.5 inset-x-0 w-full opacity-0 cursor-pointer disabled:cursor-default" />
             </div>
             <div className="flex justify-between text-[12px] font-semibold"
               style={{ color: C.text3, fontFamily: C.fontLabel, letterSpacing: '0.04em' }}>
@@ -283,15 +283,15 @@ export default function TabletPlayerHero() {
             className="w-11 h-11 flex items-center justify-center rounded-full active:scale-90 transition-all cursor-pointer shrink-0">
             <VolumeX className="h-5 w-5" />
           </button>
-          <div className="relative flex-1 h-2 rounded-full" style={{ background: C.container }}>
+          <div className="relative flex-1 h-1 rounded-full" style={{ background: C.container }}>
             <div className="absolute inset-y-0 left-0 rounded-full"
               style={{ width: `${isMuted ? 0 : volume}%`, background: C.champagne }} />
-            <div className="absolute w-6 h-6 rounded-full top-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none"
-              style={{ left: `${isMuted ? 0 : volume}%`, background: '#ffffff', border: `2px solid ${C.champagne}`, boxShadow: '0 1px 4px rgba(0,0,0,0.28)' }} />
+            <div className="absolute w-4 h-4 rounded-full top-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none"
+              style={{ left: `${isMuted ? 0 : volume}%`, background: '#ffffff', border: `1.5px solid ${C.champagne}`, boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }} />
             <input type="range" min="0" max="100" value={isMuted ? 0 : volume}
               onChange={handleVolumeChange} aria-label={t('player.volume')}
               disabled={spotify ? !token : false}
-              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-default" />
+              className="absolute -inset-y-2.5 inset-x-0 w-full opacity-0 cursor-pointer disabled:cursor-default" />
           </div>
           <button style={{ color: C.text3 }} aria-label="Maximum volume"
             className="w-11 h-11 flex items-center justify-center rounded-full active:scale-90 transition-all cursor-pointer shrink-0"
@@ -338,10 +338,15 @@ export default function TabletPlayerHero() {
     </div>
 
     {/* ── Input source — quick-switch carousel, full width below the
-        art/info split. Simple sources activate immediately; Tidal/Qobuz
+        art/info split. `mt-auto` (the parent is a full-height flex column,
+        see the wrapping div above) pins it to the bottom of the pane
+        instead of just trailing the hero with fixed spacing, matching the
+        reference layout — it only falls back to sitting right under the
+        hero if the content is ever taller than the viewport, same as
+        ordinary flow. Simple sources activate immediately; Tidal/Qobuz
         (which may need an auth form) hand off to the Source tab instead of
         duplicating that flow here. ── */}
-    <div className="mt-10">
+    <div className="mt-auto pt-8">
       <p className="text-[11px] font-semibold uppercase tracking-widest mb-3 px-1"
         style={{ color: C.text3, fontFamily: C.fontLabel }}>{t('source.signalChain')}</p>
       <div className="flex gap-3 overflow-x-auto pb-1" style={{ scrollbarWidth: 'none' }}>
@@ -364,6 +369,6 @@ export default function TabletPlayerHero() {
         })}
       </div>
     </div>
-    </>
+    </div>
   );
 }

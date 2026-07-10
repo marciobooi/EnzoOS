@@ -75,11 +75,22 @@
 .rt-main {
   flex: 1;
   min-width: 0;
+  display: flex;
+  flex-direction: column;
   overflow-y: auto;
   overscroll-behavior: none;
   padding-top: env(safe-area-inset-top);
 }
+/* flex: 1 (rather than a plain block) gives .rt-content-inner a definite
+   height equal to at least .rt-main's own viewport — content shorter than
+   the pane still fills it (needed so a `h-full` flex column inside, like
+   the Player hero's input-source carousel, can pin something to the actual
+   bottom of the pane via margin-top:auto instead of just trailing the
+   content). Content taller than the viewport still grows past that and
+   scrolls exactly as before — this only adds trailing blank space when
+   content is short, so every other tab is visually unaffected. */
 .rt-content-inner {
+  flex: 1 0 auto;
   max-width: 1180px;
   margin: 0 auto;
   padding: 2rem 2.25rem calc(2rem + env(safe-area-inset-bottom));
