@@ -114,7 +114,7 @@ export default function TabletPlayerHero() {
   }
 
   return (
-    <div className="flex flex-col h-full min-h-0 gap-4">
+    <div className="flex flex-col h-full min-h-0 gap-[4rem]">
     <div className="rt-hero">
 
       {/* ── Art — the cover is a fixed square smaller than its grid column,

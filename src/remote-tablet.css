@@ -170,7 +170,8 @@
     grid-template-areas: "art info";
     align-items: center;
     max-width: 1180px;
-    gap: 4rem;
+    margin: initial;
+    gap: 0;
   }
 }
 .rt-hero-art  { grid-area: art; min-height: 0; }
