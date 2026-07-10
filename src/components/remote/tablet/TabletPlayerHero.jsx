@@ -258,7 +258,7 @@ export default function TabletPlayerHero() {
 
     {/* info */}
     <div>
-      <div>
+      <div className='player-info-controls'>
           {trackName && trackName !== 'Nothing playing' && (
             <div className="mt-3 flex items-center gap-3">
               <span className="px-2.5 py-1 rounded-full text-[11px] font-semibold uppercase tracking-wider"
