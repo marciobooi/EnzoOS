@@ -83,6 +83,19 @@ export default function TabletPlayerHero() {
     return source === 'spotify' ? 'SPOTIFY OGG' : 'STREAMING';
   })();
 
+  // Reference design tokens (matched against the target mock's Tailwind
+  // config: secondary-fixed #efe0cd / on-secondary-fixed #221a0f / the
+  // "ambient-shadow" utility). A single soft warm-gray drop shadow, not
+  // this app's usual dual-tone neumorphic one — and a pale cream accent
+  // fill for the play button and slider fills, not the saturated gold used
+  // for badges/favorites elsewhere. Dark mode has no reference to match, so
+  // it keeps this file's existing look.
+  const ambientShadow = darkMode
+    ? '0 10px 24px rgba(0,0,0,0.45), 0 2px 8px rgba(0,0,0,0.35)'
+    : '0 10px 30px rgba(180,170,150,0.08)';
+  const accentFill      = darkMode ? C.champagne : '#efe0cd';
+  const accentFillHex   = darkMode ? '#12203a'    : '#221a0f';
+
   // Album info / lyrics replace the WHOLE main content pane on tablet
   // (sidebar stays interactive around it) instead of covering the screen as
   // a modal — see the `inline` prop on both components.
@@ -113,12 +126,7 @@ export default function TabletPlayerHero() {
             style={{ backgroundImage: `url(${albumImage})`, backgroundSize: 'cover', opacity: darkMode ? 0.28 : 0.16 }} />
         )}
         <div className="w-[20rem] h-[20rem] rounded-[18px] overflow-hidden flex items-center justify-center"
-          style={{
-            ...card,
-            boxShadow: darkMode
-              ? '0 32px 64px rgba(0,0,0,0.8), 4px 4px 12px rgba(0,0,0,0.7), -4px -4px 12px rgba(20,40,75,0.4)'
-              : '0 32px 64px rgba(0,0,0,0.09), 4px 4px 10px rgba(0,0,0,0.025), -4px -4px 10px rgba(255,255,255,0.9)',
-          }}>
+          style={{ ...card, boxShadow: ambientShadow }}>
           {albumImage
             ? <img src={albumImage} alt={trackName} className="w-full h-full object-cover" draggable={false} />
             : (
@@ -148,9 +156,9 @@ export default function TabletPlayerHero() {
       <div className="rt-hero-info flex flex-col">
 
         <div className="mb-6">
-          <h2 className="text-[40px] font-medium leading-tight truncate"
-            style={{ color: C.text1, letterSpacing: '-0.015em' }}>{trackName}</h2>
-          <p className="text-[19px] mt-1.5 truncate" style={{ color: C.text4 }}>
+          <h2 className="text-[46px] font-bold leading-tight truncate"
+            style={{ color: C.text1, letterSpacing: '-0.02em' }}>{trackName}</h2>
+          <p className="text-[22px] mt-1.5 truncate" style={{ color: C.text4 }}>
             {trackArtist}
             {activeDevice && <span style={{ color: C.champagne }}> · {activeDevice.name}</span>}
           </p>
@@ -201,11 +209,11 @@ export default function TabletPlayerHero() {
 
         {source !== 'radio' ? (
           <div className="mb-6">
-            <div className="relative h-1 rounded-full mb-3" style={{ background: `${C.champagne}30` }}>
+            <div className="relative h-1 rounded-full mb-3" style={{ background: C.container }}>
               <div className="absolute inset-y-0 left-0 rounded-full"
-                style={{ width: `${progressPct}%`, background: C.champagne }} />
+                style={{ width: `${progressPct}%`, background: accentFill }} />
               <div className="absolute w-4 h-4 rounded-full top-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none"
-                style={{ left: `${progressPct}%`, background: '#ffffff', boxShadow: '0 1px 4px rgba(0,0,0,0.25)' }} />
+                style={{ left: `${progressPct}%`, background: '#ffffff', boxShadow: '0 4px 10px rgba(180,170,150,0.25)' }} />
               <input type="range" min="0" max={trackDuration || 0} value={trackPosition}
                 onChange={handleSeek}
                 disabled={spotify ? !token || !trackDuration : !trackDuration}
@@ -232,35 +240,29 @@ export default function TabletPlayerHero() {
           {source !== 'radio' ? (
             <button onClick={handlePrevious} disabled={spotify ? !token : false} aria-label={t('player.previous')}
               className="rounded-full flex items-center justify-center cursor-pointer disabled:opacity-20 active:scale-90 transition-all"
-              style={{ color: C.text1, width: 52, height: 52 }}>
-              <SkipBack className="h-6 w-6 fill-current" />
+              style={{ color: C.text1, width: 56, height: 56 }}>
+              <SkipBack className="h-7 w-7" strokeWidth={1.75} />
             </button>
-          ) : <div style={{ width: 52 }} />}
+          ) : <div style={{ width: 56 }} />}
 
           <button onClick={handlePlayPause} disabled={spotify ? !token : false} aria-label={isPlaying ? t('player.pause') : t('player.play')}
             className="rounded-full flex items-center justify-center cursor-pointer disabled:opacity-25 transition-all active:scale-95"
-            style={{
-              width: 84, height: 84,
-              background: darkMode ? C.champagne : '#e9d9a6',
-              boxShadow: darkMode
-                ? '0 14px 28px rgba(212,175,55,0.3), 0 4px 10px rgba(0,0,0,0.5)'
-                : '0 14px 28px rgba(212,175,55,0.25), 0 4px 10px rgba(0,0,0,0.08)',
-            }}>
+            style={{ width: 96, height: 96, background: accentFill, boxShadow: ambientShadow }}>
             {isPlaying
-              ? <Pause className="h-8 w-8" style={{ fill: '#1a1c1c', color: '#1a1c1c' }} />
-              : <Play className="h-8 w-8 ml-1" style={{ fill: '#1a1c1c', color: '#1a1c1c' }} />}
+              ? <Pause className="h-10 w-10" style={{ fill: accentFillHex, color: accentFillHex }} />
+              : <Play className="h-10 w-10 ml-1" style={{ fill: accentFillHex, color: accentFillHex }} />}
           </button>
 
           {source !== 'radio' ? (
             <button onClick={handleNext} disabled={spotify ? !token : false} aria-label={t('player.next')}
               className="rounded-full flex items-center justify-center cursor-pointer disabled:opacity-20 active:scale-90 transition-all"
-              style={{ color: C.text1, width: 52, height: 52 }}>
-              <SkipForward className="h-6 w-6 fill-current" />
+              style={{ color: C.text1, width: 56, height: 56 }}>
+              <SkipForward className="h-7 w-7" strokeWidth={1.75} />
             </button>
           ) : (
             <button onClick={() => setActiveTab('search')}
               className="rounded-full flex items-center justify-center cursor-pointer active:scale-90 transition-all"
-              style={{ color: C.champagne, width: 52, height: 52 }}>
+              style={{ color: C.champagne, width: 56, height: 56 }}>
               <Radio className="h-5 w-5" />
             </button>
           )}
@@ -281,11 +283,11 @@ export default function TabletPlayerHero() {
             className="w-9 h-9 flex items-center justify-center rounded-full active:scale-90 transition-all cursor-pointer shrink-0">
             <VolumeX className="h-4 w-4" />
           </button>
-          <div className="relative flex-1 h-1 rounded-full" style={{ background: `${C.champagne}30` }}>
+          <div className="relative flex-1 h-1 rounded-full" style={{ background: C.container }}>
             <div className="absolute inset-y-0 left-0 rounded-full"
-              style={{ width: `${isMuted ? 0 : volume}%`, background: C.champagne }} />
+              style={{ width: `${isMuted ? 0 : volume}%`, background: accentFill }} />
             <div className="absolute w-4 h-4 rounded-full top-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none"
-              style={{ left: `${isMuted ? 0 : volume}%`, background: '#ffffff', boxShadow: '0 1px 4px rgba(0,0,0,0.25)' }} />
+              style={{ left: `${isMuted ? 0 : volume}%`, background: '#ffffff', boxShadow: '0 4px 10px rgba(180,170,150,0.25)' }} />
             <input type="range" min="0" max="100" value={isMuted ? 0 : volume}
               onChange={handleVolumeChange} aria-label={t('player.volume')}
               disabled={spotify ? !token : false}
@@ -356,16 +358,18 @@ export default function TabletPlayerHero() {
           };
           return (
             <button key={id} onClick={onTap}
-              className="shrink-0 flex flex-col items-center justify-center gap-2 py-4 rounded-3xl active:scale-95 transition-all cursor-pointer"
+              className="shrink-0 flex flex-col items-center justify-center gap-2.5 py-5 rounded-3xl active:scale-95 transition-all cursor-pointer"
               style={{
-                width: 108,
-                background: cardWhite.background,
-                boxShadow: cardWhite.boxShadow,
-                border: active ? `1.5px solid ${C.text1}` : cardWhite.border,
+                width: 124,
+                background: active
+                  ? `linear-gradient(${C.champagne}14, ${C.champagne}14), ${cardWhite.background}`
+                  : cardWhite.background,
+                boxShadow: ambientShadow,
+                border: active ? `1.5px solid ${C.champagne}80` : cardWhite.border,
               }}>
-              <Icon className="h-4 w-4" style={isSpotify ? { fill: C.text1 } : { color: C.text1 }} />
+              <Icon className="h-7 w-7" style={isSpotify ? { fill: active ? C.text2 : C.text3 } : { color: active ? C.text2 : C.text3 }} />
               <span className="text-[10.5px] font-semibold uppercase tracking-wider"
-                style={{ color: C.text2, fontFamily: C.fontLabel }}>{label}</span>
+                style={{ color: C.text1, fontFamily: C.fontLabel }}>{label}</span>
             </button>
           );
         })}
