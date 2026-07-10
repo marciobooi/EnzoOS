@@ -174,12 +174,7 @@
     gap: 0;
     padding-top: 2rem;
   }
-
-  .player-info-controls {
-        background: linear-gradient(rgba(212, 175, 55, 0.08), rgba(212, 175, 55, 0.08)), rgb(255, 255, 255);
-    box-shadow: rgba(180, 170, 150, 0.08) 0px 10px 30px;
-    border: 1.5px solid rgba(212, 175, 55, 0.5);
-  }
+  
 }
 .rt-hero-art  { grid-area: art; min-height: 0; }
 .rt-hero-info { grid-area: info; min-width: 0; min-height: 0; }
