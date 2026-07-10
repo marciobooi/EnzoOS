@@ -2,12 +2,28 @@ import { useContext, useState } from 'react';
 import {
   Play, Pause, SkipForward, SkipBack, Volume2, VolumeX,
   Shuffle, Repeat, Music, Heart, Radio, ListMusic, Info, Mic2, ChevronDown,
+  Airplay, Network, Bluetooth, Music2,
 } from 'lucide-react';
 import { Tk, SpotifyIcon, fmt } from '../shared';
 import AlbumInfoSheet from '../AlbumInfoSheet';
 import LyricsSheet from '../LyricsSheet';
 import TabletQueueList from './TabletQueueList';
 import { useI18n } from '../../../i18n';
+
+// Mirrors SourceTab's source list (icons + ids only, not its Qobuz/Tidal
+// auth flow — tapping either of those here just hands off to the Source
+// tab, which already owns that logic) so the hero's quick-switch carousel
+// can't drift out of sync with what Source actually offers.
+const INPUT_SOURCES = [
+  { id: 'spotify',   label: 'Spotify',   Icon: SpotifyIcon, isSpotify: true },
+  { id: 'local',     label: 'Local',     Icon: Music },
+  { id: 'radio',     label: 'Radio',     Icon: Radio },
+  { id: 'airplay',   label: 'AirPlay',   Icon: Airplay },
+  { id: 'upnp',      label: 'UPnP',      Icon: Network },
+  { id: 'bluetooth', label: 'Bluetooth', Icon: Bluetooth },
+  { id: 'tidal',     label: 'Tidal',     Icon: Music2 },
+  { id: 'qobuz',     label: 'Qobuz',     Icon: Music },
+];
 
 // iPad's flagship "Now Playing" screen. Same data/handlers as the phone's
 // PlayerTab (all read off the shared Tk context — nothing duplicated), but
@@ -27,7 +43,7 @@ export default function TabletPlayerHero() {
     handlePlayPause, handleNext, handlePrevious,
     handleShuffle, handleRepeat, handleSeek,
     handleVolumeChange, handleMuteToggle,
-    handleToggleFavRadio, setActiveTab,
+    handleToggleFavRadio, handleToggleSource, setActiveTab,
     queue,
     favorites, handleToggleFavorite,
     liveFormat,
@@ -85,6 +101,7 @@ export default function TabletPlayerHero() {
   }
 
   return (
+    <>
     <div className="rt-hero">
 
       {/* ── Art ── */}
@@ -319,5 +336,34 @@ export default function TabletPlayerHero() {
         )}
       </div>
     </div>
+
+    {/* ── Input source — quick-switch carousel, full width below the
+        art/info split. Simple sources activate immediately; Tidal/Qobuz
+        (which may need an auth form) hand off to the Source tab instead of
+        duplicating that flow here. ── */}
+    <div className="mt-10">
+      <p className="text-[11px] font-semibold uppercase tracking-widest mb-3 px-1"
+        style={{ color: C.text3, fontFamily: C.fontLabel }}>{t('source.signalChain')}</p>
+      <div className="flex gap-3 overflow-x-auto pb-1" style={{ scrollbarWidth: 'none' }}>
+        {INPUT_SOURCES.map(({ id, label, Icon, isSpotify }) => {
+          const active = source === id;
+          const iconColor = active ? C.champagne : C.text3;
+          const onTap = () => {
+            if (id === 'tidal' || id === 'qobuz') { setActiveTab('source'); return; }
+            handleToggleSource(id);
+          };
+          return (
+            <button key={id} onClick={onTap}
+              className="shrink-0 flex flex-col items-center justify-center gap-2 py-4 rounded-2xl active:scale-95 transition-all cursor-pointer"
+              style={{ width: 108, ...(active ? { ...btnInset, border: `0.5px solid ${C.champagne}40` } : card) }}>
+              <Icon className="h-6 w-6" style={isSpotify ? { fill: iconColor } : { color: iconColor }} />
+              <span className="text-[11px] font-semibold uppercase tracking-wider"
+                style={{ color: iconColor, fontFamily: C.fontLabel }}>{label}</span>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+    </>
   );
 }
