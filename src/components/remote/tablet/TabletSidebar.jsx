@@ -38,33 +38,6 @@ export default function TabletSidebar({ darkMode, setDarkMode, onVoice }) {
         </div>
       </div>
 
-      {/* Now-playing glimpse — ties nav to what's actually playing instead of
-          leaving that identity block as pure decoration, and (along with
-          centering the nav below) closes the "dead space" the sidebar had
-          when it was just a logo + tab list on a full iPad height. */}
-      {hasTrack && (
-        <button onClick={() => setActiveTab('player')} aria-label="Now playing"
-          className="rt-sidebar-now-playing active:scale-[0.98] transition-all cursor-pointer"
-          style={card}>
-          <span className="w-11 h-11 rounded-xl overflow-hidden shrink-0 relative" style={{ background: C.containerLow }}>
-            {albumImage
-              ? <img src={albumImage} alt="" className="w-full h-full object-cover" draggable={false} />
-              : (
-                <span className="w-full h-full flex items-center justify-center">
-                  <Music className="h-4 w-4" style={{ color: C.text4 }} />
-                </span>
-              )}
-            {isPlaying && (
-              <span className="absolute bottom-0.5 right-0.5 w-2 h-2 rounded-full"
-                style={{ background: C.champagne, boxShadow: `0 0 4px ${C.champagne}`, border: `1.5px solid ${C.bgWhite}` }} />
-            )}
-          </span>
-          <span className="min-w-0 text-left">
-            <span className="block text-[12.5px] font-medium truncate" style={{ color: C.text1 }}>{trackName}</span>
-            <span className="block text-[11px] truncate" style={{ color: C.text4 }}>{trackArtist}</span>
-          </span>
-        </button>
-      )}
 
       <nav className="rt-sidebar-nav">
         {NAV_TABS.map(({ id, Icon, labelKey }) => {
