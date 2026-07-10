@@ -117,39 +117,43 @@ export default function TabletPlayerHero() {
     <div className="flex flex-col h-full min-h-0">
     <div className="rt-hero">
 
-      {/* ── Art ── */}
-      <div className={`rt-hero-art relative ${canInfo ? 'cursor-pointer' : ''}`}
-        style={{ aspectRatio: '1 / 1', maxHeight: 'min(20rem, 32dvh)' }}
+      {/* ── Art — the cover is a fixed square smaller than its grid column,
+          so the column centers it and the badge/info chips anchor to a
+          wrapper sized to the cover itself (not the column, which would
+          float them off into the empty space beside the art). ── */}
+      <div className={`rt-hero-art flex items-center justify-center ${canInfo ? 'cursor-pointer' : ''}`}
         onClick={() => { if (canInfo) setShowInfo(true); }}>
-        {albumImage && (
-          <div className="absolute inset-0 rounded-[36px] -z-10 scale-[0.86] blur-3xl"
-            style={{ backgroundImage: `url(${albumImage})`, backgroundSize: 'cover', opacity: darkMode ? 0.28 : 0.16 }} />
-        )}
-        <div className="rounded-[18px] overflow-hidden flex items-center justify-center"
-          style={{ width: 'min(20rem, 32dvh)', height: 'min(20rem, 32dvh)', ...card, boxShadow: ambientShadow }}>
-          {albumImage
-            ? <img src={albumImage} alt={trackName} className="w-full h-full object-cover" draggable={false} />
-            : (
-              <div className="flex flex-col items-center gap-3 p-8 text-center">
-                <Music className="h-16 w-16" style={{ color: C.outline }} />
-                <span className="text-[12px] uppercase tracking-widest font-semibold"
-                  style={{ color: C.text3, fontFamily: C.fontLabel }}>{t('player.nothingPlaying')}</span>
-              </div>
-            )
-          }
-        </div>
-        <div className="absolute bottom-4 right-4 px-3 py-1.5 rounded-full flex items-center gap-1.5" style={cardWhite}>
-          <span className="w-1.5 h-1.5 rounded-full" style={{ background: C.champagne }} />
-          <span className="text-[11px] font-semibold uppercase tracking-wider"
-            style={{ color: C.text3, fontFamily: C.fontLabel }}>
-            {spotify ? 'Spotify' : source === 'radio' ? 'Radio' : 'Local'}
-          </span>
-        </div>
-        {canInfo && (
-          <div className="absolute top-4 right-4 w-9 h-9 rounded-full flex items-center justify-center" style={cardWhite}>
-            <Info className="h-4 w-4" style={{ color: C.champagne }} />
+        <div className="relative" style={{ width: 'min(20rem, 32dvh)', height: 'min(20rem, 32dvh)' }}>
+          {albumImage && (
+            <div className="absolute inset-0 rounded-[36px] -z-10 scale-[0.86] blur-3xl"
+              style={{ backgroundImage: `url(${albumImage})`, backgroundSize: 'cover', opacity: darkMode ? 0.28 : 0.16 }} />
+          )}
+          <div className="w-full h-full rounded-[18px] overflow-hidden flex items-center justify-center"
+            style={{ ...card, boxShadow: ambientShadow }}>
+            {albumImage
+              ? <img src={albumImage} alt={trackName} className="w-full h-full object-cover" draggable={false} />
+              : (
+                <div className="flex flex-col items-center gap-3 p-8 text-center">
+                  <Music className="h-16 w-16" style={{ color: C.outline }} />
+                  <span className="text-[12px] uppercase tracking-widest font-semibold"
+                    style={{ color: C.text3, fontFamily: C.fontLabel }}>{t('player.nothingPlaying')}</span>
+                </div>
+              )
+            }
           </div>
-        )}
+          <div className="absolute bottom-4 right-4 px-3 py-1.5 rounded-full flex items-center gap-1.5" style={cardWhite}>
+            <span className="w-1.5 h-1.5 rounded-full" style={{ background: C.champagne }} />
+            <span className="text-[11px] font-semibold uppercase tracking-wider"
+              style={{ color: C.text3, fontFamily: C.fontLabel }}>
+              {spotify ? 'Spotify' : source === 'radio' ? 'Radio' : 'Local'}
+            </span>
+          </div>
+          {canInfo && (
+            <div className="absolute top-4 right-4 w-9 h-9 rounded-full flex items-center justify-center" style={cardWhite}>
+              <Info className="h-4 w-4" style={{ color: C.champagne }} />
+            </div>
+          )}
+        </div>
       </div>
 
       {/* ── Info + controls ── */}
@@ -249,8 +253,8 @@ export default function TabletPlayerHero() {
             className="rounded-full flex items-center justify-center cursor-pointer disabled:opacity-25 transition-all active:scale-95"
             style={{ width: 70, height: 70, background: accentFill, boxShadow: ambientShadow }}>
             {isPlaying
-              ? <Pause className="h-8 w-8" style={{ fill: accentFillHex, color: accentFillHex }} />
-              : <Play className="h-8 w-8 ml-1" style={{ fill: accentFillHex, color: accentFillHex }} />}
+              ? <Pause className="h-7 w-7" style={{ fill: accentFillHex, color: accentFillHex }} />
+              : <Play className="h-7 w-7 ml-1" style={{ fill: accentFillHex, color: accentFillHex }} />}
           </button>
 
           {source !== 'radio' ? (

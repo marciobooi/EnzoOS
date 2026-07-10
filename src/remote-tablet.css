@@ -102,8 +102,17 @@
    content). Content taller than the viewport still grows past that and
    scrolls exactly as before — this only adds trailing blank space when
    content is short, so every other tab is visually unaffected. */
+/* width: 100% is load-bearing, not decoration: as a flex item with auto
+   side-margins (the centering), this box does NOT cross-axis stretch — its
+   width falls back to fit-content, which is floored at min-content. The
+   player's nowrap input-source carousel has a ~1080px min-content, so
+   without an explicit width the whole pane inflated to that and scrolled
+   horizontally as one page (title, sliders, transport and all) instead of
+   the carousel scrolling inside its own overflow-x. Pinning width lets
+   max-width + auto margins still center it on panes wider than 1180px. */
 .rt-content-inner {
   flex: 1 0 auto;
+  width: 100%;
   max-width: 1180px;
   margin: 0 auto;
   padding: 2rem 2.25rem calc(2rem + env(safe-area-inset-bottom));
