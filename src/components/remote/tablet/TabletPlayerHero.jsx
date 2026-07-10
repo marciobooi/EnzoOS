@@ -156,9 +156,8 @@ export default function TabletPlayerHero() {
         </div>
       </div>
 
-      {/* ── Info + controls ── */}
+      {/* controls*/}
       <div className="rt-hero-info flex flex-col">
-
         <div className="mb-5">
           <h2 className="text-[46px] font-bold leading-tight truncate"
             style={{ color: C.text1, letterSpacing: '-0.02em' }}>{trackName}</h2>
@@ -166,34 +165,7 @@ export default function TabletPlayerHero() {
             {trackArtist}
             {/* {activeDevice && <span style={{ color: C.champagne }}> · {activeDevice.name}</span>} */}
           </p>
-          {trackName && trackName !== 'Nothing playing' && (
-            <div className="mt-3 flex items-center gap-3">
-              <span className="px-2.5 py-1 rounded-full text-[11px] font-semibold uppercase tracking-wider"
-                style={{ background: `${C.champagne}18`, color: C.champagne, border: `0.5px solid ${C.champagne}35`, fontFamily: C.fontLabel }}>
-                {qualityLabel}
-              </span>
-              <button
-                onClick={() => {
-                  if (source === 'radio') {
-                    handleToggleFavRadio({ name: trackName, url: currentTrack?.url, favicon: albumImage || '', country: '', tags: '' });
-                  } else {
-                    handleToggleFavorite({ source, uri: trackUri, title: trackName, artist: trackArtist, album: albumName, cover: albumImage });
-                  }
-                }}
-                aria-label={isFav ? t('player.removeFav') : t('player.addFav')}
-                className="w-9 h-9 inline-flex items-center justify-center rounded-full active:scale-90 transition-all cursor-pointer"
-                style={{ color: isFav ? C.error : C.text4 }}>
-                <Heart className={`h-[18px] w-[18px] ${isFav ? 'fill-current' : ''}`} />
-              </button>
-              {canLyrics && (
-                <button onClick={() => setShowLyrics(true)}
-                  className="w-9 h-9 inline-flex items-center justify-center rounded-full active:scale-90 transition-all cursor-pointer"
-                  style={{ color: C.text4 }}>
-                  <Mic2 className="h-[18px] w-[18px]" />
-                </button>
-              )}
-            </div>
-          )}
+
         </div>
 
         {spotify && !token && (
@@ -280,7 +252,42 @@ export default function TabletPlayerHero() {
           ) : <div className="w-10" />}
         </div>
 
-        {/* volume */}
+
+      </div>
+    </div>
+
+    {/* info */}
+    <div>
+          {trackName && trackName !== 'Nothing playing' && (
+            <div className="mt-3 flex items-center gap-3">
+              <span className="px-2.5 py-1 rounded-full text-[11px] font-semibold uppercase tracking-wider"
+                style={{ background: `${C.champagne}18`, color: C.champagne, border: `0.5px solid ${C.champagne}35`, fontFamily: C.fontLabel }}>
+                {qualityLabel}
+              </span>
+              <button
+                onClick={() => {
+                  if (source === 'radio') {
+                    handleToggleFavRadio({ name: trackName, url: currentTrack?.url, favicon: albumImage || '', country: '', tags: '' });
+                  } else {
+                    handleToggleFavorite({ source, uri: trackUri, title: trackName, artist: trackArtist, album: albumName, cover: albumImage });
+                  }
+                }}
+                aria-label={isFav ? t('player.removeFav') : t('player.addFav')}
+                className="w-9 h-9 inline-flex items-center justify-center rounded-full active:scale-90 transition-all cursor-pointer"
+                style={{ color: isFav ? C.error : C.text4 }}>
+                <Heart className={`h-[18px] w-[18px] ${isFav ? 'fill-current' : ''}`} />
+              </button>
+              {canLyrics && (
+                <button onClick={() => setShowLyrics(true)}
+                  className="w-9 h-9 inline-flex items-center justify-center rounded-full active:scale-90 transition-all cursor-pointer"
+                  style={{ color: C.text4 }}>
+                  <Mic2 className="h-[18px] w-[18px]" />
+                </button>
+              )}
+            </div>
+          )}
+
+                  {/* volume */}
         <div className="flex items-center gap-2 mb-5">
           <button onClick={handleMuteToggle} aria-label={isMuted ? t('player.unmute') : t('player.mute')}
             style={{ color: isMuted ? C.champagne : C.text2 }}
@@ -338,7 +345,6 @@ export default function TabletPlayerHero() {
             )}
           </div>
         )}
-      </div>
     </div>
 
     {/* ── Input source — quick-switch carousel, full width below the
