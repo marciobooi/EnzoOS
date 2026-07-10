@@ -112,7 +112,7 @@ export default function TabletPlayerHero() {
           <div className="absolute inset-0 rounded-[36px] -z-10 scale-[0.86] blur-3xl"
             style={{ backgroundImage: `url(${albumImage})`, backgroundSize: 'cover', opacity: darkMode ? 0.28 : 0.16 }} />
         )}
-        <div className="w-full h-full rounded-[36px] overflow-hidden flex items-center justify-center"
+        <div className="w-[8rem] h-[8rem] rounded-[36px] overflow-hidden flex items-center justify-center"
           style={{
             ...card,
             boxShadow: darkMode
