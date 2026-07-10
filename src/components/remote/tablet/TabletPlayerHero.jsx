@@ -164,7 +164,7 @@ export default function TabletPlayerHero() {
             style={{ color: C.text1, letterSpacing: '-0.02em' }}>{trackName}</h2>
           <p className="text-[22px] mt-1.5 truncate" style={{ color: C.text4 }}>
             {trackArtist}
-            {activeDevice && <span style={{ color: C.champagne }}> · {activeDevice.name}</span>}
+            {/* {activeDevice && <span style={{ color: C.champagne }}> · {activeDevice.name}</span>} */}
           </p>
           {trackName && trackName !== 'Nothing playing' && (
             <div className="mt-3 flex items-center gap-3">
