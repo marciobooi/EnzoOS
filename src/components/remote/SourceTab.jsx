@@ -118,14 +118,17 @@ export default function SourceTab({ inline = false }) {
 
   return (
     <div className="flex flex-col pt-5 pb-2">
+      {/* Tablet renders its own larger page header (TabletShell) instead of
+          this compact kicker+title — phone (inline=false) always keeps it. */}
+      {!inline && (
+        <div className="px-5 mb-5">
+          <p className="text-[11px] font-semibold uppercase tracking-widest mb-1"
+            style={{ color: C.champagne, fontFamily: C.fontLabel }}>{t('source.signalChain')}</p>
+          <h2 className="text-[24px] font-medium" style={{ color: C.text1, letterSpacing: '-0.01em' }}>{t('nav.source')}</h2>
+        </div>
+      )}
       {!hideGridForInline && (
         <>
-          <div className="px-5 mb-5">
-            <p className="text-[11px] font-semibold uppercase tracking-widest mb-1"
-              style={{ color: C.champagne, fontFamily: C.fontLabel }}>{t('source.signalChain')}</p>
-            <h2 className="text-[24px] font-medium" style={{ color: C.text1, letterSpacing: '-0.01em' }}>{t('nav.source')}</h2>
-          </div>
-
           <div className="px-4 grid grid-cols-3 md:grid-cols-4 gap-3 md:gap-4">
             {sources.map(({ id, label, Icon }) => (
               <button key={id} onClick={() => handleSelect(id)}

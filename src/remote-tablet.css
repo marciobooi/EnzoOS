@@ -22,22 +22,25 @@
 
 .remote-tablet-shell {
   display: grid;
-  grid-template-columns: 104px 1fr;
+  grid-template-columns: 224px 1fr;
   height: 100vh;
   height: 100dvh;
 }
 
 /* ── Sidebar ─────────────────────────────────────────────────────────────── */
+/* Labeled icon+text rows (not a centered icon-over-label rail) need the
+   extra width — reads like a native iPad app's sidebar (Mail, Music.app)
+   instead of a stretched phone tab bar. */
 .rt-sidebar {
   display: flex;
   flex-direction: column;
-  align-items: center;
+  align-items: stretch;
   height: 100%;
-  padding: calc(1.5rem + env(safe-area-inset-top)) 0.5rem calc(1.25rem + env(safe-area-inset-bottom));
+  padding: calc(1.5rem + env(safe-area-inset-top)) 1rem calc(1.25rem + env(safe-area-inset-bottom));
   gap: 0.25rem;
 }
 /* Nav is vertically centered in whatever room is left between the header
-   (logo + now-playing glimpse) and the footer, instead of being pinned
+   (wordmark + now-playing glimpse) and the footer, instead of being pinned
    directly under the header — on a full iPad height that fixed-gap version
    left an obviously "dead" empty band above the footer controls. */
 .rt-sidebar-nav {
@@ -45,15 +48,18 @@
   display: flex;
   flex-direction: column;
   justify-content: center;
-  gap: 0.5rem;
+  gap: 0.25rem;
   width: 100%;
   min-height: 0;
 }
-.rt-sidebar-footer { display: flex; flex-direction: column; align-items: center; gap: 0.625rem; width: 100%; }
+.rt-sidebar-footer { display: flex; flex-direction: row; align-items: center; justify-content: center; gap: 0.625rem; width: 100%; }
 .rt-sidebar-now-playing {
   position: relative;
   width: 100%;
-  aspect-ratio: 1 / 1;
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  padding: 0.5rem;
   border-radius: 16px;
   overflow: hidden;
   margin-top: 1.25rem;
@@ -76,7 +82,7 @@
 .rt-content-inner {
   max-width: 1180px;
   margin: 0 auto;
-  padding: 2rem 2.5rem calc(2rem + env(safe-area-inset-bottom));
+  padding: 2rem 2.25rem calc(2rem + env(safe-area-inset-bottom));
 }
 /* Non-player tabs read better with a narrower measure than the full
    1180px hero column — 900 keeps list rows from stretching into
@@ -93,7 +99,7 @@
    branch to fall out of sync on rotation. */
 .rt-rail {
   display: none;
-  width: 320px;
+  width: 296px;
   flex-shrink: 0;
   overflow-y: auto;
   overscroll-behavior: none;

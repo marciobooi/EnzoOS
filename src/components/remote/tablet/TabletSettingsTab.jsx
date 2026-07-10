@@ -6,6 +6,7 @@ import InstallGuide from '../InstallGuide';
 import MetadataKeysSheet from '../MetadataKeysSheet';
 import RemoteDspWizard from '../RemoteDspWizard';
 import RemoteThemeSettings from '../RemoteThemeSettings';
+import TabletPageHeader from './TabletPageHeader';
 import { api } from '../../../api';
 import { useI18n } from '../../../i18n';
 import LanguageChips from '../../../i18n/LanguageChips';
@@ -97,11 +98,7 @@ export default function TabletSettingsTab() {
 
   return (
     <div className="flex flex-col pt-5 pb-4">
-      <div className="mb-5">
-        <p className="text-[11px] font-semibold uppercase tracking-widest mb-1"
-          style={{ color: C.champagne, fontFamily: C.fontLabel }}>{t('settings.configuration')}</p>
-        <h2 className="text-[24px] font-medium" style={{ color: C.text1, letterSpacing: '-0.01em' }}>{t('nav.settings')}</h2>
-      </div>
+      <TabletPageHeader title={t('nav.settings')} subtitle="Language, sound, display, streaming accounts, and system preferences." />
 
       <Section title={t('settings.language')}>
         <div className="px-4 py-3">

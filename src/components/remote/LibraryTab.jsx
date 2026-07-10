@@ -11,7 +11,11 @@ import { useI18n } from '../../i18n';
 
 const SOURCE_COLORS = { spotify: '#1ed760', local: '#f59e0b', radio: '#3b82f6', tidal: '#0078ff', qobuz: '#a855f7' };
 
-export default function LibraryTab() {
+// `inline`: tablet passes this so its own larger page header (rendered by
+// TabletShell, with a matching refresh action wired to the same context
+// call) replaces this component's compact kicker+title row. Phone always
+// omits it and keeps the row.
+export default function LibraryTab({ inline = false }) {
   const { t } = useI18n();
   const {
     C, cardWhite, btn,
@@ -100,19 +104,22 @@ export default function LibraryTab() {
   return (
     <div className="flex flex-col pt-5 pb-2">
 
-      {/* header */}
-      <div className="flex items-center gap-3 px-5 mb-3">
-        <div className="flex-1 min-w-0">
-          <p className="text-[11px] font-semibold uppercase tracking-widest mb-0.5"
-            style={{ color: C.champagne, fontFamily: C.fontLabel }}>{t('library.myMusic')}</p>
-          <h2 className="text-[24px] font-medium" style={{ color: C.text1, letterSpacing: '-0.01em' }}>{t('nav.library')}</h2>
+      {/* header — tablet renders its own larger version (TabletShell) with
+          the same refresh action, so this compact row is phone-only. */}
+      {!inline && (
+        <div className="flex items-center gap-3 px-5 mb-3">
+          <div className="flex-1 min-w-0">
+            <p className="text-[11px] font-semibold uppercase tracking-widest mb-0.5"
+              style={{ color: C.champagne, fontFamily: C.fontLabel }}>{t('library.myMusic')}</p>
+            <h2 className="text-[24px] font-medium" style={{ color: C.text1, letterSpacing: '-0.01em' }}>{t('nav.library')}</h2>
+          </div>
+          <button onClick={fetchLibraryArtists}
+            className="w-9 h-9 rounded-full flex items-center justify-center active:scale-90 transition-all cursor-pointer shrink-0"
+            style={btn}>
+            <RefreshCw className={`h-4 w-4 ${libraryLoading ? 'animate-spin' : ''}`} style={{ color: C.champagne }} />
+          </button>
         </div>
-        <button onClick={fetchLibraryArtists}
-          className="w-9 h-9 rounded-full flex items-center justify-center active:scale-90 transition-all cursor-pointer shrink-0"
-          style={btn}>
-          <RefreshCw className={`h-4 w-4 ${libraryLoading ? 'animate-spin' : ''}`} style={{ color: C.champagne }} />
-        </button>
-      </div>
+      )}
 
       {/* tab pills */}
       <div className="flex gap-2 px-5 mb-4">

@@ -77,6 +77,42 @@ function StationRow({ C, station, onPlay, isFav, onToggleFav, divider }) {
   );
 }
 
+// Tablet-only "Curated Stations" card, replacing StationRow's compact list
+// row with an image-led card (art/initials, country badge, favorite heart)
+// when there's width to spare for a grid — same station data, same actions.
+function StationCard({ C, station, isFav, onToggleFav, onPlay }) {
+  const [imgFailed, setImgFailed] = useState(false);
+  const name = station.name || 'Unknown station';
+  return (
+    <div onClick={onPlay}
+      className="rounded-2xl overflow-hidden flex flex-col cursor-pointer active:scale-[0.98] transition-all"
+      style={{ background: C.containerLow, border: `0.5px solid ${C.outline}` }}>
+      <div className="relative" style={{ height: 104 }}>
+        {station.favicon && !imgFailed
+          ? <img src={station.favicon} alt="" className="w-full h-full object-cover" onError={() => setImgFailed(true)} />
+          : <div className="w-full h-full flex items-center justify-center" style={{ background: STATION_GRADIENT }}>
+              <span className="font-extrabold tracking-tighter text-lg" style={{ color: '#fff' }}>{stationInitials(name)}</span>
+            </div>}
+        {station.countrycode && (
+          <span className="absolute top-2 left-2 px-1.5 py-0.5 rounded text-[9px] font-bold uppercase"
+            style={{ background: 'rgba(0,0,0,0.45)', color: '#fff', backdropFilter: 'blur(4px)' }}>
+            {station.countrycode}
+          </span>
+        )}
+        <button onClick={e => { e.stopPropagation(); onToggleFav(); }} aria-label={isFav ? 'Remove favorite' : 'Add favorite'}
+          className="absolute top-2 right-2 w-7 h-7 rounded-full flex items-center justify-center active:scale-90 transition-all cursor-pointer"
+          style={{ background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(4px)' }}>
+          <Heart className={`h-3.5 w-3.5 ${isFav ? 'fill-current' : ''}`} style={{ color: isFav ? C.champagne : '#fff' }} />
+        </button>
+      </div>
+      <div className="px-3 py-2.5 min-w-0">
+        <p className="text-[13px] font-semibold truncate" style={{ color: C.text1 }}>{name}</p>
+        <p className="text-[11px] truncate" style={{ color: C.text3 }}>{station.country || station.tags?.split(',')[0] || 'Radio'}</p>
+      </div>
+    </div>
+  );
+}
+
 function PlaylistCard({ C, item }) {
   const { title, subtitle, image, color, label, onPlay, heart } = item;
   const [imgFailed, setImgFailed] = useState(false);
@@ -495,14 +531,25 @@ export default function UniversalSearch({ inline = false }) {
                   <Disc3 className="h-5 w-5 animate-spin" style={{ color: C.champagne, animationDuration: '2.4s' }} />
                 </div>
               ) : radioDir.stations.length > 0 && (
-                <div className="rounded-2xl overflow-hidden" style={{ background: C.containerLow, border: `0.5px solid ${C.outline}` }}>
-                  {radioDir.stations.map((s, i) => (
-                    <StationRow key={s.stationuuid || i} C={C} divider={i > 0} station={s}
-                      isFav={favoriteStations?.some(f => f.url === (s.url_resolved || s.url))}
-                      onToggleFav={() => handleToggleFavRadio(s)}
-                      onPlay={() => playRadio(s)} />
-                  ))}
-                </div>
+                inline ? (
+                  <div className="grid grid-cols-3 gap-3">
+                    {radioDir.stations.map((s, i) => (
+                      <StationCard key={s.stationuuid || i} C={C} station={s}
+                        isFav={favoriteStations?.some(f => f.url === (s.url_resolved || s.url))}
+                        onToggleFav={() => handleToggleFavRadio(s)}
+                        onPlay={() => playRadio(s)} />
+                    ))}
+                  </div>
+                ) : (
+                  <div className="rounded-2xl overflow-hidden" style={{ background: C.containerLow, border: `0.5px solid ${C.outline}` }}>
+                    {radioDir.stations.map((s, i) => (
+                      <StationRow key={s.stationuuid || i} C={C} divider={i > 0} station={s}
+                        isFav={favoriteStations?.some(f => f.url === (s.url_resolved || s.url))}
+                        onToggleFav={() => handleToggleFavRadio(s)}
+                        onPlay={() => playRadio(s)} />
+                    ))}
+                  </div>
+                )
               )}
             </div>
 
