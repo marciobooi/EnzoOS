@@ -35,7 +35,7 @@ const INPUT_SOURCES = [
 export default function TabletPlayerHero() {
   const { t } = useI18n();
   const {
-    C, card, cardWhite, btn, btnInset, darkMode,
+    C, card, cardWhite, darkMode,
     albumImage, trackName, trackArtist, source, spotify, token,
     isPlaying, trackPosition, trackDuration, progressPct,
     volume, isMuted, shuffleState, repeatState,
@@ -201,11 +201,11 @@ export default function TabletPlayerHero() {
 
         {source !== 'radio' ? (
           <div className="mb-6">
-            <div className="relative h-1 rounded-full mb-3" style={{ background: C.container }}>
+            <div className="relative h-1 rounded-full mb-3" style={{ background: `${C.champagne}30` }}>
               <div className="absolute inset-y-0 left-0 rounded-full"
                 style={{ width: `${progressPct}%`, background: C.champagne }} />
               <div className="absolute w-4 h-4 rounded-full top-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none"
-                style={{ left: `${progressPct}%`, background: '#ffffff', border: `1.5px solid ${C.champagne}`, boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }} />
+                style={{ left: `${progressPct}%`, background: '#ffffff', boxShadow: '0 1px 4px rgba(0,0,0,0.25)' }} />
               <input type="range" min="0" max={trackDuration || 0} value={trackPosition}
                 onChange={handleSeek}
                 disabled={spotify ? !token || !trackDuration : !trackDuration}
@@ -224,7 +224,7 @@ export default function TabletPlayerHero() {
           {source !== 'radio' ? (
             <button onClick={handleRepeat} disabled={spotify ? !token : true} aria-label={t('player.repeat')}
               className="w-12 h-12 rounded-full flex items-center justify-center cursor-pointer disabled:opacity-20 active:scale-90 transition-all"
-              style={{ ...btn, color: repeatState !== 'off' ? C.champagne : C.text4 }}>
+              style={{ color: repeatState !== 'off' ? C.champagne : C.text2 }}>
               <Repeat className="h-5 w-5" />
             </button>
           ) : <div className="w-12" />}
@@ -232,7 +232,7 @@ export default function TabletPlayerHero() {
           {source !== 'radio' ? (
             <button onClick={handlePrevious} disabled={spotify ? !token : false} aria-label={t('player.previous')}
               className="rounded-full flex items-center justify-center cursor-pointer disabled:opacity-20 active:scale-90 transition-all"
-              style={{ ...btn, color: C.text1, width: 60, height: 60 }}>
+              style={{ color: C.text1, width: 60, height: 60 }}>
               <SkipBack className="h-7 w-7 fill-current" />
             </button>
           ) : <div style={{ width: 60 }} />}
@@ -241,28 +241,26 @@ export default function TabletPlayerHero() {
             className="rounded-full flex items-center justify-center cursor-pointer disabled:opacity-25 transition-all active:scale-95"
             style={{
               width: 100, height: 100,
-              ...(isPlaying ? btnInset : {
-                ...btn,
-                boxShadow: darkMode
-                  ? '8px 8px 18px rgba(0,0,0,0.8), -8px -8px 18px rgba(20,40,75,0.5)'
-                  : '8px 8px 18px rgba(0,0,0,0.05), -8px -8px 18px rgba(255,255,255,1)',
-              }),
+              background: darkMode ? C.champagne : '#e9d9a6',
+              boxShadow: darkMode
+                ? '0 14px 28px rgba(212,175,55,0.3), 0 4px 10px rgba(0,0,0,0.5)'
+                : '0 14px 28px rgba(212,175,55,0.25), 0 4px 10px rgba(0,0,0,0.08)',
             }}>
             {isPlaying
-              ? <Pause className="h-10 w-10" style={{ fill: C.champagne, color: C.champagne }} />
-              : <Play className="h-10 w-10 ml-1.5" style={{ fill: C.champagne, color: C.champagne }} />}
+              ? <Pause className="h-10 w-10" style={{ fill: '#1a1c1c', color: '#1a1c1c' }} />
+              : <Play className="h-10 w-10 ml-1.5" style={{ fill: '#1a1c1c', color: '#1a1c1c' }} />}
           </button>
 
           {source !== 'radio' ? (
             <button onClick={handleNext} disabled={spotify ? !token : false} aria-label={t('player.next')}
               className="rounded-full flex items-center justify-center cursor-pointer disabled:opacity-20 active:scale-90 transition-all"
-              style={{ ...btn, color: C.text1, width: 60, height: 60 }}>
+              style={{ color: C.text1, width: 60, height: 60 }}>
               <SkipForward className="h-7 w-7 fill-current" />
             </button>
           ) : (
             <button onClick={() => setActiveTab('search')}
               className="rounded-full flex items-center justify-center cursor-pointer active:scale-90 transition-all"
-              style={{ ...btn, color: C.champagne, width: 60, height: 60 }}>
+              style={{ color: C.champagne, width: 60, height: 60 }}>
               <Radio className="h-6 w-6" />
             </button>
           )}
@@ -270,7 +268,7 @@ export default function TabletPlayerHero() {
           {source !== 'radio' ? (
             <button onClick={handleShuffle} disabled={spotify ? !token : true} aria-label={t('player.shuffle')}
               className="w-12 h-12 rounded-full flex items-center justify-center cursor-pointer disabled:opacity-20 active:scale-90 transition-all"
-              style={{ ...btn, color: shuffleState ? C.champagne : C.text4 }}>
+              style={{ color: shuffleState ? C.champagne : C.text2 }}>
               <Shuffle className="h-5 w-5" />
             </button>
           ) : <div className="w-12" />}
@@ -279,21 +277,21 @@ export default function TabletPlayerHero() {
         {/* volume */}
         <div className="flex items-center gap-2 mb-6">
           <button onClick={handleMuteToggle} aria-label={isMuted ? t('player.unmute') : t('player.mute')}
-            style={{ color: isMuted ? C.champagne : C.text3 }}
+            style={{ color: isMuted ? C.champagne : C.text2 }}
             className="w-11 h-11 flex items-center justify-center rounded-full active:scale-90 transition-all cursor-pointer shrink-0">
             <VolumeX className="h-5 w-5" />
           </button>
-          <div className="relative flex-1 h-1 rounded-full" style={{ background: C.container }}>
+          <div className="relative flex-1 h-1 rounded-full" style={{ background: `${C.champagne}30` }}>
             <div className="absolute inset-y-0 left-0 rounded-full"
               style={{ width: `${isMuted ? 0 : volume}%`, background: C.champagne }} />
             <div className="absolute w-4 h-4 rounded-full top-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none"
-              style={{ left: `${isMuted ? 0 : volume}%`, background: '#ffffff', border: `1.5px solid ${C.champagne}`, boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }} />
+              style={{ left: `${isMuted ? 0 : volume}%`, background: '#ffffff', boxShadow: '0 1px 4px rgba(0,0,0,0.25)' }} />
             <input type="range" min="0" max="100" value={isMuted ? 0 : volume}
               onChange={handleVolumeChange} aria-label={t('player.volume')}
               disabled={spotify ? !token : false}
               className="absolute -inset-y-2.5 inset-x-0 w-full opacity-0 cursor-pointer disabled:cursor-default" />
           </div>
-          <button style={{ color: C.text3 }} aria-label="Maximum volume"
+          <button style={{ color: C.text2 }} aria-label="Maximum volume"
             className="w-11 h-11 flex items-center justify-center rounded-full active:scale-90 transition-all cursor-pointer shrink-0"
             onClick={() => handleVolumeChange({ target: { value: 100 } })}>
             <Volume2 className="h-5 w-5" />
@@ -352,18 +350,22 @@ export default function TabletPlayerHero() {
       <div className="flex gap-3 overflow-x-auto pb-1" style={{ scrollbarWidth: 'none' }}>
         {INPUT_SOURCES.map(({ id, label, Icon, isSpotify }) => {
           const active = source === id;
-          const iconColor = active ? C.champagne : C.text3;
           const onTap = () => {
             if (id === 'tidal' || id === 'qobuz') { setActiveTab('source'); return; }
             handleToggleSource(id);
           };
           return (
             <button key={id} onClick={onTap}
-              className="shrink-0 flex flex-col items-center justify-center gap-2 py-4 rounded-2xl active:scale-95 transition-all cursor-pointer"
-              style={{ width: 108, ...(active ? { ...btnInset, border: `0.5px solid ${C.champagne}40` } : card) }}>
-              <Icon className="h-6 w-6" style={isSpotify ? { fill: iconColor } : { color: iconColor }} />
+              className="shrink-0 flex flex-col items-center justify-center gap-2.5 py-6 rounded-[28px] active:scale-95 transition-all cursor-pointer"
+              style={{
+                width: 132,
+                background: cardWhite.background,
+                boxShadow: cardWhite.boxShadow,
+                border: active ? `1.5px solid ${C.text1}` : cardWhite.border,
+              }}>
+              <Icon className="h-6 w-6" style={isSpotify ? { fill: C.text1 } : { color: C.text1 }} />
               <span className="text-[11px] font-semibold uppercase tracking-wider"
-                style={{ color: iconColor, fontFamily: C.fontLabel }}>{label}</span>
+                style={{ color: C.text2, fontFamily: C.fontLabel }}>{label}</span>
             </button>
           );
         })}
