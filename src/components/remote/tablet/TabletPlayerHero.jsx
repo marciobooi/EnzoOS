@@ -114,19 +114,19 @@ export default function TabletPlayerHero() {
   }
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full min-h-0">
     <div className="rt-hero">
 
       {/* ── Art ── */}
       <div className={`rt-hero-art relative ${canInfo ? 'cursor-pointer' : ''}`}
-        style={{ aspectRatio: '1 / 1' }}
+        style={{ aspectRatio: '1 / 1', maxHeight: 'min(20rem, 32dvh)' }}
         onClick={() => { if (canInfo) setShowInfo(true); }}>
         {albumImage && (
           <div className="absolute inset-0 rounded-[36px] -z-10 scale-[0.86] blur-3xl"
             style={{ backgroundImage: `url(${albumImage})`, backgroundSize: 'cover', opacity: darkMode ? 0.28 : 0.16 }} />
         )}
-        <div className="w-[20rem] h-[20rem] rounded-[18px] overflow-hidden flex items-center justify-center"
-          style={{ ...card, boxShadow: ambientShadow }}>
+        <div className="rounded-[18px] overflow-hidden flex items-center justify-center"
+          style={{ width: 'min(20rem, 32dvh)', height: 'min(20rem, 32dvh)', ...card, boxShadow: ambientShadow }}>
           {albumImage
             ? <img src={albumImage} alt={trackName} className="w-full h-full object-cover" draggable={false} />
             : (
@@ -155,7 +155,7 @@ export default function TabletPlayerHero() {
       {/* ── Info + controls ── */}
       <div className="rt-hero-info flex flex-col">
 
-        <div className="mb-6">
+        <div className="mb-5">
           <h2 className="text-[46px] font-bold leading-tight truncate"
             style={{ color: C.text1, letterSpacing: '-0.02em' }}>{trackName}</h2>
           <p className="text-[22px] mt-1.5 truncate" style={{ color: C.text4 }}>
@@ -208,7 +208,7 @@ export default function TabletPlayerHero() {
         )}
 
         {source !== 'radio' ? (
-          <div className="mb-6">
+          <div className="mb-5">
             <div className="relative h-1 rounded-full mb-3" style={{ background: C.container }}>
               <div className="absolute inset-y-0 left-0 rounded-full"
                 style={{ width: `${progressPct}%`, background: accentFill }} />
@@ -225,10 +225,10 @@ export default function TabletPlayerHero() {
               <span>{fmt(trackDuration)}</span>
             </div>
           </div>
-        ) : <div className="mb-6" />}
+        ) : <div className="mb-5" />}
 
         {/* transport controls — larger targets than the phone */}
-        <div className="flex items-center justify-between mb-7 px-1">
+        <div className="flex items-center justify-between mb-5 px-1">
           {source !== 'radio' ? (
             <button onClick={handleRepeat} disabled={spotify ? !token : true} aria-label={t('player.repeat')}
               className="w-10 h-10 rounded-full flex items-center justify-center cursor-pointer disabled:opacity-20 active:scale-90 transition-all"
@@ -247,10 +247,10 @@ export default function TabletPlayerHero() {
 
           <button onClick={handlePlayPause} disabled={spotify ? !token : false} aria-label={isPlaying ? t('player.pause') : t('player.play')}
             className="rounded-full flex items-center justify-center cursor-pointer disabled:opacity-25 transition-all active:scale-95"
-            style={{ width: 96, height: 96, background: accentFill, boxShadow: ambientShadow }}>
+            style={{ width: 70, height: 70, background: accentFill, boxShadow: ambientShadow }}>
             {isPlaying
-              ? <Pause className="h-10 w-10" style={{ fill: accentFillHex, color: accentFillHex }} />
-              : <Play className="h-10 w-10 ml-1" style={{ fill: accentFillHex, color: accentFillHex }} />}
+              ? <Pause className="h-8 w-8" style={{ fill: accentFillHex, color: accentFillHex }} />
+              : <Play className="h-8 w-8 ml-1" style={{ fill: accentFillHex, color: accentFillHex }} />}
           </button>
 
           {source !== 'radio' ? (
@@ -277,7 +277,7 @@ export default function TabletPlayerHero() {
         </div>
 
         {/* volume */}
-        <div className="flex items-center gap-2 mb-6">
+        <div className="flex items-center gap-2 mb-5">
           <button onClick={handleMuteToggle} aria-label={isMuted ? t('player.unmute') : t('player.mute')}
             style={{ color: isMuted ? C.champagne : C.text2 }}
             className="w-9 h-9 flex items-center justify-center rounded-full active:scale-90 transition-all cursor-pointer shrink-0">
@@ -346,7 +346,7 @@ export default function TabletPlayerHero() {
         ordinary flow. Simple sources activate immediately; Tidal/Qobuz
         (which may need an auth form) hand off to the Source tab instead of
         duplicating that flow here. ── */}
-    <div className="mt-auto pt-8">
+    <div className="mt-auto pt-6 shrink-0">
       <p className="text-[11px] font-semibold uppercase tracking-widest mb-3 px-1"
         style={{ color: C.text3, fontFamily: C.fontLabel }}>{t('source.signalChain')}</p>
       <div className="flex gap-3 overflow-x-auto pb-1" style={{ scrollbarWidth: 'none' }}>

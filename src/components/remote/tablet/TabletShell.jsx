@@ -62,8 +62,8 @@ export default function TabletShell({ darkMode, setDarkMode, onVoice, tabDirecti
       <TabletSidebar darkMode={darkMode} setDarkMode={setDarkMode} onVoice={onVoice} />
 
       <div className="rt-body">
-        <div className="rt-main">
-          <div key={activeTab} className={`rt-content-inner ${!isPlayerTab ? 'rt-content-inner--narrow' : ''} animate-tab-${tabDirection}`}>
+        <div className={`rt-main ${isPlayerTab ? 'rt-main--player' : ''}`}>
+          <div key={activeTab} className={`rt-content-inner ${isPlayerTab ? 'rt-content-inner--player' : 'rt-content-inner--narrow'} animate-tab-${tabDirection}`}>
             {copy && (
               <TabletPageHeader title={copy.title} subtitle={copy.subtitle}
                 action={activeTab === 'library' ? (

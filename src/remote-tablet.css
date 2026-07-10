@@ -82,6 +82,18 @@
   overscroll-behavior: none;
   padding-top: env(safe-area-inset-top);
 }
+/* Player tab reads as one fixed dashboard screen, not a scrollable
+   document — art + track info + transport must always be fully visible,
+   the only thing that ever scrolls is the input-source carousel (its own
+   internal overflow-x-auto). So this variant turns off the pane's own
+   vertical scroll and instead lets .rt-content-inner--player *shrink* to
+   fit (flex-shrink enabled, min-height:0) rather than overflow past it.
+   Landscape only: portrait stacks art above info (see .rt-hero below),
+   which runs noticeably taller, so it keeps the normal scroll fallback
+   from .rt-main rather than risking clipped content on smaller iPads. */
+@media (orientation: landscape) {
+  .rt-main--player { overflow-y: hidden; }
+}
 /* flex: 1 (rather than a plain block) gives .rt-content-inner a definite
    height equal to at least .rt-main's own viewport — content shorter than
    the pane still fills it (needed so a `h-full` flex column inside, like
@@ -102,6 +114,17 @@
    the now-playing rail is also on screen (landscape), .rt-main is already
    narrower than 900px itself, so this cap just becomes a no-op there. */
 .rt-content-inner--narrow { max-width: 900px; }
+/* Pairs with .rt-main--player: let this pane shrink below its content's
+   natural height (default flex-shrink:0 above refuses to, which is what
+   forced the whole player pane to scroll instead of just the carousel)
+   and give it a flex context so TabletPlayerHero's own `h-full` column has
+   a real, shrinkable height to size itself against. */
+.rt-content-inner--player {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+}
 
 /* ── Now-playing rail — persistent companion for non-player tabs ──────────
    Portrait has no width to spare for a third column, so MiniPlayer's
@@ -130,6 +153,7 @@
   gap: 2.5rem;
   max-width: 640px;
   margin: 0 auto;
+  min-height: 0;
 }
 @media (orientation: landscape) {
   .rt-hero {
@@ -140,8 +164,8 @@
     gap: 4rem;
   }
 }
-.rt-hero-art  { grid-area: art; }
-.rt-hero-info { grid-area: info; min-width: 0; }
+.rt-hero-art  { grid-area: art; min-height: 0; }
+.rt-hero-info { grid-area: info; min-width: 0; min-height: 0; }
 
 /* ── Persistent mini-player dock (non-player tabs, tablet only) ───────────── */
 .rt-dock { max-width: 900px; margin: 1.5rem auto 0; }
