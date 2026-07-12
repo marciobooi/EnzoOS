@@ -113,6 +113,7 @@ export function useResonanceWS({
     onAudioLevels,
     setVisualizerMode,
     setPureDirect,
+    onQrRedeemed,
   }) {
     const [isConnected, setIsConnected] = useState(false);
     const ws = useRef(null);
@@ -298,6 +299,10 @@ export function useResonanceWS({
 
             if (type === 'AUDIO_LEVELS') {
               if (onAudioLevels) onAudioLevels(payload);
+            }
+
+            if (type === 'QR_TOKEN_REDEEMED') {
+              if (onQrRedeemed) onQrRedeemed();
             }
 
             if (type === 'CLEAR_TOKEN') {

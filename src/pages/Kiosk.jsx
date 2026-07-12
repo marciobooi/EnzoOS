@@ -70,6 +70,10 @@ export default function Kiosk() {
   const [remoteAccessEnabled, setRemoteAccessEnabled] = useState(true);
   const [isRemoteAccessOpen, setIsRemoteAccessOpen] = useState(false);
   const [remoteUrl, setRemoteUrl] = useState('');
+  // Plain-HTTP IP:port link — a fallback for when resonance.local's mDNS
+  // (avahi) doesn't resolve on the phone's network (guest Wi-Fi, AP/client
+  // isolation, some Android browsers never resolve .local at all).
+  const [remoteIpUrl, setRemoteIpUrl] = useState('');
   const [isWifiOpen, setIsWifiOpen] = useState(false);
   const [isSystemAdminOpen, setIsSystemAdminOpen] = useState(false);
 
@@ -79,7 +83,10 @@ export default function Kiosk() {
   useEffect(() => {
     fetch('/api/system/lan-url')
       .then(r => r.json())
-      .then(d => { if (d?.url) setRemoteUrl(d.url); })
+      .then(d => {
+        if (d?.url) setRemoteUrl(d.url);
+        if (d?.ipUrl) setRemoteIpUrl(d.ipUrl);
+      })
       .catch(() => {});
   }, []);
 
@@ -464,6 +471,9 @@ export default function Kiosk() {
     },
     setVisualizerMode,
     setPureDirect,
+    onQrRedeemed: () => {
+      window.dispatchEvent(new CustomEvent('resonance-qr-redeemed'));
+    },
   });
 
   const checkUpdates = async () => {
@@ -1338,7 +1348,7 @@ export default function Kiosk() {
     setIsDspWizardOpen, setIsThemeSettingsOpen,
     remoteAccessEnabled, setRemoteAccessEnabled,
     sendUpdate,
-    setIsRemoteAccessOpen, setRemoteUrl,
+    setIsRemoteAccessOpen, setRemoteUrl, setRemoteIpUrl,
     // search
     isSearchOpen, setIsSearchOpen,
     handlePlayTrack, handlePlayContext,
@@ -1348,7 +1358,7 @@ export default function Kiosk() {
     brightness, handleBrightnessChange,
     visualizerMode, handleVisualizerModeChange,
     // remote access
-    isRemoteAccessOpen, remoteUrl,
+    isRemoteAccessOpen, remoteUrl, remoteIpUrl,
     // wifi
     isWifiOpen, setIsWifiOpen,
     // system admin
@@ -1372,11 +1382,11 @@ export default function Kiosk() {
     handleRadioByCountry, handlePlayRadio, favoriteStations, handleToggleFavoriteRadio,
     updateStatus, errorMessage, setIsDspWizardOpen, setIsThemeSettingsOpen,
     remoteAccessEnabled, setRemoteAccessEnabled, sendUpdate,
-    setIsRemoteAccessOpen, setRemoteUrl,
+    setIsRemoteAccessOpen, setRemoteUrl, setRemoteIpUrl,
     isSearchOpen, handlePlayTrack, handlePlayContext,
     isThemeSettingsOpen, activeTheme, handleActiveThemeChange,
     brightness, handleBrightnessChange, visualizerMode, handleVisualizerModeChange,
-    isRemoteAccessOpen, remoteUrl, isDspWizardOpen,
+    isRemoteAccessOpen, remoteUrl, remoteIpUrl, isDspWizardOpen,
     isWifiOpen, setIsWifiOpen,
     isSystemAdminOpen, setIsSystemAdminOpen,
     scale,

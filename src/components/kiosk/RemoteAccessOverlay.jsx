@@ -1,4 +1,4 @@
-import { useContext, useEffect, useState } from 'react';
+import { useContext, useEffect, useRef, useState } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 import { Smartphone, Check, Clock } from 'lucide-react';
 import { Kk } from './KioskContext';
@@ -11,12 +11,15 @@ export default function RemoteAccessOverlay() {
     isRemoteAccessOpen,
     setIsRemoteAccessOpen,
     remoteUrl,
+    remoteIpUrl,
     remoteAccessEnabled,
     setRemoteAccessEnabled,
     sendUpdate,
   } = useContext(Kk);
 
   const [qrUrl, setQrUrl] = useState('');
+  const [ipQrUrl, setIpQrUrl] = useState('');
+  const [showIpFallback, setShowIpFallback] = useState(false);
   const [pairCode, setPairCode] = useState('');
   const [expiresAt, setExpiresAt] = useState(0);
   const [secondsLeft, setSecondsLeft] = useState(0);
@@ -28,12 +31,14 @@ export default function RemoteAccessOverlay() {
   const [qrForbidden, setQrForbidden] = useState(false);
 
   // Fetch a fresh QR token whenever the overlay opens (or remoteUrl first lands).
+  const doFetchRef = useRef(null);
   useEffect(() => {
     if (!isRemoteAccessOpen || !remoteUrl) return;
     let alive = true;
     let refreshTimeout = null;
 
     const doFetch = async () => {
+      clearTimeout(refreshTimeout);
       try {
         const r = await fetch('/api/auth/qr-token');
         if (r.status === 403) { if (alive) setQrForbidden(true); return; }
@@ -42,6 +47,10 @@ export default function RemoteAccessOverlay() {
         setQrForbidden(false);
         const sep = remoteUrl.includes('?') ? '&' : '?';
         setQrUrl(`${remoteUrl}${sep}qr=${d.token}`);
+        if (remoteIpUrl) {
+          const ipSep = remoteIpUrl.includes('?') ? '&' : '?';
+          setIpQrUrl(`${remoteIpUrl}${ipSep}qr=${d.token}`);
+        }
         setPairCode(d.code || '');
         setExpiresAt(d.expiresAt);
         setSecondsLeft(Math.floor(d.ttlSeconds));
@@ -55,9 +64,22 @@ export default function RemoteAccessOverlay() {
       }
     };
 
+    doFetchRef.current = doFetch;
     doFetch();
-    return () => { alive = false; clearTimeout(refreshTimeout); };
-  }, [isRemoteAccessOpen, remoteUrl]);
+    return () => { alive = false; clearTimeout(refreshTimeout); doFetchRef.current = null; };
+  }, [isRemoteAccessOpen, remoteUrl, remoteIpUrl]);
+
+  // The QR token is single-use (server/auth.js) — as soon as one device
+  // redeems it, the still-displayed code is dead for the next ~10 minutes
+  // until the timer above rotates it. A second person scanning that same
+  // on-screen QR in the meantime got a confusing "expired" error even
+  // though the countdown looked fine. The server broadcasts QR_TOKEN_REDEEMED
+  // the instant any device pairs — jump the queue and pull a fresh code now.
+  useEffect(() => {
+    const onRedeemed = () => doFetchRef.current?.();
+    window.addEventListener('resonance-qr-redeemed', onRedeemed);
+    return () => window.removeEventListener('resonance-qr-redeemed', onRedeemed);
+  }, []);
 
   // Countdown ticker
   useEffect(() => {
@@ -75,7 +97,9 @@ export default function RemoteAccessOverlay() {
     sendUpdate('SET_REMOTE_ACCESS', { enabled });
   };
 
-  const qrValue = qrUrl || remoteUrl || 'http://resonance.local';
+  const usingIpFallback = showIpFallback && !!ipQrUrl;
+  const qrValue = (usingIpFallback ? ipQrUrl : qrUrl) || remoteUrl || 'http://resonance.local';
+  const displayUrl = usingIpFallback ? (remoteIpUrl || '—') : (remoteUrl || '—');
 
   return (
     <div
@@ -197,6 +221,20 @@ export default function RemoteAccessOverlay() {
               </span>
             </div>
           )}
+          {/* resonance.local depends on mDNS (avahi) resolving on the phone's
+              network — guest Wi-Fi, AP/client isolation, and some Android
+              browsers never resolve .local hostnames at all, so a QR that
+              only encodes the hostname can fail to connect on every device.
+              Let the user swap to a plain IP:port link/QR that doesn't need
+              mDNS. */}
+          {remoteIpUrl && remoteAccessEnabled && (
+            <button
+              onClick={() => setShowIpFallback(v => !v)}
+              className="cursor-pointer text-[10px] uppercase tracking-wider underline underline-offset-2 shrink-0"
+              style={{ color: S.label }}>
+              {usingIpFallback ? t('remoteAccess.useHostname') : t('remoteAccess.useIpFallback')}
+            </button>
+          )}
         </div>
 
         {/* Col 3 — URL + instructions */}
@@ -208,8 +246,13 @@ export default function RemoteAccessOverlay() {
               {t('remoteAccess.remoteUrl')}
             </p>
             <p className="text-base font-bold break-all leading-snug" style={{ color: S.strong }}>
-              {remoteUrl || '—'}
+              {displayUrl}
             </p>
+            {usingIpFallback && (
+              <p className="text-[11px] font-light leading-relaxed mt-1" style={{ color: S.muted }}>
+                {t('remoteAccess.ipFallbackNote')}
+              </p>
+            )}
           </div>
 
           <div className="flex flex-col gap-2 min-h-0 pb-6">

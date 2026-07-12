@@ -33,6 +33,7 @@ export default function SettingsMenuOverlay() {
     sendUpdate,
     setIsRemoteAccessOpen,
     setRemoteUrl,
+    setRemoteIpUrl,
     setIsWifiOpen,
     setIsSystemAdminOpen,
   } = useContext(Kk);
@@ -130,6 +131,7 @@ export default function SettingsMenuOverlay() {
               const r = await fetch('/api/system/lan-url');
               const d = await r.json();
               setRemoteUrl(d.url);
+              if (d.ipUrl) setRemoteIpUrl(d.ipUrl);
             } catch {
               setRemoteUrl(`http://${window.location.hostname}:5000/remote`);
             }

@@ -662,5 +662,8 @@ export default {
     step3: 'Already added to your Home Screen? Use the code instead — the installed app can’t follow the QR link',
     step4: 'Both devices must be on the same Wi-Fi',
     step5: 'QR refreshes every 10 minutes — scan anytime',
+    useIpFallback: "Can't connect? Try the IP link instead",
+    useHostname: 'Use the regular link instead',
+    ipFallbackNote: 'Direct IP link — use this if the QR code above doesn’t connect on this network.',
   },
 };

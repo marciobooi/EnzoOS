@@ -1,6 +1,7 @@
 import express from 'express';
 import { generateQrToken, redeemQrToken, redeemPairCode, requireAuth, isLoopback } from './auth.js';
 import { sendError, forbidden, unauthorized } from './lib/errors.js';
+import { emit } from './event-service.js';
 
 const router = express.Router();
 
@@ -24,6 +25,10 @@ router.post('/qr-redeem', async (req, res) => {
     if (!bearer) {
       return sendError(res, unauthorized('QR code is invalid or has expired — scan a fresh one from the kiosk.'));
     }
+    // Single-use token just got consumed — tell any open kiosk overlay to pull
+    // a fresh one immediately instead of leaving a dead QR on screen for up to
+    // ~10 minutes (the display refresh timer), which would fail a second scan.
+    emit('QR_TOKEN_REDEEMED', {});
     res.json({ success: true, token: bearer });
   } catch (err) {
     sendError(res, err, req);
@@ -45,6 +50,7 @@ router.post('/pair-code', async (req, res) => {
     if (!bearer) {
       return sendError(res, unauthorized('That code is invalid or has expired — check the kiosk for a fresh one.'));
     }
+    emit('QR_TOKEN_REDEEMED', {});
     res.json({ success: true, token: bearer });
   } catch (err) {
     sendError(res, err, req);
