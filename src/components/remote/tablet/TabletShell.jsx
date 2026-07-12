@@ -58,7 +58,7 @@ export default function TabletShell({ darkMode, setDarkMode, onVoice, tabDirecti
   const copy = !libraryDeep ? TAB_COPY[activeTab] : null;
 
   return (
-    <div className="remote-tablet-shell" style={{ background: C.bg }}>
+    <div className="remote-tablet-shell" style={{ background: 'rgb(255 255 255)' }}>
       <TabletSidebar darkMode={darkMode} setDarkMode={setDarkMode} onVoice={onVoice} />
 
       <div className="rt-body">
