@@ -631,6 +631,33 @@ router.get('/library/albums', async (req, res) => {
   }
 });
 
+// GET /api/player/library/albums/all — every (artist, album) pair in the
+// library, flat (not scoped to one artist) — powers the tablet's Albums
+// grid. `mpc list album group artist` prefixes each line with its tag
+// ("Artist: X" / "Album: Y") specifically so grouped output can be told
+// apart from the listed values; ungrouped `mpc list album` (used by the
+// per-artist route above) has no such prefix, which is why that route's
+// parsing is a plain trim/filter and this one isn't.
+router.get('/library/albums/all', async (req, res) => {
+  try {
+    const { stdout } = await execFilePromise('mpc', ['list', 'album', 'group', 'artist']);
+    const albums = [];
+    let currentArtist = '';
+    for (const raw of stdout.split('\n')) {
+      const line = raw.trim();
+      const m = line.match(/^(Artist|Album):\s*(.*)$/);
+      if (!m) continue;
+      const [, tag, value] = m;
+      if (tag === 'Artist') currentArtist = value;
+      else if (value) albums.push({ artist: currentArtist, album: value });
+    }
+    albums.sort((a, b) => a.album.localeCompare(b.album));
+    res.json({ albums });
+  } catch {
+    res.json({ albums: [] });
+  }
+});
+
 // GET /api/player/library/tracks?album=X&artist=Y
 router.get('/library/tracks', async (req, res) => {
   const { album, artist } = req.query;

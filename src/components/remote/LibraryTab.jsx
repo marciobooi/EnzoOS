@@ -8,6 +8,7 @@ import { api } from '../../api';
 import { toast } from '../../lib/toast';
 import SkeletonList from '../ui/SkeletonList';
 import { useI18n } from '../../i18n';
+import TabletAlbumCard from './tablet/TabletAlbumCard';
 
 const SOURCE_COLORS = { spotify: '#1ed760', local: '#f59e0b', radio: '#3b82f6', tidal: '#0078ff', qobuz: '#a855f7' };
 
@@ -26,7 +27,7 @@ export default function LibraryTab({ inline = false }) {
     favorites, handleToggleFavorite,
   } = useContext(Tk);
 
-  const [libTab, setLibTab] = useState('library'); // 'library' | 'history' | 'favorites'
+  const [libTab, setLibTab] = useState('library'); // 'library' | 'albums' | 'history' | 'favorites'
   const isDeep               = libraryView !== 'artists';
 
   const [history, setHistory]         = useState([]);
@@ -38,6 +39,20 @@ export default function LibraryTab({ inline = false }) {
       api.getHistory(50).then(setHistory).catch(() => {}).finally(() => setHistoryLoading(false));
     }
   }, [libTab]);
+
+  // Flat album grid — tablet only (needs real width for a card grid; phone
+  // never shows the tab so this never fires there). Separate from the
+  // artist-first drill-down above: this lists every album across the whole
+  // library in one shot instead of requiring an artist pick first.
+  const [albums, setAlbums] = useState([]);
+  const [albumsLoading, setAlbumsLoading] = useState(false);
+
+  useEffect(() => {
+    if (libTab === 'albums' && inline) {
+      setAlbumsLoading(true);
+      api.getAllAlbums().then(d => setAlbums(d.albums || [])).catch(() => {}).finally(() => setAlbumsLoading(false));
+    }
+  }, [libTab, inline]);
 
   const separator = i => i > 0 && (
     <div className="ml-16" style={{ height: '0.5px', background: `linear-gradient(90deg, transparent 0%, ${C.outline} 15%, ${C.outline} 85%, transparent 100%)` }} />
@@ -121,10 +136,13 @@ export default function LibraryTab({ inline = false }) {
         </div>
       )}
 
-      {/* tab pills */}
+      {/* tab pills — "Albums" only exists inline (tablet): it's a flat grid
+          across the whole library, which needs real card width phone
+          doesn't have. Phone keeps its original 3 pills unchanged. */}
       <div className="flex gap-2 px-5 mb-4">
         {[
           { id: 'library', label: t('nav.library'), Icon: Library },
+          ...(inline ? [{ id: 'albums', label: t('library.albums'), Icon: Disc2 }] : []),
           { id: 'history', label: t('library.history'), Icon: Clock },
           { id: 'favorites', label: t('library.favorites'), Icon: Heart },
         ].map(({ id, label, Icon }) => (
@@ -137,6 +155,34 @@ export default function LibraryTab({ inline = false }) {
           </button>
         ))}
       </div>
+
+      {/* ── Albums view (tablet only) — flat grid, real cover art per card ── */}
+      {libTab === 'albums' && inline && (
+        <div className="px-4">
+          {albumsLoading
+            ? <SkeletonList count={8} />
+            : albums.length === 0
+              ? (
+                <div className="flex flex-col items-center gap-4 py-12 text-center">
+                  <Disc2 className="h-10 w-10" style={{ color: C.outline }} />
+                  <p className="text-[15px]" style={{ color: C.text4 }}>{t('library.noMusic')}</p>
+                </div>
+              ) : (
+                <div className="grid gap-4" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))' }}>
+                  {albums.map((a, idx) => (
+                    <TabletAlbumCard key={`${a.artist}-${a.album}-${idx}`} artist={a.artist} album={a.album}
+                      onClick={() => {
+                        setSelectedArtist(a.artist);
+                        setSelectedAlbum(a.album);
+                        setLibraryView('tracks');
+                        fetchLibraryTracks(a.album, a.artist);
+                      }} />
+                  ))}
+                </div>
+              )
+          }
+        </div>
+      )}
 
       {/* ── History view ── */}
       {libTab === 'history' && (

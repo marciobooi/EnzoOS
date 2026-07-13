@@ -15,6 +15,13 @@ export const libraryApi = {
     return handleJson(r);
   },
 
+  // Every (artist, album) pair in the library, flat — not scoped to one
+  // artist. Powers the tablet Albums grid.
+  async getAllAlbums() {
+    const r = await fetch('/api/player/library/albums/all');
+    return handleJson(r);
+  },
+
   async getLibraryTracks(album, artist) {
     const params = new URLSearchParams();
     if (album) params.set('album', album);
