@@ -18,7 +18,11 @@ const execPromise = promisify(exec);
 const execFileP = promisify(execFile);
 const router = express.Router();
 
-const ALLOWED_SERVICES = ['mpd', 'camilladsp', 'raspotify'];
+// shairport-sync/upmpdcli/bluetooth added so the Source tab can show a
+// "properly configured" indicator (matching the existing Tidal/Qobuz
+// connected dot) for AirPlay/UPnP/Bluetooth — same active/inactive check
+// already used for mpd/camilladsp/raspotify, just extended to cover them.
+const ALLOWED_SERVICES = ['mpd', 'camilladsp', 'raspotify', 'shairport-sync', 'upmpdcli', 'bluetooth'];
 
 // Tight limiter for destructive / privileged actions (reboot, shutdown, factory
 // reset, service restart, Wi-Fi connect) — these are one-shot user actions, so a

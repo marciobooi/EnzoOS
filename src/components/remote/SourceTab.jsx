@@ -14,7 +14,21 @@ export default function SourceTab({ inline = false }) {
   const {
     C, card, btnInset, darkMode,
     source, handleToggleSource, setActiveTab,
+    token, services,
   } = useContext(Tk);
+
+  // "Properly configured" green dot — same treatment as the existing
+  // Tidal/Qobuz connected indicator, extended to every source that has a
+  // real configured/not-configured state: Spotify (OAuth token present),
+  // and AirPlay/UPnP/Bluetooth (their backing systemd service is active —
+  // `services` comes from GET /api/system/services, fetched on Source-tab
+  // mount). Local/Radio need no setup, so they never show a dot.
+  const isConfigured = {
+    spotify: !!token,
+    airplay: services?.['shairport-sync'] === 'active',
+    upnp: services?.upmpdcli === 'active',
+    bluetooth: services?.bluetooth === 'active',
+  };
 
   // Tablet-only tile treatment (gated on `inline`, same as everywhere else
   // in this file — phone's grid is untouched): a stronger ambient shadow so
@@ -152,7 +166,7 @@ export default function SourceTab({ inline = false }) {
                 <Icon />
                 <span className="text-[12px] font-semibold uppercase tracking-wider"
                   style={{ color: source === id ? C.champagne : C.text4, fontFamily: C.fontLabel }}>{label}</span>
-                {(id === 'tidal' || id === 'qobuz') && connected[id] && (
+                {(((id === 'tidal' || id === 'qobuz') && connected[id]) || isConfigured[id]) && (
                   <span className="absolute top-2.5 right-2.5 h-2 w-2 rounded-full" style={{ background: '#1ed760' }} />
                 )}
               </button>

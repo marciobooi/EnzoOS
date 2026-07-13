@@ -431,6 +431,10 @@ export default function RemoteControl() {
   useEffect(() => { if (queueOpen && spotify && token) fetchQueue(); }, [queueOpen]);
   useEffect(() => {
     if (activeTab === 'settings') { fetchSystemHealth(); fetchServices(); }
+    // Source tab needs `services` too, for the AirPlay/UPnP/Bluetooth
+    // "properly configured" dots — without this it'd stay null until the
+    // user happened to visit Settings first.
+    if (activeTab === 'source') fetchServices();
   }, [activeTab]);
   useEffect(() => {
     if (isAuthenticated && playbackState && isPlaying) {
