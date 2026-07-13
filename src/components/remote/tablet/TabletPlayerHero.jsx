@@ -81,9 +81,14 @@ export default function TabletPlayerHero() {
   const isFav     = source === 'radio'
     ? isCurrentFav
     : favorites?.some(f => f.source === source && f.uri === trackUri);
+  // art is null for local/MPD rows — queue/detailed only returns
+  // id/title/artist/file, no per-track cover, same limitation the phone's
+  // QueuePanel has for local queues (falls back to a generic icon there too).
   const upNext = isLocal
-    ? localQueue.slice(0, 3).map(tr => ({ uri: tr.id, name: tr.title, artists: [{ name: tr.artist }] }))
-    : (spotify && Array.isArray(queue) ? queue.slice(0, 3) : []);
+    ? localQueue.slice(0, 3).map(tr => ({ uri: tr.id, name: tr.title, artists: [{ name: tr.artist }], art: null }))
+    : (spotify && Array.isArray(queue)
+      ? queue.slice(0, 3).map(tr => ({ ...tr, art: tr.album?.images?.[2]?.url || tr.album?.images?.[0]?.url }))
+      : []);
 
   const qualityLabel = (() => {
     if (liveFormat) {
@@ -351,11 +356,19 @@ export default function TabletPlayerHero() {
             </div>
             {!showQueue && (
               upNext.length > 0 ? (
-                <div className="mt-2 flex flex-col gap-1.5">
+                <div className="mt-2.5 flex flex-col gap-2">
                   {upNext.map((tr, i) => (
-                    <p key={`${tr.uri}-${i}`} className="text-[13px] truncate" style={{ color: C.text2 }}>
-                      {tr.name} <span style={{ color: C.text4 }}>· {tr.artists?.map(a => a.name).join(', ')}</span>
-                    </p>
+                    <div key={`${tr.uri}-${i}`} className="flex items-center gap-2.5 min-w-0">
+                      <div className="w-8 h-8 rounded-md overflow-hidden shrink-0 flex items-center justify-center"
+                        style={{ background: C.container, border: `0.5px solid ${C.outline}` }}>
+                        {tr.art
+                          ? <img src={tr.art} alt="" className="w-full h-full object-cover" draggable={false} />
+                          : <Music className="h-3 w-3" style={{ color: C.text4 }} />}
+                      </div>
+                      <p className="text-[13px] truncate" style={{ color: C.text2 }}>
+                        {tr.name} <span style={{ color: C.text4 }}>· {tr.artists?.map(a => a.name).join(', ')}</span>
+                      </p>
+                    </div>
                   ))}
                 </div>
               ) : (
