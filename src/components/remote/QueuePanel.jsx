@@ -5,10 +5,10 @@ import { useLocalQueue } from '../../hooks/useLocalQueue';
 import { useI18n } from '../../i18n';
 
 export default function QueuePanel({ queue, queueLoading, onClose }) {
-  const { C, cardWhite, darkMode, albumImage, trackName, trackArtist } = useContext(Tk);
+  const { C, cardWhite, darkMode, albumImage, trackName, trackArtist, handlePlayTrack } = useContext(Tk);
   const { t } = useI18n();
 
-  const { isLocal, localQueue, localLoading, removeLocal } = useLocalQueue();
+  const { isLocal, localQueue, localLoading, removeLocal, playLocal } = useLocalQueue();
 
   const panelBg = darkMode
     ? { background: 'rgba(10,14,28,0.97)', backdropFilter: 'blur(24px) saturate(180%)', WebkitBackdropFilter: 'blur(24px) saturate(180%)' }
@@ -81,16 +81,19 @@ export default function QueuePanel({ queue, queueLoading, onClose }) {
                       <div className="ml-14" style={{ height: '0.5px', background: `linear-gradient(90deg, transparent 0%, ${C.outline} 15%, ${C.outline} 85%, transparent 100%)` }} />
                     )}
                     <div className="flex items-center gap-3 px-3 py-2.5">
-                      <span className="text-[11px] w-5 text-right shrink-0 font-semibold tabular-nums"
-                        style={{ color: C.text4 }}>{idx + 1}</span>
-                      <div className="w-9 h-9 rounded-lg overflow-hidden shrink-0 flex items-center justify-center"
-                        style={{ background: C.containerLow, border: `0.5px solid ${C.outline}` }}>
-                        <Music className="h-3.5 w-3.5" style={{ color: C.text4 }} />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-[13px] font-medium truncate" style={{ color: C.text1 }}>{t.title}</p>
-                        <p className="text-[11px] truncate" style={{ color: C.text3 }}>{t.artist}</p>
-                      </div>
+                      <button onClick={() => { playLocal(t.id); onClose(); }}
+                        className="flex-1 min-w-0 flex items-center gap-3 cursor-pointer text-left">
+                        <span className="text-[11px] w-5 text-right shrink-0 font-semibold tabular-nums"
+                          style={{ color: C.text4 }}>{idx + 1}</span>
+                        <div className="w-9 h-9 rounded-lg overflow-hidden shrink-0 flex items-center justify-center"
+                          style={{ background: C.containerLow, border: `0.5px solid ${C.outline}` }}>
+                          <Music className="h-3.5 w-3.5" style={{ color: C.text4 }} />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-[13px] font-medium truncate" style={{ color: C.text1 }}>{t.title}</p>
+                          <p className="text-[11px] truncate" style={{ color: C.text3 }}>{t.artist}</p>
+                        </div>
+                      </button>
                       <button onClick={() => removeLocal(t.id)}
                         className="w-8 h-8 flex items-center justify-center rounded-full shrink-0 active:scale-90 transition-all cursor-pointer"
                         style={{ color: C.text4 }}>
@@ -117,7 +120,8 @@ export default function QueuePanel({ queue, queueLoading, onClose }) {
                     {idx > 0 && (
                       <div className="ml-14" style={{ height: '0.5px', background: `linear-gradient(90deg, transparent 0%, ${C.outline} 15%, ${C.outline} 85%, transparent 100%)` }} />
                     )}
-                    <div className="flex items-center gap-3 px-3 py-2.5">
+                    <button onClick={() => { handlePlayTrack(t.uri); onClose(); }}
+                      className="w-full flex items-center gap-3 px-3 py-2.5 cursor-pointer text-left">
                       <span className="text-[11px] w-5 text-right shrink-0 font-semibold tabular-nums"
                         style={{ color: C.text4 }}>{idx + 1}</span>
                       <div className="w-9 h-9 rounded-lg overflow-hidden shrink-0 flex items-center justify-center"
@@ -130,7 +134,7 @@ export default function QueuePanel({ queue, queueLoading, onClose }) {
                         <p className="text-[13px] font-medium truncate" style={{ color: C.text1 }}>{name}</p>
                         <p className="text-[11px] truncate" style={{ color: C.text3 }}>{artist}</p>
                       </div>
-                    </div>
+                    </button>
                   </React.Fragment>
                 );
               })}

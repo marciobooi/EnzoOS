@@ -2,6 +2,7 @@ import { useContext, useEffect, useState } from 'react';
 import { Tk } from '../components/remote/shared';
 import { api } from '../api';
 import { reportError } from '../lib/errors';
+import { toast } from '../lib/toast';
 
 // Local/non-Spotify sources (radio, local files, Tidal, Qobuz, AirPlay,
 // Bluetooth, UPnP) don't carry a queue through playbackState the way
@@ -13,7 +14,7 @@ import { reportError } from '../lib/errors';
 // that preview stayed empty ("Nothing queued") for anything but Spotify
 // even though the queue itself was populated.
 export function useLocalQueue() {
-  const { source, spotify } = useContext(Tk);
+  const { source, spotify, setActiveTab } = useContext(Tk);
   const [localQueue, setLocalQueue] = useState([]);
   const [localLoading, setLocalLoading] = useState(false);
   const isLocal = !spotify && source !== 'radio';
@@ -34,5 +35,13 @@ export function useLocalQueue() {
     } catch (e) { reportError(e.message); }
   };
 
-  return { isLocal, localQueue, localLoading, removeLocal };
+  const playLocal = async (id) => {
+    try {
+      await api.playQueueItem(id);
+      setActiveTab?.('player');
+      toast.success('Playing');
+    } catch (e) { reportError(e.message); }
+  };
+
+  return { isLocal, localQueue, localLoading, removeLocal, playLocal };
 }

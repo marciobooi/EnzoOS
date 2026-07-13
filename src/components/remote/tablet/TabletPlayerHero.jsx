@@ -45,6 +45,7 @@ export default function TabletPlayerHero() {
     handleShuffle, handleRepeat, handleSeek,
     handleVolumeChange, handleMuteToggle,
     handleToggleFavRadio, handleToggleSource, setActiveTab,
+    handlePlayTrack,
     queue,
     favorites, handleToggleFavorite,
     liveFormat,
@@ -60,7 +61,7 @@ export default function TabletPlayerHero() {
   // read the Spotify `queue`, so it silently stayed empty ("Nothing
   // queued") for every other source even though TabletQueueList's expanded
   // view (using the same hook) proved the queue itself was populated fine.
-  const { isLocal, localQueue } = useLocalQueue();
+  const { isLocal, localQueue, playLocal } = useLocalQueue();
 
   // Spotify's `queue` (unlike MPD's local one above) is only ever populated
   // by fetchQueue() — on the phone that's triggered by the effect that
@@ -354,28 +355,33 @@ export default function TabletPlayerHero() {
               </span>
               <ChevronDown className="h-4 w-4 transition-transform" style={{ color: C.outline, transform: showQueue ? 'rotate(180deg)' : 'none' }} />
             </div>
-            {!showQueue && (
-              upNext.length > 0 ? (
-                <div className="mt-2.5 flex flex-col gap-2">
-                  {upNext.map((tr, i) => (
-                    <div key={`${tr.uri}-${i}`} className="flex items-center gap-2.5 min-w-0">
-                      <div className="w-8 h-8 rounded-md overflow-hidden shrink-0 flex items-center justify-center"
-                        style={{ background: C.container, border: `0.5px solid ${C.outline}` }}>
-                        {tr.art
-                          ? <img src={tr.art} alt="" className="w-full h-full object-cover" draggable={false} />
-                          : <Music className="h-3 w-3" style={{ color: C.text4 }} />}
-                      </div>
-                      <p className="text-[13px] truncate" style={{ color: C.text2 }}>
-                        {tr.name} <span style={{ color: C.text4 }}>· {tr.artists?.map(a => a.name).join(', ')}</span>
-                      </p>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-[13px] mt-1" style={{ color: C.text4 }}>Nothing queued</p>
-              )
-            )}
           </button>
+          {/* Rows are a SIBLING of the toggle button above, not nested inside
+              it — each row is itself a <button> (tap to play), and a button
+              can't legally nest inside another button. */}
+          {!showQueue && (
+            upNext.length > 0 ? (
+              <div className="px-4 pb-4 -mt-1 flex flex-col gap-2">
+                {upNext.map((tr, i) => (
+                  <button key={`${tr.uri}-${i}`}
+                    onClick={() => (isLocal ? playLocal(tr.uri) : handlePlayTrack(tr.uri))}
+                    className="flex items-center gap-2.5 min-w-0 cursor-pointer text-left active:opacity-60 transition-opacity">
+                    <div className="w-8 h-8 rounded-md overflow-hidden shrink-0 flex items-center justify-center"
+                      style={{ background: C.container, border: `0.5px solid ${C.outline}` }}>
+                      {tr.art
+                        ? <img src={tr.art} alt="" className="w-full h-full object-cover" draggable={false} />
+                        : <Music className="h-3 w-3" style={{ color: C.text4 }} />}
+                    </div>
+                    <p className="text-[13px] truncate" style={{ color: C.text2 }}>
+                      {tr.name} <span style={{ color: C.text4 }}>· {tr.artists?.map(a => a.name).join(', ')}</span>
+                    </p>
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <p className="text-[13px] px-4 pb-4 -mt-1" style={{ color: C.text4 }}>Nothing queued</p>
+            )
+          )}
           {showQueue && (
             <div className="px-4 pb-3" style={{ borderTop: `0.5px solid ${C.outline}` }}>
               <TabletQueueList />

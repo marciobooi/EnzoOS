@@ -87,6 +87,10 @@ export const playerApi = {
     const r = await fetch(`/api/player/queue/${id}`, { method: 'DELETE' });
     return handleJson(r);
   },
+  async playQueueItem(id) {
+    const r = await fetch(`/api/player/queue/${id}/play`, { method: 'POST' });
+    return handleJson(r);
+  },
   async moveInQueue(from, to) {
     const r = await fetch('/api/player/queue/move', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },

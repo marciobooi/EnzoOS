@@ -10,8 +10,8 @@ import { useLocalQueue } from '../../../hooks/useLocalQueue';
 // uses; this is its tablet-inline equivalent, not a replacement for it —
 // QueuePanel itself is untouched).
 export default function TabletQueueList() {
-  const { C, queue, queueLoading } = useContext(Tk);
-  const { isLocal, localQueue, localLoading, removeLocal } = useLocalQueue();
+  const { C, queue, queueLoading, handlePlayTrack } = useContext(Tk);
+  const { isLocal, localQueue, localLoading, removeLocal, playLocal } = useLocalQueue();
 
   const loading = isLocal ? localLoading : queueLoading;
   const list = isLocal ? localQueue : (Array.isArray(queue) ? queue.slice(0, 20) : []);
@@ -36,17 +36,20 @@ export default function TabletQueueList() {
           <div key={isLocal ? tr.id : `${tr.uri}-${idx}`}
             className="flex items-center gap-2.5 py-2"
             style={idx > 0 ? { borderTop: `0.5px solid ${C.outline}` } : undefined}>
-            <span className="text-[11px] w-4 text-right shrink-0 font-semibold tabular-nums" style={{ color: C.text4 }}>{idx + 1}</span>
-            <div className="w-9 h-9 rounded-lg overflow-hidden shrink-0 flex items-center justify-center"
-              style={{ background: C.containerLow, border: `0.5px solid ${C.outline}` }}>
-              {art
-                ? <img src={art} alt="" className="w-full h-full object-cover" draggable={false} />
-                : <Music className="h-3.5 w-3.5" style={{ color: C.text4 }} />}
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-[13px] font-medium truncate" style={{ color: C.text1 }}>{name}</p>
-              <p className="text-[11px] truncate" style={{ color: C.text3 }}>{artist}</p>
-            </div>
+            <button onClick={() => (isLocal ? playLocal(tr.id) : handlePlayTrack(tr.uri))}
+              className="flex-1 min-w-0 flex items-center gap-2.5 cursor-pointer text-left">
+              <span className="text-[11px] w-4 text-right shrink-0 font-semibold tabular-nums" style={{ color: C.text4 }}>{idx + 1}</span>
+              <div className="w-9 h-9 rounded-lg overflow-hidden shrink-0 flex items-center justify-center"
+                style={{ background: C.containerLow, border: `0.5px solid ${C.outline}` }}>
+                {art
+                  ? <img src={art} alt="" className="w-full h-full object-cover" draggable={false} />
+                  : <Music className="h-3.5 w-3.5" style={{ color: C.text4 }} />}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-[13px] font-medium truncate" style={{ color: C.text1 }}>{name}</p>
+                <p className="text-[11px] truncate" style={{ color: C.text3 }}>{artist}</p>
+              </div>
+            </button>
             {isLocal && (
               <button onClick={() => removeLocal(tr.id)}
                 className="w-7 h-7 flex items-center justify-center rounded-full shrink-0 active:scale-90 transition-all cursor-pointer"
