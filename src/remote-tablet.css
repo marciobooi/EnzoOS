@@ -179,5 +179,21 @@
 .rt-hero-art  { grid-area: art; min-height: 0; }
 .rt-hero-info { grid-area: info; min-width: 0; min-height: 0; }
 
+/* Meta strip below the hero (quality badge + favourite + master volume +
+   up-next). Mirrors .rt-hero's width caps and centering so its edges line
+   up with the art/info block in both orientations — a bare full-width div
+   here would overhang the centered hero in portrait. */
+.rt-hero-meta {
+  width: 100%;
+  max-width: 640px;
+  margin: 0 auto;
+}
+@media (orientation: landscape) {
+  .rt-hero-meta {
+    max-width: 1180px;
+    margin: initial;
+  }
+}
+
 /* ── Persistent mini-player dock (non-player tabs, tablet only) ───────────── */
 .rt-dock { max-width: 900px; margin: 1.5rem auto 0; }

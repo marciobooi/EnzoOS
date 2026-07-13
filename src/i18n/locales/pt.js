@@ -106,6 +106,7 @@ export default {
     mute: 'Silenciar',
     unmute: 'Repor som',
     volume: 'Volume',
+    maxVolume: 'Volume máximo',
     addFav: 'Adicionar aos favoritos',
     removeFav: 'Remover dos favoritos',
     lyrics: 'Letras',

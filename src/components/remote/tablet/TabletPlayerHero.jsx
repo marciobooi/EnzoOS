@@ -251,102 +251,102 @@ export default function TabletPlayerHero() {
             </button>
           ) : <div className="w-10" />}
         </div>
-
-
       </div>
     </div>
 
-    {/* info */}
-    <div>
-      <div>
-          {trackName && trackName !== 'Nothing playing' && (
-            <div className="mt-3 flex items-center gap-3">
-              <span className="px-2.5 py-1 rounded-full text-[11px] font-semibold uppercase tracking-wider"
-                style={{ background: `${C.champagne}18`, color: C.champagne, border: `0.5px solid ${C.champagne}35`, fontFamily: C.fontLabel }}>
-                {qualityLabel}
+    {/* ── Stream meta + master volume — full-width strip below the hero
+        (outside .rt-hero, so in landscape it spans both grid columns).
+        .rt-hero-meta mirrors .rt-hero's width caps/centering so its edges
+        stay aligned with the art/info block in both orientations. ── */}
+    <div className="rt-hero-meta">
+      {trackName && trackName !== 'Nothing playing' && (
+        <div className="flex items-center gap-3 mb-4">
+          <span className="px-2.5 py-1 rounded-full text-[11px] font-semibold uppercase tracking-wider"
+            style={{ background: `${C.champagne}18`, color: C.champagne, border: `0.5px solid ${C.champagne}35`, fontFamily: C.fontLabel }}>
+            {qualityLabel}
+          </span>
+          <button
+            onClick={() => {
+              if (source === 'radio') {
+                handleToggleFavRadio({ name: trackName, url: currentTrack?.url, favicon: albumImage || '', country: '', tags: '' });
+              } else {
+                handleToggleFavorite({ source, uri: trackUri, title: trackName, artist: trackArtist, album: albumName, cover: albumImage });
+              }
+            }}
+            aria-label={isFav ? t('player.removeFav') : t('player.addFav')}
+            className="w-9 h-9 inline-flex items-center justify-center rounded-full active:scale-90 transition-all cursor-pointer"
+            style={{ color: isFav ? C.error : C.text4 }}>
+            <Heart className={`h-[18px] w-[18px] ${isFav ? 'fill-current' : ''}`} />
+          </button>
+          {canLyrics && (
+            <button onClick={() => setShowLyrics(true)}
+              className="w-9 h-9 inline-flex items-center justify-center rounded-full active:scale-90 transition-all cursor-pointer"
+              style={{ color: C.text4 }}>
+              <Mic2 className="h-[18px] w-[18px]" />
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* Master volume — always rendered: it drives the amp's volume, not
+          track playback, so it stays useful even with nothing playing. */}
+      <div className="flex items-center gap-2">
+        <button onClick={handleMuteToggle} aria-label={isMuted ? t('player.unmute') : t('player.mute')}
+          style={{ color: isMuted ? C.champagne : C.text2 }}
+          className="w-9 h-9 flex items-center justify-center rounded-full active:scale-90 transition-all cursor-pointer shrink-0">
+          <VolumeX className="h-4 w-4" />
+        </button>
+        <div className="relative flex-1 h-1 rounded-full" style={{ background: C.container }}>
+          <div className="absolute inset-y-0 left-0 rounded-full"
+            style={{ width: `${isMuted ? 0 : volume}%`, background: accentFill }} />
+          <div className="absolute w-4 h-4 rounded-full top-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none"
+            style={{ left: `${isMuted ? 0 : volume}%`, background: '#ffffff', boxShadow: '0 4px 10px rgba(180,170,150,0.25)' }} />
+          <input type="range" min="0" max="100" value={isMuted ? 0 : volume}
+            onChange={handleVolumeChange} aria-label={t('player.volume')}
+            disabled={spotify ? !token : false}
+            className="absolute -inset-y-2.5 inset-x-0 w-full opacity-0 cursor-pointer disabled:cursor-default" />
+        </div>
+        <button style={{ color: C.text2 }} aria-label={t('player.maxVolume')}
+          className="w-9 h-9 flex items-center justify-center rounded-full active:scale-90 transition-all cursor-pointer shrink-0"
+          onClick={() => handleVolumeChange({ target: { value: 100 } })}>
+          <Volume2 className="h-4 w-4" />
+        </button>
+      </div>
+
+      {/* up next — expands in place; no separate queue screen to navigate to */}
+      {(spotify ? !!token : source !== 'radio') && (
+        <div className="rounded-2xl overflow-hidden mt-5" style={cardWhite}>
+          <button onClick={() => setShowQueue(v => !v)}
+            className="w-full p-4 text-left active:scale-[0.99] transition-all cursor-pointer">
+            <div className="flex items-center justify-between">
+              <span className="flex items-center gap-2 text-[12px] font-semibold uppercase tracking-wider"
+                style={{ color: C.text3, fontFamily: C.fontLabel }}>
+                <ListMusic className="h-4 w-4" style={{ color: C.champagne }} />
+                {t('queue.upNext') || 'Up Next'}
               </span>
-              <button
-                onClick={() => {
-                  if (source === 'radio') {
-                    handleToggleFavRadio({ name: trackName, url: currentTrack?.url, favicon: albumImage || '', country: '', tags: '' });
-                  } else {
-                    handleToggleFavorite({ source, uri: trackUri, title: trackName, artist: trackArtist, album: albumName, cover: albumImage });
-                  }
-                }}
-                aria-label={isFav ? t('player.removeFav') : t('player.addFav')}
-                className="w-9 h-9 inline-flex items-center justify-center rounded-full active:scale-90 transition-all cursor-pointer"
-                style={{ color: isFav ? C.error : C.text4 }}>
-                <Heart className={`h-[18px] w-[18px] ${isFav ? 'fill-current' : ''}`} />
-              </button>
-              {canLyrics && (
-                <button onClick={() => setShowLyrics(true)}
-                  className="w-9 h-9 inline-flex items-center justify-center rounded-full active:scale-90 transition-all cursor-pointer"
-                  style={{ color: C.text4 }}>
-                  <Mic2 className="h-[18px] w-[18px]" />
-                </button>
-              )}
+              <ChevronDown className="h-4 w-4 transition-transform" style={{ color: C.outline, transform: showQueue ? 'rotate(180deg)' : 'none' }} />
+            </div>
+            {!showQueue && (
+              upNext.length > 0 ? (
+                <div className="mt-2 flex flex-col gap-1.5">
+                  {upNext.map((tr, i) => (
+                    <p key={`${tr.uri}-${i}`} className="text-[13px] truncate" style={{ color: C.text2 }}>
+                      {tr.name} <span style={{ color: C.text4 }}>· {tr.artists?.map(a => a.name).join(', ')}</span>
+                    </p>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-[13px] mt-1" style={{ color: C.text4 }}>Nothing queued</p>
+              )
+            )}
+          </button>
+          {showQueue && (
+            <div className="px-4 pb-3" style={{ borderTop: `0.5px solid ${C.outline}` }}>
+              <TabletQueueList />
             </div>
           )}
-
-                  {/* volume */}
-        <div className="flex items-center gap-2 mb-5">
-          <button onClick={handleMuteToggle} aria-label={isMuted ? t('player.unmute') : t('player.mute')}
-            style={{ color: isMuted ? C.champagne : C.text2 }}
-            className="w-9 h-9 flex items-center justify-center rounded-full active:scale-90 transition-all cursor-pointer shrink-0">
-            <VolumeX className="h-4 w-4" />
-          </button>
-          <div className="relative flex-1 h-1 rounded-full" style={{ background: C.container }}>
-            <div className="absolute inset-y-0 left-0 rounded-full"
-              style={{ width: `${isMuted ? 0 : volume}%`, background: accentFill }} />
-            <div className="absolute w-4 h-4 rounded-full top-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none"
-              style={{ left: `${isMuted ? 0 : volume}%`, background: '#ffffff', boxShadow: '0 4px 10px rgba(180,170,150,0.25)' }} />
-            <input type="range" min="0" max="100" value={isMuted ? 0 : volume}
-              onChange={handleVolumeChange} aria-label={t('player.volume')}
-              disabled={spotify ? !token : false}
-              className="absolute -inset-y-2.5 inset-x-0 w-full opacity-0 cursor-pointer disabled:cursor-default" />
-          </div>
-          <button style={{ color: C.text2 }} aria-label="Maximum volume"
-            className="w-9 h-9 flex items-center justify-center rounded-full active:scale-90 transition-all cursor-pointer shrink-0"
-            onClick={() => handleVolumeChange({ target: { value: 100 } })}>
-            <Volume2 className="h-4 w-4" />
-          </button>
         </div>
-        </div>
-
-        {/* up next — expands in place; no separate queue screen to navigate to */}
-        {(spotify ? !!token : source !== 'radio') && (
-          <div className="rounded-2xl overflow-hidden" style={cardWhite}>
-            <button onClick={() => setShowQueue(v => !v)}
-              className="w-full p-4 text-left active:scale-[0.99] transition-all cursor-pointer">
-              <div className="flex items-center justify-between">
-                <span className="flex items-center gap-2 text-[12px] font-semibold uppercase tracking-wider"
-                  style={{ color: C.text3, fontFamily: C.fontLabel }}>
-                  <ListMusic className="h-4 w-4" style={{ color: C.champagne }} />
-                  {t('queue.upNext') || 'Up Next'}
-                </span>
-                <ChevronDown className="h-4 w-4 transition-transform" style={{ color: C.outline, transform: showQueue ? 'rotate(180deg)' : 'none' }} />
-              </div>
-              {!showQueue && (
-                upNext.length > 0 ? (
-                  <div className="mt-2 flex flex-col gap-1.5">
-                    {upNext.map((tr, i) => (
-                      <p key={`${tr.uri}-${i}`} className="text-[13px] truncate" style={{ color: C.text2 }}>
-                        {tr.name} <span style={{ color: C.text4 }}>· {tr.artists?.map(a => a.name).join(', ')}</span>
-                      </p>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-[13px] mt-1" style={{ color: C.text4 }}>Nothing queued</p>
-                )
-              )}
-            </button>
-            {showQueue && (
-              <div className="px-4 pb-3" style={{ borderTop: `0.5px solid ${C.outline}` }}>
-                <TabletQueueList />
-              </div>
-            )}
-          </div>
-        )}
+      )}
     </div>
 
     {/* ── Input source — quick-switch carousel, full width below the

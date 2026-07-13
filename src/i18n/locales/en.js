@@ -108,6 +108,7 @@ export default {
     mute: 'Mute',
     unmute: 'Unmute',
     volume: 'Volume',
+    maxVolume: 'Maximum volume',
     addFav: 'Add to favourites',
     removeFav: 'Remove from favourites',
     lyrics: 'Lyrics',
