@@ -1,34 +1,14 @@
-import React, { useContext, useEffect, useState } from 'react';
+import React, { useContext } from 'react';
 import { X, Music, ListMusic, Trash2 } from 'lucide-react';
 import { Tk } from './shared';
-import { api } from '../../api';
-import { reportError } from '../../lib/errors';
+import { useLocalQueue } from '../../hooks/useLocalQueue';
 import { useI18n } from '../../i18n';
 
 export default function QueuePanel({ queue, queueLoading, onClose }) {
-  const { C, cardWhite, darkMode, albumImage, trackName, trackArtist, source, spotify } = useContext(Tk);
+  const { C, cardWhite, darkMode, albumImage, trackName, trackArtist } = useContext(Tk);
   const { t } = useI18n();
 
-  const [localQueue, setLocalQueue] = useState([]);
-  const [localLoading, setLocalLoading] = useState(false);
-
-  const isLocal = !spotify && source !== 'radio';
-
-  useEffect(() => {
-    if (!isLocal) return;
-    setLocalLoading(true);
-    api.getDetailedQueue()
-      .then(d => setLocalQueue(d.tracks || []))
-      .catch(() => {})
-      .finally(() => setLocalLoading(false));
-  }, [isLocal]);
-
-  const handleDeleteLocal = async (id) => {
-    try {
-      await api.removeFromQueue(id);
-      setLocalQueue(prev => prev.filter(t => t.id !== id));
-    } catch (e) { reportError(e.message); }
-  };
+  const { isLocal, localQueue, localLoading, removeLocal } = useLocalQueue();
 
   const panelBg = darkMode
     ? { background: 'rgba(10,14,28,0.97)', backdropFilter: 'blur(24px) saturate(180%)', WebkitBackdropFilter: 'blur(24px) saturate(180%)' }
@@ -111,7 +91,7 @@ export default function QueuePanel({ queue, queueLoading, onClose }) {
                         <p className="text-[13px] font-medium truncate" style={{ color: C.text1 }}>{t.title}</p>
                         <p className="text-[11px] truncate" style={{ color: C.text3 }}>{t.artist}</p>
                       </div>
-                      <button onClick={() => handleDeleteLocal(t.id)}
+                      <button onClick={() => removeLocal(t.id)}
                         className="w-8 h-8 flex items-center justify-center rounded-full shrink-0 active:scale-90 transition-all cursor-pointer"
                         style={{ color: C.text4 }}>
                         <Trash2 className="h-3.5 w-3.5" />

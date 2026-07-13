@@ -8,6 +8,7 @@ import { Tk, SpotifyIcon, fmt } from '../shared';
 import AlbumInfoSheet from '../AlbumInfoSheet';
 import LyricsSheet from '../LyricsSheet';
 import TabletQueueList from './TabletQueueList';
+import { useLocalQueue } from '../../../hooks/useLocalQueue';
 import { useI18n } from '../../../i18n';
 
 // Mirrors SourceTab's source list (icons + ids only, not its Qobuz/Tidal
@@ -53,6 +54,13 @@ export default function TabletPlayerHero() {
   const [showLyrics, setShowLyrics] = useState(false);
   const [showQueue, setShowQueue]   = useState(false);
 
+  // MPD's queue (local files/Tidal/Qobuz/etc.) isn't in playbackState like
+  // Spotify's is — it's fetched separately. Previously this preview only
+  // read the Spotify `queue`, so it silently stayed empty ("Nothing
+  // queued") for every other source even though TabletQueueList's expanded
+  // view (using the same hook) proved the queue itself was populated fine.
+  const { isLocal, localQueue } = useLocalQueue();
+
   const albumName = currentTrack?.album?.name || '';
   const canInfo   = source !== 'radio' && !!trackArtist && !!albumName && trackName !== 'Nothing playing';
   const canLyrics = source !== 'radio' && !!trackArtist && trackName !== 'Nothing playing';
@@ -60,7 +68,9 @@ export default function TabletPlayerHero() {
   const isFav     = source === 'radio'
     ? isCurrentFav
     : favorites?.some(f => f.source === source && f.uri === trackUri);
-  const upNext = spotify && Array.isArray(queue) ? queue.slice(0, 3) : [];
+  const upNext = isLocal
+    ? localQueue.slice(0, 3).map(tr => ({ uri: tr.id, name: tr.title, artists: [{ name: tr.artist }] }))
+    : (spotify && Array.isArray(queue) ? queue.slice(0, 3) : []);
 
   const qualityLabel = (() => {
     if (liveFormat) {
