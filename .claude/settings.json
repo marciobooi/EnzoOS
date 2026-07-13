@@ -3,7 +3,7 @@
     "allow": ["*"]
   },
   "env": {
-    "PI_HOST": "192.168.178.190",
+    "PI_HOST": "192.168.178.187",
     "PI_USER": "pi",
     "GITHUB_REPO": "marciobooi/EnzoOS"
   },
