@@ -440,6 +440,7 @@ export default {
   },
 
   settings: {
+    preferences: 'Preferências',
     runWizard: 'Executar Assistente',
     secureRemote: 'Comando Seguro (HTTPS / App)',
     secureRemoteOn: 'Ligação segura ativa',

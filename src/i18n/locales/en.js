@@ -442,6 +442,7 @@ export default {
   },
 
   settings: {
+    preferences: 'Preferences',
     runWizard: 'Run Setup Wizard',
     secureRemote: 'Secure Remote (HTTPS / App)',
     secureRemoteOn: 'Secure connection active',

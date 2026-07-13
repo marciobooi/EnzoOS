@@ -12,9 +12,18 @@ import { useI18n } from '../../i18n';
 export default function SourceTab({ inline = false }) {
   const { t } = useI18n();
   const {
-    C, card, btnInset,
+    C, card, btnInset, darkMode,
     source, handleToggleSource, setActiveTab,
   } = useContext(Tk);
+
+  // Tablet-only tile treatment (gated on `inline`, same as everywhere else
+  // in this file — phone's grid is untouched): a stronger ambient shadow so
+  // tiles read as floating cards, and the active tile gets a bold
+  // champagne top-edge accent instead of the phone's subtle all-round
+  // border, matching the reference "Definitions"-style card language.
+  const tabletTileShadow = darkMode
+    ? '0 10px 24px rgba(0,0,0,0.35), 0 2px 8px rgba(0,0,0,0.28)'
+    : '0 8px 24px rgba(180,170,150,0.16)';
 
   const [connected, setConnected] = useState({ tidal: false, qobuz: false });
 
@@ -133,7 +142,13 @@ export default function SourceTab({ inline = false }) {
             {sources.map(({ id, label, Icon }) => (
               <button key={id} onClick={() => handleSelect(id)}
                 className="relative flex flex-col items-center justify-center gap-3 py-7 md:py-9 rounded-2xl active:scale-95 transition-all cursor-pointer input-btn"
-                style={source === id ? { ...btnInset, border: `0.5px solid ${C.champagne}40` } : { ...card }}>
+                style={source === id
+                  ? {
+                      ...btnInset,
+                      border: `0.5px solid ${C.champagne}40`,
+                      ...(inline ? { borderTop: `3px solid ${C.champagne}`, boxShadow: tabletTileShadow } : {}),
+                    }
+                  : { ...card, ...(inline ? { boxShadow: tabletTileShadow } : {}) }}>
                 <Icon />
                 <span className="text-[12px] font-semibold uppercase tracking-wider"
                   style={{ color: source === id ? C.champagne : C.text4, fontFamily: C.fontLabel }}>{label}</span>

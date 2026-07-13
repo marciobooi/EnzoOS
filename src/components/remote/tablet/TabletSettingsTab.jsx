@@ -1,6 +1,7 @@
 import { useContext, useState } from 'react';
 import { ChevronLeft, LogOut, Smartphone, Cpu } from 'lucide-react';
-import { Tk, Row, Section } from '../shared';
+import { Tk } from '../shared';
+import { TabletSection, TabletRow } from './TabletSection';
 import { GROUPS, GROUP_COMPONENTS } from '../SettingsTab';
 import InstallGuide from '../InstallGuide';
 import MetadataKeysSheet from '../MetadataKeysSheet';
@@ -100,38 +101,38 @@ export default function TabletSettingsTab() {
     <div className="flex flex-col pt-5 pb-4">
       <TabletPageHeader title={t('nav.settings')} subtitle="Language, sound, display, streaming accounts, and system preferences." />
 
-      <Section title={t('settings.language')}>
+      <TabletSection title={t('settings.language')}>
         <div className="px-4 py-3">
           <LanguageChips colors={{
             bg: C.containerLow, fg: C.text4, border: C.outline,
             activeBg: C.champagne, activeFg: '#1a1c1c',
           }} />
         </div>
-      </Section>
+      </TabletSection>
 
-      <Section>
+      <TabletSection title={t('settings.preferences')}>
         {GROUPS.map(({ id, labelKey, icon: Icon, accent }) => (
-          <Row key={id} label={t(labelKey)}
+          <TabletRow key={id} label={t(labelKey)}
             icon={<Icon className="h-4 w-4" style={{ color: accent || C.champagne }} />}
             onPress={() => setOpenGroup(id)} />
         ))}
-        <Row label={t('settings.metadataKeys')} sub="Last.fm · TheAudioDB · Discogs"
+        <TabletRow label={t('settings.metadataKeys')} sub="Last.fm · TheAudioDB · Discogs"
           icon={<Cpu className="h-4 w-4" style={{ color: C.champagne }} />}
           onPress={() => setShowKeys(true)} />
-        <Row label={t('settings.addToHome')} sub={t('settings.addToHomeSub')}
+        <TabletRow label={t('settings.addToHome')} sub={t('settings.addToHomeSub')}
           icon={<Smartphone className="h-4 w-4" style={{ color: C.champagne }} />}
           onPress={() => setShowInstall(true)} />
-      </Section>
+      </TabletSection>
 
-      <Section>
-        <Row label={confirmSignout ? t('settings.confirmDisconnect') : t('settings.disconnect')} destructive chevron={false}
+      <TabletSection>
+        <TabletRow label={confirmSignout ? t('settings.confirmDisconnect') : t('settings.disconnect')} destructive chevron={false}
           icon={<LogOut className="h-4 w-4" style={{ color: C.error }} />}
           onPress={() => {
             if (confirmSignout) { eraseCookie('remote_token'); setIsAuthenticated(false); setActiveTab('player'); return; }
             setConfirmSignout(true);
             setTimeout(() => setConfirmSignout(false), 3000);
           }} />
-      </Section>
+      </TabletSection>
     </div>
   );
 }
