@@ -818,26 +818,65 @@ div[data-theme="ruby"] *::selection {
 .menu-card {
   background: #d6d7d2 !important;
   border: 1px solid #c8c9c4 !important;
-  box-shadow: 0 2px 8px rgba(42,40,38,0.10), 0 1px 2px rgba(42,40,38,0.06) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.5),
+    0 2px 8px rgba(42,40,38,0.10),
+    0 1px 2px rgba(42,40,38,0.06) !important;
 }
 
 .menu-card:hover {
   background: #dadbD6 !important;
   border-color: #c2c3be !important;
-  box-shadow: 0 4px 14px rgba(42,40,38,0.13), 0 1px 3px rgba(42,40,38,0.07) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.55),
+    0 10px 20px -8px rgba(42,40,38,0.18),
+    0 4px 10px -4px rgba(42,40,38,0.12) !important;
 }
 
 .menu-card:active {
   background: #d0d1cc !important;
   border-color: #bbbcb8 !important;
-  box-shadow: 0 1px 3px rgba(42,40,38,0.08) !important;
+  box-shadow: inset 0 1px 2px rgba(42,40,38,0.10), 0 1px 3px rgba(42,40,38,0.08) !important;
 }
 
 .active-card,
 .menu-card.active-card {
   background: #d6d7d2 !important;
   border: 1.5px solid #2a2826 !important;
-  box-shadow: 0 2px 8px rgba(42,40,38,0.12) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.5),
+    0 0 0 1px rgba(42,40,38,0.05),
+    0 6px 16px -6px rgba(42,40,38,0.20) !important;
+}
+
+/* Circular recessed "coin" bezel behind each Definitions Menu card icon
+   (the wrapper div already existed — see DefinitionsMenu.jsx's icon-badge
+   className addition); lights up subtly on hover and when the card is the
+   active source, echoing the player screen's recessed-gauge treatment. */
+.icon-badge {
+  width: 92px;
+  height: 92px;
+  border-radius: 50%;
+  align-items: center;
+  background: linear-gradient(165deg, #d2d3ce 0%, #c8c9c4 100%);
+  box-shadow: inset 0 2px 4px rgba(42,40,38,0.14), inset 0 -1px 0 rgba(255,255,255,0.4);
+  transition: transform 0.3s cubic-bezier(.34,1.56,.64,1), box-shadow 0.3s ease, background 0.3s ease;
+}
+
+.menu-card:hover .icon-badge {
+  transform: scale(1.05);
+  box-shadow:
+    inset 0 2px 5px rgba(42,40,38,0.16),
+    inset 0 -1px 0 rgba(255,255,255,0.45),
+    0 3px 8px -3px rgba(42,40,38,0.14);
+}
+
+.active-card .icon-badge {
+  background: linear-gradient(165deg, #dfe0da 0%, #cfd0ca 100%);
+  box-shadow:
+    inset 0 0 0 1px rgba(42,40,38,0.08),
+    inset 0 2px 3px rgba(255,255,255,0.55),
+    0 3px 10px -3px rgba(42,40,38,0.20);
 }
 
 /* OLED Burn-in prevention / pixel shifter */
