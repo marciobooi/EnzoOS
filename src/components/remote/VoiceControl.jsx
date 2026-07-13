@@ -274,14 +274,15 @@ export default function VoiceControl({ onClose }) {
   return createPortal(
     <div className="remote-root fixed inset-0 z-[10020] flex flex-col items-center justify-center"
       style={{ ...overlayBg, fontFamily: C.font, paddingTop: 'env(safe-area-inset-top)', paddingBottom: 'env(safe-area-inset-bottom)' }}
-      onClick={cancel}>
+      onClick={cancel}
+      onTouchEnd={cancel}>
       <VoiceOrb levelRef={levelRef} mood={mood} size={280} />
       <p className="px-8 text-center text-[19px] font-medium min-h-[56px] mt-2"
         style={{ color: C.text1, letterSpacing: '-0.01em' }}>
         {display || (phase === 'listening' ? t('voice.listening') : '')}
       </p>
       {insecure && (
-        <a href={httpsUrl} onClick={e => e.stopPropagation()}
+        <a href={httpsUrl} onClick={e => e.stopPropagation()} onTouchEnd={e => e.stopPropagation()}
           className="mt-3 px-5 py-2.5 rounded-full text-[14px] font-semibold"
           style={{ background: `${C.champagne}22`, color: C.primary, border: `0.5px solid ${C.champagne}66` }}>
           {httpsUrl}

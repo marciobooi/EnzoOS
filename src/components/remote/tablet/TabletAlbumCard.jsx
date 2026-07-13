@@ -13,7 +13,7 @@ import { api } from '../../../api';
 // cards reveal their art progressively on first browse and load instantly
 // on every visit after.
 export default function TabletAlbumCard({ artist, album, onClick }) {
-  const { C } = useContext(Tk);
+  const { C, darkMode } = useContext(Tk);
   const [art, setArt] = useState(null);
   const [loaded, setLoaded] = useState(false);
 
@@ -26,10 +26,14 @@ export default function TabletAlbumCard({ artist, album, onClick }) {
     return () => { alive = false; };
   }, [artist, album]);
 
+  const shadow = darkMode
+    ? '0 10px 24px rgba(0,0,0,0.35), 0 2px 8px rgba(0,0,0,0.28)'
+    : '0 6px 20px rgba(180,170,150,0.12)';
+
   return (
     <button onClick={onClick}
       className="text-left rounded-2xl overflow-hidden active:scale-[0.98] transition-all cursor-pointer"
-      style={{ background: '#ffffff', border: `0.5px solid ${C.outline}`, boxShadow: '0 6px 20px rgba(180,170,150,0.12)' }}>
+      style={{ background: darkMode ? C.containerLow : '#ffffff', border: `0.5px solid ${C.outline}`, boxShadow: shadow }}>
       <div className="w-full aspect-square flex items-center justify-center overflow-hidden"
         style={{ background: C.containerLow }}>
         {art
