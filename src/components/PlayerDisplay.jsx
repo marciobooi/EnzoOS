@@ -316,8 +316,21 @@ const PlayerDisplay = React.memo(function PlayerDisplay({
     const barWidthScale = parseFloat(readVar('--spectrum-bar-width-scale', '1')) || 1;
 
     let animationId;
+    // Throttled to ~30fps: this is a 7-bar visualizer, not a precision
+    // audio analyzer, so half the draw rate is visually indistinguishable
+    // but roughly halves the canvas redraw cost of an unthrottled 60fps
+    // rAF loop running continuously for as long as a track plays — a real
+    // cost on the Pi4's GPU. The rAF call itself still fires every frame
+    // (cheap) so the throttle check below stays accurate; only the actual
+    // clear+draw work is skipped on off-frames.
+    let lastDrawTime = 0;
+    const FRAME_INTERVAL = 1000 / 30;
 
     const animate = (time) => {
+      animationId = requestAnimationFrame(animate);
+      if (time - lastDrawTime < FRAME_INTERVAL) return;
+      lastDrawTime = time;
+
       ctx.clearRect(0, 0, rect.width, rect.height);
 
       const isSimulated = !isPlaying || (Date.now() - lastEventTime > 2000);
@@ -451,8 +464,6 @@ const PlayerDisplay = React.memo(function PlayerDisplay({
           ctx.shadowBlur = 0;
         }
       }
-
-      animationId = requestAnimationFrame(animate);
     };
 
     animationId = requestAnimationFrame(animate);

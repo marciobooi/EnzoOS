@@ -1406,9 +1406,12 @@ export default function Kiosk() {
 
       <StandbyOverlay />
 
-      {/* Subtle retro glowing background spots */}
-      <div className="absolute top-[-30%] left-[-20%] w-[70%] h-[70%] rounded-full theme-bg-glow blur-[150px] pointer-events-none" />
-      <div className="absolute bottom-[-30%] right-[-20%] w-[70%] h-[70%] rounded-full bg-emerald-950/5 blur-[150px] pointer-events-none" />
+      {/* Subtle retro glowing background spots — radial-gradient rather than
+          a blur filter (see .theme-bg-glow/.emerald-bg-glow in index.css):
+          same soft look, without asking the Pi4's GPU to blur a huge area
+          continuously. */}
+      <div className="absolute top-[-30%] left-[-20%] w-[70%] h-[70%] rounded-full theme-bg-glow pointer-events-none" />
+      <div className="absolute bottom-[-30%] right-[-20%] w-[70%] h-[70%] rounded-full emerald-bg-glow pointer-events-none" />
 
       <div 
         ref={containerRef}

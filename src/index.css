@@ -235,8 +235,17 @@ body {
 .theme-border {
   border-color: var(--theme-color) !important;
 }
+/* Soft ambient glow behind the player (Kiosk.jsx). A radial-gradient
+   fading to transparent looks the same as a solid tint blurred with
+   filter:blur(150px) — but the blur filter forces the Pi4's GPU to
+   rasterize and convolve a large area continuously; a gradient is a
+   near-free paint. */
 .theme-bg-glow {
-  background-color: var(--theme-color-dim) !important;
+  background: radial-gradient(circle, var(--theme-color-dim) 0%, transparent 70%) !important;
+}
+
+.emerald-bg-glow {
+  background: radial-gradient(circle, rgba(2,44,34,0.09) 0%, transparent 70%) !important;
 }
 .theme-border-glow {
   border-color: var(--theme-color-glow) !important;
@@ -315,6 +324,36 @@ div[data-theme="ruby"] *::selection {
   display: flex;
   align-items: center;
   justify-content: center;
+  position: relative;
+}
+
+/* Breathing accent-color halo while a track is actually playing — a
+   separate layer behind the art rather than an animated box-shadow on
+   .album-art itself (box-shadow forces a repaint every frame; this
+   animates only transform/opacity, both GPU-composited and effectively
+   free on the Pi4). Lives on .album-column instead of a pseudo-element on
+   .album-art because that element has overflow:hidden, which would clip
+   a halo extending beyond its own circular bounds. */
+.album-column::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  width: 220px;
+  height: 220px;
+  border-radius: 50%;
+  pointer-events: none;
+  opacity: 0;
+  background: radial-gradient(circle, var(--theme-color-glow) 0%, transparent 70%);
+}
+
+.music-player.is-playing .album-column::before {
+  animation: album-glow-breathe 4.8s ease-in-out infinite;
+}
+
+@keyframes album-glow-breathe {
+  0%, 100% { opacity: 0.35; transform: scale(0.94); }
+  50%      { opacity: 0.7;  transform: scale(1.12); }
 }
 
 /* Cassette shell is landscape (~1.55:1), not square — give it a wider first
@@ -350,31 +389,6 @@ div[data-theme="ruby"] *::selection {
 
 .album-column:active .album-art {
   transform: scale(0.98);
-}
-
-/* Breathing accent-color halo while a track is actually playing — same
-   cadence family as the play button's pulse below, so both read as one
-   system reacting to playback rather than two unrelated animations. */
-.music-player.is-playing .album-art {
-  animation: album-glow-breathe 4.8s ease-in-out infinite;
-}
-@keyframes album-glow-breathe {
-  0%, 100% {
-    box-shadow:
-      inset 0 0 0 1px rgba(255,255,255,0.4),
-      inset 0 2px 5px rgba(255,255,255,0.35),
-      0 3px 8px rgba(42,40,38,0.10),
-      0 14px 28px -10px rgba(42,40,38,0.26),
-      0 0 0 0 var(--theme-color-glow);
-  }
-  50% {
-    box-shadow:
-      inset 0 0 0 1px rgba(255,255,255,0.4),
-      inset 0 2px 5px rgba(255,255,255,0.35),
-      0 3px 8px rgba(42,40,38,0.10),
-      0 14px 28px -10px rgba(42,40,38,0.26),
-      0 0 0 7px var(--theme-color-dim);
-  }
 }
 
 /* Gloss highlight (top layer) + the original dot-texture (bottom layer) —
@@ -715,6 +729,7 @@ div[data-theme="ruby"] *::selection {
 }
 
 .icon-button {
+  position: relative;
   width: 52px;
   height: 52px;
   border-radius: 50%;
@@ -760,20 +775,27 @@ div[data-theme="ruby"] *::selection {
   box-shadow: inset 0 1px 0 rgba(255,255,255,0.35), 0 0 0 1px rgba(42,40,38,0.06), 0 4px 12px -5px var(--theme-color-glow);
 }
 
-/* Breathing halo on the play button while a track is playing — paired
-   with .album-glow-breathe above so playback reads as one alive system. */
-.icon-button.play.playing {
+/* Breathing halo on the play button while a track is playing — a separate
+   layer behind the button (paired with .album-glow-breathe above) rather
+   than an animated box-shadow ring, same reasoning: transform/opacity only,
+   so it costs nothing on the Pi4 even running continuously during playback. */
+.icon-button.play::before {
+  content: "";
+  position: absolute;
+  inset: -14px;
+  border-radius: 50%;
+  pointer-events: none;
+  opacity: 0;
+  background: radial-gradient(circle, var(--theme-color-glow) 0%, transparent 72%);
+}
+
+.icon-button.play.playing::before {
   animation: play-button-pulse 2.6s ease-in-out infinite;
 }
+
 @keyframes play-button-pulse {
-  0%, 100% {
-    box-shadow: inset 0 1px 0 rgba(255,255,255,0.35), 0 0 0 1px rgba(42,40,38,0.06),
-      0 0 0 5px var(--theme-color-dim), 0 4px 12px -5px var(--theme-color-glow);
-  }
-  50% {
-    box-shadow: inset 0 1px 0 rgba(255,255,255,0.35), 0 0 0 1px rgba(42,40,38,0.06),
-      0 0 0 9px var(--theme-color-dim), 0 6px 18px -6px var(--theme-color-glow);
-  }
+  0%, 100% { opacity: 0.5; transform: scale(0.85); }
+  50%      { opacity: 0.9; transform: scale(1.15); }
 }
 
 .progress-bar-dots {
@@ -795,6 +817,12 @@ div[data-theme="ruby"] *::selection {
   pointer-events: none;
 }
 
+/* No width transition here: this bar's fill has a fixed 16px dot texture
+   (below) — animating width forces a layout+paint recalc every frame for
+   the transition's duration, and it can't be swapped for a cheaper
+   transform: scaleX() instead, because scaling would squash the round
+   dots into ellipses. It updates once a second (trackPosition ticking),
+   so an instant jump costs one layout pass instead of ~20 mid-transition. */
 .progress-fill-dots {
   height: 100%;
   border-radius: 999px;
@@ -802,7 +830,6 @@ div[data-theme="ruby"] *::selection {
   overflow: hidden;
   background: transparent;
   box-shadow: 2px 0 8px -1px var(--theme-color-glow);
-  transition: width 0.35s cubic-bezier(.4,0,.2,1);
 }
 
 .progress-fill-dots::before {
@@ -1049,8 +1076,8 @@ div[data-theme="ruby"] *::selection {
 .toast-exit  { animation: toastExit  0.25s ease-in both; }
 
 @media (prefers-reduced-motion: reduce) {
-  .music-player.is-playing .album-art,
-  .icon-button.play.playing {
+  .music-player.is-playing .album-column::before,
+  .icon-button.play.playing::before {
     animation: none;
   }
 }
