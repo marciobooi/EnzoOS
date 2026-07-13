@@ -21,14 +21,32 @@ const STATION_GRADIENT = 'linear-gradient(135deg, #121317, #323B42)';
 const stationInitials = (name) =>
   (name || '').trim().split(/\s+/).slice(0, 2).map(w => w[0]).join('').toUpperCase() || '??';
 
-function Section({ C, label, icon, children }) {
+// Tablet card shadow — matches TabletSection.jsx/LibraryTab's `listCard` so
+// search result groups and the radio directory read consistently with every
+// other card on tablet instead of the flat, shadow-less container this file
+// used everywhere before. `inline` (tablet) only — phone's flat list stays
+// exactly as it was, deliberately: a fast-scanning results list is a
+// different context than a browsing grid, and it's this file's own call to
+// keep it flat there, not an oversight.
+function tabletCardStyle(C, darkMode) {
+  return {
+    background: darkMode ? C.containerLow : '#ffffff',
+    border: `0.5px solid ${C.outline}`,
+    boxShadow: darkMode
+      ? '0 10px 24px rgba(0,0,0,0.35), 0 2px 8px rgba(0,0,0,0.28)'
+      : '0 8px 24px rgba(180,170,150,0.16)',
+  };
+}
+
+function Section({ C, darkMode, inline, label, icon, children }) {
   return (
     <div className="flex flex-col gap-1">
       <div className="flex items-center gap-1.5 px-1 mb-0.5">
         <span style={{ color: C.champagne }}>{icon}</span>
         <span className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: C.text3, fontFamily: C.fontLabel }}>{label}</span>
       </div>
-      <div className="rounded-2xl overflow-hidden" style={{ background: C.containerLow, border: `0.5px solid ${C.outline}` }}>
+      <div className="rounded-2xl overflow-hidden"
+        style={inline ? tabletCardStyle(C, darkMode) : { background: C.containerLow, border: `0.5px solid ${C.outline}` }}>
         {children}
       </div>
     </div>
@@ -80,13 +98,16 @@ function StationRow({ C, station, onPlay, isFav, onToggleFav, divider }) {
 // Tablet-only "Curated Stations" card, replacing StationRow's compact list
 // row with an image-led card (art/initials, country badge, favorite heart)
 // when there's width to spare for a grid — same station data, same actions.
-function StationCard({ C, station, isFav, onToggleFav, onPlay }) {
+// Only ever rendered inline (tablet), so its card shadow is unconditional —
+// matches TabletAlbumCard's treatment for the same reason: a grid of image
+// cards reads as a browsing surface, same language as the Albums grid.
+function StationCard({ C, darkMode, station, isFav, onToggleFav, onPlay }) {
   const [imgFailed, setImgFailed] = useState(false);
   const name = station.name || 'Unknown station';
   return (
     <div onClick={onPlay}
       className="rounded-2xl overflow-hidden flex flex-col cursor-pointer active:scale-[0.98] transition-all"
-      style={{ background: C.containerLow, border: `0.5px solid ${C.outline}` }}>
+      style={tabletCardStyle(C, darkMode)}>
       <div className="relative" style={{ height: 104 }}>
         {station.favicon && !imgFailed
           ? <img src={station.favicon} alt="" className="w-full h-full object-cover" onError={() => setImgFailed(true)} />
@@ -113,13 +134,13 @@ function StationCard({ C, station, isFav, onToggleFav, onPlay }) {
   );
 }
 
-function PlaylistCard({ C, item }) {
+function PlaylistCard({ C, darkMode, inline, item }) {
   const { title, subtitle, image, color, label, onPlay, heart } = item;
   const [imgFailed, setImgFailed] = useState(false);
   return (
     <button onClick={onPlay}
       className="shrink-0 flex flex-col rounded-2xl overflow-hidden active:opacity-60 transition-opacity text-left"
-      style={{ width: 112, background: C.containerLow, border: `0.5px solid ${C.outline}` }}>
+      style={{ width: 112, ...(inline ? tabletCardStyle(C, darkMode) : { background: C.containerLow, border: `0.5px solid ${C.outline}` }) }}>
       <div className="relative shrink-0" style={{ height: 76 }}>
         {heart
           ? <div className="w-full h-full flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #450af5, #c4efd9)' }}>
@@ -152,7 +173,7 @@ function PlaylistCard({ C, item }) {
 export default function UniversalSearch({ inline = false }) {
   const { t } = useI18n();
   const {
-    C, token, spotify,
+    C, darkMode, token, spotify,
     handlePlayTrack, handlePlayContext, handleToggleSource, setActiveTab,
     favoriteStations, handleToggleFavRadio, wakeKiosk,
   } = useContext(Tk);
@@ -493,7 +514,7 @@ export default function UniversalSearch({ inline = false }) {
               </div>
               {myPlaylists.length ? (
                 <div className="flex gap-2.5 overflow-x-auto pb-1" style={{ scrollbarWidth: 'none' }}>
-                  {myPlaylists.map(p => <PlaylistCard key={p.key} C={C} item={p} />)}
+                  {myPlaylists.map(p => <PlaylistCard key={p.key} C={C} darkMode={darkMode} inline={inline} item={p} />)}
                 </div>
               ) : (
                 <p className="text-[13px] px-1" style={{ color: C.text4 }}>{t('library.noFavorites')}</p>
@@ -534,7 +555,7 @@ export default function UniversalSearch({ inline = false }) {
                 inline ? (
                   <div className="grid grid-cols-3 gap-3">
                     {radioDir.stations.map((s, i) => (
-                      <StationCard key={s.stationuuid || i} C={C} station={s}
+                      <StationCard key={s.stationuuid || i} C={C} darkMode={darkMode} station={s}
                         isFav={favoriteStations?.some(f => f.url === (s.url_resolved || s.url))}
                         onToggleFav={() => handleToggleFavRadio(s)}
                         onPlay={() => playRadio(s)} />
@@ -583,7 +604,7 @@ export default function UniversalSearch({ inline = false }) {
         ) : (
           <div className="flex flex-col gap-4">
             {results.spotify.length > 0 && (
-              <Section C={C} label="Spotify" icon={<Waves className="h-3.5 w-3.5" />}>
+              <Section C={C} darkMode={darkMode} inline={inline} label="Spotify" icon={<Waves className="h-3.5 w-3.5" />}>
                 {results.spotify.map((t, i) => (
                   <TrackRow key={i} C={C} divider={i > 0}
                     title={t.name} artist={t.artists?.[0]?.name}
@@ -594,7 +615,7 @@ export default function UniversalSearch({ inline = false }) {
             )}
 
             {results.local.length > 0 && (
-              <Section C={C} label={t('library.localLibrary')} icon={<Music2 className="h-3.5 w-3.5" />}>
+              <Section C={C} darkMode={darkMode} inline={inline} label={t('library.localLibrary')} icon={<Music2 className="h-3.5 w-3.5" />}>
                 {results.local.map((t, i) => (
                   <TrackRow key={i} C={C} divider={i > 0}
                     title={t.title || t.file?.split('/').pop()} artist={t.artist}
@@ -604,7 +625,7 @@ export default function UniversalSearch({ inline = false }) {
             )}
 
             {results.tidal.length > 0 && (
-              <Section C={C} label="Tidal" icon={<Music2 className="h-3.5 w-3.5" />}>
+              <Section C={C} darkMode={darkMode} inline={inline} label="Tidal" icon={<Music2 className="h-3.5 w-3.5" />}>
                 {results.tidal.map((t, i) => (
                   <TrackRow key={i} C={C} divider={i > 0}
                     title={t.title} artist={t.artist} image={t.cover}
@@ -614,7 +635,7 @@ export default function UniversalSearch({ inline = false }) {
             )}
 
             {results.qobuz.length > 0 && (
-              <Section C={C} label="Qobuz" icon={<Music2 className="h-3.5 w-3.5" />}>
+              <Section C={C} darkMode={darkMode} inline={inline} label="Qobuz" icon={<Music2 className="h-3.5 w-3.5" />}>
                 {results.qobuz.map((t, i) => (
                   <TrackRow key={i} C={C} divider={i > 0}
                     title={t.title} artist={t.artist} image={t.cover}
@@ -624,7 +645,7 @@ export default function UniversalSearch({ inline = false }) {
             )}
 
             {results.radio.length > 0 && (
-              <Section C={C} label={t('search.radioStations')} icon={<Radio className="h-3.5 w-3.5" />}>
+              <Section C={C} darkMode={darkMode} inline={inline} label={t('search.radioStations')} icon={<Radio className="h-3.5 w-3.5" />}>
                 {results.radio.map((s, i) => (
                   <StationRow key={i} C={C} divider={i > 0} station={s}
                     isFav={favoriteStations?.some(f => f.url === (s.url_resolved || s.url))}
