@@ -160,15 +160,18 @@ router.post('/client-viewport-debug', (req, res) => {
 });
 
 // GET /api/system/lan-url — returns the LAN-accessible remote URL for QR code
-// generation. Prefers the fixed HTTPS host (install.sh hardcodes the system
-// hostname to "resonance" on every install, so resonance.local is always
-// resolvable) over a raw LAN IP on plain HTTP — the IP changes across
-// reinstalls/DHCP renewals, and the plain-HTTP kiosk port requires an extra
-// redirect hop (server/index.js's loopback guard) to reach the actual paired
-// remote. `resonance.local` depends on mDNS (avahi), which some networks
-// (guest Wi-Fi, AP/client isolation, some Android browsers) never propagate
-// or resolve — always also return `ipUrl`, a plain-HTTP IP:port link that
-// works regardless of mDNS, so the UI can offer it as a fallback.
+// generation. The primary `url` uses the box's CURRENT LAN IP, read from
+// os.networkInterfaces() on every request (never cached, never hardcoded —
+// it follows DHCP renewals automatically). It used to prefer the
+// resonance.local mDNS hostname, but that failed live: mDNS resolution is
+// flaky on phones (stale caches — a retired dev VM answering for the same
+// name — plus guest Wi-Fi and Android browsers that never resolve .local),
+// and when it fails the remote loads its service-worker shell and every API
+// call dies with "Could not reach the server". A raw IP has none of those
+// failure modes. The cert's SANs include every current IP
+// (scripts/generate-certs.sh), so HTTPS-on-IP still gets a real padlock once
+// the CA is trusted. `hostUrl` (resonance.local) is still returned as an
+// alternate for the UI to offer — it's stable across DHCP changes.
 const CERT_PATH = path.join(__dirname, '../certs/cert.pem');
 const KEY_PATH  = path.join(__dirname, '../certs/key.pem');
 router.get('/lan-url', (req, res) => {
@@ -177,13 +180,18 @@ router.get('/lan-url', (req, res) => {
   const lanIp = Object.values(ifaces)
     .flat()
     .find(i => i.family === 'IPv4' && !i.internal)?.address || 'localhost';
-  const ipUrl = `http://${lanIp}:${port}/remote`;
 
   if (fs.existsSync(CERT_PATH) && fs.existsSync(KEY_PATH)) {
     const httpsPort = process.env.HTTPS_PORT || 5001;
-    return res.json({ url: `https://resonance.local:${httpsPort}/remote`, host: 'resonance.local', port: httpsPort, ip: lanIp, ipUrl });
+    return res.json({
+      url: `https://${lanIp}:${httpsPort}/remote`,
+      hostUrl: `https://resonance.local:${httpsPort}/remote`,
+      host: 'resonance.local',
+      ip: lanIp,
+      port: httpsPort,
+    });
   }
-  res.json({ url: ipUrl, ip: lanIp, port, ipUrl });
+  res.json({ url: `http://${lanIp}:${port}/remote`, ip: lanIp, port });
 });
 
 // GET /api/system/services — status of all audio services

@@ -69,11 +69,11 @@ export default function Kiosk() {
   const [isThemeSettingsOpen, setIsThemeSettingsOpen] = useState(false);
   const [remoteAccessEnabled, setRemoteAccessEnabled] = useState(true);
   const [isRemoteAccessOpen, setIsRemoteAccessOpen] = useState(false);
+  // remoteUrl is the IP-based link (primary — the server reads the current
+  // LAN IP per request, so it's always dynamic); remoteHostUrl is the
+  // resonance.local alternate, which needs mDNS to resolve on the phone.
   const [remoteUrl, setRemoteUrl] = useState('');
-  // Plain-HTTP IP:port link — a fallback for when resonance.local's mDNS
-  // (avahi) doesn't resolve on the phone's network (guest Wi-Fi, AP/client
-  // isolation, some Android browsers never resolve .local at all).
-  const [remoteIpUrl, setRemoteIpUrl] = useState('');
+  const [remoteHostUrl, setRemoteHostUrl] = useState('');
   const [isWifiOpen, setIsWifiOpen] = useState(false);
   const [isSystemAdminOpen, setIsSystemAdminOpen] = useState(false);
 
@@ -85,7 +85,7 @@ export default function Kiosk() {
       .then(r => r.json())
       .then(d => {
         if (d?.url) setRemoteUrl(d.url);
-        if (d?.ipUrl) setRemoteIpUrl(d.ipUrl);
+        if (d?.hostUrl) setRemoteHostUrl(d.hostUrl);
       })
       .catch(() => {});
   }, []);
@@ -1348,7 +1348,7 @@ export default function Kiosk() {
     setIsDspWizardOpen, setIsThemeSettingsOpen,
     remoteAccessEnabled, setRemoteAccessEnabled,
     sendUpdate,
-    setIsRemoteAccessOpen, setRemoteUrl, setRemoteIpUrl,
+    setIsRemoteAccessOpen, setRemoteUrl, setRemoteHostUrl,
     // search
     isSearchOpen, setIsSearchOpen,
     handlePlayTrack, handlePlayContext,
@@ -1358,7 +1358,7 @@ export default function Kiosk() {
     brightness, handleBrightnessChange,
     visualizerMode, handleVisualizerModeChange,
     // remote access
-    isRemoteAccessOpen, remoteUrl, remoteIpUrl,
+    isRemoteAccessOpen, remoteUrl, remoteHostUrl,
     // wifi
     isWifiOpen, setIsWifiOpen,
     // system admin
@@ -1382,11 +1382,11 @@ export default function Kiosk() {
     handleRadioByCountry, handlePlayRadio, favoriteStations, handleToggleFavoriteRadio,
     updateStatus, errorMessage, setIsDspWizardOpen, setIsThemeSettingsOpen,
     remoteAccessEnabled, setRemoteAccessEnabled, sendUpdate,
-    setIsRemoteAccessOpen, setRemoteUrl, setRemoteIpUrl,
+    setIsRemoteAccessOpen, setRemoteUrl, setRemoteHostUrl,
     isSearchOpen, handlePlayTrack, handlePlayContext,
     isThemeSettingsOpen, activeTheme, handleActiveThemeChange,
     brightness, handleBrightnessChange, visualizerMode, handleVisualizerModeChange,
-    isRemoteAccessOpen, remoteUrl, remoteIpUrl, isDspWizardOpen,
+    isRemoteAccessOpen, remoteUrl, remoteHostUrl, isDspWizardOpen,
     isWifiOpen, setIsWifiOpen,
     isSystemAdminOpen, setIsSystemAdminOpen,
     scale,

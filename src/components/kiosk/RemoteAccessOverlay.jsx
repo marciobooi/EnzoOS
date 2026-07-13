@@ -11,15 +11,19 @@ export default function RemoteAccessOverlay() {
     isRemoteAccessOpen,
     setIsRemoteAccessOpen,
     remoteUrl,
-    remoteIpUrl,
+    remoteHostUrl,
     remoteAccessEnabled,
     setRemoteAccessEnabled,
     sendUpdate,
   } = useContext(Kk);
 
+  // remoteUrl (IP-based, always dynamic) is the default QR target — it works
+  // on any network. remoteHostUrl (resonance.local) is offered as an
+  // alternate: prettier and DHCP-stable, but it needs mDNS to resolve on the
+  // phone, which fails on plenty of real networks.
   const [qrUrl, setQrUrl] = useState('');
-  const [ipQrUrl, setIpQrUrl] = useState('');
-  const [showIpFallback, setShowIpFallback] = useState(false);
+  const [hostQrUrl, setHostQrUrl] = useState('');
+  const [showHostname, setShowHostname] = useState(false);
   const [pairCode, setPairCode] = useState('');
   const [expiresAt, setExpiresAt] = useState(0);
   const [secondsLeft, setSecondsLeft] = useState(0);
@@ -47,9 +51,9 @@ export default function RemoteAccessOverlay() {
         setQrForbidden(false);
         const sep = remoteUrl.includes('?') ? '&' : '?';
         setQrUrl(`${remoteUrl}${sep}qr=${d.token}`);
-        if (remoteIpUrl) {
-          const ipSep = remoteIpUrl.includes('?') ? '&' : '?';
-          setIpQrUrl(`${remoteIpUrl}${ipSep}qr=${d.token}`);
+        if (remoteHostUrl) {
+          const hostSep = remoteHostUrl.includes('?') ? '&' : '?';
+          setHostQrUrl(`${remoteHostUrl}${hostSep}qr=${d.token}`);
         }
         setPairCode(d.code || '');
         setExpiresAt(d.expiresAt);
@@ -67,7 +71,7 @@ export default function RemoteAccessOverlay() {
     doFetchRef.current = doFetch;
     doFetch();
     return () => { alive = false; clearTimeout(refreshTimeout); doFetchRef.current = null; };
-  }, [isRemoteAccessOpen, remoteUrl, remoteIpUrl]);
+  }, [isRemoteAccessOpen, remoteUrl, remoteHostUrl]);
 
   // The QR token is single-use (server/auth.js) — as soon as one device
   // redeems it, the still-displayed code is dead for the next ~10 minutes
@@ -97,9 +101,9 @@ export default function RemoteAccessOverlay() {
     sendUpdate('SET_REMOTE_ACCESS', { enabled });
   };
 
-  const usingIpFallback = showIpFallback && !!ipQrUrl;
-  const qrValue = (usingIpFallback ? ipQrUrl : qrUrl) || remoteUrl || 'http://resonance.local';
-  const displayUrl = usingIpFallback ? (remoteIpUrl || '—') : (remoteUrl || '—');
+  const usingHostname = showHostname && !!hostQrUrl;
+  const qrValue = (usingHostname ? hostQrUrl : qrUrl) || remoteUrl || 'http://resonance.local';
+  const displayUrl = usingHostname ? (remoteHostUrl || '—') : (remoteUrl || '—');
 
   return (
     <div
@@ -221,18 +225,17 @@ export default function RemoteAccessOverlay() {
               </span>
             </div>
           )}
-          {/* resonance.local depends on mDNS (avahi) resolving on the phone's
-              network — guest Wi-Fi, AP/client isolation, and some Android
-              browsers never resolve .local hostnames at all, so a QR that
-              only encodes the hostname can fail to connect on every device.
-              Let the user swap to a plain IP:port link/QR that doesn't need
-              mDNS. */}
-          {remoteIpUrl && remoteAccessEnabled && (
+          {/* The default QR uses the direct IP link (works on any network).
+              resonance.local is offered as an alternate — prettier and stable
+              across DHCP changes, but it needs mDNS to resolve on the phone,
+              which fails on plenty of real networks (stale caches, guest
+              Wi-Fi, some Android browsers). */}
+          {remoteHostUrl && remoteAccessEnabled && (
             <button
-              onClick={() => setShowIpFallback(v => !v)}
+              onClick={() => setShowHostname(v => !v)}
               className="cursor-pointer text-[10px] uppercase tracking-wider underline underline-offset-2 shrink-0"
               style={{ color: S.label }}>
-              {usingIpFallback ? t('remoteAccess.useHostname') : t('remoteAccess.useIpFallback')}
+              {usingHostname ? t('remoteAccess.useIp') : t('remoteAccess.useHostname')}
             </button>
           )}
         </div>
@@ -248,9 +251,9 @@ export default function RemoteAccessOverlay() {
             <p className="text-base font-bold break-all leading-snug" style={{ color: S.strong }}>
               {displayUrl}
             </p>
-            {usingIpFallback && (
+            {usingHostname && (
               <p className="text-[11px] font-light leading-relaxed mt-1" style={{ color: S.muted }}>
-                {t('remoteAccess.ipFallbackNote')}
+                {t('remoteAccess.hostnameNote')}
               </p>
             )}
           </div>

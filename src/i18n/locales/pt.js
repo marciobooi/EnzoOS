@@ -660,8 +660,8 @@ export default {
     step3: 'Já adicionou ao ecrã principal? Use antes o código — a app instalada não consegue seguir o link do QR',
     step4: 'Ambos os dispositivos devem estar na mesma Wi-Fi',
     step5: 'O QR é atualizado a cada 10 minutos — digitalize quando quiser',
-    useIpFallback: 'Não consegue ligar? Experimente o link por IP',
-    useHostname: 'Usar antes o link normal',
-    ipFallbackNote: 'Link direto por IP — use-o se o código QR acima não ligar nesta rede.',
+    useIp: 'Usar o link por IP direto',
+    useHostname: 'Usar o link resonance.local',
+    hostnameNote: 'resonance.local precisa de mDNS/Bonjour na rede — se o telemóvel não o encontrar, volte ao link por IP.',
   },
 };
