@@ -720,7 +720,7 @@ export default function RemoteControl() {
     triggerOtaUpdate, checkUpdates, fetchDevices,
     handleTransferPlayback,
     setIsAuthenticated, eraseCookie,
-    queueOpen, setQueueOpen, queue, queueLoading,
+    queueOpen, setQueueOpen, queue, queueLoading, fetchQueue,
     setToken, setPlaybackState, setDevices,
   }), [
     darkMode, activeTab, isConnected, ws, sendUpdate,

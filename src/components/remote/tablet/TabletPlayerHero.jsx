@@ -1,4 +1,4 @@
-import { useContext, useState } from 'react';
+import { useContext, useEffect, useState } from 'react';
 import {
   Play, Pause, SkipForward, SkipBack, Volume2, VolumeX,
   Shuffle, Repeat, Music, Heart, Radio, ListMusic, Info, Mic2, ChevronDown,
@@ -48,6 +48,7 @@ export default function TabletPlayerHero() {
     queue,
     favorites, handleToggleFavorite,
     liveFormat,
+    fetchQueue,
   } = useContext(Tk);
 
   const [showInfo, setShowInfo]     = useState(false);
@@ -60,6 +61,18 @@ export default function TabletPlayerHero() {
   // queued") for every other source even though TabletQueueList's expanded
   // view (using the same hook) proved the queue itself was populated fine.
   const { isLocal, localQueue } = useLocalQueue();
+
+  // Spotify's `queue` (unlike MPD's local one above) is only ever populated
+  // by fetchQueue() — on the phone that's triggered by the effect that
+  // watches `queueOpen` when QueuePanel is opened. Tablet has no
+  // queueOpen/QueuePanel at all (this preview + TabletQueueList replace it
+  // inline), so nothing ever called fetchQueue() here and `queue` stayed
+  // permanently empty. Fetch on mount and again whenever the track changes
+  // (a skip shifts what's "next"), same trigger granularity the phone gets
+  // from a user re-opening the sheet.
+  useEffect(() => {
+    if (spotify && token) fetchQueue();
+  }, [spotify, token, trackName]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const albumName = currentTrack?.album?.name || '';
   const canInfo   = source !== 'radio' && !!trackArtist && !!albumName && trackName !== 'Nothing playing';
