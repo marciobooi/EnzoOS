@@ -175,11 +175,11 @@
   position: fixed;
   left: calc(224px + 2rem);
   bottom: calc(1.25rem + env(safe-area-inset-bottom));
-  width: min(620px, calc(100vw - 224px - 4rem));
+  width: min(680px, calc(100vw - 224px - 4rem));
   z-index: 40;
 }
 /* Content behind the floating dock gets extra bottom padding so its last
    rows can scroll clear of the card instead of ending underneath it. */
 .rt-content-inner--docked {
-  padding-bottom: calc(2rem + 120px + env(safe-area-inset-bottom));
+  padding-bottom: calc(2rem + 140px + env(safe-area-inset-bottom));
 }
