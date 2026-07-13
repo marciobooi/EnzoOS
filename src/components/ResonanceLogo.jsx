@@ -10,13 +10,19 @@
  *
  * Choreography (~5.2s cycle; the kiosk welcome dismisses during the hold):
  *   1. Folded-paper transport controls rise one after another (staggered).
- *   2. The play triangle presses down (anticipation), then folds away like a
- *      page turning — the snap throws prev/next outward and bursts a crackle
- *      of paper shards (per-shard delay/size, tumbling out with gravity).
+ *   2. The play triangle presses down (anticipation) — prev/next dip in
+ *      sympathy, the press rippling through the row — then it folds away
+ *      like a page turning; the snap throws prev/next outward and bursts a
+ *      crackle of paper shards (per-shard delay/size, tumbling with gravity).
  *   3. Through the dissipating shards the "res▶nance" wordmark folds up
  *      letter by letter from the baseline, each with a slight overshoot.
- *   4. Once settled, a soft sheen travels across the glyphs, then it holds.
- * Honors prefers-reduced-motion (static wordmark, no shards/controls).
+ *   4. The instant the word completes, the play-"o" pulses like a speaker
+ *      cone and radiates two sound-wave rings — the resonance moment — while
+ *      the whole word takes a tiny breath.
+ *   5. A soft sheen travels across the glyphs and the HIGH FIDELITY tagline
+ *      tracks in beneath; then it holds.
+ * All animation is transform/opacity (composited — Pi-friendly). Honors
+ * prefers-reduced-motion (static wordmark + tagline, no shards/controls).
  */
 
 const SHARDS = [
@@ -74,10 +80,14 @@ const CSS = `
 .rl-next .rl-fc{clip-path:polygon(0 0,0 100%,40% 50%)}
 .rl-side{animation:rl-side var(--cycle) cubic-bezier(.22,1,.36,1) infinite both;
   animation-delay:var(--d,0s)}
-/* rise from the paper, hold, then get blown outward by the play-fold burst */
+/* rise from the paper, dip in sympathy with the play press, then get blown
+   outward by the play-fold burst (the stagger makes the dip travel the row) */
 @keyframes rl-side{
   0%{opacity:0;transform:translateY(18px) rotateX(58deg)}
   5%{opacity:1;transform:none}
+  15%{transform:none}
+  17.5%{opacity:1;transform:translateY(2.5px)}
+  20%{transform:none}
   22%{opacity:1;transform:none;animation-timing-function:cubic-bezier(.5,0,.75,.4)}
   30%{opacity:0;transform:translateX(var(--out,54px)) translateY(10px) rotate3d(.2,1,.3,60deg) scale(.85)}
   100%{opacity:0}
@@ -124,7 +134,14 @@ const CSS = `
 .rl-word{position:absolute;top:50%;left:50%;white-space:nowrap;display:inline-flex;align-items:baseline;
   font:800 clamp(40px,11.5vw,140px)/1 'Manrope',sans-serif;letter-spacing:1px;
   transform:translate(-50%,-50%);perspective:900px;
-  filter:drop-shadow(-2px 3px 1.5px rgba(42,40,38,.45)) drop-shadow(-9px 17px 9px rgba(42,40,38,.24))}
+  filter:drop-shadow(-2px 3px 1.5px rgba(42,40,38,.45)) drop-shadow(-9px 17px 9px rgba(42,40,38,.24));
+  animation:rl-wordBreath var(--cycle) cubic-bezier(.22,1,.36,1) infinite both}
+/* a tiny breath as the resonance wave fires — paper reacting to the sound */
+@keyframes rl-wordBreath{
+  0%,46.5%{transform:translate(-50%,-50%)}
+  50%{transform:translate(-50%,-50%) scale(1.012)}
+  55%,100%{transform:translate(-50%,-50%)}
+}
 /* layer 1 is the sheen (parked off-glyph at 130%; the letter keyframes sweep
    it to -30%), layers 2-4 are the faceted paper. The static .rl-mark shares
    this stack with the sheen permanently parked. */
@@ -141,6 +158,27 @@ const CSS = `
 .rl-word .rl-l{display:inline-block;opacity:0;transform-origin:50% 100%;
   animation:rl-letter var(--cycle) cubic-bezier(.22,1,.36,1) infinite both;
   animation-delay:calc(var(--i,0)*.055s)}
+/* the "o" wrapper: the speaker-cone pulse + resonance rings live here so
+   they don't fight the letter fold animating transform on .rl-play-o */
+.rl-o{position:relative;display:inline-flex;align-items:baseline;
+  animation:rl-oPulse var(--cycle) cubic-bezier(.22,1,.36,1) infinite both}
+@keyframes rl-oPulse{
+  0%,47%{transform:none}
+  50%{transform:scale(1.14)}
+  53.5%{transform:scale(.98)}
+  57%,100%{transform:none}
+}
+/* sound-wave rings radiating from the "o" the moment the word completes */
+.rl-ring{position:absolute;inset:-110%;border-radius:50%;pointer-events:none;
+  border:2px solid rgba(42,40,38,.5);opacity:0;transform:scale(.32);
+  animation:rl-ring var(--cycle) cubic-bezier(.17,.67,.35,1) infinite both;
+  animation-delay:var(--rd,0s)}
+@keyframes rl-ring{
+  0%,47.5%{opacity:0;transform:scale(.32)}
+  50.5%{opacity:.45}
+  68%{opacity:0;transform:scale(1)}
+  100%{opacity:0;transform:scale(1)}
+}
 @keyframes rl-letter{
   0%,29%{opacity:0;transform:translateY(.32em) rotateX(-86deg);
     background-position:130% 0,0 0,0 0,0 0}
@@ -154,14 +192,31 @@ const CSS = `
     background-position:-30% 0,0 0,0 0,0 0}
 }
 
+/* tagline: tracks in beneath the word after the sheen. The "tracking"
+   compression is scaleX (composited) — letter-spacing would relayout. */
+.rl-tag{position:absolute;left:0;right:0;top:calc(50% + clamp(30px,7.6vw,92px));
+  text-align:center;text-transform:uppercase;color:#6b6862;
+  font:800 clamp(10px,1.3vw,13px)/1 'Manrope',system-ui,sans-serif;
+  letter-spacing:.42em;text-indent:.42em;
+  opacity:0;transform:scaleX(1.3);
+  animation:rl-tagIn var(--cycle) cubic-bezier(.22,1,.36,1) infinite both}
+@keyframes rl-tagIn{
+  0%,54%{opacity:0;transform:scaleX(1.3)}
+  66%{opacity:.62;transform:scaleX(1)}
+  90%{opacity:.62;transform:scaleX(1);animation-timing-function:cubic-bezier(.5,0,.74,.16)}
+  95%,100%{opacity:0;transform:scaleX(1)}
+}
+
 /* static faceted wordmark (no animation) — for sign-offs / standalone use */
 .rl-mark{display:inline-flex;align-items:baseline;white-space:nowrap;
   font:800 clamp(34px,9vw,96px)/1 'Manrope',sans-serif;letter-spacing:1px;
   filter:drop-shadow(-2px 3px 1.5px rgba(42,40,38,.45)) drop-shadow(-9px 17px 9px rgba(42,40,38,.24))}
 
 @media (prefers-reduced-motion:reduce){
-  .rlogo .rl-ctl,.rlogo .rl-sh{animation:none;opacity:0}
+  .rlogo .rl-ctl,.rlogo .rl-sh,.rlogo .rl-ring{animation:none;opacity:0}
+  .rlogo .rl-word,.rlogo .rl-o{animation:none}
   .rlogo .rl-word .rl-l{animation:none;opacity:1;transform:none}
+  .rlogo .rl-tag{animation:none;opacity:.62;transform:none}
 }
 `;
 
@@ -210,9 +265,17 @@ export default function ResonanceLogo({ className = '', style, bare = false }) {
           <div className="rl-word">
             {LETTERS.map((ch, i) => (ch
               ? <span key={i} className="rl-l rl-txt" style={{ '--i': i }}>{ch}</span>
-              : <span key={i} className="rl-l rl-play-o" style={{ '--i': i }} />
+              : (
+                <span key={i} className="rl-o">
+                  <span className="rl-l rl-play-o" style={{ '--i': i }} />
+                  <i className="rl-ring" />
+                  <i className="rl-ring" style={{ '--rd': '.16s' }} />
+                </span>
+              )
             ))}
           </div>
+
+          <div className="rl-tag">High Fidelity</div>
         </div>
       </div>
     </div>
