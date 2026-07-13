@@ -198,7 +198,8 @@ export default function TabletPlayerHero() {
         </div>
 
         {spotify && !token && (
-          <div className="rounded-xl p-5 flex flex-col gap-4 mb-6 text-center" style={cardWhite}>
+          <div className="rounded-xl p-5 flex flex-col gap-4 mb-6 text-center"
+            style={{ background: cardWhite.background, border: cardWhite.border, boxShadow: ambientShadow }}>
             <div>
               <p className="text-[17px] font-medium" style={{ color: C.text1 }}>{t('settings.connectSpotify')}</p>
               <p className="text-[14px] mt-1" style={{ color: C.text4 }}>{t('player.signInPlayback')}</p>
@@ -303,13 +304,13 @@ export default function TabletPlayerHero() {
               }
             }}
             aria-label={isFav ? t('player.removeFav') : t('player.addFav')}
-            className="w-9 h-9 inline-flex items-center justify-center rounded-full active:scale-90 transition-all cursor-pointer"
+            className="w-11 h-11 inline-flex items-center justify-center rounded-full active:scale-90 transition-all cursor-pointer"
             style={{ color: isFav ? C.error : C.text4 }}>
             <Heart className={`h-[18px] w-[18px] ${isFav ? 'fill-current' : ''}`} />
           </button>
           {canLyrics && (
             <button onClick={() => setShowLyrics(true)}
-              className="w-9 h-9 inline-flex items-center justify-center rounded-full active:scale-90 transition-all cursor-pointer"
+              className="w-11 h-11 inline-flex items-center justify-center rounded-full active:scale-90 transition-all cursor-pointer"
               style={{ color: C.text4 }}>
               <Mic2 className="h-[18px] w-[18px]" />
             </button>
@@ -322,7 +323,7 @@ export default function TabletPlayerHero() {
       <div className="flex items-center gap-2">
         <button onClick={handleMuteToggle} aria-label={isMuted ? t('player.unmute') : t('player.mute')}
           style={{ color: isMuted ? C.champagne : C.text2 }}
-          className="w-9 h-9 flex items-center justify-center rounded-full active:scale-90 transition-all cursor-pointer shrink-0">
+          className="w-11 h-11 flex items-center justify-center rounded-full active:scale-90 transition-all cursor-pointer shrink-0">
           <VolumeX className="h-4 w-4" />
         </button>
         <div className="relative flex-1 h-1 rounded-full" style={{ background: C.container }}>
@@ -336,7 +337,7 @@ export default function TabletPlayerHero() {
             className="absolute -inset-y-2.5 inset-x-0 w-full opacity-0 cursor-pointer disabled:cursor-default" />
         </div>
         <button style={{ color: C.text2 }} aria-label={t('player.maxVolume')}
-          className="w-9 h-9 flex items-center justify-center rounded-full active:scale-90 transition-all cursor-pointer shrink-0"
+          className="w-11 h-11 flex items-center justify-center rounded-full active:scale-90 transition-all cursor-pointer shrink-0"
           onClick={() => handleVolumeChange({ target: { value: 100 } })}>
           <Volume2 className="h-4 w-4" />
         </button>
@@ -344,7 +345,8 @@ export default function TabletPlayerHero() {
 
       {/* up next — expands in place; no separate queue screen to navigate to */}
       {(spotify ? !!token : source !== 'radio') && (
-        <div className="rounded-2xl overflow-hidden mt-5" style={cardWhite}>
+        <div className="rounded-2xl overflow-hidden mt-5"
+          style={{ background: cardWhite.background, border: cardWhite.border, boxShadow: ambientShadow }}>
           <button onClick={() => setShowQueue(v => !v)}
             className="w-full p-4 text-left active:scale-[0.99] transition-all cursor-pointer">
             <div className="flex items-center justify-between">

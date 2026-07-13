@@ -2,14 +2,19 @@ import { useContext, useState, useRef, useEffect } from 'react';
 import { LogOut, Laptop, AudioLines } from 'lucide-react';
 import { toast } from '../../../lib/toast';
 import { reportError } from '../../../lib/errors';
-import { Tk, Row, Section, SpotifyIcon } from '../shared';
+import { Tk, Row as SharedRow, Section as SharedSection, SpotifyIcon } from '../shared';
+import { TabletRow, TabletSection } from '../tablet/TabletSection';
 import { useI18n } from '../../../i18n';
 
-export default function AccountSettings() {
+// `inline`: see DisplaySettings.jsx — swaps in the tablet floating-card
+// Row/Section, same prop signature, JSX below unchanged either way.
+export default function AccountSettings({ inline = false }) {
   const { t } = useI18n();
   const [confirmPending, setConfirmPending] = useState(null);
   const confirmRef = useRef(null);
   const { C, token, devices, handleTransferPlayback, sendUpdate, setToken, setPlaybackState, setDevices } = useContext(Tk);
+  const Row = inline ? TabletRow : SharedRow;
+  const Section = inline ? TabletSection : SharedSection;
 
   // Last.fm scrobbling — desktop auth flow against /api/system/lastfm/*
   const [lastfm, setLastfm] = useState(null); // { configured, connected, user }

@@ -141,7 +141,7 @@ function BackHeader({ C, label, onBack }) {
   return (
     <div className="flex items-center gap-3 px-1 mb-4">
       <button onClick={onBack} aria-label="Back"
-        className="w-9 h-9 rounded-full flex items-center justify-center active:scale-90 transition-all cursor-pointer shrink-0"
+        className="w-11 h-11 rounded-full flex items-center justify-center active:scale-90 transition-all cursor-pointer shrink-0"
         style={{ background: C.containerLow, border: `0.5px solid ${C.outline}` }}>
         <ChevronLeft className="h-4 w-4" style={{ color: C.text3 }} />
       </button>

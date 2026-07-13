@@ -2,7 +2,8 @@ import { useContext, useState, useRef, useEffect } from 'react';
 import { Sliders, Cpu, Timer, Scale, RefreshCw, FlipHorizontal, RotateCcw, Disc3, SlidersHorizontal, Merge, ChevronLeft } from 'lucide-react';
 import { toast } from '../../../lib/toast';
 import { reportError } from '../../../lib/errors';
-import { Tk, Row, Section, Sheet } from '../shared';
+import { Tk, Row as SharedRow, Section as SharedSection, Sheet } from '../shared';
+import { TabletRow, TabletSection } from '../tablet/TabletSection';
 import RemoteEqualizer from '../RemoteEqualizer';
 import { api } from '../../../api';
 import { useI18n } from '../../../i18n';
@@ -12,9 +13,15 @@ import { useI18n } from '../../../i18n';
 // parameters, but demoted out of the primary Sound view into their own sheet
 // so that view mirrors the kiosk's actual mental model: Equalizer, Room
 // Calibration, Pure Direct.
-function AdvancedAudioSettings() {
+// `inline`: swaps in the tablet's floating-card Row/Section (see
+// TabletSection.jsx) instead of the phone's compact/thin-shadow ones — same
+// prop signature, so every call site below is untouched. Phone always
+// passes false (the default), so its look is unchanged.
+function AdvancedAudioSettings({ inline = false }) {
   const { t } = useI18n();
   const { C, card } = useContext(Tk);
+  const Row = inline ? TabletRow : SharedRow;
+  const Section = inline ? TabletSection : SharedSection;
 
   const [replayGain, setReplayGain]   = useState('off');
   const [crossfade, setCrossfade]     = useState(0);
@@ -240,6 +247,8 @@ export default function SoundSettings({ inline = false }) {
     handleDeactivateDsp, handleSetSleepTimer,
     setIsDspWizardOpen,
   } = useContext(Tk);
+  const Row = inline ? TabletRow : SharedRow;
+  const Section = inline ? TabletSection : SharedSection;
 
   if (inline && showAdvanced) {
     return (
@@ -252,7 +261,7 @@ export default function SoundSettings({ inline = false }) {
           </button>
           <p className="text-[17px] font-medium" style={{ color: C.text1 }}>Advanced</p>
         </div>
-        <AdvancedAudioSettings />
+        <AdvancedAudioSettings inline={inline} />
       </div>
     );
   }

@@ -52,7 +52,7 @@ export default function TabletQueueList() {
             </button>
             {isLocal && (
               <button onClick={() => removeLocal(tr.id)}
-                className="w-7 h-7 flex items-center justify-center rounded-full shrink-0 active:scale-90 transition-all cursor-pointer"
+                className="w-11 h-11 flex items-center justify-center rounded-full shrink-0 active:scale-90 transition-all cursor-pointer"
                 style={{ color: C.text4 }}>
                 <Trash2 className="h-3.5 w-3.5" />
               </button>

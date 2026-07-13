@@ -19,7 +19,7 @@ const SOURCE_COLORS = { spotify: '#1ed760', local: '#f59e0b', radio: '#3b82f6', 
 export default function LibraryTab({ inline = false }) {
   const { t } = useI18n();
   const {
-    C, cardWhite, btn,
+    C, cardWhite, btn, darkMode,
     libraryView, selectedArtist, selectedAlbum, libraryItems, libraryLoading,
     handleLibraryBack, handleLibraryPlayTrack,
     fetchLibraryArtists, fetchLibraryAlbums, fetchLibraryTracks,
@@ -29,6 +29,21 @@ export default function LibraryTab({ inline = false }) {
 
   const [libTab, setLibTab] = useState('library'); // 'library' | 'albums' | 'history' | 'favorites'
   const isDeep               = libraryView !== 'artists';
+
+  // Every list card in this file (artist drill-down, history, favorites,
+  // top-level artist list) used the phone's thin `cardWhite` shadow even
+  // inline on tablet — the only exception was the newer Albums grid
+  // (TabletAlbumCard), which got the floating-card treatment from the start.
+  // `tabletCard` matches TabletSection's shadow so every list here reads
+  // consistently once `inline` (tablet) is true; phone is untouched.
+  const tabletCard = {
+    background: darkMode ? C.containerLow : '#ffffff',
+    border: `0.5px solid ${C.outline}`,
+    boxShadow: darkMode
+      ? '0 10px 24px rgba(0,0,0,0.35), 0 2px 8px rgba(0,0,0,0.28)'
+      : '0 8px 24px rgba(180,170,150,0.16)',
+  };
+  const listCard = inline ? tabletCard : cardWhite;
 
   const [history, setHistory]         = useState([]);
   const [historyLoading, setHistoryLoading] = useState(false);
@@ -82,7 +97,7 @@ export default function LibraryTab({ inline = false }) {
         {libraryLoading
           ? <SkeletonList count={6} />
           : (
-            <div className="rounded-xl overflow-hidden" style={cardWhite}>
+            <div className="rounded-xl overflow-hidden" style={listCard}>
               {libraryItems.map((item, idx) => {
                 const isTrack    = libraryView === 'tracks';
                 const displayName = isTrack ? item.split('/').pop().replace(/\.[^.]+$/, '') : item;
@@ -202,7 +217,7 @@ export default function LibraryTab({ inline = false }) {
                       className="text-[11px] font-semibold active:opacity-60 cursor-pointer"
                       style={{ color: C.text3, fontFamily: C.fontLabel }}>{t('library.clearAll')}</button>
                   </div>
-                  <div className="rounded-xl overflow-hidden" style={cardWhite}>
+                  <div className="rounded-xl overflow-hidden" style={listCard}>
                     {history.map((h, idx) => {
                       const color = SOURCE_COLORS[h.source] || C.text4;
                       return (
@@ -245,7 +260,7 @@ export default function LibraryTab({ inline = false }) {
                 <p className="text-[13px]" style={{ color: C.text3 }}>{t('library.tapHeart')}</p>
               </div>
             ) : (
-              <div className="rounded-xl overflow-hidden" style={cardWhite}>
+              <div className="rounded-xl overflow-hidden" style={listCard}>
                 {favorites.map((f, idx) => {
                   const color = SOURCE_COLORS[f.source] || C.text4;
                   return (
@@ -298,7 +313,7 @@ export default function LibraryTab({ inline = false }) {
                   </div>
                 </div>
               ) : (
-                <div className="rounded-xl overflow-hidden" style={cardWhite}>
+                <div className="rounded-xl overflow-hidden" style={listCard}>
                   {libraryItems.map((item, idx) => (
                     <React.Fragment key={`${item}-${idx}`}>
                       {idx > 0 && <div className="ml-16" style={{ height: '0.5px', background: `linear-gradient(90deg, transparent 0%, ${C.outline} 15%, ${C.outline} 85%, transparent 100%)` }} />}

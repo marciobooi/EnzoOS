@@ -5,11 +5,14 @@ import {
 } from 'lucide-react';
 import { toast } from '../../../lib/toast';
 import { reportError } from '../../../lib/errors';
-import { Tk, Row, Section, SpotifyIcon } from '../shared';
+import { Tk, Row as SharedRow, Section as SharedSection, SpotifyIcon } from '../shared';
+import { TabletRow, TabletSection } from '../tablet/TabletSection';
 import { api } from '../../../api';
 import { useI18n } from '../../../i18n';
 
-export default function SystemSettings() {
+// `inline`: see DisplaySettings.jsx — swaps in the tablet floating-card
+// Row/Section, same prop signature, JSX below unchanged either way.
+export default function SystemSettings({ inline = false }) {
   const { t } = useI18n();
   const [confirmPending, setConfirmPending] = useState(null);
   const confirmRef = useRef(null);
@@ -144,6 +147,8 @@ export default function SystemSettings() {
     handleRestartService, handleReboot, handleShutdown,
     triggerOtaUpdate, checkUpdates,
   } = useContext(Tk);
+  const Row = inline ? TabletRow : SharedRow;
+  const Section = inline ? TabletSection : SharedSection;
 
   const withConfirm = (key, action) => () => {
     if (confirmPending === key) {
