@@ -339,8 +339,17 @@ div[data-theme="ruby"] *::selection {
   transition: transform 0.4s cubic-bezier(.16,1,.3,1);
 }
 
+/* This panel is a touchscreen (Kiosk.jsx only ever renders on the physical
+   kiosk display) — :hover never fires there, only :active (tap). The hover
+   lift is harmless leftover for a mouse-driven dev preview; :active is the
+   rule that actually shows on real hardware, so it carries the real feedback
+   — a press-in rather than a lift, since a finger is pushing down. */
 .album-column:hover .album-art {
   transform: translateY(-3px) scale(1.015);
+}
+
+.album-column:active .album-art {
+  transform: scale(0.98);
 }
 
 /* Breathing accent-color halo while a track is actually playing — same
@@ -492,6 +501,12 @@ div[data-theme="ruby"] *::selection {
 .status-pill:hover {
   transform: translateY(-1px);
   box-shadow: 0 3px 8px -3px rgba(42,40,38,0.22);
+}
+
+/* Touch equivalent — this is a touchscreen, :hover above never fires there. */
+.status-pill:active {
+  transform: scale(0.97);
+  box-shadow: inset 0 1px 3px rgba(42,40,38,0.18);
 }
 
 .status-dot {
@@ -724,8 +739,16 @@ div[data-theme="ruby"] *::selection {
   box-shadow: inset 0 1px 0 rgba(255,255,255,0.35), 0 6px 14px -6px rgba(42,40,38,0.30);
 }
 
+/* Real feedback for the touchscreen: :hover above never fires on the kiosk
+   panel, only :active (tap) does — give it the same color response as
+   hover plus a pressed-in (not lifted) shadow, since a finger is pushing
+   down rather than a cursor floating over it. */
 .icon-button:active {
   transform: translateY(0) scale(0.92);
+  background-color: rgba(42,40,38,0.08);
+  border-color: var(--color-active);
+  color: var(--color-active);
+  box-shadow: inset 0 2px 3px rgba(42,40,38,0.18);
   transition-duration: 0.08s;
 }
 
@@ -869,6 +892,14 @@ div[data-theme="ruby"] *::selection {
     inset 0 2px 5px rgba(42,40,38,0.16),
     inset 0 -1px 0 rgba(255,255,255,0.45),
     0 3px 8px -3px rgba(42,40,38,0.14);
+}
+
+/* Touch equivalent — this menu is only ever tapped, never hovered. A press
+   sinks the badge in further rather than lifting it, matching a finger
+   pushing down instead of a cursor floating over it. */
+.menu-card:active .icon-badge {
+  transform: scale(0.94);
+  box-shadow: inset 0 3px 6px rgba(42,40,38,0.22), inset 0 -1px 0 rgba(255,255,255,0.3);
 }
 
 .active-card .icon-badge {
