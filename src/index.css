@@ -281,6 +281,13 @@ div[data-theme="ruby"] *::selection {
   75% { transform: translate(0, 1px); }
 }
 
+/* One-shot lift-in on mount — layered under the existing infinite drift via
+   a comma-separated animation list (both run on the same element). */
+@keyframes music-player-enter {
+  0%   { opacity: 0; transform: translateY(14px) scale(0.98); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+
 .music-player {
   width: 1480px;
   height: 320px;
@@ -288,13 +295,20 @@ div[data-theme="ruby"] *::selection {
   grid-template-columns: 240px minmax(0, 1fr) 124px;
   gap: 1.5rem;
   padding: 1.5rem 2rem;
-  background: #cbccc7;
+  background: linear-gradient(168deg, #d3d4cf 0%, #cbccc7 42%, #c5c6c1 100%);
   border-radius: 24px;
   border: 1px solid #bbbcb8;
-  box-shadow: 0 2px 8px rgba(42,40,38,0.10), 0 1px 2px rgba(42,40,38,0.06);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.55),
+    inset 0 0 0 1px rgba(255,255,255,0.12),
+    0 1px 2px rgba(42,40,38,0.08),
+    0 10px 24px -10px rgba(42,40,38,0.20),
+    0 28px 56px -20px rgba(42,40,38,0.28);
   font-family: 'Doto', monospace;
   flex-shrink: 0;
-  animation: player-subtle-shift 240s ease-in-out infinite;
+  animation:
+    music-player-enter 0.8s cubic-bezier(.16,1,.3,1) both,
+    player-subtle-shift 240s ease-in-out infinite;
 }
 
 .album-column {
@@ -315,19 +329,58 @@ div[data-theme="ruby"] *::selection {
   border-radius: 50%;
   overflow: hidden;
   border: 2px solid #c8c9c4;
-  box-shadow: 0 4px 16px rgba(42,40,38,0.12), inset 0 0 0 1px rgba(42,40,38,0.05);
+  box-shadow:
+    inset 0 0 0 1px rgba(255,255,255,0.4),
+    inset 0 2px 5px rgba(255,255,255,0.35),
+    0 3px 8px rgba(42,40,38,0.10),
+    0 14px 28px -10px rgba(42,40,38,0.26);
   background: #d6d7d2;
   position: relative;
+  transition: transform 0.4s cubic-bezier(.16,1,.3,1);
 }
 
+.album-column:hover .album-art {
+  transform: translateY(-3px) scale(1.015);
+}
+
+/* Breathing accent-color halo while a track is actually playing — same
+   cadence family as the play button's pulse below, so both read as one
+   system reacting to playback rather than two unrelated animations. */
+.music-player.is-playing .album-art {
+  animation: album-glow-breathe 4.8s ease-in-out infinite;
+}
+@keyframes album-glow-breathe {
+  0%, 100% {
+    box-shadow:
+      inset 0 0 0 1px rgba(255,255,255,0.4),
+      inset 0 2px 5px rgba(255,255,255,0.35),
+      0 3px 8px rgba(42,40,38,0.10),
+      0 14px 28px -10px rgba(42,40,38,0.26),
+      0 0 0 0 var(--theme-color-glow);
+  }
+  50% {
+    box-shadow:
+      inset 0 0 0 1px rgba(255,255,255,0.4),
+      inset 0 2px 5px rgba(255,255,255,0.35),
+      0 3px 8px rgba(42,40,38,0.10),
+      0 14px 28px -10px rgba(42,40,38,0.26),
+      0 0 0 7px var(--theme-color-dim);
+  }
+}
+
+/* Gloss highlight (top layer) + the original dot-texture (bottom layer) —
+   dot alpha lowered to 0.09 to match its prior effective ~0.084 (was
+   0.14 dimmed by an element-level opacity:0.6, now removed so the gloss
+   layer isn't dimmed along with it). */
 .album-art::after {
   content: "";
   position: absolute;
   inset: 0;
   pointer-events: none;
-  background-image: radial-gradient(circle, rgba(42,40,38,0.14) 2px, transparent 3px);
-  background-size: 12px 12px;
-  opacity: 0.6;
+  background-image:
+    radial-gradient(120% 90% at 26% 16%, rgba(255,255,255,0.5), transparent 45%),
+    radial-gradient(circle, rgba(42,40,38,0.09) 2px, transparent 3px);
+  background-size: 100% 100%, 12px 12px;
 }
 
 .album-art img {
@@ -433,6 +486,12 @@ div[data-theme="ruby"] *::selection {
   gap: 0.45rem;
   color: var(--color-active);
   font-weight: 700;
+  transition: box-shadow 0.18s ease, transform 0.18s ease;
+}
+
+.status-pill:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 3px 8px -3px rgba(42,40,38,0.22);
 }
 
 .status-dot {
@@ -532,6 +591,8 @@ div[data-theme="ruby"] *::selection {
   flex: 1;
   overflow: hidden;
   min-height: 0;
+  border-radius: 4px;
+  box-shadow: inset 0 1px 4px rgba(42,40,38,0.12);
 }
 
 .vu-dot-grid {
@@ -650,14 +711,22 @@ div[data-theme="ruby"] *::selection {
   color: var(--color-faded);
   opacity: 0.85;
   cursor: pointer;
-  transition: background-color 0.2s ease, color 0.2s ease, transform 0.2s ease, border-color 0.2s ease;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.3);
+  transition: background-color 0.2s ease, color 0.2s ease,
+    transform 0.18s cubic-bezier(.34,1.56,.64,1), border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
 .icon-button:hover {
-  transform: translateY(-1px);
+  transform: translateY(-2px);
   background-color: rgba(42,40,38,0.06);
   border-color: var(--color-active);
   color: var(--color-active);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.35), 0 6px 14px -6px rgba(42,40,38,0.30);
+}
+
+.icon-button:active {
+  transform: translateY(0) scale(0.92);
+  transition-duration: 0.08s;
 }
 
 .icon-button.active,
@@ -665,6 +734,23 @@ div[data-theme="ruby"] *::selection {
   border-color: var(--color-active);
   color: var(--color-active);
   border-style: solid;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.35), 0 0 0 1px rgba(42,40,38,0.06), 0 4px 12px -5px var(--theme-color-glow);
+}
+
+/* Breathing halo on the play button while a track is playing — paired
+   with .album-glow-breathe above so playback reads as one alive system. */
+.icon-button.play.playing {
+  animation: play-button-pulse 2.6s ease-in-out infinite;
+}
+@keyframes play-button-pulse {
+  0%, 100% {
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.35), 0 0 0 1px rgba(42,40,38,0.06),
+      0 0 0 5px var(--theme-color-dim), 0 4px 12px -5px var(--theme-color-glow);
+  }
+  50% {
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.35), 0 0 0 1px rgba(42,40,38,0.06),
+      0 0 0 9px var(--theme-color-dim), 0 6px 18px -6px var(--theme-color-glow);
+  }
 }
 
 .progress-bar-dots {
@@ -673,6 +759,7 @@ div[data-theme="ruby"] *::selection {
   border-radius: 999px;
   overflow: hidden;
   position: relative;
+  box-shadow: inset 0 1px 3px rgba(42,40,38,0.14);
 }
 
 .progress-bar-dots::before {
@@ -691,6 +778,8 @@ div[data-theme="ruby"] *::selection {
   position: relative;
   overflow: hidden;
   background: transparent;
+  box-shadow: 2px 0 8px -1px var(--theme-color-glow);
+  transition: width 0.35s cubic-bezier(.4,0,.2,1);
 }
 
 .progress-fill-dots::before {
@@ -718,8 +807,11 @@ div[data-theme="ruby"] *::selection {
   align-items: center;
   justify-content: flex-start;
   gap: 0.85rem;
-  border-left: 1px solid #c8c9c4;
   padding-left: 1.25rem;
+  /* Divider fades at both ends instead of a hard-edged line — a single
+     1px-wide background layer rather than border-image, so it can't
+     interact oddly with border-shorthand rules elsewhere. */
+  background: linear-gradient(to bottom, transparent, #c8c9c4 12%, #c8c9c4 88%, transparent) left / 1px 100% no-repeat;
 }
 
 /* Stone warm-greige menu cards — soft float, not neumorphic geometry */
@@ -885,6 +977,13 @@ div[data-theme="ruby"] *::selection {
 }
 .toast-enter { animation: toastEnter 0.32s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
 .toast-exit  { animation: toastExit  0.25s ease-in both; }
+
+@media (prefers-reduced-motion: reduce) {
+  .music-player.is-playing .album-art,
+  .icon-button.play.playing {
+    animation: none;
+  }
+}
 
 /* Import theme-specific stylesheet files at the end to overlay standard layout styles */
 @import "./dot-matrix.css";
