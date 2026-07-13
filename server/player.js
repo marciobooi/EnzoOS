@@ -441,6 +441,39 @@ async function getMpdAudioFormat() {
   });
 }
 
+/**
+ * Send a single MPD protocol command over the raw TCP connection (same
+ * pattern as getMpdAudioFormat above) and report whether it succeeded.
+ * Needed for queue operations keyed on MPD's song id: `mpc playid`/`mpc
+ * deleteid` are both "unknown command" on this build (mpc 0.35 only wraps
+ * `play <position>` — the ID-based forms exist in the MPD protocol itself,
+ * just not as mpc CLI subcommands), so id-based play/delete go straight to
+ * the socket instead of shelling out to mpc.
+ */
+async function mpdCommand(cmd) {
+  const net = await import('net');
+  return new Promise((resolve) => {
+    const socket = net.createConnection(6600, '127.0.0.1');
+    let buf = '';
+    let greeted = false;
+    const timer = setTimeout(() => { socket.destroy(); resolve(false); }, 1500);
+    socket.on('data', (chunk) => {
+      buf += chunk.toString();
+      if (!greeted && buf.includes('\n')) {
+        greeted = true; buf = '';
+        socket.write(`${cmd}\n`);
+        return;
+      }
+      if (greeted && (buf.includes('\nOK\n') || buf.endsWith('\nOK') || buf.includes('ACK ['))) {
+        clearTimeout(timer);
+        socket.destroy();
+        resolve(!buf.includes('ACK ['));
+      }
+    });
+    socket.on('error', () => { clearTimeout(timer); resolve(false); });
+  });
+}
+
 // ── DSD Direct Bypass ─────────────────────────────────────────────────────────
 // Purists expect their DAC's "DSD" indicator to light up on .dsf/.dff playback.
 // That only happens if the DSD bitstream reaches the DAC untouched — i.e. NOT
@@ -1541,12 +1574,28 @@ router.get('/queue/detailed', async (req, res) => {
   } catch { res.json({ tracks: [] }); }
 });
 
-// DELETE /api/player/queue/:id — remove by MPD song id
+// DELETE /api/player/queue/:id — remove by MPD song id.
+// `mpc deleteid` doesn't exist (verified — "unknown command"), so this goes
+// through mpdCommand's raw protocol connection instead of mpc.
 router.delete('/queue/:id', async (req, res) => {
   const id = parseInt(req.params.id, 10);
   if (!Number.isFinite(id)) return sendError(res, badRequest('invalid id'));
   try {
-    await execFilePromise('mpc', ['deleteid', String(id)]);
+    const ok = await mpdCommand(`deleteid ${id}`);
+    if (!ok) return sendError(res, badGateway('Could not remove queue item'));
+    res.json({ success: true });
+  } catch (err) { sendError(res, err); }
+});
+
+// POST /api/player/queue/:id/play — jump to and play a specific queue entry
+// by MPD song id (not queue position, which shifts as the queue plays).
+// Same `mpc playid` non-existence as deleteid above — raw protocol only.
+router.post('/queue/:id/play', async (req, res) => {
+  const id = parseInt(req.params.id, 10);
+  if (!Number.isFinite(id)) return sendError(res, badRequest('invalid id'));
+  try {
+    const ok = await mpdCommand(`playid ${id}`);
+    if (!ok) return sendError(res, badGateway('Could not play queue item'));
     res.json({ success: true });
   } catch (err) { sendError(res, err); }
 });

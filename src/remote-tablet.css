@@ -24,6 +24,10 @@
   grid-template-columns: 224px 1fr;
   height: 100vh;
   height: 100dvh;
+  /* --tablet-vh (TabletShell.jsx) overrides both once JS has measured the
+     real visual viewport — see the comment there for why 100dvh alone isn't
+     trustworthy in iPadOS standalone mode. */
+  height: var(--tablet-vh, 100dvh);
 }
 
 /* ── Sidebar ─────────────────────────────────────────────────────────────── */

@@ -1,4 +1,4 @@
-import { useContext } from 'react';
+import { useContext, useEffect } from 'react';
 import { RefreshCw } from 'lucide-react';
 import { Tk } from '../shared';
 import TabletSidebar from './TabletSidebar';
@@ -60,8 +60,33 @@ export default function TabletShell({ darkMode, setDarkMode, onVoice, tabDirecti
   const libraryDeep = activeTab === 'library' && libraryView !== 'artists';
   const copy = !libraryDeep ? TAB_COPY[activeTab] : null;
 
+  // 100dvh is unreliable in iPadOS standalone (home-screen/fullscreen) mode —
+  // WebKit doesn't always resolve it to the true visible viewport there, which
+  // left a strip of the page's own background exposed below the shell with
+  // the sidebar/content compressed above it (confirmed live via the
+  // /api/system/client-viewport-debug probe: window.innerHeight tracked the
+  // real usable height correctly in standalone even when the CSS box did
+  // not). Measure it in JS instead and drive the shell's height from that,
+  // with 100dvh kept only as the CSS-only fallback for the very first paint
+  // before this effect runs.
+  useEffect(() => {
+    const setVh = () => {
+      const h = window.visualViewport?.height || window.innerHeight;
+      document.documentElement.style.setProperty('--tablet-vh', `${h}px`);
+    };
+    setVh();
+    window.visualViewport?.addEventListener('resize', setVh);
+    window.addEventListener('resize', setVh);
+    window.addEventListener('orientationchange', setVh);
+    return () => {
+      window.visualViewport?.removeEventListener('resize', setVh);
+      window.removeEventListener('resize', setVh);
+      window.removeEventListener('orientationchange', setVh);
+    };
+  }, []);
+
   return (
-    <div className="remote-tablet-shell" style={{ background: 'rgb(255 255 255)' }}>
+    <div className="remote-tablet-shell" style={{ background: C.bg }}>
       <TabletSidebar darkMode={darkMode} setDarkMode={setDarkMode} onVoice={onVoice} />
 
       <div className="rt-body">
