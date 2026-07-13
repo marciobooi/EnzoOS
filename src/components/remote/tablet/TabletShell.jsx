@@ -3,13 +3,12 @@ import { RefreshCw } from 'lucide-react';
 import { Tk } from '../shared';
 import TabletSidebar from './TabletSidebar';
 import TabletPlayerHero from './TabletPlayerHero';
-import TabletNowPlayingRail from './TabletNowPlayingRail';
 import TabletSettingsTab from './TabletSettingsTab';
 import TabletPageHeader from './TabletPageHeader';
+import TabletMiniPlayer from './TabletMiniPlayer';
 import LibraryTab from '../LibraryTab';
 import SourceTab from '../SourceTab';
 import UniversalSearch from '../UniversalSearch';
-import MiniPlayer from '../MiniPlayer';
 import '../../../remote-tablet.css';
 
 // Page headers for the tabs that borrow phone components verbatim — title
@@ -39,12 +38,16 @@ const TAB_COPY = {
 // wizard and theme settings, which RemoteControl.jsx skips rendering as
 // global overlays when isTablet is true.
 //
-// Non-player tabs get TWO companions to fill what used to be dead space:
-// TabletNowPlayingRail (a persistent right-hand transport + queue glimpse,
-// landscape only — `.rt-rail` in remote-tablet.css) and MiniPlayer's dock
-// (portrait only, where there's no width left for a third column). They're
-// both always mounted; CSS orientation queries pick exactly one per
-// orientation, so there's no JS branch to fall out of sync on rotation.
+// The layout is strictly two columns — sidebar + main. Non-player tabs get
+// ONE now-playing companion: TabletMiniPlayer inside `.rt-dock`, a card
+// FLOATING (position: fixed) at the bottom of the main pane next to the
+// nav sidebar, in both orientations. It replaced the old landscape-only
+// third-column rail (TabletNowPlayingRail). The dock is rendered as a
+// direct child of the shell — NOT inside .rt-content-inner — because the
+// tab-switch animation transforms that wrapper, and a transformed ancestor
+// becomes the containing block for fixed-position descendants (the card
+// would slide with the tab content and anchor to the pane, not the
+// viewport).
 export default function TabletShell({ darkMode, setDarkMode, onVoice, tabDirection }) {
   const { C, activeTab, trackName, fetchLibraryArtists, libraryLoading, libraryView } = useContext(Tk);
 
@@ -63,7 +66,7 @@ export default function TabletShell({ darkMode, setDarkMode, onVoice, tabDirecti
 
       <div className="rt-body">
         <div className={`rt-main ${isPlayerTab ? 'rt-main--player' : ''}`}>
-          <div key={activeTab} className={`rt-content-inner ${isPlayerTab ? 'rt-content-inner--player' : 'rt-content-inner--narrow'} animate-tab-${tabDirection}`}>
+          <div key={activeTab} className={`rt-content-inner ${isPlayerTab ? 'rt-content-inner--player' : 'rt-content-inner--narrow'} ${showDock ? 'rt-content-inner--docked' : ''} animate-tab-${tabDirection}`}>
             {copy && (
               <TabletPageHeader title={copy.title} subtitle={copy.subtitle}
                 action={activeTab === 'library' ? (
@@ -79,21 +82,15 @@ export default function TabletShell({ darkMode, setDarkMode, onVoice, tabDirecti
             {activeTab === 'search'   && <UniversalSearch inline />}
             {activeTab === 'source'   && <SourceTab inline />}
             {activeTab === 'settings' && <TabletSettingsTab />}
-
-            {showDock && (
-              <div className="rt-dock">
-                <MiniPlayer />
-              </div>
-            )}
           </div>
         </div>
-
-        {!isPlayerTab && (
-          <div className="rt-rail" style={{ borderLeft: `0.5px solid ${C.outline}` }}>
-            <TabletNowPlayingRail />
-          </div>
-        )}
       </div>
+
+      {showDock && (
+        <div className="rt-dock">
+          <TabletMiniPlayer />
+        </div>
+      )}
     </div>
   );
 }

@@ -4,12 +4,12 @@ import { Tk } from '../shared';
 import { api } from '../../../api';
 import { reportError } from '../../../lib/errors';
 
-// Queue rows only — no chrome, no scrim, no header. Used inline by both
-// TabletPlayerHero and TabletNowPlayingRail's expandable "Up Next" card so
-// browsing the queue changes what's already on screen instead of opening
-// QueuePanel's bottom-sheet modal on top of it (that modal is still what
-// the phone uses; this is its tablet-inline equivalent, not a replacement
-// for it — QueuePanel itself is untouched).
+// Queue rows only — no chrome, no scrim, no header. Used inline by
+// TabletPlayerHero's expandable "Up Next" card so browsing the queue
+// changes what's already on screen instead of opening QueuePanel's
+// bottom-sheet modal on top of it (that modal is still what the phone
+// uses; this is its tablet-inline equivalent, not a replacement for it —
+// QueuePanel itself is untouched).
 export default function TabletQueueList() {
   const { C, source, spotify, queue, queueLoading } = useContext(Tk);
   const [localQueue, setLocalQueue] = useState([]);

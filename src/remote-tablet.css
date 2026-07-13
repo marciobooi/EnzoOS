@@ -9,10 +9,9 @@
    the queue used to reuse the phone's Sheet-style modal presentation,
    floated as centered cards. That's gone: every one of those now swaps in
    as the content of whichever pane it belongs to (TabletSettingsTab,
-   TabletPlayerHero, TabletNowPlayingRail) via an `inline` prop the phone
-   never sets, so there is nothing left in this file that targets a
-   portaled/floating overlay — if you're looking for that, it doesn't apply
-   to tablet anymore.
+   TabletPlayerHero) via an `inline` prop the phone never sets, so there is
+   nothing left in this file that targets a portaled/floating overlay — if
+   you're looking for that, it doesn't apply to tablet anymore.
 
    One JSX tree serves BOTH iPad orientations: layout differences between
    portrait and landscape are expressed here as `@media (orientation: …)`
@@ -53,18 +52,6 @@
   min-height: 0;
 }
 .rt-sidebar-footer { display: flex; flex-direction: row; align-items: center; justify-content: center; gap: 0.625rem; width: 100%; }
-.rt-sidebar-now-playing {
-  position: relative;
-  width: 100vh;
-  display: flex;
-  align-items: center;
-  gap: 0.625rem;
-  padding: 0.5rem;
-  border-radius: 16px;
-  overflow: hidden;
-  margin-top: 1.25rem;
-  cursor: pointer;
-}
 
 /* ── Content column ──────────────────────────────────────────────────────── */
 .rt-body {
@@ -135,25 +122,6 @@
   min-height: 0;
 }
 
-/* ── Now-playing rail — persistent companion for non-player tabs ──────────
-   Portrait has no width to spare for a third column, so MiniPlayer's
-   bottom dock (in the normal content flow, see .rt-dock) covers that case
-   instead; landscape has room, so the rail replaces the dock there. Both
-   are always mounted — this is pure CSS visibility, no JS orientation
-   branch to fall out of sync on rotation. */
-.rt-rail {
-  display: none;
-  width: 296px;
-  flex-shrink: 0;
-  overflow-y: auto;
-  overscroll-behavior: none;
-  padding-top: env(safe-area-inset-top);
-}
-@media (orientation: landscape) {
-  .rt-rail { display: block; }
-  .rt-dock { display: none; }
-}
-
 /* ── Player hero — CSS Grid areas swap by orientation, one component ──────── */
 .rt-hero {
   display: grid;
@@ -195,5 +163,23 @@
   }
 }
 
-/* ── Persistent mini-player dock (non-player tabs, tablet only) ───────────── */
-.rt-dock { max-width: 900px; margin: 1.5rem auto 0; }
+/* ── Floating mini-player dock (non-player tabs, both orientations) ────────
+   Hosts TabletMiniPlayer — the single now-playing companion since the
+   landscape right-hand rail was removed. Floats fixed at the bottom of the
+   main pane, anchored next to the nav sidebar (224px shell column), on top
+   of the scrolling content rather than in its flow. Lives as a direct
+   child of .remote-tablet-shell: the tab-content wrapper animates with
+   transforms, and a transformed ancestor would re-anchor this fixed box to
+   the pane instead of the viewport. */
+.rt-dock {
+  position: fixed;
+  left: calc(224px + 2rem);
+  bottom: calc(1.25rem + env(safe-area-inset-bottom));
+  width: min(620px, calc(100vw - 224px - 4rem));
+  z-index: 40;
+}
+/* Content behind the floating dock gets extra bottom padding so its last
+   rows can scroll clear of the card instead of ending underneath it. */
+.rt-content-inner--docked {
+  padding-bottom: calc(2rem + 120px + env(safe-area-inset-bottom));
+}

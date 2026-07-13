@@ -1,5 +1,5 @@
 import { useContext } from 'react';
-import { Waves, Power, Sun, Moon, Mic, Music } from 'lucide-react';
+import { Waves, Power, Sun, Moon, Mic } from 'lucide-react';
 import { Tk, NAV_TABS } from '../shared';
 import { useI18n } from '../../../i18n';
 
@@ -7,13 +7,13 @@ import { useI18n } from '../../../i18n';
 // the extra width means nav no longer has to compete with content for
 // vertical space, and a labeled icon+text rail reads more like a native
 // iPad app (Mail, Music.app) than a stretched phone tab bar would.
+// Now-playing lives in TabletMiniPlayer's floating dock next to this rail,
+// not in the sidebar itself.
 export default function TabletSidebar({ darkMode, setDarkMode, onVoice }) {
   const {
     C, btn, card, isConnected, standby, handleToggleStandby, activeTab, setActiveTab,
-    albumImage, trackName, trackArtist, isPlaying,
   } = useContext(Tk);
   const { t } = useI18n();
-  const hasTrack = trackName && trackName !== 'Nothing playing';
 
   return (
     <div className="rt-sidebar" style={{ background: C.bgWhite, borderRight: `0.5px solid ${C.outline}` }}>
