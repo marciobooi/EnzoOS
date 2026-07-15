@@ -18,7 +18,7 @@ export default function ThemeSettingsOverlay() {
 
   return (
     <div
-      className={`absolute inset-0 bg-[#0b0f19] border border-white/10 rounded-3xl shadow-2xl z-[60] transform transition-all duration-300 ease-in-out flex flex-col p-1.5 font-sans ${
+      className={`absolute inset-0 bg-[#0b0f19] border border-white/10 rounded-3xl shadow-2xl z-[60] transform overlay-pop flex flex-col p-1.5 font-sans ${
         isThemeSettingsOpen ? 'opacity-100 scale-100 pointer-events-auto' : 'opacity-0 scale-95 pointer-events-none'
       }`}
     >

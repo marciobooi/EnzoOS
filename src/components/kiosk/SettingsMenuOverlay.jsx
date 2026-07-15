@@ -45,7 +45,7 @@ export default function SettingsMenuOverlay() {
 
   return (
     <div
-      className={`absolute inset-0 rounded-3xl z-50 transform transition-all duration-300 ease-in-out flex flex-col p-5 font-sans ${
+      className={`absolute inset-0 rounded-3xl z-50 transform overlay-pop flex flex-col p-5 font-sans ${
         isMenuOpen ? 'opacity-100 scale-100 pointer-events-auto' : 'opacity-0 scale-95 pointer-events-none'
       }`}
       style={{

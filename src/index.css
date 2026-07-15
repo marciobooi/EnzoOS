@@ -527,6 +527,13 @@ div[data-theme="ruby"] *::selection {
   width: 7px;
   height: 7px;
   border-radius: 50%;
+  /* Heartbeat — the "power LED" of a real deck. Transform/opacity only. */
+  animation: status-dot-breathe 3.2s ease-in-out infinite;
+}
+
+@keyframes status-dot-breathe {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%      { opacity: 0.55; transform: scale(0.8); }
 }
 
 .title-container {
@@ -568,6 +575,18 @@ div[data-theme="ruby"] *::selection {
   min-height: 0;
   overflow: hidden; /* needed for flex:1 percentage heights to resolve in all browsers */
 }
+
+/* Track-change cascade — title, then artist, then album rise in with a
+   30–50ms stagger when their content actually changes (PlayerDisplay keys
+   each AutoScroll by its text, so a same-artist album playthrough only
+   re-animates the lines that changed). Transform/opacity only. */
+@keyframes track-line-in {
+  from { opacity: 0; transform: translateY(7px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.track-title-enter  { animation: track-line-in 0.45s cubic-bezier(0.22, 1, 0.36, 1) both; }
+.track-artist-enter { animation: track-line-in 0.45s cubic-bezier(0.22, 1, 0.36, 1) 0.05s both; }
+.track-album-enter  { animation: track-line-in 0.45s cubic-bezier(0.22, 1, 0.36, 1) 0.09s both; }
 
 .track-artist {
   color: var(--color-faded);
@@ -798,6 +817,17 @@ div[data-theme="ruby"] *::selection {
   50%      { opacity: 0.9; transform: scale(1.15); }
 }
 
+/* Play/pause icon pop — React swaps the <Play>/<Pause> svg node on toggle,
+   so the mount animation replays exactly once per state change. */
+.icon-button.play svg {
+  animation: icon-pop 0.28s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes icon-pop {
+  from { opacity: 0.4; transform: scale(0.5); }
+  to   { opacity: 1;   transform: scale(1); }
+}
+
 .progress-bar-dots {
   width: 100%;
   height: 14px;
@@ -935,6 +965,13 @@ div[data-theme="ruby"] *::selection {
     inset 0 0 0 1px rgba(42,40,38,0.08),
     inset 0 2px 3px rgba(255,255,255,0.55),
     0 3px 10px -3px rgba(42,40,38,0.20);
+  /* The live source's badge floats gently — "this one is running". */
+  animation: badge-float 4.5s ease-in-out infinite;
+}
+
+@keyframes badge-float {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-3px); }
 }
 
 /* OLED Burn-in prevention / pixel shifter */
@@ -1001,6 +1038,17 @@ div[data-theme="ruby"] *::selection {
   to   { opacity: 1; transform: translateY(0); }
 }
 .list-item-rise { animation: listItemRise 0.32s ease-out both; }
+
+/* ── Kiosk overlay panels (Equalizer, Settings, Wifi, …) pop-in ──────────────
+   Replaces the overlays' old `transition-all duration-300 ease-in-out`:
+   transitions ONLY opacity/transform (transition-all also animated border/
+   background repaints on every toggle — waste on the Pi4) and gives the
+   opening scale a slight spring overshoot so panels feel placed, not faded. */
+.overlay-pop {
+  transition:
+    opacity 0.26s cubic-bezier(0.33, 1, 0.68, 1),
+    transform 0.34s cubic-bezier(0.33, 1.35, 0.6, 1);
+}
 
 /* ── Volume popup spring entrance ────────────────────────────────────────── */
 @keyframes volumeSpringIn {
@@ -1077,7 +1125,13 @@ div[data-theme="ruby"] *::selection {
 
 @media (prefers-reduced-motion: reduce) {
   .music-player.is-playing .album-column::before,
-  .icon-button.play.playing::before {
+  .icon-button.play.playing::before,
+  .status-dot,
+  .active-card .icon-badge,
+  .icon-button.play svg,
+  .track-title-enter,
+  .track-artist-enter,
+  .track-album-enter {
     animation: none;
   }
 }

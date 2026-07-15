@@ -700,7 +700,10 @@ const PlayerDisplay = React.memo(function PlayerDisplay({
 
             {/* Title Container & Live Volume Popup */}
             <div className="title-container mt-1">
-              <AutoScroll outerClass="w-[75%]" innerClass="track-title" speed={120} minDuration={8}>
+              {/* Keyed by content: a track change remounts the line, replaying
+                  its rise-in animation — lines whose text didn't change (same
+                  artist on an album playthrough) stay put. */}
+              <AutoScroll key={trackName} outerClass="w-[75%] track-title-enter" innerClass="track-title" speed={120} minDuration={8}>
                 {sanitizeTrackName(trackName)}
               </AutoScroll>
               <div className={`volume-feedback ${showVolumeFeedback ? 'visible' : ''}`} aria-live="polite">
@@ -716,8 +719,8 @@ const PlayerDisplay = React.memo(function PlayerDisplay({
             {/* Metadata & Mini Visualizer */}
             <div className="metadata-row mt-1.5">
               <div className="w-[60%] flex flex-col gap-0.5 overflow-hidden min-h-0 justify-center">
-                <AutoScroll innerClass="track-artist" speed={70}>{trackArtist}</AutoScroll>
-                <AutoScroll innerClass="track-album" speed={70}>{trackAlbumName}</AutoScroll>
+                <AutoScroll key={trackArtist} outerClass="track-artist-enter" innerClass="track-artist" speed={70}>{trackArtist}</AutoScroll>
+                <AutoScroll key={trackAlbumName} outerClass="track-album-enter" innerClass="track-album" speed={70}>{trackAlbumName}</AutoScroll>
                 
                 {/* Audiophile HUD Telemetry & Signal Path — live data from /api/player/signal-path */}
                 {(() => {

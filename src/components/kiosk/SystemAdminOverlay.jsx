@@ -101,7 +101,7 @@ export default function SystemAdminOverlay() {
 
   return (
     <div
-      className={`absolute inset-0 rounded-3xl z-[60] transform transition-all duration-300 ease-in-out flex flex-col p-5 font-sans ${
+      className={`absolute inset-0 rounded-3xl z-[60] transform overlay-pop flex flex-col p-5 font-sans ${
         isSystemAdminOpen ? 'opacity-100 scale-100 pointer-events-auto' : 'opacity-0 scale-95 pointer-events-none'
       }`}
       style={{ background: S.bg, border: `1px solid ${S.borderHi}` }}
