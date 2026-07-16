@@ -103,6 +103,8 @@ export default {
     pause: 'Pause',
     next: 'Next track',
     previous: 'Previous track',
+    expand: 'Expand player',
+    collapse: 'Collapse player',
     shuffle: 'Shuffle',
     repeat: 'Repeat',
     mute: 'Mute',

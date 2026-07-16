@@ -182,8 +182,26 @@
   width: min(680px, calc(100vw - 224px - 4rem));
   z-index: 40;
 }
+/* Collapsed: just the play/pause FAB, so the dock shouldn't keep claiming
+   a 680px-wide hit area / layout box behind it. */
+.rt-dock--collapsed {
+  width: auto;
+}
 /* Content behind the floating dock gets extra bottom padding so its last
-   rows can scroll clear of the card instead of ending underneath it. */
+   rows can scroll clear of the card instead of ending underneath it.
+   Collapsed dock is much shorter, so it needs far less clearance. */
 .rt-content-inner--docked {
   padding-bottom: calc(2rem + 140px + env(safe-area-inset-bottom));
 }
+.rt-content-inner--docked-collapsed {
+  padding-bottom: calc(2rem + 88px + env(safe-area-inset-bottom));
+}
+
+/* Expanded card <-> collapsed FAB swap — opacity/transform only (no width
+   morph-animation, which would be layout-thrashing and janky for a card
+   this wide going down to a small circle). */
+@keyframes dockSwapIn {
+  from { opacity: 0; transform: scale(0.92); }
+  to   { opacity: 1; transform: scale(1); }
+}
+.rt-dock-swap-in { animation: dockSwapIn 0.22s cubic-bezier(0.34, 1.56, 0.64, 1) both; }

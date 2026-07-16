@@ -101,6 +101,8 @@ export default {
     pause: 'Pausa',
     next: 'Faixa seguinte',
     previous: 'Faixa anterior',
+    expand: 'Expandir leitor',
+    collapse: 'Reduzir leitor',
     shuffle: 'Aleatório',
     repeat: 'Repetir',
     mute: 'Silenciar',

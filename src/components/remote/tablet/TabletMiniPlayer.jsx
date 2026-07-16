@@ -1,5 +1,5 @@
 import { useContext } from 'react';
-import { Play, Pause, SkipBack, SkipForward, Music } from 'lucide-react';
+import { Play, Pause, SkipBack, SkipForward, Music, ChevronUp, ChevronDown } from 'lucide-react';
 import { Tk } from '../shared';
 import { useI18n } from '../../../i18n';
 
@@ -11,7 +11,14 @@ import { useI18n } from '../../../i18n';
 // the elapsed-progress strip peeking out from UNDER the card's bottom edge
 // instead of being drawn inside it. Tapping anywhere non-interactive jumps
 // to the Player tab, same contract as the phone's MiniPlayer.
-export default function TabletMiniPlayer() {
+//
+// `collapsed`/`onToggleCollapse`: the full card is ~680px wide — plenty of
+// room while idly glancing at what's playing, but it sits over a real
+// chunk of the Library/Search/Source panes. Collapsing swaps it for just
+// the play/pause disc in the same corner. State lives in TabletShell (see
+// the comment there) since this component unmounts whenever nothing is
+// playing, which would otherwise reset it.
+export default function TabletMiniPlayer({ collapsed = false, onToggleCollapse }) {
   const { t } = useI18n();
   const {
     C, darkMode, albumImage, trackName, trackArtist, source, spotify, token,
@@ -33,8 +40,37 @@ export default function TabletMiniPlayer() {
     ? '0 10px 24px rgba(0,0,0,0.45), 0 2px 8px rgba(0,0,0,0.35)'
     : '0 10px 30px rgba(180,170,150,0.25)';
 
+  // The little handle that toggles collapse — same treatment in both
+  // states, just a different icon/position, so it reads as one control.
+  const handle = (dir) => (
+    <button onClick={e => { e.stopPropagation(); onToggleCollapse?.(); }}
+      aria-label={collapsed ? t('player.expand') : t('player.collapse')}
+      className="absolute -top-1.5 -right-1.5 w-7 h-7 rounded-full flex items-center justify-center active:scale-90 transition-all cursor-pointer"
+      style={{ background: darkMode ? C.containerLow : '#ffffff', border: `0.5px solid ${C.outline}`, boxShadow: '0 2px 8px rgba(0,0,0,0.18)' }}>
+      {dir === 'up' ? <ChevronUp className="h-3.5 w-3.5" style={{ color: C.text2 }} /> : <ChevronDown className="h-3.5 w-3.5" style={{ color: C.text2 }} />}
+    </button>
+  );
+
+  if (collapsed) {
+    return (
+      <div className="relative rt-dock-swap-in">
+        <button
+          onClick={e => { e.stopPropagation(); handlePlayPause(); }}
+          disabled={spotify ? !token : false}
+          aria-label={isPlaying ? t('player.pause') : t('player.play')}
+          className="w-16 h-16 rounded-full flex items-center justify-center shrink-0 active:scale-95 transition-all disabled:opacity-25 cursor-pointer"
+          style={{ background: accentFill, boxShadow: ambientShadow }}>
+          {isPlaying
+            ? <Pause className="h-6 w-6" style={{ fill: accentFillHex, color: accentFillHex }} />
+            : <Play  className="h-6 w-6 ml-0.5" style={{ fill: accentFillHex, color: accentFillHex }} />}
+        </button>
+        {handle('up')}
+      </div>
+    );
+  }
+
   return (
-    <div className="relative">
+    <div className="relative rt-dock-swap-in">
       {/* Progress strip tucked behind the card — only its bottom sliver is
           visible below the card edge. DOM order does the layering: the card
           (positioned, later sibling) paints over the strip's top half.
@@ -55,6 +91,8 @@ export default function TabletMiniPlayer() {
           boxShadow: ambientShadow,
         }}
         onClick={() => setActiveTab('player')}>
+
+        {handle('down')}
 
         <div className="w-20 h-20 rounded-[16px] overflow-hidden flex items-center justify-center shrink-0"
           style={{ background: C.container, border: `0.5px solid ${C.outline}` }}>

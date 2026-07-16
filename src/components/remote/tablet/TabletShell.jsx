@@ -1,4 +1,4 @@
-import { useContext, useEffect } from 'react';
+import { useContext, useEffect, useState } from 'react';
 import { RefreshCw } from 'lucide-react';
 import { Tk } from '../shared';
 import TabletSidebar from './TabletSidebar';
@@ -53,6 +53,12 @@ export default function TabletShell({ darkMode, setDarkMode, onVoice, tabDirecti
 
   const isPlayerTab = activeTab === 'player';
   const showDock = !isPlayerTab && trackName && trackName !== 'Nothing playing';
+  // Lives here, not inside TabletMiniPlayer: that component unmounts
+  // whenever showDock goes false (leaving the player tab, or playback
+  // stopping), which would reset a locally-owned collapsed flag on every
+  // trip back. Kept here it survives for the rest of the page session —
+  // just not across a hard reload, which is an acceptable reset point.
+  const [dockCollapsed, setDockCollapsed] = useState(false);
   // Library's own drill-down (Albums by X / Tracks) carries its own
   // back+breadcrumb header — showing the page header above it too would
   // stack two titles, so it steps aside once Library navigates past its
@@ -91,7 +97,7 @@ export default function TabletShell({ darkMode, setDarkMode, onVoice, tabDirecti
 
       <div className="rt-body">
         <div className={`rt-main ${isPlayerTab ? 'rt-main--player' : ''}`}>
-          <div key={activeTab} className={`rt-content-inner ${isPlayerTab ? 'rt-content-inner--player' : 'rt-content-inner--narrow'} ${showDock ? 'rt-content-inner--docked' : ''} animate-tab-${tabDirection}`}>
+          <div key={activeTab} className={`rt-content-inner ${isPlayerTab ? 'rt-content-inner--player' : 'rt-content-inner--narrow'} ${showDock ? (dockCollapsed ? 'rt-content-inner--docked-collapsed' : 'rt-content-inner--docked') : ''} animate-tab-${tabDirection}`}>
             {copy && (
               <TabletPageHeader title={copy.title} subtitle={copy.subtitle}
                 action={activeTab === 'library' ? (
@@ -112,8 +118,8 @@ export default function TabletShell({ darkMode, setDarkMode, onVoice, tabDirecti
       </div>
 
       {showDock && (
-        <div className="rt-dock">
-          <TabletMiniPlayer />
+        <div className={`rt-dock ${dockCollapsed ? 'rt-dock--collapsed' : ''}`}>
+          <TabletMiniPlayer collapsed={dockCollapsed} onToggleCollapse={() => setDockCollapsed(v => !v)} />
         </div>
       )}
     </div>
