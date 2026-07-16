@@ -439,6 +439,22 @@ export default {
     findTickets: 'Procurar bilhetes',
   },
 
+  install: {
+    title: 'Instalar como Aplicação',
+    pitch: 'Adicione o Resonance ao ecrã principal para uma experiência a ecrã inteiro, como uma aplicação — sem barras do navegador.',
+    alreadyInstalled: 'Já instalado',
+    alreadyInstalledSub: 'Está a utilizar o Resonance como aplicação instalada.',
+    installButton: 'Instalar Resonance',
+    orManually: 'Ou adicione manualmente',
+    iosStep1: 'No Safari, toque no botão Partilhar na barra de ferramentas.',
+    iosStep2: 'Desça e toque em Adicionar ao Ecrã Principal.',
+    iosStep3: 'Toque em Adicionar — o Resonance abre agora a ecrã inteiro como uma aplicação nativa.',
+    androidStep1: 'Toque no menu ⋮ do seu navegador.',
+    androidStep2: 'Toque em Instalar aplicação (ou Adicionar ao ecrã principal).',
+    androidStep3: 'Confirme — abre a ecrã inteiro a partir do ecrã principal.',
+    iosOnly: 'No iPhone e iPad isto só funciona no Safari.',
+  },
+
   settings: {
     preferences: 'Preferências',
     runWizard: 'Executar Assistente',

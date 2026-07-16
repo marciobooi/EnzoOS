@@ -92,7 +92,7 @@ export default function TabletSettingsTab() {
   if (showInstall) {
     return (
       <div className="pt-1">
-        <BackHeader C={C} label="Install as App" onBack={() => setShowInstall(false)} />
+        <BackHeader C={C} label={t('install.title')} onBack={() => setShowInstall(false)} />
         <InstallGuide inline onClose={() => setShowInstall(false)} />
       </div>
     );

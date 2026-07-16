@@ -62,19 +62,25 @@ export default function MetadataKeysSheet({ onClose, inline = false }) {
         '--rc-container': C.container, '--rc-bg-white': C.bgWhite,
         background: C.bg, fontFamily: C.font, paddingTop: 'env(safe-area-inset-top)',
       }}>
-      <div className="flex items-center gap-3 px-5 pt-4 pb-4 shrink-0"
-        style={{ background: C.bg, borderBottom: `0.5px solid ${C.outline}` }}>
-        <button onClick={onClose} aria-label="Back"
-          className="w-10 h-10 rounded-full flex items-center justify-center active:scale-90 transition-all cursor-pointer shrink-0"
-          style={{ background: C.containerLow, border: `0.5px solid ${C.outline}` }}>
-          <ChevronLeft className="h-5 w-5" style={{ color: C.text3 }} />
-        </button>
-        <div className="min-w-0">
-          <p className="text-[11px] font-semibold uppercase tracking-widest"
-            style={{ color: C.champagne, fontFamily: C.fontLabel }}>{t('meta.albumInfo')}</p>
-          <p className="text-[20px] font-medium truncate" style={{ color: C.text1, letterSpacing: '-0.01em' }}>{t('meta.keysTitle')}</p>
+      {/* Tablet's TabletSettingsTab already wraps this whole sheet in its own
+          BackHeader (same t('meta.keysTitle') label, same close handler) —
+          rendering this header too meant the title and a working back
+          button both appeared twice, stacked. Phone has no such wrapper. */}
+      {!inline && (
+        <div className="flex items-center gap-3 px-5 pt-4 pb-4 shrink-0"
+          style={{ background: C.bg, borderBottom: `0.5px solid ${C.outline}` }}>
+          <button onClick={onClose} aria-label="Back"
+            className="w-10 h-10 rounded-full flex items-center justify-center active:scale-90 transition-all cursor-pointer shrink-0"
+            style={{ background: C.containerLow, border: `0.5px solid ${C.outline}` }}>
+            <ChevronLeft className="h-5 w-5" style={{ color: C.text3 }} />
+          </button>
+          <div className="min-w-0">
+            <p className="text-[11px] font-semibold uppercase tracking-widest"
+              style={{ color: C.champagne, fontFamily: C.fontLabel }}>{t('meta.albumInfo')}</p>
+            <p className="text-[20px] font-medium truncate" style={{ color: C.text1, letterSpacing: '-0.01em' }}>{t('meta.keysTitle')}</p>
+          </div>
         </div>
-      </div>
+      )}
 
       <div className="flex-1 overflow-y-auto p-5 flex flex-col gap-5">
         <div className="flex items-start gap-3 rounded-xl p-4" style={{ background: C.containerLow, border: `0.5px solid ${C.outline}` }}>

@@ -441,6 +441,22 @@ export default {
     findTickets: 'Find tickets',
   },
 
+  install: {
+    title: 'Install as App',
+    pitch: 'Add Resonance to your home screen for a full-screen, app-like experience — no browser bars.',
+    alreadyInstalled: 'Already installed',
+    alreadyInstalledSub: 'You’re running Resonance as an installed app.',
+    installButton: 'Install Resonance',
+    orManually: 'Or add it manually',
+    iosStep1: 'In Safari, tap the Share button in the toolbar.',
+    iosStep2: 'Scroll down and tap Add to Home Screen.',
+    iosStep3: 'Tap Add — Resonance now opens full-screen like a native app.',
+    androidStep1: 'Tap the ⋮ menu in your browser.',
+    androidStep2: 'Tap Install app (or Add to Home screen).',
+    androidStep3: 'Confirm — it launches full-screen from your home screen.',
+    iosOnly: 'On iPhone & iPad this only works in Safari.',
+  },
+
   settings: {
     preferences: 'Preferences',
     runWizard: 'Run Setup Wizard',

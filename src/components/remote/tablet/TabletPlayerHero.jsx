@@ -7,7 +7,7 @@ import {
 import { Tk, SpotifyIcon, fmt } from '../shared';
 import AlbumInfoSheet from '../AlbumInfoSheet';
 import LyricsSheet from '../LyricsSheet';
-import TabletQueueList from './TabletQueueList';
+import TabletQueueModal from './TabletQueueModal';
 import { useLocalQueue } from '../../../hooks/useLocalQueue';
 import { useI18n } from '../../../i18n';
 
@@ -45,7 +45,6 @@ export default function TabletPlayerHero() {
     handleShuffle, handleRepeat, handleSeek,
     handleVolumeChange, handleMuteToggle,
     handleToggleFavRadio, handleToggleSource, setActiveTab,
-    handlePlayTrack,
     queue,
     favorites, handleToggleFavorite,
     liveFormat,
@@ -61,7 +60,7 @@ export default function TabletPlayerHero() {
   // read the Spotify `queue`, so it silently stayed empty ("Nothing
   // queued") for every other source even though TabletQueueList's expanded
   // view (using the same hook) proved the queue itself was populated fine.
-  const { isLocal, localQueue, playLocal } = useLocalQueue();
+  const { isLocal, localQueue } = useLocalQueue();
 
   // Spotify's `queue` (unlike MPD's local one above) is only ever populated
   // by fetchQueue() — on the phone that's triggered by the effect that
@@ -85,15 +84,16 @@ export default function TabletPlayerHero() {
   // art is null for local/MPD rows — queue/detailed only returns
   // id/title/artist/file, no per-track cover, same limitation the phone's
   // QueuePanel has for local queues (falls back to a generic icon there too).
-  // 2 rows, not 3: in landscape .rt-main--player has overflow-y:hidden (the
-  // pane is a fixed dashboard, not a scrolling document — see
-  // remote-tablet.css), so this collapsed preview's height is unrecoverable
-  // budget. 3 rows was tall enough to push the input-source carousel below
-  // it out of the visible pane on real hardware.
+  // Just 1 row: this is a glimpse, not a list — tapping the card opens
+  // TabletQueueModal for the real (scrollable) queue. In landscape
+  // .rt-main--player has overflow-y:hidden (a fixed dashboard, not a
+  // scrolling document — see remote-tablet.css), so anything shown inline
+  // here is unrecoverable height budget; 3 rows, then 2, both still tall
+  // enough to push the input-source carousel below it out of the pane.
   const upNext = isLocal
-    ? localQueue.slice(0, 2).map(tr => ({ uri: tr.id, name: tr.title, artists: [{ name: tr.artist }], art: null }))
+    ? localQueue.slice(0, 1).map(tr => ({ uri: tr.id, name: tr.title, artists: [{ name: tr.artist }], art: null }))
     : (spotify && Array.isArray(queue)
-      ? queue.slice(0, 2).map(tr => ({ ...tr, art: tr.album?.images?.[2]?.url || tr.album?.images?.[0]?.url }))
+      ? queue.slice(0, 1).map(tr => ({ ...tr, art: tr.album?.images?.[2]?.url || tr.album?.images?.[0]?.url }))
       : []);
 
   const qualityLabel = (() => {
@@ -353,55 +353,42 @@ export default function TabletPlayerHero() {
         </button>
       </div>
 
-      {/* up next — expands in place; no separate queue screen to navigate to */}
+      {/* up next — a one-track glimpse; tapping opens TabletQueueModal for
+          the real (scrollable) queue instead of expanding in place. This
+          pane doesn't scroll in landscape (see remote-tablet.css), so an
+          inline-expanded list had nowhere to go past a couple of rows. */}
       {(spotify ? !!token : source !== 'radio') && (
-        <div className="rounded-2xl overflow-hidden mt-5"
+        <button onClick={() => setShowQueue(true)}
+          className="w-full rounded-2xl overflow-hidden mt-5 text-left active:scale-[0.99] transition-all cursor-pointer"
           style={{ background: cardWhite.background, border: cardWhite.border, boxShadow: ambientShadow }}>
-          <button onClick={() => setShowQueue(v => !v)}
-            className="w-full p-4 text-left active:scale-[0.99] transition-all cursor-pointer">
-            <div className="flex items-center justify-between">
-              <span className="flex items-center gap-2 text-[12px] font-semibold uppercase tracking-wider"
-                style={{ color: C.text3, fontFamily: C.fontLabel }}>
-                <ListMusic className="h-4 w-4" style={{ color: C.champagne }} />
-                {t('queue.upNext') || 'Up Next'}
-              </span>
-              <ChevronDown className="h-4 w-4 transition-transform" style={{ color: C.outline, transform: showQueue ? 'rotate(180deg)' : 'none' }} />
-            </div>
-          </button>
-          {/* Rows are a SIBLING of the toggle button above, not nested inside
-              it — each row is itself a <button> (tap to play), and a button
-              can't legally nest inside another button. */}
-          {!showQueue && (
-            upNext.length > 0 ? (
-              <div className="px-4 pb-4 -mt-1 flex flex-col gap-2">
-                {upNext.map((tr, i) => (
-                  <button key={`${tr.uri}-${i}`}
-                    onClick={() => (isLocal ? playLocal(tr.uri) : handlePlayTrack(tr.uri))}
-                    className="flex items-center gap-2.5 min-w-0 cursor-pointer text-left active:opacity-60 transition-opacity">
-                    <div className="w-8 h-8 rounded-md overflow-hidden shrink-0 flex items-center justify-center"
-                      style={{ background: C.container, border: `0.5px solid ${C.outline}` }}>
-                      {tr.art
-                        ? <img src={tr.art} alt="" className="w-full h-full object-cover" draggable={false} />
-                        : <Music className="h-3 w-3" style={{ color: C.text4 }} />}
-                    </div>
-                    <p className="text-[13px] truncate" style={{ color: C.text2 }}>
-                      {tr.name} <span style={{ color: C.text4 }}>· {tr.artists?.map(a => a.name).join(', ')}</span>
-                    </p>
-                  </button>
-                ))}
+          <div className="flex items-center justify-between p-4">
+            <span className="flex items-center gap-2 text-[12px] font-semibold uppercase tracking-wider"
+              style={{ color: C.text3, fontFamily: C.fontLabel }}>
+              <ListMusic className="h-4 w-4" style={{ color: C.champagne }} />
+              {t('queue.upNext') || 'Up Next'}
+            </span>
+            <ChevronDown className="h-4 w-4 -rotate-90" style={{ color: C.outline }} />
+          </div>
+          {upNext.length > 0 ? (
+            <div className="px-4 pb-4 -mt-1 flex items-center gap-2.5 min-w-0">
+              <div className="w-8 h-8 rounded-md overflow-hidden shrink-0 flex items-center justify-center"
+                style={{ background: C.container, border: `0.5px solid ${C.outline}` }}>
+                {upNext[0].art
+                  ? <img src={upNext[0].art} alt="" className="w-full h-full object-cover" draggable={false} />
+                  : <Music className="h-3 w-3" style={{ color: C.text4 }} />}
               </div>
-            ) : (
-              <p className="text-[13px] px-4 pb-4 -mt-1" style={{ color: C.text4 }}>Nothing queued</p>
-            )
-          )}
-          {showQueue && (
-            <div className="px-4 pb-3" style={{ borderTop: `0.5px solid ${C.outline}` }}>
-              <TabletQueueList />
+              <p className="text-[13px] truncate" style={{ color: C.text2 }}>
+                {upNext[0].name} <span style={{ color: C.text4 }}>· {upNext[0].artists?.map(a => a.name).join(', ')}</span>
+              </p>
             </div>
+          ) : (
+            <p className="text-[13px] px-4 pb-4 -mt-1" style={{ color: C.text4 }}>Nothing queued</p>
           )}
-        </div>
+        </button>
       )}
     </div>
+
+    {showQueue && <TabletQueueModal onClose={() => setShowQueue(false)} />}
 
     {/* ── Input source — quick-switch carousel, full width below the
         art/info split. `mt-auto` (the parent is a full-height flex column,
