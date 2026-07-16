@@ -45,6 +45,7 @@ export default function TabletSettingsTab() {
           api.getDspCalibration().then(c => setDspActive(c && c[0] === 'dsp')).catch(() => {});
         }} />
         <RemoteDspWizard
+          inline
           onClose={() => { setIsDspWizardOpen(false); api.getDspCalibration().then(c => setDspActive(c && c[0] === 'dsp')).catch(() => {}); }}
           onCalibrationComplete={active => setDspActive(active)}
           pureDirect={pureDirect}

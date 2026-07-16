@@ -35,11 +35,15 @@ function Header({ subtitle, onClose }) {
 }
 
 // ─── success / result screen primitive ───────────────────────────────────────
-function Result({ icon, accent, kicker, title, children, footer, onClose }) {
+// `inline`: tablet's TabletSettingsTab already wraps this whole wizard in its
+// own BackHeader ("Room Calibration") whose back button calls the exact same
+// onClose — rendering this Header too doubled up as two close/back controls
+// stacked on the same screen. Phone has no such wrapper, so it keeps Header.
+function Result({ icon, accent, kicker, title, children, footer, onClose, inline = false }) {
   const { C } = useContext(Tk);
   return (
     <div className="flex flex-col h-full" style={{ fontFamily: C.font, background: C.bg }}>
-      <Header subtitle={kicker} onClose={onClose} />
+      {!inline && <Header subtitle={kicker} onClose={onClose} />}
       <div className="flex-1 overflow-y-auto px-5 py-6 flex flex-col gap-5">
         <div className="flex flex-col items-center text-center gap-3">
           <span className="w-16 h-16 rounded-full flex items-center justify-center"
@@ -58,7 +62,7 @@ function Result({ icon, accent, kicker, title, children, footer, onClose }) {
   );
 }
 
-export default function RemoteDspWizard({ onClose, onCalibrationComplete, pureDirect = false, onPureDirectChange }) {
+export default function RemoteDspWizard({ onClose, onCalibrationComplete, pureDirect = false, onPureDirectChange, inline = false }) {
   const { C, card, cardWhite, btnInset } = useContext(Tk);
   const { t } = useI18n();
   const QUESTIONS = useMemo(() => getQuestions(t), [t]);
@@ -119,7 +123,7 @@ export default function RemoteDspWizard({ onClose, onCalibrationComplete, pureDi
 
   // ── Pure Direct success ────────────────────────────────────────────────────
   if (currentStep === 98) return (
-    <Result onClose={onClose} accent="#0e9ab8" kicker={t('dsp.subtitlePureDirect')}
+    <Result inline={inline} onClose={onClose} accent="#0e9ab8" kicker={t('dsp.subtitlePureDirect')}
       icon={<AudioLines className="h-7 w-7" style={{ color: '#0e9ab8' }} />}
       title={t('dsp.pureDirectActive')}
       footer={<>
@@ -145,7 +149,7 @@ export default function RemoteDspWizard({ onClose, onCalibrationComplete, pureDi
 
   // ── Manual EQ success ──────────────────────────────────────────────────────
   if (currentStep === 99) return (
-    <Result onClose={onClose} accent={C.champagne} kicker={t('dsp.subtitleEqMode')}
+    <Result inline={inline} onClose={onClose} accent={C.champagne} kicker={t('dsp.subtitleEqMode')}
       icon={<Check className="h-7 w-7" style={{ color: C.champagne }} />}
       title={t('dsp.manualEqActive')}
       footer={<>
@@ -170,7 +174,7 @@ export default function RemoteDspWizard({ onClose, onCalibrationComplete, pureDi
       [t('dsp.mapBoundaryEq'), answers[7] === 'wall' ? t('dsp.valBoundaryWall') : answers[7] === 'corner' ? t('dsp.valBoundaryCorner') : t('dsp.valBoundaryNone')],
     ];
     return (
-      <Result onClose={onClose} accent={C.champagne} kicker={t('dsp.subtitleComplete')}
+      <Result inline={inline} onClose={onClose} accent={C.champagne} kicker={t('dsp.subtitleComplete')}
         icon={<Check className="h-7 w-7" style={{ color: C.champagne }} />}
         title={t('dsp.profileGenerated')}
         footer={<>
@@ -201,7 +205,7 @@ export default function RemoteDspWizard({ onClose, onCalibrationComplete, pureDi
 
   return (
     <div className="flex flex-col h-full" style={{ fontFamily: C.font, background: C.bg }}>
-      <Header onClose={onClose} />
+      {!inline && <Header onClose={onClose} />}
 
       <div className="flex-1 overflow-y-auto px-5 py-5 flex flex-col gap-4">
         {/* question */}

@@ -85,10 +85,15 @@ export default function TabletPlayerHero() {
   // art is null for local/MPD rows — queue/detailed only returns
   // id/title/artist/file, no per-track cover, same limitation the phone's
   // QueuePanel has for local queues (falls back to a generic icon there too).
+  // 2 rows, not 3: in landscape .rt-main--player has overflow-y:hidden (the
+  // pane is a fixed dashboard, not a scrolling document — see
+  // remote-tablet.css), so this collapsed preview's height is unrecoverable
+  // budget. 3 rows was tall enough to push the input-source carousel below
+  // it out of the visible pane on real hardware.
   const upNext = isLocal
-    ? localQueue.slice(0, 3).map(tr => ({ uri: tr.id, name: tr.title, artists: [{ name: tr.artist }], art: null }))
+    ? localQueue.slice(0, 2).map(tr => ({ uri: tr.id, name: tr.title, artists: [{ name: tr.artist }], art: null }))
     : (spotify && Array.isArray(queue)
-      ? queue.slice(0, 3).map(tr => ({ ...tr, art: tr.album?.images?.[2]?.url || tr.album?.images?.[0]?.url }))
+      ? queue.slice(0, 2).map(tr => ({ ...tr, art: tr.album?.images?.[2]?.url || tr.album?.images?.[0]?.url }))
       : []);
 
   const qualityLabel = (() => {
@@ -143,7 +148,12 @@ export default function TabletPlayerHero() {
   }
 
   return (
-    <div className="flex flex-col h-full min-h-0 gap-[4rem]">
+    // gap-8 not gap-[4rem]: landscape's .rt-main--player has overflow-y:hidden
+    // (fixed dashboard, not a scrolling document), so this wrapper's 2 gaps
+    // were unconditionally spending 128px of vertical budget on whitespace
+    // alone — a real contributor to the input-source carousel getting pushed
+    // out of the visible pane, alongside the Up Next preview height above.
+    <div className="flex flex-col h-full min-h-0 gap-8">
     <div className="rt-hero">
 
       {/* ── Art — the cover is a fixed square smaller than its grid column,
