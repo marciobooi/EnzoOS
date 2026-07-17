@@ -159,6 +159,16 @@ export DBUS_SESSION_BUS_ADDRESS=autolaunch:
 # (confirmed live: without this flag the GPU process opens no /dev/dri file
 # descriptors at all; with it, it holds open handles to card0 + renderD128
 # and loads libEGL_mesa.so instead of software GL).
+#
+# --enable-gpu-rasterization --enable-zero-copy --num-raster-threads=4
+# --ignore-gpu-blocklist: the ANGLE fix above gets COMPOSITING onto the GPU,
+# but on Linux/ARM Chromium still paints (rasterizes) tiles on the CPU by
+# default — v3d is on the software-raster blocklist. That CPU raster is what
+# made wide scrollers (the Definitions Menu's ~3000px card row) stutter
+# during a fling: every newly-exposed tile was painted on an already-busy
+# core. These four move raster to the GPU (blocklist overridden), share
+# tile memory zero-copy, and let raster use all 4 Pi cores when it does
+# fall back. Standard Pi-kiosk set; verified live on the real Pi 4.
 while true; do
   "$CHROMIUM_BIN" \
     --kiosk \
@@ -166,6 +176,10 @@ while true; do
     --window-size=1480,320 \
     --use-gl=angle \
     --use-angle=gl-egl \
+    --enable-gpu-rasterization \
+    --enable-zero-copy \
+    --num-raster-threads=4 \
+    --ignore-gpu-blocklist \
     --default-background-color=F0ECE4 \
     --autoplay-policy=no-user-gesture-required \
     --touch-events=enabled \

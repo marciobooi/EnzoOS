@@ -72,8 +72,10 @@ export default function SettingsMenuOverlay() {
         </button>
       </div>
 
-      {/* Horizontally Scrollable Content */}
-      <div className="flex-grow overflow-x-auto overflow-y-hidden stone-scrollbar">
+      {/* Horizontally Scrollable Content — overscroll-x contained so a fling
+          hitting either end can't chain into rubber-banding the page. */}
+      <div className="flex-grow overflow-x-auto overflow-y-hidden stone-scrollbar"
+        style={{ overscrollBehaviorX: 'contain' }}>
         <DefinitionsMenu key={animKey}
           isMenuOpen={isMenuOpen}
           token={token}
