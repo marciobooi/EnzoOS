@@ -1168,17 +1168,63 @@ router.get('/bluetooth-out/paired', async (req, res) => {
   }
 });
 
+// Runs a bluetoothctl subcommand and reports failure from its OUTPUT, not its
+// exit code. bluetoothctl exits 0 while printing "Failed to pair: ..." — the
+// old code trusted the exit code, so a failed pair looked like success and
+// only the follow-up connect threw, surfacing as a generic 500 with none of
+// BlueZ's actual reason (AUDIT-2026-08-01).
+async function btctl(args) {
+  const { stdout = '', stderr = '' } = await execFilePromise('bluetoothctl', args)
+    .catch(err => ({ stdout: err.stdout || '', stderr: err.stderr || err.message || '' }));
+  const out = `${stdout}\n${stderr}`;
+  const failed = /Failed to [a-z]+:\s*(.+)/i.exec(out);
+  return { out, error: failed ? failed[1].trim() : null };
+}
+
+// Maps BlueZ's opaque D-Bus error names to something a person can act on.
+function btReason(error) {
+  if (/AuthenticationFailed|AuthenticationCanceled/i.test(error)) {
+    return 'Pairing was rejected. Put the device in pairing mode (for AirPods: lid open, hold the back button until the light flashes white) and try again.';
+  }
+  if (/br-connection-unknown|ConnectionAttemptFailed|Page Timeout/i.test(error)) {
+    return 'The device did not respond. Make sure it is powered on, in pairing mode, and not connected to another device (phone/laptop).';
+  }
+  if (/AlreadyExists/i.test(error)) return 'Device is already paired.';
+  return error;
+}
+
 // POST /api/player/bluetooth-out/pair — pair + trust + connect a scanned device
 router.post('/bluetooth-out/pair', async (req, res) => {
   const { mac } = req.body || {};
   if (!MAC_RE.test(mac || '')) return sendError(res, badRequest('Invalid MAC address'));
   try {
-    await execFilePromise('bluetoothctl', ['pair', mac]).catch(err => {
-      // Already paired isn't a failure — bluetoothctl exits non-zero either way
-      if (!/already exists|already paired/i.test(err.stdout || err.message || '')) throw err;
-    });
-    await execFilePromise('bluetoothctl', ['trust', mac]);
-    await execFilePromise('bluetoothctl', ['connect', mac]);
+    const { out: info } = await btctl(['info', mac]);
+    const alreadyPaired = /Paired:\s*yes/i.test(info);
+
+    if (!alreadyPaired && /Device \w/i.test(info)) {
+      // A device record with no bonding keys (Paired: no / Bonded: no but
+      // still known+Trusted) is what's left after the keys are lost — a
+      // reinstall wiping /var/lib/bluetooth, or the headphones being
+      // factory-reset/re-paired to a phone. BlueZ will NOT re-bond over that
+      // stale record: pair returns AuthenticationFailed and connect returns
+      // br-connection-unknown, forever, which is exactly the state this box
+      // was stuck in. Removing the record first is the documented recovery.
+      await btctl(['remove', mac]);
+      // The device must be re-discovered before it can be paired again.
+      await execFilePromise('bluetoothctl', ['--timeout', '12', 'scan', 'on']).catch(() => {});
+    }
+
+    if (!alreadyPaired) {
+      const { error } = await btctl(['pair', mac]);
+      if (error && !/AlreadyExists/i.test(error)) {
+        return sendError(res, badRequest(btReason(error)));
+      }
+    }
+
+    await btctl(['trust', mac]);
+    const { error: connErr } = await btctl(['connect', mac]);
+    if (connErr) return sendError(res, badRequest(btReason(connErr)));
+
     res.json({ success: true });
   } catch (err) {
     console.error('[Bluetooth Out] Pair failed:', err.message);
@@ -1191,7 +1237,9 @@ router.post('/bluetooth-out/connect', async (req, res) => {
   const { mac } = req.body || {};
   if (!MAC_RE.test(mac || '')) return sendError(res, badRequest('Invalid MAC address'));
   try {
-    await execFilePromise('bluetoothctl', ['connect', mac]);
+    // Same exit-code caveat as pair above — read the reason out of the output.
+    const { error } = await btctl(['connect', mac]);
+    if (error) return sendError(res, badRequest(btReason(error)));
     res.json({ success: true });
   } catch (err) {
     sendError(res, err);
