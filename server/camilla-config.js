@@ -374,6 +374,48 @@ export function generateCamillaConfig(answers, eqSettings, dacInfo, { pureDirect
   const balL = balance > 0 ? -Math.abs(balance) : 0;
   const balR = balance < 0 ? -Math.abs(balance) : 0;
 
+  // Output routing + channel map, shared by BOTH the Pure Direct early-return
+  // below and the full DSP path further down. These used to be duplicated,
+  // and the Pure Direct copy silently drifted out of sync on two counts —
+  // each of which killed playback the instant Pure Direct was toggled
+  // (AUDIT-2026-08-01):
+  //   1. It ignored btOutputActive and always wrote the physical DAC, so
+  //      with Bluetooth output selected, enabling Pure Direct yanked audio
+  //      off the paired speaker/headphones onto the analogue jack.
+  //   2. It hardcoded a 2-out mixer while still taking playback channels
+  //      from dacInfo.channels, which updateCamillaConfigFromSettings sets
+  //      to 3 for a subwoofer setup — a mixer-out/playback-channel mismatch
+  //      CamillaDSP rejects outright, so the config never applied.
+  // Deriving both from one place makes that class of drift impossible:
+  // Pure Direct now differs from the DSP path only in what it's supposed to
+  // differ in (no EQ, no resampler), never in where the audio goes.
+  const playbackDevice = btOutputActive
+    ? { type: "Alsa", channels: 2, device: "camilla_bt_output", format: "S16_LE" }
+    : {
+        type: "Alsa",
+        // A subwoofer setup needs the third output channel; Bluetooth A2DP is
+        // strictly stereo, so the sub is not applicable on that path.
+        channels: isSubwooferSetup ? 3 : 2,
+        device: dacInfo.device || "hw:CARD=DAC,DEV=0",
+        format: dacInfo.format || "S24_3_LE",
+      };
+  const speakerMap = (!btOutputActive && isSubwooferSetup)
+    ? {
+        channels: { in: 2, out: 3 },
+        mapping: [
+          { dest: 0, sources: [{ channel: 0, gain: balL }] },
+          { dest: 1, sources: [{ channel: 1, gain: balR }] },
+          { dest: 2, sources: [{ channel: 0, gain: -3.0 + balL }, { channel: 1, gain: -3.0 + balR }] },
+        ],
+      }
+    : {
+        channels: { in: 2, out: 2 },
+        mapping: [
+          { dest: 0, sources: [{ channel: 0, gain: balL }] },
+          { dest: 1, sources: [{ channel: 1, gain: balR }] },
+        ],
+      };
+
   // Pure Direct: bypass all EQ — flat pipeline with unity gain only.
   // Volume control via CamillaDSP SetVolume remains active.
   if (pureDirect) {
@@ -400,19 +442,11 @@ export function generateCamillaConfig(answers, eqSettings, dacInfo, { pureDirect
         chunksize: 1024,
         queuelimit: 4,
         capture:  { type: "Alsa", channels: 2, device: "loop_dsnoop", format: captureFormat },
-        playback: { type: "Alsa", channels: dacInfo.channels || 2, device: dacInfo.device || "hw:CARD=DAC,DEV=0", format: dacInfo.format || "S24_3_LE" },
+        playback: playbackDevice,
         silence_threshold: -90,
         silence_timeout: 60,
       },
-      mixers: {
-        speaker_map: {
-          channels: { in: 2, out: 2 },
-          mapping: [
-            { dest: 0, sources: [{ channel: 0, gain: balL }] },
-            { dest: 1, sources: [{ channel: 1, gain: balR }] },
-          ],
-        },
-      },
+      mixers: { speaker_map: speakerMap },
       filters: pdFilters,
       pipeline: pdPipeline,
     };
@@ -434,14 +468,7 @@ export function generateCamillaConfig(answers, eqSettings, dacInfo, { pureDirect
       // 16-bit lossy link regardless of source bit-depth, and PipeWire itself
       // resamples for the actual Bluetooth transmission, so there's nothing
       // bit-perfect to preserve here — plain S16_LE keeps it simple.
-      playback: btOutputActive
-        ? { type: "Alsa", channels: 2, device: "camilla_bt_output", format: "S16_LE" }
-        : {
-            type: "Alsa",
-            channels: dacInfo.channels || 2,
-            device: dacInfo.device || "hw:CARD=DAC,DEV=0",
-            format: dacInfo.format || "S24_3_LE"
-          },
+      playback: playbackDevice,
       // Absorbs clock drift between the ALSA loopback's timer and the DAC's
       // own clock (measured live ~20 ppm on the dev VM: capture settles at
       // 48001 Hz vs 48000 nominal) — without this, that drift caused
@@ -485,26 +512,10 @@ export function generateCamillaConfig(answers, eqSettings, dacInfo, { pureDirect
   // the signal to silence rather than adding noise. Disabled until implemented correctly.
 
   // Setup Crossovers and Crossover Caster Filters
-  if (isSubwooferSetup) {
-    config.devices.playback.channels = 3;
-    config.mixers.speaker_map = {
-      channels: { in: 2, out: 3 },
-      mapping: [
-        { dest: 0, sources: [{ channel: 0, gain: balL }] },
-        { dest: 1, sources: [{ channel: 1, gain: balR }] },
-        { dest: 2, sources: [{ channel: 0, gain: -3.0 + balL }, { channel: 1, gain: -3.0 + balR }] }
-      ]
-    };
-  } else {
-    config.devices.playback.channels = 2;
-    config.mixers.speaker_map = {
-      channels: { in: 2, out: 2 },
-      mapping: [
-        { dest: 0, sources: [{ channel: 0, gain: balL }] },
-        { dest: 1, sources: [{ channel: 1, gain: balR }] }
-      ]
-    };
-  }
+  // Same routing the Pure Direct path uses (see playbackDevice/speakerMap
+  // above) — kept identical on purpose so toggling Pure Direct never changes
+  // where the audio goes or how many channels it carries.
+  config.mixers.speaker_map = speakerMap;
 
   // --- STAGE S: 'ON STAGE' CONCERT-VENUE SPATIALIZATION ---
   // Runs on the raw 2ch capture BEFORE speaker_map and the tonal EQ chains.
@@ -902,12 +913,9 @@ export async function updateCamillaConfigFromSettings({ skipAlsa = false, sample
     );
   }
 
-  // Apply adjustments if sub-woofer is enabled
-  if (answers && answers.q1_setup === "2 Speakers + 1 Subwoofer") {
-    dacInfo.channels = 3;
-  } else {
-    dacInfo.channels = 2;
-  }
+  // Subwoofer channel count is derived inside generateCamillaConfig now (it
+  // owns playbackDevice/speakerMap together so the two can't disagree) — no
+  // dacInfo mutation needed here any more.
 
   // Rate override from MPD rate watcher — matches CamillaDSP capture to source rate
   if (samplerate && samplerate > 0) {
