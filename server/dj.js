@@ -259,10 +259,25 @@ function playClip(wavPath) {
 }
 
 // ── MPD playback ──────────────────────────────────────────────────────────
+// `mpc clear` then `add` then `play` (the obvious way to write this) passes
+// through a moment where the queue is empty and nothing is playing — live-
+// tested against the real Pi, that transient state was enough to trip
+// server/player.js's MPD-idle-driven "bit-perfect rate-following" listener
+// (it reacts to MPD's `changed: player` event on EVERY queue mutation,
+// re-reads the current format, and pushes a new CamillaDSP config+hot-reload
+// if it differs) into detecting a bogus/absent format and regenerating
+// CamillaDSP's config to a bad value — crash-looped CamillaDSP for real
+// during testing. Appending the new track, jumping straight to its position,
+// then deleting everything before it never leaves the queue empty, so that
+// listener only ever observes real, meaningful transitions.
 async function playTrack(file) {
-  await execPromise('mpc clear');
   await execFilePromise('mpc', ['add', file]);
-  await execPromise('mpc play');
+  const { stdout } = await execPromise('mpc playlist');
+  const position = stdout.trim().split('\n').filter(Boolean).length;
+  await execFilePromise('mpc', ['play', String(position)]);
+  for (let i = 1; i < position; i++) {
+    await execFilePromise('mpc', ['del', '1']).catch(() => {});
+  }
 }
 
 function waitForTrackEnd(maxMs = 12 * 60 * 1000) {
