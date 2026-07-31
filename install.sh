@@ -644,8 +644,19 @@ systemctl stop mpd.service 2>/dev/null || true
 systemctl stop mpd.socket 2>/dev/null || true
 systemctl daemon-reload
 systemctl enable mpd
-systemctl restart mpd.socket
-systemctl restart mpd
+# systemd REFUSES to bind a socket whose service is already running
+# ("mpd.socket: Socket service mpd.service already active, refusing"), and
+# under `set -e` that aborted the entire install partway through — leaving
+# CamillaDSP and everything after this point uninstalled. It happens because
+# anything touching port 6600 between the stop above and here (resonance-api
+# reconnecting, an `mpc` call) socket-activates mpd.service straight back up.
+# So re-stop the service immediately before binding the socket, and never let
+# either step be fatal: MPD being up is what matters, and the restart below
+# covers it either way.
+systemctl stop mpd.service 2>/dev/null || true
+systemctl restart mpd.socket 2>/dev/null || \
+  echo -e "${YELLOW}  mpd.socket bind skipped (service already active) — continuing.${NC}"
+systemctl restart mpd 2>/dev/null || true
 
 echo -e "\n${GREEN}Installing CamillaDSP (pinned v${CAMILLADSP_VERSION})...${NC}"
 ARCH=$(uname -m)
