@@ -263,13 +263,31 @@ export const setCachedMetadata = (key, obj) => {
 
 // ── Play History ──────────────────────────────────────────────────────────────
 
+// The client-side dedup guard (a useRef of the last-logged uri) resets on
+// every remount — a backgrounded phone tab waking back up, a reconnect — so
+// it re-submits the track it's currently showing even when that's a stale
+// value that never actually changed underneath it. Confirmed live: dozens of
+// duplicate rows for the same track, each just a page-remount apart. Deduping
+// here instead means it holds regardless of which client (or how many) call
+// this, and survives every client-side remount.
+const DEDUPE_WINDOW_MS = 60 * 1000;
 export const addPlayHistory = (entry) => {
   const { source, title, artist, album, file, cover } = entry;
   return new Promise((resolve) => {
-    db.run(
-      'INSERT INTO play_history (source, title, artist, album, file, cover, played_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
-      [source || '', title || '', artist || '', album || '', file || '', cover || '', Date.now()],
-      () => resolve()
+    db.get(
+      'SELECT source, file, played_at FROM play_history ORDER BY played_at DESC LIMIT 1',
+      (err, last) => {
+        if (last && last.source === (source || '') && last.file === (file || '')
+            && Date.now() - last.played_at < DEDUPE_WINDOW_MS) {
+          resolve();
+          return;
+        }
+        db.run(
+          'INSERT INTO play_history (source, title, artist, album, file, cover, played_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
+          [source || '', title || '', artist || '', album || '', file || '', cover || '', Date.now()],
+          () => resolve()
+        );
+      }
     );
   });
 };
