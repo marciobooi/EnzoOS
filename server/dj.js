@@ -64,9 +64,12 @@ const router = express.Router();
 // ── Config ────────────────────────────────────────────────────────────────
 const OLLAMA_URL = 'http://127.0.0.1:11434/api/generate';
 const OLLAMA_MODEL = 'qwen2.5:1.5b';
-// Session-length, not permanent — the model unloads (freeing ~1-1.5GB RAM,
-// real headroom on a 4GB Pi4 with no swap) a few minutes after DJ mode
-// stops, matching Ollama's normal idle-unload behavior.
+// Keeps the model warm between the frequent generate calls WITHIN one DJ
+// session (so back-to-back lines don't each pay the ~44s cold-load cost).
+// stop() explicitly overrides this with keep_alive: 0 to unload right away
+// instead of waiting out this window — see unloadOllamaModel(). On a 4GB
+// Pi4 with no swap, ~1-1.5GB held by an idle model between DJ sessions is
+// real headroom other features need back promptly, not "eventually".
 const OLLAMA_KEEP_ALIVE = '15m';
 const PIPER_BIN = '/opt/piper-tts/piper/piper';
 const PIPER_ESPEAK_DATA = '/opt/piper-tts/piper/espeak-ng-data';
@@ -214,6 +217,23 @@ async function generateLine({ music, artist, albumType, popularity, eraContext, 
   return sanitizeSpokenLine(data.response);
 }
 
+// keep_alive: 0 on a generate call is Ollama's documented way to unload a
+// model immediately (there's no separate "/api/unload" endpoint) — an empty
+// prompt means this doesn't actually generate anything, it just piggybacks
+// on the same mechanism to drop the model from RAM as soon as DJ mode stops
+// instead of waiting out OLLAMA_KEEP_ALIVE.
+async function unloadOllamaModel() {
+  try {
+    await fetch(OLLAMA_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ model: OLLAMA_MODEL, prompt: '', keep_alive: 0 }),
+    });
+  } catch (err) {
+    console.warn('[DJ] Ollama unload request failed (non-fatal):', err.message);
+  }
+}
+
 // ── Piper synthesis ───────────────────────────────────────────────────────
 // Piper's voice models output 22050Hz MONO — live-tested against the real
 // Pi, playing that straight into ResonanceInput alongside the rest of the
@@ -255,6 +275,22 @@ async function synthesize(text, language) {
 
 function playClip(wavPath) {
   return execFilePromise('pw-play', ['--target', 'ResonanceInput', wavPath], { env: PW_ENV, timeout: 30000 });
+}
+
+// Every clip this module creates is unlinked as soon as it's done with (see
+// the unlink calls in runLoop/stop below) — this sweep only exists to catch
+// the one path those can't cover: resonance-api getting killed (crash,
+// `systemctl restart`, power loss) mid-session, orphaning whatever clip was
+// mid-synthesis or queued as `state.pending` at that moment. Scoped tightly
+// to this module's own filename prefix so it can never touch unrelated
+// files in the shared tmpdir.
+function cleanupOrphanedClips() {
+  fs.readdir(os.tmpdir(), (err, files) => {
+    if (err) return;
+    for (const f of files) {
+      if (/^dj-line-.*\.wav$/.test(f)) fs.unlink(path.join(os.tmpdir(), f), () => {});
+    }
+  });
 }
 
 // ── Session state machine ─────────────────────────────────────────────────
@@ -389,6 +425,7 @@ async function runLoop() {
 
 async function start() {
   if (state.active) return { alreadyActive: true };
+  cleanupOrphanedClips();
   const token = await getValidAccessToken();
   if (!token) {
     broadcastState({ phase: 'error', message: 'Spotify is not connected.' });
@@ -415,8 +452,10 @@ async function stop() {
   if (state.pending?.wavPath) fs.unlink(state.pending.wavPath, () => {});
   state.pending = null;
   state.queue = [];
+  cleanupOrphanedClips();
   const token = await getValidAccessToken().catch(() => null);
   if (token) await spotifyApi.pause(token).catch(() => {});
+  await unloadOllamaModel();
   broadcastState({ phase: 'stopped' });
   return { stopped: true };
 }

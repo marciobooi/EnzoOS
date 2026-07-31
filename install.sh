@@ -385,6 +385,13 @@ cat <<'PWALEOF' > /etc/pipewire/pipewire.conf.d/52-resonance-aloop-sink.conf
 # clock mode the graph only ever offers 48000 anyway, so behavior there is
 # unchanged; in bitPerfect=true mode this is what actually lets the pair
 # re-pin to match the source, which was the entire point of the feature.
+#
+# audio.format below is only an install-time default (bitPerfect=true).
+# server/camilla-config.js's updateAloopSinkFormat() rewrites this file on
+# every server start to match the live bitperfect setting — a stale format
+# here mismatched against asound.conf's camilla_input crashes PipeWire
+# outright (AUDIT-2026-08-01, discovered when bitperfect was flipped off
+# live without this file following along).
 context.objects = [
   { factory = adapter
     args = {
