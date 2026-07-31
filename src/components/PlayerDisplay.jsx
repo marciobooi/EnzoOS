@@ -1,7 +1,20 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Play, Pause, SkipForward, SkipBack, Shuffle, Repeat, Volume2, VolumeX, Volume1, Sliders, Radio, Heart, Power, Search } from 'lucide-react';
+import { Play, Pause, SkipForward, SkipBack, Shuffle, Repeat, Volume2, VolumeX, Volume1, Sliders, Radio, Heart, Power, Search, Zap, Moon, Coffee, Flame, PartyPopper } from 'lucide-react';
 import AutoScroll from './AutoScroll';
 import { toVolumeDb, sanitizeTrackName } from '../lib/format';
+import { api } from '../api';
+
+// DJ mode mood buttons (server/dj.js MOODS) — ids must match exactly.
+// Isolated here (not threaded through Kiosk.jsx's props/state) so the
+// feature stays deletable by removing just this block + its JSX/CSS, per
+// dj.js's own "don't spread this around" design.
+const DJ_MOODS = [
+  { id: 'hype',     label: 'Hype',     Icon: Zap },
+  { id: 'chill',    label: 'Chill',    Icon: Moon },
+  { id: 'casual',   label: 'Casual',   Icon: Coffee },
+  { id: 'dramatic', label: 'Dramatic', Icon: Flame },
+  { id: 'playful',  label: 'Playful',  Icon: PartyPopper },
+];
 
 // Real compact-cassette reel physics: the tape runs at a constant linear speed
 // (4.76 cm/s), so a hub's angular speed is inversely proportional to how much
@@ -58,6 +71,21 @@ const PlayerDisplay = React.memo(function PlayerDisplay({
 }) {
   const [showVolumeFeedback, setShowVolumeFeedback] = useState(false);
   const [showVolumePopup, setShowVolumePopup] = useState(false);
+  const [djMood, setDjMood] = useState(null);
+
+  // Local-only UI state (server/dj.js's own state.mood resets on every fresh
+  // start() anyway) — clear the highlight whenever DJ mode isn't the active
+  // source, so switching away and back never shows a stale selection.
+  useEffect(() => {
+    if (source !== 'dj') setDjMood(null);
+  }, [source]);
+
+  const handleMoodClick = useCallback((id) => {
+    const next = djMood === id ? null : id; // tap the active mood again to clear it (back to random)
+    setDjMood(next);
+    api.setDjMood(next).catch(() => {});
+  }, [djMood]);
+
   const feedbackTimeout = useRef(null);
   const volumePopupRef = useRef(null);
   const dbLRef = useRef(null);
@@ -695,7 +723,24 @@ const PlayerDisplay = React.memo(function PlayerDisplay({
                 </button>
               )}
 
-           
+              {source === 'dj' && (
+                <div className="mood-row" role="group" aria-label="DJ mood">
+                  {DJ_MOODS.map(({ id, label, Icon }) => (
+                    <button
+                      key={id}
+                      type="button"
+                      onClick={() => handleMoodClick(id)}
+                      className={`mood-button ${djMood === id ? 'active' : ''}`}
+                      title={djMood === id ? `${label} (tap to clear)` : `Pivot to ${label}`}
+                      aria-label={label}
+                      aria-pressed={djMood === id}
+                    >
+                      <Icon className="h-3 w-3" />
+                    </button>
+                  ))}
+                </div>
+              )}
+
             </div>
 
             {/* Title Container & Live Volume Popup */}

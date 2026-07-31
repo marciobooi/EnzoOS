@@ -531,6 +531,52 @@ div[data-theme="ruby"] *::selection {
   animation: status-dot-breathe 3.2s ease-in-out infinite;
 }
 
+/* DJ mode mood buttons — sits in the topline next to the PLUGIN pill (see
+   PlayerDisplay.jsx's DJ_MOODS). Deliberately compact: five of these need to
+   fit next to the status pill without crowding it. */
+.mood-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  margin-left: 0.35rem;
+}
+
+.mood-button {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 1.5px solid var(--color-faded);
+  color: var(--color-faded);
+  background-color: transparent;
+  opacity: 0.7;
+  cursor: pointer;
+  transition: transform 0.15s cubic-bezier(.34,1.56,.64,1), border-color 0.15s ease,
+    color 0.15s ease, background-color 0.15s ease, opacity 0.15s ease;
+}
+
+.mood-button:hover {
+  border-color: var(--color-active);
+  color: var(--color-active);
+  opacity: 1;
+}
+
+/* Touch equivalent — see .icon-button:active above; this is a touchscreen. */
+.mood-button:active {
+  transform: scale(0.85);
+  background-color: rgba(42,40,38,0.08);
+}
+
+.mood-button.active {
+  border-color: var(--theme-color);
+  border-style: solid;
+  color: var(--theme-color);
+  background-color: var(--theme-color-dim);
+  opacity: 1;
+  box-shadow: 0 0 0 1px var(--theme-color-glow);
+}
+
 @keyframes status-dot-breathe {
   0%, 100% { opacity: 1; transform: scale(1); }
   50%      { opacity: 0.55; transform: scale(0.8); }

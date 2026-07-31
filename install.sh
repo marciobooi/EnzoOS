@@ -878,6 +878,16 @@ User=$TARGET_USER
 Group=$TARGET_USER
 Environment="XDG_RUNTIME_DIR=/run/user/$TARGET_UID"
 Environment="PIPEWIRE_REMOTE=/run/user/$TARGET_UID/pipewire-0"
+# The stock raspotify unit sets ProtectHome=yes, which makes /home an empty
+# tmpfs for the service — so LIBRESPOT_ONEVENT above (which lives in the repo
+# under \$PROJECT_DIR) can never be executed: librespot logs "On event program
+# ... failed to start: Permission denied (os error 13)" on every play/pause
+# and the Spotify volume/state sync silently never fires. Confirmed live
+# 2026-08-01. read-only keeps the hardening (the service still can't write
+# anywhere under /home) while letting it read+exec the hook script. Pointing
+# LIBRESPOT_ONEVENT at a copy outside /home was the alternative, but that
+# would fork the script from the repo copy that git pull updates.
+ProtectHome=read-only
 RASPOUSEREOF
 
 # Enable and start native Raspotify systemd daemon

@@ -5,6 +5,13 @@
  * SONGS_PER_SET tracks, then does a short "check-in" line and starts a new
  * block, repeating until stopped.
  *
+ * Mood buttons (POST /api/dj/mood, see MOODS below) let the listener pin the
+ * announcer's energy instead of it rolling randomly per line, and — the
+ * Spotify-DJ-inspired part — pivot mid-session: pressing one while active
+ * cuts the current track immediately, throws away whatever was queued/
+ * pre-generated for the old lineup, and draws a fresh block avoiding
+ * anything already played this session (setMood()/pickTracks()).
+ *
  * DELIBERATELY ISOLATED: this is the only file with any DJ-specific logic.
  * The only touches outside this file are: one import + one `app.use()` line
  * in server/index.js, and 'DJ_STATE' added to the PASSTHROUGH set in
@@ -86,10 +93,19 @@ const PW_ENV = {
   XDG_RUNTIME_DIR: `/run/user/${PW_UID}`,
   PIPEWIRE_REMOTE: `/run/user/${PW_UID}/pipewire-0`,
 };
-const RANDOM_ENERGY = {
-  en: ['super hyped and energetic', 'smooth late-night radio vibe', 'casual and cool', 'intense and dramatic', 'playful and cheeky'],
-  pt: ['super hiperativo e enérgico', 'smooth rádio de fim de noite', 'casual e cool', 'intenso e dramático', 'brincalhão e divertido'],
+// Mood buttons (client) map 1:1 to these ids. Doubles as the source of the
+// random per-line energy style when no mood is pinned — picking one of these
+// five phrases at random is exactly what the old RANDOM_ENERGY array did,
+// this just gives each phrase a stable id so it can also be pinned on
+// purpose via POST /api/dj/mood.
+const MOODS = {
+  hype:     { en: 'super hyped and energetic',   pt: 'super hiperativo e enérgico' },
+  chill:    { en: 'smooth late-night radio vibe', pt: 'smooth rádio de fim de noite' },
+  casual:   { en: 'casual and cool',              pt: 'casual e cool' },
+  dramatic: { en: 'intense and dramatic',         pt: 'intenso e dramático' },
+  playful:  { en: 'playful and cheeky',           pt: 'brincalhão e divertido' },
 };
+const MOOD_IDS = Object.keys(MOODS);
 
 // ── Spotify helpers ───────────────────────────────────────────────────────
 // Thin wrappers around spotifyApi — the orchestration-specific bits only
@@ -186,7 +202,7 @@ function sanitizeSpokenLine(raw, maxWords = 18) {
 }
 
 // ── Ollama call ───────────────────────────────────────────────────────────
-async function generateLine({ music, artist, albumType, popularity, eraContext, randomEnergy, randomTrigger, language, isCheckIn }) {
+async function generateLine({ music, artist, albumType, popularity, eraContext, randomEnergy, randomTrigger, language, isCheckIn, isPivot }) {
   const langName = language === 'pt' ? 'Portuguese' : 'English';
   const system = [
     'You are an extremely charismatic, unpredictable club radio DJ speaking live on air.',
@@ -196,7 +212,12 @@ async function generateLine({ music, artist, albumType, popularity, eraContext, 
     `Speak in ${langName} - natural, fluent, native-sounding, never translated-sounding.`,
   ].join(' ');
 
-  const prompt = isCheckIn
+  // isPivot = the listener just pressed a mood button: the persona should
+  // acknowledge switching gears live (mirroring Spotify DJ's own "pivoting
+  // the mix" moment) before introducing what's coming up next.
+  const prompt = isPivot
+    ? `You're changing the vibe live on air right now to something ${randomEnergy}. React to the pivot in one punchy line, then tease that ${music} by ${artist} is coming up next. Say your line now.`
+    : isCheckIn
     ? `You just wrapped a run of tracks, the last one being ${music} by ${artist}. Energy style: ${randomEnergy}. React to it briefly, then hype that more tracks are coming up. Say your line now.`
     : `Track: ${music} | Artist: ${artist} | Type: ${albumType} | Popularity: ${popularity} out of 100 | Era: ${eraContext || 'unspecified'} | Energy style: ${randomEnergy} | Focus: ${randomTrigger}. Say your line now.`;
 
@@ -302,10 +323,20 @@ const state = {
   pollInterval: null,
   loopPromise: null,
   deviceId: null,
+  mood: null, // one of MOOD_IDS, or null = random energy per line (default)
+  pivotRequested: false, // set by setMood() to cut the current track short
+  generation: 0, // bumped on every pivot so a background prepare() started
+                 // for the OLD lineup can tell it's stale once it resolves
+  playedUris: new Set(), // this session's history — pickTracks avoids repeats
 };
 
+// Prefers tracks not yet played this session (falls back to the full pool
+// once everything's been heard) so a mood pivot actually feels like "a new
+// lineup" instead of possibly re-drawing the track that's just about to end.
 function pickTracks(n) {
-  const shuffled = [...state.pool].sort(() => Math.random() - 0.5);
+  const unplayed = state.pool.filter(t => !state.playedUris.has(t.uri));
+  const source = unplayed.length >= n ? unplayed : state.pool;
+  const shuffled = [...source].sort(() => Math.random() - 0.5);
   return shuffled.slice(0, n);
 }
 
@@ -313,21 +344,27 @@ function broadcastState(extra = {}) {
   emit('DJ_STATE', { active: state.active, ...extra });
 }
 
-async function prepare(track, language, isCheckIn = false) {
+async function prepare(track, language, isCheckIn = false, isPivot = false) {
   const trigger = track.album?.release_date
     ? ['focus on the era', 'focus on the artist', 'focus on the hype'][Math.floor(Math.random() * 3)]
     : ['focus on the artist', 'focus on the hype'][Math.floor(Math.random() * 2)];
-  const energyList = RANDOM_ENERGY[language] || RANDOM_ENERGY.en;
+  // A pinned mood always wins over the random per-line roll — that's the
+  // whole point of pressing a mood button instead of just waiting.
+  const energyList = MOOD_IDS.map(id => MOODS[id][language] || MOODS[id].en);
+  const randomEnergy = state.mood
+    ? (MOODS[state.mood]?.[language] || MOODS[state.mood]?.en)
+    : energyList[Math.floor(Math.random() * energyList.length)];
   const text = await generateLine({
     music: track.name,
     artist: (track.artists || []).map(a => a.name).join(', ') || 'unknown artist',
     albumType: track.album?.album_type || 'track',
     popularity: typeof track.popularity === 'number' ? track.popularity : 50,
     eraContext: eraContextFor(track.album?.release_date, language),
-    randomEnergy: energyList[Math.floor(Math.random() * energyList.length)],
+    randomEnergy,
     randomTrigger: trigger,
     language,
     isCheckIn,
+    isPivot,
   });
   const wavPath = await synthesize(text, language);
   return { text, wavPath, forTrack: track };
@@ -340,7 +377,7 @@ function waitForSpotifyTrackEnd(token, expectedUri, maxMs = 12 * 60 * 1000) {
   const startedAt = Date.now();
   return new Promise((resolve) => {
     state.pollInterval = setInterval(async () => {
-      if (!state.active) { clearInterval(state.pollInterval); resolve(); return; }
+      if (!state.active || state.pivotRequested) { clearInterval(state.pollInterval); resolve(); return; }
       if (Date.now() - startedAt > maxMs) { clearInterval(state.pollInterval); resolve(); return; }
       try {
         const data = await spotifyApi.getPlaybackState(token);
@@ -378,12 +415,19 @@ async function runLoop() {
 
     const track = state.queue.shift();
 
+    // Cleared as soon as this iteration picks it up — setMood() is what
+    // sets it, purely to cut waitForSpotifyTrackEnd's poll short; from here
+    // it's just a local flag for which prompt variant to generate.
+    const wasPivot = state.pivotRequested;
+    state.pivotRequested = false;
+
     // The very first announcement of a session has no lookahead runway —
     // this is the one moment DJ mode has a real, visible wait. Every
-    // subsequent one was already prepared while the previous track played.
+    // subsequent one was already prepared while the previous track played
+    // (or, after a pivot, prepared fresh right here instead).
     if (!state.pending) {
       broadcastState({ phase: 'preparing' });
-      try { state.pending = await prepare(track, language); }
+      try { state.pending = await prepare(track, language, false, wasPivot); }
       catch (err) { console.error('[DJ] prepare failed:', err.message); state.pending = null; }
     }
 
@@ -398,22 +442,28 @@ async function runLoop() {
     state.pending = null;
     if (!state.active) break;
 
-    broadcastState({ phase: 'playing', track: { title: track.name, artist: (track.artists || []).map(a => a.name).join(', ') } });
+    broadcastState({ phase: 'playing', mood: state.mood, track: { title: track.name, artist: (track.artists || []).map(a => a.name).join(', ') } });
     try {
       await spotifyApi.play(token, state.deviceId, null, [track.uri]);
+      state.playedUris.add(track.uri);
       broadcastSpotifyState(track, false, 0);
     } catch (err) { console.error('[DJ] Spotify play failed:', err.message); }
 
     // Prepare the NEXT segment in the background while this track plays —
     // the whole point: ~15-20s of generation+synthesis hidden inside
     // several minutes of song instead of sitting between tracks as dead air.
+    // Tagged with the current generation so that if a mood pivot happens
+    // before this resolves, the stale result (built for a lineup that no
+    // longer exists) gets discarded instead of clobbering the fresh pivot
+    // announcement setMood()/this loop are about to prepare instead.
+    const gen = state.generation;
     const isSetEnd = state.queue.length === 0;
     const nextTrack = isSetEnd ? null : state.queue[0];
     const prepPromise = isSetEnd
       ? prepare(track, language, true) // check-in line refers to the track that just finished
       : prepare(nextTrack, language);
     prepPromise
-      .then((p) => { if (state.active) state.pending = p; else fs.unlink(p.wavPath, () => {}); })
+      .then((p) => { if (state.active && gen === state.generation) state.pending = p; else fs.unlink(p.wavPath, () => {}); })
       .catch((err) => console.error('[DJ] background prepare failed:', err.message));
 
     await waitForSpotifyTrackEnd(token, track.uri);
@@ -441,13 +491,44 @@ async function start() {
   state.active = true;
   state.queue = [];
   state.pending = null;
+  // Fresh session — no mood pinned, no play history, no stale pivot signal.
+  state.mood = null;
+  state.pivotRequested = false;
+  state.generation = 0;
+  state.playedUris = new Set();
   broadcastState({ phase: 'starting' });
   state.loopPromise = runLoop();
   return { started: true };
 }
 
+// Pins (or clears, if moodId is null) the announcer's energy for every line
+// from here on. While a session is active this also pivots immediately —
+// cuts the current track, discards whatever was queued/pre-generated for
+// the OLD lineup, and draws a fresh block — mirroring the "press the DJ
+// button again to pivot to a totally new lineup" behavior this feature was
+// modeled on. If DJ mode isn't running yet, it just takes effect at the
+// next start().
+async function setMood(moodId) {
+  state.mood = moodId || null;
+  if (!state.active) return { mood: state.mood, active: false };
+
+  state.generation++; // invalidate any in-flight background prepare for the old lineup
+  state.pivotRequested = true; // cuts waitForSpotifyTrackEnd's poll short
+  state.queue = [];
+  if (state.pending?.wavPath) fs.unlink(state.pending.wavPath, () => {});
+  state.pending = null;
+
+  const token = await getValidAccessToken().catch(() => null);
+  if (token) await spotifyApi.pause(token).catch(() => {});
+  broadcastState({ phase: 'pivoting', mood: state.mood });
+  return { mood: state.mood, active: true };
+}
+
 async function stop() {
   state.active = false;
+  state.generation++; // invalidate any in-flight background prepare
+  state.pivotRequested = false;
+  state.mood = null;
   if (state.pollInterval) clearInterval(state.pollInterval);
   if (state.pending?.wavPath) fs.unlink(state.pending.wavPath, () => {});
   state.pending = null;
@@ -471,8 +552,17 @@ router.post('/stop', async (req, res) => {
   catch (err) { console.error('[DJ] stop failed:', err); res.status(500).json({ error: err.message }); }
 });
 
+router.post('/mood', async (req, res) => {
+  const { mood } = req.body || {};
+  if (mood != null && !MOODS[mood]) {
+    return res.status(400).json({ error: 'unknown_mood', valid: MOOD_IDS });
+  }
+  try { res.json(await setMood(mood || null)); }
+  catch (err) { console.error('[DJ] mood failed:', err); res.status(500).json({ error: err.message }); }
+});
+
 router.get('/status', (req, res) => {
-  res.json({ active: state.active, upNext: state.queue.length });
+  res.json({ active: state.active, upNext: state.queue.length, mood: state.mood, moods: MOOD_IDS });
 });
 
 export default router;

@@ -32,6 +32,23 @@ cmdline_state() {  # $1 = token (word)
 svc_active()  { systemctl is-active  --quiet "$1" 2>/dev/null; }
 svc_enabled() { systemctl is-enabled --quiet "$1" 2>/dev/null; }
 
+# Same as svc_active but tolerates a unit that is mid-restart right now.
+# install.sh runs this script immediately after restarting resonance-api, and
+# resonance-api's own startup asynchronously restarts camilladsp (the
+# hot-reload fallback in updateCamillaConfigFromSettings) — so a plain
+# one-shot is-active reliably caught camilladsp in its "activating" gap and
+# reported the install as FAILED on a perfectly healthy box. Confirmed live
+# 2026-08-01: the report said "camilladsp.service (not active)" while the
+# unit had in fact been up continuously since that very restart.
+svc_active_settle() {
+  for _ in 1 2 3 4 5 6 7 8 9 10; do
+    svc_active "$1" && return 0
+    systemctl is-active "$1" 2>/dev/null | grep -q 'activating\|reloading' || sleep 0.5
+    sleep 0.5
+  done
+  svc_active "$1"
+}
+
 CORES="$(nproc 2>/dev/null || echo 1)"
 PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 TARGET_USER="$(stat -c '%U' "$PROJECT_DIR" 2>/dev/null || echo "$USER")"
@@ -42,8 +59,8 @@ echo -e "${BLUE}═════════════════════�
 
 echo -e "\n${BLUE}Core services${NC}"
 if command -v camilladsp >/dev/null 2>&1; then ok "CamillaDSP binary ($(camilladsp --version 2>/dev/null | head -n1))"; else crit "CamillaDSP binary" "not installed"; fi
-svc_active camilladsp && ok "camilladsp.service running" || bad "camilladsp.service" "not active"
-svc_active mpd        && ok "mpd.service running"        || bad "mpd.service" "not active"
+svc_active_settle camilladsp && ok "camilladsp.service running" || bad "camilladsp.service" "not active"
+svc_active_settle mpd        && ok "mpd.service running"        || bad "mpd.service" "not active"
 if svc_active resonance-api; then ok "resonance-api.service (systemd) running"
 elif command -v pm2 >/dev/null 2>&1 && pm2 pid resonance-api >/dev/null 2>&1; then ok "resonance-api (PM2, legacy — re-run install.sh to migrate)"
 elif pgrep -f "resonance" >/dev/null 2>&1; then ok "resonance backend process found"
@@ -169,6 +186,13 @@ if [ -r /etc/raspotify/conf ]; then
 else
   skip "LIBRESPOT_ONEVENT" "/etc/raspotify/conf not readable — re-run with sudo to check"
 fi
+# The hook being present, executable AND wired is still not enough: the stock
+# raspotify unit ships ProtectHome=yes, which hides /home from the service so
+# the hook can never actually execute (silent "Permission denied" per event).
+case "$(systemctl show raspotify -p ProtectHome --value 2>/dev/null)" in
+  yes|tmpfs) bad "raspotify ProtectHome" "=$(systemctl show raspotify -p ProtectHome --value) hides the hook under /home — re-run install.sh";;
+  *)         ok "raspotify can reach the hook (ProtectHome not hiding /home)";;
+esac
 
 echo -e "\n${BLUE}════════════════════════════════════════════════════════════════════${NC}"
 printf "  ${GREEN}%d active${NC}   ${YELLOW}%d skipped${NC}   ${RED}%d failed${NC}\n" "$PASS" "$WARN" "$FAIL"

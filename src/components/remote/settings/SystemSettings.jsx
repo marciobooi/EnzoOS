@@ -74,14 +74,26 @@ export default function SystemSettings({ inline = false }) {
   const [btDevices, setBtDevices]     = useState([]);
   const [btScanning, setBtScanning]   = useState(false);
   const [btBusyMac, setBtBusyMac]     = useState(null);
+  // Previously-used speakers are listed immediately on open, so reconnecting
+  // to a known one is one tap instead of sitting through a 15s scan every
+  // time — scanning is only needed to add something new.
   const handleOpenBtOut = async () => {
     if (showBtOut) { setShowBtOut(false); return; }
     try { setBtOutStatus(await api.bluetoothOutStatus()); } catch { setBtOutStatus({ enabled: false }); }
     setShowBtOut(true);
+    try { const d = await api.bluetoothOutPaired(); setBtDevices(d.devices || []); } catch { /* scan still available */ }
   };
   const handleScanBt = async () => {
     setBtScanning(true);
-    try { const d = await api.bluetoothOutScan(); setBtDevices(d.devices || []); }
+    try {
+      const d = await api.bluetoothOutScan();
+      // Merge rather than replace: a known speaker that happens to be off (so
+      // the scan can't see it) must not vanish from the list mid-session.
+      setBtDevices(prev => {
+        const seen = new Set((d.devices || []).map(x => x.mac));
+        return [...(d.devices || []), ...prev.filter(x => !seen.has(x.mac))];
+      });
+    }
     catch (e) { reportError(e.message); }
     finally { setBtScanning(false); }
   };

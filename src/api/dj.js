@@ -14,4 +14,16 @@ export const djApi = {
     const response = await fetch('/api/dj/stop', { method: 'POST' });
     return handleJson(response);
   },
+
+  // mood: one of server/dj.js's MOOD_IDS, or null to clear it (back to a
+  // random energy per line). While DJ mode is running this also pivots the
+  // lineup immediately.
+  async setDjMood(mood) {
+    const response = await fetch('/api/dj/mood', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ mood }),
+    });
+    return handleJson(response);
+  },
 };

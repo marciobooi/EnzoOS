@@ -1136,14 +1136,32 @@ router.get('/bluetooth-out/scan', async (req, res) => {
   }
 });
 
-// GET /api/player/bluetooth-out/paired — already-paired devices (no scan needed)
+// GET /api/player/bluetooth-out/paired — known devices, no scan needed.
+//
+// `bluetoothctl paired-devices` was REMOVED in BlueZ 5.65+ (this box runs
+// 5.72) — it errors with "Invalid command in menu main", so this endpoint
+// returned a 500 on every call and the UI could never show a previously
+// used speaker without a fresh 15s scan. The replacement is
+// `devices <filter>`. Both Paired and Trusted are queried and merged
+// because they genuinely differ in practice: a device whose bonding keys
+// were lost (BlueZ data wiped, speaker factory-reset, reinstall) still
+// shows up as Trusted but NOT Paired, and it's exactly that device the
+// user wants offered for a one-tap reconnect instead of re-scanning.
 router.get('/bluetooth-out/paired', async (req, res) => {
   try {
-    const { stdout } = await execFilePromise('bluetoothctl', ['paired-devices']);
-    const devices = stdout.trim().split('\n').filter(Boolean).map(line => {
+    const lists = await Promise.all(
+      ['Paired', 'Trusted'].map(filter =>
+        execFilePromise('bluetoothctl', ['devices', filter])
+          .then(r => r.stdout)
+          .catch(() => '')
+      )
+    );
+    const seen = new Set();
+    const devices = [];
+    for (const line of lists.join('\n').split('\n')) {
       const m = line.match(/^Device\s+([0-9A-Fa-f:]{17})\s+(.*)$/);
-      return m ? { mac: m[1], name: m[2] } : null;
-    }).filter(Boolean);
+      if (m && !seen.has(m[1])) { seen.add(m[1]); devices.push({ mac: m[1], name: m[2] }); }
+    }
     res.json({ devices });
   } catch (err) {
     sendError(res, err);
