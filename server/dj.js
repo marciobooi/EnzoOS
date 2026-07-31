@@ -406,7 +406,9 @@ function waitForSpotifyTrackEnd(token, expectedUri, maxMs = 12 * 60 * 1000) {
         // is_playing:false as "track ended" and immediately skip, burning
         // through the whole set in seconds. Ignore anything that isn't the
         // device we're driving (AUDIT-2026-08-01).
-        const isOurDevice = !state.deviceId || data?.device?.id === state.deviceId;
+        // No "unknown device is fine" fallback: treating a missing deviceId as
+        // a match is what let the phone's state back in.
+        const isOurDevice = !!state.deviceId && data?.device?.id === state.deviceId;
         if (!data || !isOurDevice) {
           if (settling) return; // still handing over — keep waiting
           clearInterval(state.pollInterval); resolve(); return;
@@ -518,6 +520,13 @@ async function start() {
     return { error: 'empty_pool' };
   }
   state.deviceId = await ensureSpotifyDevice(token);
+  if (!state.deviceId) {
+    // Without our own device id every poll would have to accept whatever
+    // device Spotify calls active — i.e. the user's phone — which is exactly
+    // the confusion this session is meant to avoid. Fail loudly instead.
+    broadcastState({ phase: 'error', message: 'Resonance Connect is not available on Spotify yet — try again in a moment.' });
+    return { error: 'device_unavailable' };
+  }
   state.pool = pool;
   state.active = true;
   state.queue = [];
