@@ -965,11 +965,53 @@ export default function Kiosk() {
     });
   };
 
+  // Starting playback needs a device that is not just KNOWN but ACTIVE.
+  // Both play helpers used to send `resonanceDeviceId || devices.find(is_active)`
+  // and give up on failure — so whenever the cached device list was stale or
+  // empty (right after a raspotify restart, a reboot, or the installer
+  // bouncing the service) that resolved to undefined, Spotify was asked to
+  // play on "whatever is active", nothing was, and tapping a playlist item
+  // died with 404 "Player command failed: No active device found".
+  // librespot is online and published the whole time — it simply is not the
+  // active device until something transfers to it, which nothing here did.
+  // Resolve a real id (re-fetching, restarting raspotify only as a last
+  // resort), and if Spotify still reports no active device, transfer and
+  // retry once.
+  const playOnResonance = async (doPlay) => {
+    let id = resonanceDeviceId || devices.find(d => d.is_active)?.id;
+    if (!id) {
+      const data = await api.getDevices(token).catch(() => null);
+      const list = data?.devices || [];
+      if (list.length) setDevices(list);
+      id = list.find(d => d.name === 'Resonance Connect')?.id || list.find(d => d.is_active)?.id;
+    }
+    if (!id) {
+      // ensureRaspotify only calls its callback on SUCCESS — it silently
+      // returns (device never came online, or a restart was already in
+      // flight) or reports its own error otherwise, never rejecting. Awaiting
+      // just the callback would hang this function forever in those cases,
+      // so race it against ensureRaspotify's own completion instead.
+      await new Promise(resolve => {
+        let settled = false;
+        const finish = () => { if (!settled) { settled = true; resolve(); } };
+        ensureRaspotify(async (deviceId) => { id = deviceId; finish(); }).finally(finish);
+      });
+      if (!id) return; // ensureRaspotify already surfaced why, or a restart was already running
+    }
+    try {
+      await doPlay(id);
+    } catch (err) {
+      if (!/no active device/i.test(err?.message || '')) throw err;
+      await api.transferPlayback(token, id, false).catch(() => {});
+      await new Promise(r => setTimeout(r, 600));
+      await doPlay(id);
+    }
+  };
+
   // Play a searched track on the active device
   const handlePlayTrack = useStableCallback(async (trackUri) => {
     try {
-      const activeId = resonanceDeviceId || (devices.find(d => d.is_active)?.id);
-      await api.play(token, activeId, null, [trackUri]);
+      await playOnResonance(id => api.play(token, id, null, [trackUri]));
       setIsSearchOpen(false);
       setTimeout(syncCurrentState, 800);
     } catch (err) {
@@ -980,8 +1022,7 @@ export default function Kiosk() {
   // Play an album or playlist context on the active device
   const handlePlayContext = useStableCallback(async (contextUri) => {
     try {
-      const activeId = resonanceDeviceId || (devices.find(d => d.is_active)?.id);
-      await api.play(token, activeId, contextUri);
+      await playOnResonance(id => api.play(token, id, contextUri));
       setIsSearchOpen(false);
       setTimeout(syncCurrentState, 800);
     } catch (err) {
