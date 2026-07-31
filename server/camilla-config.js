@@ -738,7 +738,9 @@ export function generateCamillaConfig(answers, eqSettings, dacInfo, { pureDirect
 // PipeWire owns the default ALSA device (via /usr/share/alsa/alsa.conf.d/99-pipewire-default.conf).
 // We only need to keep loop_dsnoop so CamillaDSP (ALSA-only build) can still capture audio.
 // PipeWire's loopback module bridges ResonanceInput.monitor → hw:Loopback,0,0 for CamillaDSP.
-async function ensureAsoundConf(bitPerfect = true, btOutputNode = null) {
+// dacInfo is needed for the hardware-mixer step at the end (which card to
+// open) — it must be the same detected DAC the generated config plays to.
+async function ensureAsoundConf(bitPerfect = true, btOutputNode = null, dacInfo = null) {
   const asoundConfPath = '/etc/asound.conf';
   // Bit-perfect: 32-bit container so source depth survives, and NO forced rate
   // on the dsnoop/dmix slaves — they inherit whatever rate PipeWire opened the
@@ -848,16 +850,50 @@ pcm.camilla_bt_output {
     console.warn('[ALSA] Failed to write /etc/asound.conf (non-root context or missing sudoers permission):', err.message);
   }
 
-  // Set hardware PCM Playback Volume to max (0 dB).
-  // CamillaDSP plays directly to hw:CARD=Intel,DEV=0 via ALSA; the hardware
-  // PCM volume IS in the signal path and must be at 255/255 so CamillaDSP
-  // owns the entire gain stage via SetVolume.
+  // Open the DAC's hardware mixer fully so CamillaDSP owns the entire gain
+  // stage via SetVolume — any analogue attenuation here is pure lost output
+  // the user can never get back with the volume knob.
+  //
+  // AUDIT-2026-08-01: this used a hardcoded `-c 0`, which on a Pi 4 is the
+  // snd-aloop LOOPBACK (card 0), not the DAC — `cat /proc/asound/cards`:
+  // 0 Loopback, 1 Headphones, 2/3 vc4hdmi. So it kept setting the loopback's
+  // volume (already max, and irrelevant) while the real output sat wherever
+  // it happened to be: found live at -19.88 dB / 78%, ~20 dB of silently
+  // discarded headroom, which is exactly the "everything is too quiet even
+  // at max" symptom. The old `255,255` literal was wrong for the same
+  // reason it appeared to work — that raw range belongs to the loopback's
+  // control; the bcm2835 headphone control is -10239..400 in 0.01 dB units,
+  // where 255 would mean +2.55 dB, not "max". Percentages are the only
+  // range-agnostic way to say "fully open" across USB DACs, HATs and the
+  // built-in jack alike.
+  const dacCard = /CARD=([^,]+)/.exec(dacInfo?.device || '')?.[1] || null;
+  if (!dacCard) {
+    console.warn('[ALSA] No DAC card name in device string — skipping hardware volume setup.');
+    return;
+  }
+  // Control naming is not standardised: bcm2835 exposes "PCM", most USB DACs
+  // "Master" or "Speaker", some DAC HATs "Digital" or "Playback". Probe what
+  // this card actually has rather than guessing one name.
+  let controls = '';
   try {
-    await execPromise("amixer -c 0 cset name='PCM Playback Volume' 255,255");
-    console.log('[ALSA] Hardware PCM volume set to max (0 dB).');
+    ({ stdout: controls } = await execPromise(`amixer -c ${dacCard} scontrols`));
   } catch (err) {
-    // Non-fatal — some hardware doesn't expose this control
-    console.warn('[ALSA] Could not set PCM Playback Volume (non-fatal):', err.message);
+    console.warn(`[ALSA] Could not enumerate mixer controls on card ${dacCard} (non-fatal):`, err.message);
+    return;
+  }
+  const available = [...controls.matchAll(/Simple mixer control '([^']+)'/g)].map(m => m[1]);
+  const target = ['PCM', 'Master', 'Digital', 'Speaker', 'Playback', 'Headphone']
+    .find(name => available.includes(name));
+  if (!target) {
+    // A bit-perfect DAC with no hardware mixer at all is normal, not an error.
+    console.log(`[ALSA] Card ${dacCard} exposes no volume control (${available.join(', ') || 'none'}) — CamillaDSP already owns the full gain stage.`);
+    return;
+  }
+  try {
+    await execPromise(`amixer -c ${dacCard} sset '${target}' 100% unmute`);
+    console.log(`[ALSA] Opened hardware volume fully: card ${dacCard}, control '${target}' → 100%.`);
+  } catch (err) {
+    console.warn(`[ALSA] Could not set '${target}' on card ${dacCard} (non-fatal):`, err.message);
   }
 }
 
@@ -891,13 +927,16 @@ export async function updateCamillaConfigFromSettings({ skipAlsa = false, sample
   const btOutputActive = !!(btOut?.enabled && btOut?.mac);
   const btOutputNode = btOutputActive ? `bluez_output.${btOut.mac.replace(/:/g, '_')}.1` : null;
 
-  // Auto-configure ALSA Loopback routing — skip during EQ updates since
-  // ALSA config never changes when only EQ bands/levels are adjusted
-  if (!skipAlsa) await ensureAsoundConf(bitPerfect, btOutputNode);
-
-  // Scan for DAC capability automatically
+  // Scan for DAC capability automatically. Must happen BEFORE
+  // ensureAsoundConf — that function's hardware-mixer step needs to know
+  // which card the DAC actually is (see its own comment on why a hardcoded
+  // card number was silently wrong).
   const dacInfo = detectDac();
   console.log('[CamillaDSP] Detected audio device capabilities:', dacInfo);
+
+  // Auto-configure ALSA Loopback routing — skip during EQ updates since
+  // ALSA config never changes when only EQ bands/levels are adjusted
+  if (!skipAlsa) await ensureAsoundConf(bitPerfect, btOutputNode, dacInfo);
 
   // Sync PipeWire clock.allowed-rates to exactly the rates this DAC supports.
   // Fire-and-forget — never blocks the config generation path.
