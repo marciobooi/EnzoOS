@@ -213,10 +213,23 @@ async function generateLine({ music, artist, albumType, popularity, eraContext, 
 }
 
 // ── Piper synthesis ───────────────────────────────────────────────────────
-function synthesize(text, language) {
+// Piper's voice models output 22050Hz MONO — live-tested against the real
+// Pi, playing that straight into ResonanceInput alongside the rest of the
+// pipeline (MPD/Spotify etc. all at 44.1/48kHz stereo) triggered a
+// `snd_pcm_hw_params_set_rate: Invalid argument` crash loop in CamillaDSP
+// (only recovered by a full resonance-api restart, which regenerates and
+// re-applies its config). Piper has no built-in resample flag, so the raw
+// output is immediately upsampled to 48000Hz stereo — the rate this
+// project's own CamillaDSP config generator (server/camilla-config.js)
+// documents as its default — before it ever reaches the shared PipeWire
+// graph. Requires ffmpeg (not part of install.sh — a manually installed
+// prerequisite for this feature, same as Ollama/Piper themselves).
+const CLIP_RATE = 48000;
+
+function synthesizeRaw(text, language) {
   return new Promise((resolve, reject) => {
     const voice = VOICES[language] || VOICES.en;
-    const outFile = path.join(os.tmpdir(), `dj-line-${Date.now()}-${Math.random().toString(36).slice(2, 7)}.wav`);
+    const outFile = path.join(os.tmpdir(), `dj-line-${Date.now()}-${Math.random().toString(36).slice(2, 7)}.raw.wav`);
     const proc = spawn(PIPER_BIN, ['--model', voice, '--output_file', outFile, '--espeak_data', PIPER_ESPEAK_DATA]);
     let stderr = '';
     proc.stderr.on('data', (d) => { stderr += d; });
@@ -228,6 +241,17 @@ function synthesize(text, language) {
     proc.stdin.write(text + '\n');
     proc.stdin.end();
   });
+}
+
+async function synthesize(text, language) {
+  const rawFile = await synthesizeRaw(text, language);
+  const outFile = rawFile.replace(/\.raw\.wav$/, '.wav');
+  try {
+    await execFilePromise('ffmpeg', ['-y', '-i', rawFile, '-ar', String(CLIP_RATE), '-ac', '2', outFile]);
+  } finally {
+    fs.unlink(rawFile, () => {});
+  }
+  return outFile;
 }
 
 function playClip(wavPath) {
