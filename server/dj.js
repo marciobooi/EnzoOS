@@ -90,7 +90,10 @@ function mpdQuery(command, timeoutMs = 8000) {
         sock.write(command + '\n');
         return;
       }
-      if (/\nOK\n$/.test(buf) || /\nACK \[/.test(buf)) {
+      // An empty result set (e.g. an empty library) means the whole response
+      // is just "OK\n" with no preceding newline — a plain endsWith/startsWith
+      // check handles that; a regex anchored on "\nOK\n" doesn't.
+      if (buf === 'OK\n' || buf.endsWith('\nOK\n') || buf.startsWith('ACK ') || buf.includes('\nACK ')) {
         clearTimeout(timer);
         sock.end();
         resolve(buf);
