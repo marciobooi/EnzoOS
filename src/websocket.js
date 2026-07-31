@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
+import { toast } from './lib/toast';
 
 /**
  * Apply a full /api/status snapshot to all React state setters at once.
@@ -313,6 +314,16 @@ export function useResonanceWS({
   
             if (type === 'ERROR') {
               console.warn('[Resonance WS] Server reported error:', payload.message);
+            }
+
+            // DJ mode (server/dj.js) — a self-contained side-channel: shown
+            // directly via the existing global toast rather than threaded
+            // through new React state/props, so this is the only line
+            // anywhere in the client that needs to exist for the feature's
+            // on-screen announcement text to work at all.
+            if (type === 'DJ_STATE') {
+              if (payload.phase === 'announcing' && payload.line) toast.success(payload.line, { duration: 6000 });
+              if (payload.phase === 'error' && payload.message) toast.error(payload.message);
             }
         } catch (err) {
           console.error('[Resonance WS] Error parsing WS message:', err);

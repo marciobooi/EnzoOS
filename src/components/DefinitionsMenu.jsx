@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Sliders, Music, Download, LogOut, Radio, Waves, Smartphone, Airplay, Network, Bluetooth, Music2, Languages, Sparkles, Wifi, HardDrive } from 'lucide-react';
+import { Sliders, Music, Download, LogOut, Radio, Waves, Smartphone, Airplay, Network, Bluetooth, Music2, Languages, Sparkles, Wifi, HardDrive, Mic2 } from 'lucide-react';
 import { api } from '../api';
 import { S } from '../styles/stone';
 import { useI18n } from '../i18n';
@@ -192,6 +192,32 @@ export default function DefinitionsMenu({
           <span className="text-lg font-black tracking-tight leading-none"
             style={{ color: source === 'radio' ? S.strong : S.muted }}>Radio</span>
           {source === 'radio' && (
+            <span className="text-sm font-normal tracking-wide" style={{ color: S.accent }}>{t('kiosk.active')}</span>
+          )}
+        </div>
+      </button>
+
+      {/* 3b. AI DJ CARD — a self-contained source that plays its own local-
+          library playlist with a locally-generated (Ollama) + locally-
+          synthesized (Piper TTS) voice announcer between tracks. See
+          server/dj.js for the whole feature — this card and its
+          onSetSource('dj') call are the only touches in this file. */}
+      <button
+        onClick={() => onSetSource('dj')}
+        className={`w-[180px] shrink-0 p-2 rounded-2xl text-left flex flex-col justify-between transition-all duration-300 relative group overflow-hidden cursor-pointer menu-card-enter ${
+          source === 'dj' ? 'active-card scale-[1.02]' : 'menu-card hover:scale-[1.01]'
+        }`}
+        style={{ animationDelay: '75ms' }}
+      >
+        <span className="text-sm font-light tracking-[0.25em] uppercase" style={{ color: S.label }}>{t('kiosk.djMode')}</span>
+        <div className="my-auto flex justify-center py-2 icon-badge">
+          <Mic2 strokeWidth={1} className="h-16 w-16 transition-all duration-300"
+            style={{ color: source === 'dj' ? S.accent : S.track }} />
+        </div>
+        <div className="flex items-baseline justify-between w-full">
+          <span className="text-lg font-black tracking-tight leading-none"
+            style={{ color: source === 'dj' ? S.strong : S.muted }}>DJ</span>
+          {source === 'dj' && (
             <span className="text-sm font-normal tracking-wide" style={{ color: S.accent }}>{t('kiosk.active')}</span>
           )}
         </div>

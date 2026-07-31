@@ -16,6 +16,7 @@ import spotifyDaemonRouter from './spotify-daemon.js';
 import statusRouter from './status.js';
 import metadataRouter from './metadata.js';
 import authRouter from './auth-routes.js';
+import djRouter from './dj.js';
 import { setupWebSocket, stopAudioLevelMonitor } from './websocket.js';
 import { loadStateFromDB } from './event-service.js';
 import { closeDB } from './db.js';
@@ -158,6 +159,9 @@ app.use('/api/status', requireAuth, statusRouter);
 
 // Premium album/artist metadata aggregator (on-demand, cached)
 app.use('/api/metadata', requireAuth, metadataRouter);
+
+// DJ mode — local Ollama + Piper TTS voice announcer (see server/dj.js)
+app.use('/api/dj', requireAuth, djRouter);
 
 // Fallback all non-API GET requests to index.html for Single Page App client
 // routing. /api/* is deliberately excluded — it used to fall through to this

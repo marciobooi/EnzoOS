@@ -14,6 +14,7 @@ import { streamingApi } from './api/streaming';
 import { metadataApi }  from './api/metadata';
 import { historyApi }   from './api/history';
 import { systemApi }    from './api/system';
+import { djApi }        from './api/dj';
 
 export const api = {
   ...spotifyApi,
@@ -25,4 +26,5 @@ export const api = {
   ...metadataApi,
   ...historyApi,
   ...systemApi,
+  ...djApi,
 };

@@ -347,6 +347,7 @@ export default {
     streamService: 'stream service',
     localSystem: 'local system',
     streamRadio: 'stream radio',
+    djMode: 'ai dj',
     appleAirplay: 'apple airplay',
     upnpDlna: 'upnp / dlna',
     bluetoothA2dp: 'bluetooth a2dp',

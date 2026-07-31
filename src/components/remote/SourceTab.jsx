@@ -1,5 +1,5 @@
 import { useContext, useEffect, useRef, useState } from 'react';
-import { Music, Radio, Airplay, Network, Bluetooth, Music2 } from 'lucide-react';
+import { Music, Radio, Airplay, Network, Bluetooth, Music2, Mic2 } from 'lucide-react';
 import { Tk, SpotifyIcon, Sheet } from './shared';
 import { api } from '../../api';
 import { toast } from '../../lib/toast';
@@ -126,6 +126,7 @@ export default function SourceTab({ inline = false }) {
     { id: 'spotify',   label: 'Spotify',   Icon: () => <SpotifyIcon className="h-7 w-7" style={{ fill: source === 'spotify'   ? '#1ed760'    : C.text4 }} /> },
     { id: 'local',     label: 'Local',     Icon: () => <Music      className="h-7 w-7" style={{ color: source === 'local'     ? C.champagne : C.text4 }} /> },
     { id: 'radio',     label: 'Radio',     Icon: () => <Radio      className="h-7 w-7" style={{ color: source === 'radio'     ? C.champagne : C.text4 }} /> },
+    { id: 'dj',        label: 'DJ',        Icon: () => <Mic2       className="h-7 w-7" style={{ color: source === 'dj'        ? C.champagne : C.text4 }} /> },
     { id: 'airplay',   label: 'AirPlay',   Icon: () => <Airplay    className="h-7 w-7" style={{ color: source === 'airplay'   ? C.champagne : C.text4 }} /> },
     { id: 'upnp',      label: 'UPnP',      Icon: () => <Network    className="h-7 w-7" style={{ color: source === 'upnp'      ? C.champagne : C.text4 }} /> },
     { id: 'bluetooth', label: 'Bluetooth', Icon: () => <Bluetooth  className="h-7 w-7" style={{ color: source === 'bluetooth' ? C.champagne : C.text4 }} /> },

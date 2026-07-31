@@ -417,8 +417,12 @@ export default function Kiosk() {
 
   // Poll MPD state for local source so track info and paused state stay current
   // on both kiosk and remote. Torn down when source changes away from local.
+  // Also covers 'dj': DJ mode (server/dj.js) plays through MPD directly, so
+  // this same polling is what keeps the visible title/artist/art in sync
+  // with whatever it's actually playing — without it the player would look
+  // frozen on whatever played last while DJ audio played in the background.
   useEffect(() => {
-    if (source !== 'local') return;
+    if (source !== 'local' && source !== 'dj') return;
 
     syncLocalState();
     const id = setInterval(() => {
@@ -598,6 +602,9 @@ export default function Kiosk() {
       case 'bluetooth':
         fetch('/api/player/bluetooth/stop', { method: 'POST' }).catch(() => {});
         break;
+      case 'dj':
+        api.stopDjMode().catch(() => {});
+        break;
       default:
         break;
     }
@@ -611,6 +618,10 @@ export default function Kiosk() {
     setRepeatState('off');
     const isSpotify = nextSource === 'spotify';
     sendUpdate('SET_SOURCE', { spotify: isSpotify, source: nextSource });
+    // DJ mode has no external playback state to react to (Spotify Connect,
+    // MPD, etc.) — it drives itself server-side, so it's the one source
+    // started with a direct call rather than through the SET_SOURCE event.
+    if (nextSource === 'dj') api.startDjMode().catch(() => {});
   });
 
   const handleToggleFavoriteRadio = useStableCallback(async (station) => {
@@ -985,7 +996,8 @@ export default function Kiosk() {
     try {
       const status = await api.localGetStatus();
       // Source changed while the request was in-flight — discard stale result
-      if (sourceRef.current !== capturedSource || sourceRef.current !== 'local') return;
+      if (sourceRef.current !== capturedSource) return;
+      if (sourceRef.current !== 'local' && sourceRef.current !== 'dj') return;
       if (!status || (!status.name && !status.file)) return;
       // MPD might still have a radio/stream URL in its queue.
       // Don't show stream metadata (URL or empty name) as local file info.

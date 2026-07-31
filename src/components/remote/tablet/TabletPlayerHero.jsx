@@ -19,6 +19,7 @@ const INPUT_SOURCES = [
   { id: 'spotify',   label: 'Spotify',   Icon: SpotifyIcon, isSpotify: true },
   { id: 'local',     label: 'Local',     Icon: Music },
   { id: 'radio',     label: 'Radio',     Icon: Radio },
+  { id: 'dj',        label: 'DJ',        Icon: Mic2 },
   { id: 'airplay',   label: 'AirPlay',   Icon: Airplay },
   { id: 'upnp',      label: 'UPnP',      Icon: Network },
   { id: 'bluetooth', label: 'Bluetooth', Icon: Bluetooth },

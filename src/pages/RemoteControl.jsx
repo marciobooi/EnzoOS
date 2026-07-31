@@ -596,12 +596,19 @@ export default function RemoteControl() {
       case 'bluetooth':
         fetch('/api/player/bluetooth/stop', { method: 'POST' }).catch(() => {});
         break;
+      case 'dj':
+        api.stopDjMode().catch(() => {});
+        break;
       default:
         break;
     }
     setSource(src);
     setPlaybackState(null);
     sendUpdate('SET_SOURCE', { spotify: src === 'spotify', source: src });
+    // DJ mode drives itself server-side (no external playback state like
+    // Spotify Connect/MPD to react to), so it's started with a direct call
+    // rather than through the SET_SOURCE event, mirroring Kiosk.jsx.
+    if (src === 'dj') api.startDjMode().catch(() => {});
   };
   const handleToggleStandby = en  => { setStandby(en); if (ws.current?.readyState === WebSocket.OPEN) ws.current.send(JSON.stringify({ type: 'SET_STANDBY', payload: { enabled: en } })); };
   const handleTogglePureDirect = async enabled => {
