@@ -417,12 +417,12 @@ export default function Kiosk() {
 
   // Poll MPD state for local source so track info and paused state stay current
   // on both kiosk and remote. Torn down when source changes away from local.
-  // Also covers 'dj': DJ mode (server/dj.js) plays through MPD directly, so
-  // this same polling is what keeps the visible title/artist/art in sync
-  // with whatever it's actually playing — without it the player would look
-  // frozen on whatever played last while DJ audio played in the background.
+  // NOT 'dj': DJ mode (server/dj.js) plays via Spotify Web API calls, not
+  // MPD — it pushes BROADCAST_STATE itself once it has real Spotify
+  // now-playing data, so polling MPD here as well would just read "nothing
+  // playing" and fight that broadcast.
   useEffect(() => {
-    if (source !== 'local' && source !== 'dj') return;
+    if (source !== 'local') return;
 
     syncLocalState();
     const id = setInterval(() => {
@@ -996,8 +996,7 @@ export default function Kiosk() {
     try {
       const status = await api.localGetStatus();
       // Source changed while the request was in-flight — discard stale result
-      if (sourceRef.current !== capturedSource) return;
-      if (sourceRef.current !== 'local' && sourceRef.current !== 'dj') return;
+      if (sourceRef.current !== capturedSource || sourceRef.current !== 'local') return;
       if (!status || (!status.name && !status.file)) return;
       // MPD might still have a radio/stream URL in its queue.
       // Don't show stream metadata (URL or empty name) as local file info.

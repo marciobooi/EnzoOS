@@ -1,15 +1,31 @@
 /**
- * DJ mode — a self-contained "source" that runs its own playlist from the
- * local library, with a locally-generated (Ollama) + locally-synthesized
- * (Piper TTS) voice announcer between tracks, like a radio DJ.
+ * DJ mode — a self-contained "source" that plays Spotify tracks from your
+ * library, with a locally-generated (Ollama) + locally-synthesized (Piper
+ * TTS) voice announcer between tracks, like a radio DJ. Plays a block of
+ * SONGS_PER_SET tracks, then does a short "check-in" line and starts a new
+ * block, repeating until stopped.
  *
  * DELIBERATELY ISOLATED: this is the only file with any DJ-specific logic.
  * The only touches outside this file are: one import + one `app.use()` line
  * in server/index.js, and 'DJ_STATE' added to the PASSTHROUGH set in
  * event-service.js. Deleting this file, those two index.js lines, and that
  * one Set entry removes the feature completely — nothing else references it.
- * Client-side source-list entries are equally self-contained (see
- * CLAUDE.md/git history for the matching frontend commit).
+ * Client-side source-list entries are equally self-contained (see git
+ * history for the matching frontend commits).
+ *
+ * Playback is Spotify only for now (explicit direction — not local/Qobuz/
+ * Tidal). Doesn't reimplement any Spotify Web API calls: imports
+ * `spotifyApi` straight from src/api/spotify.js — the exact same functions
+ * the client already uses (getDevices, transferPlayback, play, pause,
+ * getSavedTracks, getUserTopTracks, getPlaybackState) — driven server-side
+ * with the token server/spotify-auth.js already persists/refreshes. That
+ * file has no browser-only dependencies (no `window`/`document`, no Vite
+ * env vars), so it's plain portable ESM; the only change needed to import
+ * it from Node was adding the .js extension to its own `./_client` import,
+ * which Vite tolerated but Node's ESM resolver doesn't (fixed in the same
+ * commit as this file). Track metadata (popularity, album_type, release
+ * date) comes directly from Spotify's own API fields, which is what the
+ * original DJ prompt spec was written against.
  *
  * Hardware reality this was designed against (live-benchmarked on the
  * actual Pi 4 4GB, 2026-07-31): qwen2.5:1.5b (Q4) generates a ~15-word line
@@ -17,28 +33,31 @@
  * roughly real-time synthesis. That's 15-20s of dead air if done
  * synchronously between tracks — unacceptable. So the NEXT track's
  * announcement is always generated in the background WHILE the current
- * track plays (3-4 min of runway vs ~20s of prep), and the only real wait
- * is the very first announcement when DJ mode is switched on.
+ * track plays (typically 3+ minutes of runway vs ~20s of prep), and the
+ * only real wait is the very first announcement when DJ mode switches on.
  *
- * Audio path: Piper writes a WAV, played via `pw-play --target
- * ResonanceInput` — the exact same PipeWire virtual sink every other source
- * (MPD/Spotify/AirPlay/Bluetooth) already converges on (see install.sh),
- * so no changes to asound.conf/camilladsp.yml/PipeWire config were needed.
- * resonance-api's systemd unit doesn't set PIPEWIRE_REMOTE/XDG_RUNTIME_DIR
- * (only the audio daemons' own units do), so this file sets them explicitly
- * per pw-play call.
+ * Audio path for the VOICE: Piper writes a WAV, played via `pw-play
+ * --target ResonanceInput` — the exact same PipeWire virtual sink every
+ * other source (MPD/Spotify/AirPlay/Bluetooth) already converges on (see
+ * install.sh), so no changes to asound.conf/camilladsp.yml/PipeWire config
+ * were needed. resonance-api's systemd unit doesn't set PIPEWIRE_REMOTE/
+ * XDG_RUNTIME_DIR (only the audio daemons' own units do), so this file sets
+ * them explicitly per pw-play call. The MUSIC itself plays through Spotify
+ * Connect exactly as it always does (raspotify/librespot → PipeWire →
+ * CamillaDSP → DAC) — dj.js never touches that path directly, it only
+ * issues Spotify Web API play/pause commands.
  */
 import express from 'express';
-import { exec, execFile, spawn } from 'child_process';
+import { execFile, spawn } from 'child_process';
 import { promisify } from 'util';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
-import net from 'net';
-import { getSetting, getMostPlayedTracks } from './db.js';
+import { getSetting } from './db.js';
 import { emit } from './event-service.js';
+import { getValidAccessToken } from './spotify-auth.js';
+import { spotifyApi } from '../src/api/spotify.js';
 
-const execPromise = promisify(exec);
 const execFilePromise = promisify(execFile);
 const router = express.Router();
 
@@ -69,87 +88,70 @@ const RANDOM_ENERGY = {
   pt: ['super hiperativo e enérgico', 'smooth rádio de fim de noite', 'casual e cool', 'intenso e dramático', 'brincalhão e divertido'],
 };
 
-// ── Raw MPD protocol client ──────────────────────────────────────────────
-// Self-contained on purpose (see file header) — duplicates the ~15 lines
-// server/player.js's own mpdCommand() helper would otherwise provide,
-// rather than importing from it, so this file has zero coupling to player.js.
-function mpdQuery(command, timeoutMs = 8000) {
-  return new Promise((resolve, reject) => {
-    const sock = net.createConnection({ host: '127.0.0.1', port: 6600 });
-    let buf = '';
-    let gotBanner = false;
-    const timer = setTimeout(() => { sock.destroy(); reject(new Error('MPD query timeout')); }, timeoutMs);
-    sock.on('error', (err) => { clearTimeout(timer); reject(err); });
-    sock.on('data', (chunk) => {
-      buf += chunk.toString('utf8');
-      if (!gotBanner) {
-        const nl = buf.indexOf('\n');
-        if (nl === -1) return;
-        gotBanner = true;
-        buf = buf.slice(nl + 1);
-        sock.write(command + '\n');
-        return;
-      }
-      // An empty result set (e.g. an empty library) means the whole response
-      // is just "OK\n" with no preceding newline — a plain endsWith/startsWith
-      // check handles that; a regex anchored on "\nOK\n" doesn't.
-      if (buf === 'OK\n' || buf.endsWith('\nOK\n') || buf.startsWith('ACK ') || buf.includes('\nACK ')) {
-        clearTimeout(timer);
-        sock.end();
-        resolve(buf);
-      }
-    });
-    sock.on('close', () => { clearTimeout(timer); resolve(buf); });
+// ── Spotify helpers ───────────────────────────────────────────────────────
+// Thin wrappers around spotifyApi — the orchestration-specific bits only
+// (which device to target, which pools to merge), not the HTTP calls
+// themselves.
+
+// Finds the "Resonance Connect" librespot device and makes it Spotify's
+// active playback target if it isn't already. Deliberately simple for now
+// (no raspotify-restart-and-retry loop like the kiosk's own ensureRaspotify)
+// — if the device isn't up at all, start() just surfaces that as an error.
+async function ensureSpotifyDevice(token) {
+  const data = await spotifyApi.getDevices(token).catch(() => null);
+  const device = (data?.devices || []).find(d => d.name === 'Resonance Connect');
+  if (!device) return null;
+  if (!device.is_active) {
+    await spotifyApi.transferPlayback(token, device.id, false).catch(() => {});
+  }
+  return device.id;
+}
+
+// Pool = Liked Songs + medium-term Top Tracks, deduped by URI. Mixing both
+// gives a bigger, more varied pool than either alone, and both are always
+// available for any account with listening history (no user-picked
+// playlist needed for this first pass).
+async function getSpotifyTrackPool(token) {
+  const [savedData, topData] = await Promise.all([
+    spotifyApi.getSavedTracks(token, 50).catch(() => null),
+    spotifyApi.getUserTopTracks(token, 50, 'medium_term').catch(() => null),
+  ]);
+  const saved = (savedData?.items || []).map(i => i.track).filter(Boolean);
+  const top = topData?.items || [];
+  const seen = new Set();
+  const pool = [];
+  for (const t of [...saved, ...top]) {
+    if (t?.uri && !seen.has(t.uri)) { seen.add(t.uri); pool.push(t); }
+  }
+  return pool;
+}
+
+// Broadcasts full now-playing info through the SAME channel Kiosk.jsx's own
+// Spotify polling (syncCurrentState) already uses to push state after a
+// poll — the client needs zero new wiring, PlayerDisplay already renders
+// whatever this produces.
+function broadcastSpotifyState(track, paused, positionMs) {
+  emit('BROADCAST_STATE', {
+    paused,
+    position: positionMs || 0,
+    duration: track.duration_ms || 0,
+    track_window: {
+      current_track: {
+        uri: track.uri,
+        name: track.name,
+        album: { name: track.album?.name || '', images: track.album?.images || [] },
+        artists: track.artists || [],
+      },
+    },
   });
 }
 
-// Parses MPD's `file:`/`Key: Value` block format (listallinfo output) into
-// track objects. `directory:` lines end the preceding track's block.
-function parseMpdTracks(raw) {
-  const tracks = [];
-  let cur = null;
-  for (const line of raw.split('\n')) {
-    const idx = line.indexOf(': ');
-    if (idx === -1) continue;
-    const key = line.slice(0, idx);
-    const val = line.slice(idx + 2);
-    if (key === 'file') {
-      if (cur) tracks.push(cur);
-      cur = { file: val, title: '', artist: '', album: '', date: '' };
-    } else if (key === 'directory') {
-      if (cur) { tracks.push(cur); cur = null; }
-    } else if (cur && key === 'Title') cur.title = val;
-    else if (cur && key === 'Artist') cur.artist = val;
-    else if (cur && key === 'Album') cur.album = val;
-    else if (cur && key === 'Date') cur.date = val;
-  }
-  if (cur) tracks.push(cur);
-  return tracks.filter(t => t.file);
-}
-
-async function getLibraryPool() {
-  const raw = await mpdQuery('listallinfo /', 15000);
-  return parseMpdTracks(raw);
-}
-
-// ── Metadata derivation (the {popularity}/{era_context} injected vars) ────
-async function buildPopularityMap() {
-  const rows = await getMostPlayedTracks(500).catch(() => []);
-  const map = new Map();
-  let max = 1;
-  for (const r of rows) { map.set(r.file, r.playCount); if (r.playCount > max) max = r.playCount; }
-  return { map, max };
-}
-
-function popularityFor(file, { map, max }) {
-  if (map.has(file)) return Math.max(15, Math.round((map.get(file) / max) * 100));
-  // No play history for this file — mid-range so an unknown track isn't
-  // falsely framed as either a "world hit" or "niche" pick.
-  return 35 + Math.floor(Math.random() * 30);
-}
-
-function eraContextFor(dateTag, lang) {
-  const year = parseInt(String(dateTag || '').slice(0, 4), 10);
+// ── Metadata derivation (the {era_context} injected var) ─────────────────
+// {popularity} and {album_type} come straight from Spotify's own track/
+// album fields — no heuristic needed, unlike the local-library version this
+// replaced.
+function eraContextFor(releaseDate, lang) {
+  const year = parseInt(String(releaseDate || '').slice(0, 4), 10);
   if (!Number.isFinite(year) || year < 1900 || year > new Date().getFullYear()) return null;
   const age = new Date().getFullYear() - year;
   const decade = Math.floor(year / 10) * 10;
@@ -174,7 +176,7 @@ function sanitizeSpokenLine(raw, maxWords = 18) {
     .trim();
   const words = text.split(' ').filter(Boolean);
   if (words.length > maxWords) {
-    text = words.slice(0, maxWords).join(' ').replace(/[,;:\-–—]+$/, '');
+    text = words.slice(0, maxWords).join(' ').replace(/[,;:–—-]+$/, '');
   }
   if (text && !/[.!?]$/.test(text)) text += '.';
   return text;
@@ -215,13 +217,10 @@ async function generateLine({ music, artist, albumType, popularity, eraContext, 
 // ── Piper synthesis ───────────────────────────────────────────────────────
 // Piper's voice models output 22050Hz MONO — live-tested against the real
 // Pi, playing that straight into ResonanceInput alongside the rest of the
-// pipeline (MPD/Spotify etc. all at 44.1/48kHz stereo) triggered a
-// `snd_pcm_hw_params_set_rate: Invalid argument` crash loop in CamillaDSP
-// (only recovered by a full resonance-api restart, which regenerates and
-// re-applies its config). Piper has no built-in resample flag, so the raw
-// output is immediately upsampled to 48000Hz stereo — the rate this
-// project's own CamillaDSP config generator (server/camilla-config.js)
-// documents as its default — before it ever reaches the shared PipeWire
+// pipeline (which runs at 44.1/48kHz stereo) triggered a
+// `snd_pcm_hw_params_set_rate: Invalid argument` crash loop in CamillaDSP.
+// Piper has no built-in resample flag, so the raw output is immediately
+// upsampled to 48000Hz stereo before it ever reaches the shared PipeWire
 // graph. Requires ffmpeg (not part of install.sh — a manually installed
 // prerequisite for this feature, same as Ollama/Piper themselves).
 const CLIP_RATE = 48000;
@@ -258,53 +257,15 @@ function playClip(wavPath) {
   return execFilePromise('pw-play', ['--target', 'ResonanceInput', wavPath], { env: PW_ENV, timeout: 30000 });
 }
 
-// ── MPD playback ──────────────────────────────────────────────────────────
-// `mpc clear` then `add` then `play` (the obvious way to write this) passes
-// through a moment where the queue is empty and nothing is playing — live-
-// tested against the real Pi, that transient state was enough to trip
-// server/player.js's MPD-idle-driven "bit-perfect rate-following" listener
-// (it reacts to MPD's `changed: player` event on EVERY queue mutation,
-// re-reads the current format, and pushes a new CamillaDSP config+hot-reload
-// if it differs) into detecting a bogus/absent format and regenerating
-// CamillaDSP's config to a bad value — crash-looped CamillaDSP for real
-// during testing. Appending the new track, jumping straight to its position,
-// then deleting everything before it never leaves the queue empty, so that
-// listener only ever observes real, meaningful transitions.
-async function playTrack(file) {
-  await execFilePromise('mpc', ['add', file]);
-  const { stdout } = await execPromise('mpc playlist');
-  const position = stdout.trim().split('\n').filter(Boolean).length;
-  await execFilePromise('mpc', ['play', String(position)]);
-  for (let i = 1; i < position; i++) {
-    await execFilePromise('mpc', ['del', '1']).catch(() => {});
-  }
-}
-
-function waitForTrackEnd(maxMs = 12 * 60 * 1000) {
-  return new Promise((resolve) => {
-    const startedAt = Date.now();
-    state.pollInterval = setInterval(async () => {
-      if (!state.active) { clearInterval(state.pollInterval); resolve(); return; }
-      if (Date.now() - startedAt > maxMs) { clearInterval(state.pollInterval); resolve(); return; }
-      try {
-        const { stdout } = await execPromise('mpc status');
-        if (!stdout.includes('[playing]') && !stdout.includes('[paused]')) {
-          clearInterval(state.pollInterval); resolve();
-        }
-      } catch { clearInterval(state.pollInterval); resolve(); }
-    }, 2000);
-  });
-}
-
 // ── Session state machine ─────────────────────────────────────────────────
 const state = {
   active: false,
   pool: [],
-  popularity: { map: new Map(), max: 1 },
   queue: [],
-  pending: null, // { text, wavPath } for the track about to play, prepared ahead of time
+  pending: null, // { text, wavPath, forTrack } for the track about to play, prepared ahead of time
   pollInterval: null,
   loopPromise: null,
+  deviceId: null,
 };
 
 function pickTracks(n) {
@@ -317,16 +278,16 @@ function broadcastState(extra = {}) {
 }
 
 async function prepare(track, language, isCheckIn = false) {
-  const trigger = track.date
+  const trigger = track.album?.release_date
     ? ['focus on the era', 'focus on the artist', 'focus on the hype'][Math.floor(Math.random() * 3)]
     : ['focus on the artist', 'focus on the hype'][Math.floor(Math.random() * 2)];
   const energyList = RANDOM_ENERGY[language] || RANDOM_ENERGY.en;
   const text = await generateLine({
-    music: track.title || path.basename(track.file),
-    artist: track.artist || 'unknown artist',
-    albumType: 'album track',
-    popularity: popularityFor(track.file, state.popularity),
-    eraContext: eraContextFor(track.date, language),
+    music: track.name,
+    artist: (track.artists || []).map(a => a.name).join(', ') || 'unknown artist',
+    albumType: track.album?.album_type || 'track',
+    popularity: typeof track.popularity === 'number' ? track.popularity : 50,
+    eraContext: eraContextFor(track.album?.release_date, language),
     randomEnergy: energyList[Math.floor(Math.random() * energyList.length)],
     randomTrigger: trigger,
     language,
@@ -336,14 +297,45 @@ async function prepare(track, language, isCheckIn = false) {
   return { text, wavPath, forTrack: track };
 }
 
+// Polls Spotify's own playback state (no push API for third parties) both to
+// detect the track ending AND to keep the kiosk's now-playing display
+// current for the whole time the track plays, not just at the start.
+function waitForSpotifyTrackEnd(token, expectedUri, maxMs = 12 * 60 * 1000) {
+  const startedAt = Date.now();
+  return new Promise((resolve) => {
+    state.pollInterval = setInterval(async () => {
+      if (!state.active) { clearInterval(state.pollInterval); resolve(); return; }
+      if (Date.now() - startedAt > maxMs) { clearInterval(state.pollInterval); resolve(); return; }
+      try {
+        const data = await spotifyApi.getPlaybackState(token);
+        if (!data) { clearInterval(state.pollInterval); resolve(); return; } // null = 204, nothing playing
+        if (data?.item) broadcastSpotifyState(data.item, !data.is_playing, data.progress_ms);
+        if (!data?.is_playing || data?.item?.uri !== expectedUri) {
+          clearInterval(state.pollInterval); resolve();
+        }
+      } catch { /* transient network hiccup — keep polling, don't abort the session over it */ }
+    }, 3000);
+  });
+}
+
 async function runLoop() {
   const language = (await getSetting('language').catch(() => null)) === 'pt' ? 'pt' : 'en';
 
   while (state.active) {
+    // Refreshed every iteration (not captured once) — a long session can
+    // outlive a single Spotify access token; getValidAccessToken() renews
+    // it transparently when it's close to expiry.
+    const token = await getValidAccessToken();
+    if (!token) {
+      broadcastState({ phase: 'error', message: 'Spotify is not connected.' });
+      break;
+    }
+
     if (state.queue.length === 0) {
+      state.pool = await getSpotifyTrackPool(token);
       state.queue = pickTracks(SONGS_PER_SET);
       if (state.queue.length === 0) {
-        broadcastState({ phase: 'error', message: 'No tracks found in your local library.' });
+        broadcastState({ phase: 'error', message: 'No Spotify tracks available — save some Liked Songs first.' });
         break;
       }
     }
@@ -362,6 +354,7 @@ async function runLoop() {
     if (!state.active) break;
 
     if (state.pending) {
+      await spotifyApi.pause(token).catch(() => {});
       broadcastState({ phase: 'announcing', line: state.pending.text });
       try { await playClip(state.pending.wavPath); } catch (err) { console.error('[DJ] playback failed:', err.message); }
       fs.unlink(state.pending.wavPath, () => {});
@@ -369,12 +362,15 @@ async function runLoop() {
     state.pending = null;
     if (!state.active) break;
 
-    broadcastState({ phase: 'playing', track: { title: track.title, artist: track.artist, file: track.file } });
-    try { await playTrack(track.file); } catch (err) { console.error('[DJ] playTrack failed:', err.message); }
+    broadcastState({ phase: 'playing', track: { title: track.name, artist: (track.artists || []).map(a => a.name).join(', ') } });
+    try {
+      await spotifyApi.play(token, state.deviceId, null, [track.uri]);
+      broadcastSpotifyState(track, false, 0);
+    } catch (err) { console.error('[DJ] Spotify play failed:', err.message); }
 
     // Prepare the NEXT segment in the background while this track plays —
-    // the whole point: ~15-20s of generation+synthesis hidden inside a
-    // 3-4 minute song instead of sitting between tracks as dead air.
+    // the whole point: ~15-20s of generation+synthesis hidden inside
+    // several minutes of song instead of sitting between tracks as dead air.
     const isSetEnd = state.queue.length === 0;
     const nextTrack = isSetEnd ? null : state.queue[0];
     const prepPromise = isSetEnd
@@ -384,7 +380,7 @@ async function runLoop() {
       .then((p) => { if (state.active) state.pending = p; else fs.unlink(p.wavPath, () => {}); })
       .catch((err) => console.error('[DJ] background prepare failed:', err.message));
 
-    await waitForTrackEnd();
+    await waitForSpotifyTrackEnd(token, track.uri);
   }
 
   state.active = false;
@@ -393,12 +389,18 @@ async function runLoop() {
 
 async function start() {
   if (state.active) return { alreadyActive: true };
-  state.pool = await getLibraryPool();
-  if (state.pool.length === 0) {
-    broadcastState({ phase: 'error', message: 'No tracks found in your local library.' });
-    return { error: 'empty_library' };
+  const token = await getValidAccessToken();
+  if (!token) {
+    broadcastState({ phase: 'error', message: 'Spotify is not connected.' });
+    return { error: 'spotify_not_connected' };
   }
-  state.popularity = await buildPopularityMap();
+  const pool = await getSpotifyTrackPool(token);
+  if (pool.length === 0) {
+    broadcastState({ phase: 'error', message: 'No Spotify tracks available — save some Liked Songs first.' });
+    return { error: 'empty_pool' };
+  }
+  state.deviceId = await ensureSpotifyDevice(token);
+  state.pool = pool;
   state.active = true;
   state.queue = [];
   state.pending = null;
@@ -413,7 +415,8 @@ async function stop() {
   if (state.pending?.wavPath) fs.unlink(state.pending.wavPath, () => {});
   state.pending = null;
   state.queue = [];
-  try { await execPromise('mpc stop'); } catch { /* best effort */ }
+  const token = await getValidAccessToken().catch(() => null);
+  if (token) await spotifyApi.pause(token).catch(() => {});
   broadcastState({ phase: 'stopped' });
   return { stopped: true };
 }

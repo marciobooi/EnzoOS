@@ -1,5 +1,5 @@
 // Spotify Web API (token-based) + Spotify daemon credentials.
-import { SPOTIFY_API_URL, handleResponse } from './_client';
+import { SPOTIFY_API_URL, handleResponse } from './_client.js';
 
 export const spotifyApi = {
   /**
