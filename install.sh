@@ -279,6 +279,12 @@ pcm.camilla_input {
         channels 2
         format S32_LE
         period_size 1024
+        # Explicit buffer_size is required, not a tuning nicety — without it
+        # ALSA sizes this ring at 3072 frames (~64 ms) and librespot's burst
+        # writes underrun on the first write of every track, so Spotify skips
+        # through the library silently. See server/camilla-config.js's copy of
+        # this block (AUDIT-2026-08-01) for the full diagnosis.
+        buffer_size 16384
     }
 }
 
@@ -291,6 +297,7 @@ pcm.loop_dsnoop {
         channels 2
         format S32_LE
         period_size 1024
+        buffer_size 16384
     }
 }
 ASOUNDEOF

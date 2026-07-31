@@ -772,6 +772,20 @@ pcm.camilla_input {
         channels 2
 ${rateLine}        format ${loopFormat}
         period_size 1024
+        # buffer_size is NOT optional here (AUDIT-2026-08-01). With only
+        # period_size set, ALSA sized this dmix ring at 3072 frames — ~64 ms
+        # at 48 kHz — and, because dmix pins its params for whoever opens it
+        # first (the permanent PipeWire aloop-sink node), every later client
+        # inherited that tiny ring for the life of the session. Clients that
+        # write in small period-sized chunks (aplay, MPD) coped; librespot
+        # writes in larger bursts and underran on the very first write of
+        # every track: "snd_pcm_writei failed with error 'Broken pipe (32)'"
+        # → track aborts → spirc immediately loads the next one → Spotify
+        # appeared to skip through the whole library playing nothing.
+        # Reproduced live and confirmed NOT fixed by a reboot. 16384 frames
+        # (~341 ms, 16 periods) gives burst-writers ample headroom while
+        # staying well inside the latency this appliance already tolerates.
+        buffer_size 16384
     }
 }
 
@@ -784,6 +798,11 @@ pcm.loop_dsnoop {
         channels 2
 ${rateLine}        format ${loopFormat}
         period_size 1024
+        # Matches camilla_input's ring above — the capture side is read by
+        # CamillaDSP in 1024-frame chunks, and a ring this size absorbs the
+        # scheduling jitter behind the recurring "Capture read 1022 frames
+        # instead of the requested 1024" warnings.
+        buffer_size 16384
     }
 }
 ${btOutputNode ? `
