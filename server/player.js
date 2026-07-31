@@ -1177,12 +1177,22 @@ async function btctl(args) {
   const { stdout = '', stderr = '' } = await execFilePromise('bluetoothctl', args)
     .catch(err => ({ stdout: err.stdout || '', stderr: err.stderr || err.message || '' }));
   const out = `${stdout}\n${stderr}`;
+  // "Failed to <verb>: <reason>" covers BlueZ's D-Bus errors, but a device
+  // that was never discovered fails with a bare "not available" instead —
+  // which matched nothing here and let a no-op pair report success.
   const failed = /Failed to [a-z]+:\s*(.+)/i.exec(out);
-  return { out, error: failed ? failed[1].trim() : null };
+  const missing = /Device .* not available/i.test(out);
+  return {
+    out,
+    error: failed ? failed[1].trim() : (missing ? 'not-discovered' : null),
+  };
 }
 
 // Maps BlueZ's opaque D-Bus error names to something a person can act on.
 function btReason(error) {
+  if (error === 'not-discovered') {
+    return 'The device was not found. Put it in pairing mode (for AirPods: lid open, hold the back button until the light flashes white), keep it close, then scan again.';
+  }
   if (/AuthenticationFailed|AuthenticationCanceled/i.test(error)) {
     return 'Pairing was rejected. Put the device in pairing mode (for AirPods: lid open, hold the back button until the light flashes white) and try again.';
   }
@@ -1225,6 +1235,14 @@ router.post('/bluetooth-out/pair', async (req, res) => {
     const { error: connErr } = await btctl(['connect', mac]);
     if (connErr) return sendError(res, badRequest(btReason(connErr)));
 
+    // Trust the DEVICE STATE, not the absence of an error line. Removing a
+    // stale record and then failing to re-discover the device produced no
+    // "Failed to" output at all, so this endpoint cheerfully reported
+    // success while BlueZ had in fact just forgotten the device entirely.
+    const { out: finalInfo } = await btctl(['info', mac]);
+    if (!/Connected:\s*yes/i.test(finalInfo)) {
+      return sendError(res, badRequest(btReason('not-discovered')));
+    }
     res.json({ success: true });
   } catch (err) {
     console.error('[Bluetooth Out] Pair failed:', err.message);
