@@ -122,6 +122,16 @@ async function ensureSpotifyDevice(token) {
   if (!device) return null;
   if (!device.is_active) {
     await spotifyApi.transferPlayback(token, device.id, false).catch(() => {});
+    // Spotify applies a transfer asynchronously; without waiting for it to
+    // actually land, the first play() and the first status poll both race it
+    // and can still be answered for the PREVIOUS active device (typically the
+    // user's phone) — which is what made DJ mode look stuck on a paused,
+    // unrelated track while the Pi played fine.
+    for (let i = 0; i < 10; i++) {
+      await new Promise(r => setTimeout(r, 500));
+      const check = await spotifyApi.getPlaybackState(token).catch(() => null);
+      if (check?.device?.id === device.id) break;
+    }
   }
   return device.id;
 }
@@ -375,15 +385,36 @@ async function prepare(track, language, isCheckIn = false, isPivot = false) {
 // current for the whole time the track plays, not just at the start.
 function waitForSpotifyTrackEnd(token, expectedUri, maxMs = 12 * 60 * 1000) {
   const startedAt = Date.now();
+  // Spotify needs a moment to report the track we just started; treat "not
+  // our device / not playing yet" as "still starting" rather than "ended"
+  // for this long, so a slow Connect handover can't abort the track instantly.
+  const graceMs = 12000;
   return new Promise((resolve) => {
     state.pollInterval = setInterval(async () => {
       if (!state.active || state.pivotRequested) { clearInterval(state.pollInterval); resolve(); return; }
       if (Date.now() - startedAt > maxMs) { clearInterval(state.pollInterval); resolve(); return; }
       try {
         const data = await spotifyApi.getPlaybackState(token);
-        if (!data) { clearInterval(state.pollInterval); resolve(); return; } // null = 204, nothing playing
-        if (data?.item) broadcastSpotifyState(data.item, !data.is_playing, data.progress_ms);
-        if (!data?.is_playing || data?.item?.uri !== expectedUri) {
+        const settling = Date.now() - startedAt < graceMs;
+
+        // /me/player reports the account's ACTIVE device, which is not
+        // necessarily ours: with the Spotify app open on a phone, it returns
+        // the phone's state instead. That state is usually paused on some
+        // unrelated old track, and the DJ used to (a) rebroadcast it to every
+        // screen — so the kiosk showed a frozen, paused, wrong track while
+        // the Pi was audibly playing something else — and (b) read
+        // is_playing:false as "track ended" and immediately skip, burning
+        // through the whole set in seconds. Ignore anything that isn't the
+        // device we're driving (AUDIT-2026-08-01).
+        const isOurDevice = !state.deviceId || data?.device?.id === state.deviceId;
+        if (!data || !isOurDevice) {
+          if (settling) return; // still handing over — keep waiting
+          clearInterval(state.pollInterval); resolve(); return;
+        }
+
+        if (data.item) broadcastSpotifyState(data.item, !data.is_playing, data.progress_ms);
+        if (!data.is_playing || data.item?.uri !== expectedUri) {
+          if (settling && data.item?.uri !== expectedUri) return; // our track hasn't shown up yet
           clearInterval(state.pollInterval); resolve();
         }
       } catch { /* transient network hiccup — keep polling, don't abort the session over it */ }
