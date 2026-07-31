@@ -527,6 +527,20 @@ async function start() {
     broadcastState({ phase: 'error', message: 'Resonance Connect is not available on Spotify yet — try again in a moment.' });
     return { error: 'device_unavailable' };
   }
+  // Claim the active source server-side. DJ and Spotify are separate sources
+  // that happen to share the same Connect device, and until this existed only
+  // the kiosk's own click handler ever set the source — so starting DJ any
+  // other way (this REST endpoint, a second screen, a client that missed the
+  // event) left active_source stuck on 'spotify'. Every Spotify-source client
+  // then kept polling /me/player on its 3s timer and rebroadcasting whatever
+  // it found — usually the phone's paused state — straight over the top of
+  // the DJ's own now-playing broadcasts, which is why the kiosk showed a
+  // frozen, wrong, paused track while the DJ was audibly playing something
+  // else. Reusing SET_SOURCE rather than inventing a parallel mechanism means
+  // the existing "stop the previous source" teardown runs too.
+  // Verified live: active_source read 'spotify' throughout a DJ session.
+  emit('SET_SOURCE', { source: 'dj', spotify: false });
+
   state.pool = pool;
   state.active = true;
   state.queue = [];
