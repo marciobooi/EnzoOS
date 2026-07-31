@@ -620,8 +620,32 @@ function _connectMpdIdle() {
           // DSD bypass first: if we're switching to/from a DSD bitstream, flip
           // the MPD output before touching the (now-bypassed) CamillaDSP rate.
           applyDsdRouting().catch(err => console.warn('[DSD] Routing update failed:', err.message));
-          getMpdAudioFormat().then(fmt => {
+          getMpdAudioFormat().then(async fmt => {
             if (fmt?.rate && fmt.rate !== _lastMpdRate) {
+              // AUDIT-2026-08-01: this override was firing unconditionally,
+              // even with bitperfect explicitly disabled — defeating the one
+              // documented escape hatch for exactly the failure mode below.
+              // The shared ALSA loopback (hw:Loopback,0,0/,1,0) is opened
+              // persistently by the PipeWire adapter node in
+              // 52-resonance-aloop-sink.conf (never disconnects, by design —
+              // see that file), and ALSA's dmix/dsnoop pin their underlying
+              // hardware rate to whichever client opens it FIRST — since that
+              // adapter node is permanent, the pin effectively never resets
+              // for the life of the PipeWire session, regardless of what any
+              // later client (MPD, CamillaDSP) requests. Forcing CamillaDSP's
+              // loop_dsnoop capture to a rate that pin doesn't match fails
+              // outright (`snd_pcm_hw_params_set_rate: Invalid argument`) and
+              // crash-loops CamillaDSP — confirmed live with a bare `mpc play`
+              // on a 44.1kHz file, no other app feature involved. Until the
+              // aloop-sink's permanent-open behavior (or dmix/dsnoop's
+              // pin-on-first-open semantics) is addressed directly, this
+              // watcher must not fight a pin it cannot actually change.
+              const bitPerfectVal = await getSetting('bitperfect').catch(() => null);
+              const bitPerfect = !(bitPerfectVal === 'false' || bitPerfectVal === '0');
+              if (!bitPerfect) {
+                console.log(`[MPD Rate] ${fmt.rate} Hz detected but bitperfect is disabled — leaving CamillaDSP's fixed-rate config alone.`);
+                return;
+              }
               const prev = _lastMpdRate;
               _lastMpdRate = fmt.rate;
               console.log(`[MPD Rate] ${prev || '?'} → ${fmt.rate} Hz — updating CamillaDSP capture rate`);

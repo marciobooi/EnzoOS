@@ -362,6 +362,29 @@ cat <<'PWALEOF' > /etc/pipewire/pipewire.conf.d/52-resonance-aloop-sink.conf
 # Targets the camilla_input dmix PCM (not the raw hw device) so PipeWire
 # shares hw:Loopback,0,0 with MPD/librespot via ALSA dmix instead of racing
 # them for direct ownership of it — see the comment above this heredoc.
+#
+# No fixed audio.rate: this is the ONE thing that was silently defeating
+# "bit-perfect" rate-following (AUDIT-2026-08-01). This node is a persistent,
+# always-open adapter — for as long as PipeWire runs, it is the first (and
+# permanent) opener of camilla_input's dmix, which pins the underlying
+# hw:Loopback,0,0/,1,0 hardware pair to whatever rate THIS node requests,
+# for good — dmix never releases the pin while any opener remains attached.
+# With a hardcoded 48000 Hz here, the pair was permanently pinned at 48000
+# regardless of what server/camilla-config.js's MPD-rate-watcher told
+# CamillaDSP to expect. MPD's own playback never broke, because dmix just
+# resamples its client transparently to match the pin — but CamillaDSP's
+# loop_dsnoop reader does NOT resample (dsnoop just reads the raw shared
+# buffer), so its ALSA hw_params call demanding e.g. 44100 Hz for a CD-
+# quality file failed outright against a hardware pair permanently pinned
+# at 48000 (`snd_pcm_hw_params_set_rate: Invalid argument`), crash-looping
+# CamillaDSP — confirmed live: reproduced with plain `mpc play` on a
+# 44.1kHz file, zero other app features involved. Omitting audio.rate lets
+# this adapter node follow the graph's current clock instead (governed by
+# clock.allowed-rates in 52-resonance-bitperfect.conf, which already
+# correctly lists every rate the DAC supports) — in bitPerfect=false fixed-
+# clock mode the graph only ever offers 48000 anyway, so behavior there is
+# unchanged; in bitPerfect=true mode this is what actually lets the pair
+# re-pin to match the source, which was the entire point of the feature.
 context.objects = [
   { factory = adapter
     args = {
@@ -372,7 +395,6 @@ context.objects = [
       api.alsa.path     = "camilla_input"
       audio.channels    = 2
       audio.format      = "S32LE"
-      audio.rate        = 48000
     }
   }
 ]
