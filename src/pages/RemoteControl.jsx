@@ -5,6 +5,7 @@ import { reportError } from '../lib/errors';
 import { api } from '../api';
 import { useResonanceWS } from '../websocket';
 import { EQ_PRESETS } from '../components/EqualizerControl';
+import { LIBRESPOT_DEVICE_NAME } from '../lib/spotifyDevice';
 import RemoteDspWizard from '../components/remote/RemoteDspWizard';
 import RemoteThemeSettings from '../components/remote/RemoteThemeSettings';
 import TabletShell from '../components/remote/tablet/TabletShell';
@@ -277,7 +278,7 @@ export default function RemoteControl() {
   const trackArtist     = currentTrack?.artists?.map(a => a.name).join(', ') || '';
   const albumImage      = currentTrack?.album?.images?.[0]?.url;
   const activeDevice    = devices.find(d => d.is_active);
-  const resonanceDevice = devices.find(d => d.name === 'Resonance Connect');
+  const resonanceDevice = devices.find(d => d.name === LIBRESPOT_DEVICE_NAME);
   const progressPct     = trackDuration ? (trackPosition / trackDuration) * 100 : 0;
   const isCurrentFav    = currentTrack?.url ? favoriteStations.some(s => s.url === currentTrack.url) : false;
 
@@ -538,9 +539,9 @@ export default function RemoteControl() {
         // the single master volume stage. The slider is hydrated from /api/status.
         setPlaybackState({ paused: nextPaused, position: s.progress_ms, duration: s.item?.duration_ms || 0, shuffle_state: s.shuffle_state, repeat_state: s.repeat_state, volume, is_muted: isMuted, track_window: { current_track: { uri: s.item?.uri, name: s.item?.name, album: { name: s.item?.album?.name, images: s.item?.album?.images || [] }, artists: s.item?.artists || [] } } });
       }
-      // Keep Resonance Connect pinned at 100% on every poll — CamillaDSP is the
+      // Keep the Resonance device pinned at 100% on every poll — CamillaDSP is the
       // single gain master. librespot uses VOLUME_CTRL=fixed so this is a safety net.
-      if (s.device?.name === 'Resonance Connect' && s.device?.volume_percent !== 100) {
+      if (s.device?.name === LIBRESPOT_DEVICE_NAME && s.device?.volume_percent !== 100) {
         api.setVolume(token, 100).catch(() => {});
       }
     } catch {}

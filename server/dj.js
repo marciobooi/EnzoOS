@@ -64,6 +64,7 @@ import { getSetting } from './db.js';
 import { emit } from './event-service.js';
 import { getValidAccessToken } from './spotify-auth.js';
 import { spotifyApi } from '../src/api/spotify.js';
+import { LIBRESPOT_DEVICE_NAME } from './spotify-daemon.js';
 
 const execFilePromise = promisify(execFile);
 const router = express.Router();
@@ -112,13 +113,14 @@ const MOOD_IDS = Object.keys(MOODS);
 // (which device to target, which pools to merge), not the HTTP calls
 // themselves.
 
-// Finds the "Resonance Connect" librespot device and makes it Spotify's
-// active playback target if it isn't already. Deliberately simple for now
-// (no raspotify-restart-and-retry loop like the kiosk's own ensureRaspotify)
-// — if the device isn't up at all, start() just surfaces that as an error.
+// Finds the librespot Connect device (LIBRESPOT_DEVICE_NAME) and makes it
+// Spotify's active playback target if it isn't already. Deliberately simple
+// for now (no raspotify-restart-and-retry loop like the kiosk's own
+// ensureRaspotify) — if the device isn't up at all, start() just surfaces
+// that as an error.
 async function ensureSpotifyDevice(token) {
   const data = await spotifyApi.getDevices(token).catch(() => null);
-  const device = (data?.devices || []).find(d => d.name === 'Resonance Connect');
+  const device = (data?.devices || []).find(d => d.name === LIBRESPOT_DEVICE_NAME);
   if (!device) return null;
   if (!device.is_active) {
     await spotifyApi.transferPlayback(token, device.id, false).catch(() => {});
@@ -524,7 +526,7 @@ async function start() {
     // Without our own device id every poll would have to accept whatever
     // device Spotify calls active — i.e. the user's phone — which is exactly
     // the confusion this session is meant to avoid. Fail loudly instead.
-    broadcastState({ phase: 'error', message: 'Resonance Connect is not available on Spotify yet — try again in a moment.' });
+    broadcastState({ phase: 'error', message: `${LIBRESPOT_DEVICE_NAME} is not available on Spotify yet — try again in a moment.` });
     return { error: 'device_unavailable' };
   }
   // Claim the active source server-side. DJ and Spotify are separate sources

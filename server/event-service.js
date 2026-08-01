@@ -739,7 +739,7 @@ export const loadStateFromDB = async () => {
     console.log(`[EventService] Loaded pure_direct: ${cachedPureDirect}`);
 
     // Ensure raspotify has the correct ALSA device (camilla_input) and device
-    // name ("Resonance Connect") — but only write + restart when the managed
+    // name (LIBRESPOT_DEVICE_NAME in spotify-daemon.js) — but only write + restart when the managed
     // conf actually changed. Restarting raspotify drops librespot's Spotify
     // Connect session, and Spotify never re-activates a device by itself, so an
     // unconditional restart here knocked the kiosk to SYSTEM IDLE on every

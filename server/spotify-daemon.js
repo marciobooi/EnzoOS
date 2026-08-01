@@ -1,8 +1,29 @@
 import express from 'express';
 import { execFile } from 'child_process';
-import { setSetting } from './db.js';
+import { setSetting, getSetting } from './db.js';
+import { getValidAccessToken } from './spotify-auth.js';
+import { sendCamillaCommand } from './camilla-ws.js';
 
 const router = express.Router();
+
+// Single source of truth for the librespot Connect device name — imported by
+// dj.js and event-service.js rather than each re-hardcoding the string.
+//
+// AUDIT-2026-08-01: this name is Spotify's own key for ITS backend cache of
+// "what's currently playing" on this device. That cache got permanently
+// stuck for "Resonance Connect" — frozen track/position/paused forever
+// regardless of what the device actually played, confirmed via raw API
+// calls bypassing this app entirely, and unrecoverable via token refresh,
+// restarting raspotify, or wiping its cached credentials (librespot's
+// Spotify device id is derived deterministically from this name — no
+// --device-id override exists in this librespot build — so none of those
+// actually changed its identity). Renaming to a never-before-used value
+// immediately produced correct, real-time-advancing state.
+// If this exact symptom recurs (metadata frozen while audio keeps
+// changing/advancing normally), change this constant to something NEVER
+// used before. Do not reuse a name that has ever shown this symptom — it
+// will not un-stick itself, no matter what else is tried.
+export const LIBRESPOT_DEVICE_NAME = 'Resonance HiFi';
 
 // Builds the managed /etc/raspotify/conf content. Exported separately so the
 // startup path can compare it against the last-applied copy (stored in the
@@ -12,7 +33,7 @@ const router = express.Router();
 function buildRaspotifyConf(extraLines = []) {
   const lines = [
       '# Resonance HiFi — managed by resonance-api, do not edit manually',
-      'LIBRESPOT_NAME="Resonance Connect"',
+      `LIBRESPOT_NAME="${LIBRESPOT_DEVICE_NAME}"`,
       'LIBRESPOT_BITRATE=320',
       'LIBRESPOT_BACKEND=alsa',
       // plug: prefix adds ALSA's automatic rate/format converter so librespot's
@@ -85,6 +106,51 @@ router.post('/device', async (req, res) => {
     res.status(500).json({ success: false, error: err.message });
   }
 });
+
+// ── Stuck-device-cache watchdog (AUDIT-2026-08-01) ──────────────────────────
+// Detects a recurrence of the exact bug this audit fixed, automatically,
+// instead of requiring another multi-hour manual investigation next time.
+//
+// The one reliable, low-false-positive signal we have: Spotify saying the
+// device is PAUSED while CamillaDSP is simultaneously capturing real audio
+// signal. A genuine pause produces silence; it can't produce this
+// combination. (Position/track staleness alone isn't safe to alarm on — a
+// user legitimately pausing and stepping away for a while looks identical.)
+const STALE_CHECK_INTERVAL_MS = 45_000;
+const AUDIBLE_SIGNAL_DB = -50; // above this = "CamillaDSP is capturing something", not silence
+let lastStaleWarningAt = 0;
+
+setInterval(async () => {
+  try {
+    const source = await getSetting('active_source').catch(() => null);
+    if (source !== 'spotify' && source !== 'dj') return; // Spotify audio isn't expected right now
+    const standby = await getSetting('standby').catch(() => null);
+    if (standby === 'true') return;
+
+    const token = await getValidAccessToken();
+    if (!token) return;
+    const r = await fetch('https://api.spotify.com/v1/me/player', { headers: { Authorization: `Bearer ${token}` } });
+    if (r.status !== 200) return;
+    const j = await r.json();
+    if (j.device?.name !== LIBRESPOT_DEVICE_NAME || j.is_playing !== false) return;
+
+    const msg = await sendCamillaCommand('GetCaptureSignalPeak').catch(() => null);
+    const peak = msg?.GetCaptureSignalPeak?.value;
+    const audible = Array.isArray(peak) && Math.max(peak[0] ?? -99, peak[1] ?? -99) > AUDIBLE_SIGNAL_DB;
+    if (!audible) return;
+
+    // Once per 30 min while it persists — enough to be found in logs without spamming them.
+    if (Date.now() - lastStaleWarningAt < 30 * 60 * 1000) return;
+    lastStaleWarningAt = Date.now();
+    console.warn(
+      `[Spotify Watchdog] STALE STATE SUSPECTED: Spotify reports "${j.item?.name}" PAUSED on ` +
+      `"${LIBRESPOT_DEVICE_NAME}", but CamillaDSP is capturing real audio signal (peak ${Math.max(peak[0], peak[1]).toFixed(1)} dB) ` +
+      `— a genuine pause would be silent. This matches the AUDIT-2026-08-01 stuck-device-cache bug: Spotify's own backend ` +
+      `permanently freezes its "now playing" cache for a specific device name. Fix: change LIBRESPOT_DEVICE_NAME in this file ` +
+      `(and src/lib/spotifyDevice.js) to something NEVER used before, then re-run install.sh or POST /api/spotify/device.`
+    );
+  } catch { /* transient network/CamillaDSP hiccup — next tick retries */ }
+}, STALE_CHECK_INTERVAL_MS);
 
 export { buildRaspotifyConf, writeRaspotifyConf, restartRaspotify };
 export default router;

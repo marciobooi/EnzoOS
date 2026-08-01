@@ -869,7 +869,21 @@ sed -i '/# --- Resonance HiFi managed block ---/,/# --- end Resonance HiFi manag
 cat <<RASPOEOF >> /etc/raspotify/conf
 
 # --- Resonance HiFi managed block ---
-LIBRESPOT_NAME="Resonance Connect"
+# AUDIT-2026-08-01: this device name is Spotify's key for its OWN backend
+# cache of "what's currently playing" for this Connect device. Confirmed
+# live — Spotify got that cache permanently stuck for the name "Resonance
+# Connect" (frozen track/position/paused forever, regardless of what the
+# device actually played — verified by direct raw API calls bypassing this
+# app entirely, and unrecoverable via token refresh, restarting raspotify,
+# or wiping its cached credentials). librespot derives its Spotify device id
+# deterministically from this name (no --device-id override exists in this
+# build), so any fresh, never-before-used name gets a genuinely new identity
+# with no stuck cache — proven live: renaming to a throwaway test name
+# immediately produced correct, real-time-advancing playback state. If this
+# EXACT symptom recurs (metadata frozen while audio keeps changing), change
+# this name to something never used before — do not try to reuse a
+# previously-poisoned one, it will not un-stick itself.
+LIBRESPOT_NAME="Resonance HiFi"
 LIBRESPOT_BITRATE=320
 LIBRESPOT_BACKEND=alsa
 # plug: prefix adds ALSA's rate/format converter so librespot's 44100 Hz

@@ -6,6 +6,7 @@ import { useResonanceWS } from '../websocket';
 import { EQ_PRESETS } from '../components/EqualizerControl';
 import { getGreeting } from '../lib/format';
 import { useStableCallback } from '../lib/useStableCallback';
+import { LIBRESPOT_DEVICE_NAME } from '../lib/spotifyDevice';
 
 // Subcomponents
 import PlayerDisplay from '../components/PlayerDisplay';
@@ -843,7 +844,7 @@ export default function Kiosk() {
   }, [activeTheme, isMenuOpen, isEqualizerOpen, source]);
 
   // Derived Librespot states
-  const resonanceDevice = devices.find(d => d.name === 'Resonance Connect');
+  const resonanceDevice = devices.find(d => d.name === LIBRESPOT_DEVICE_NAME);
   const resonanceDeviceId = resonanceDevice?.id || '';
   const isLocalDeviceActive = resonanceDevice?.is_active || false;
 
@@ -935,24 +936,24 @@ export default function Kiosk() {
       .catch(() => {}); // silent — background action, next poll retries after cooldown
   }, [spotify, token, devices, resonanceDeviceId, isLocalDeviceActive, fetchDevices]);
 
-  // Restart raspotify and poll until "Resonance Connect" appears, then call onReady(deviceId).
+  // Restart raspotify and poll until LIBRESPOT_DEVICE_NAME appears, then call onReady(deviceId).
   // Guard prevents concurrent restart storms if the user clicks rapidly.
   const ensureRaspotify = async (onReady) => {
     if (resonanceDeviceId) { onReady(resonanceDeviceId); return; }
     if (raspotifyRestartInFlight.current) return;
     raspotifyRestartInFlight.current = true;
-    toast.success('Resonance Connect offline — restarting...');
+    toast.success(`${LIBRESPOT_DEVICE_NAME} offline — restarting...`);
     try { await fetch('/api/system/service/raspotify/restart', { method: 'POST' }); } catch {}
     try {
       for (let i = 0; i < 8; i++) {
         await new Promise(r => setTimeout(r, 1500));
         try {
           const data = await api.getDevices(token);
-          const found = (data.devices || []).find(d => d.name === 'Resonance Connect');
+          const found = (data.devices || []).find(d => d.name === LIBRESPOT_DEVICE_NAME);
           if (found) { setDevices(data.devices || []); onReady(found.id); return; }
         } catch {}
       }
-      reportError('Resonance Connect did not come online. Check raspotify.');
+      reportError(`${LIBRESPOT_DEVICE_NAME} did not come online. Check raspotify.`);
     } finally {
       raspotifyRestartInFlight.current = false;
     }
@@ -983,7 +984,7 @@ export default function Kiosk() {
       const data = await api.getDevices(token).catch(() => null);
       const list = data?.devices || [];
       if (list.length) setDevices(list);
-      id = list.find(d => d.name === 'Resonance Connect')?.id || list.find(d => d.is_active)?.id;
+      id = list.find(d => d.name === LIBRESPOT_DEVICE_NAME)?.id || list.find(d => d.is_active)?.id;
     }
     if (!id) {
       // ensureRaspotify only calls its callback on SUCCESS — it silently
@@ -1269,9 +1270,9 @@ export default function Kiosk() {
           }
         }
 
-        // Keep Resonance Connect pinned at 100% on every poll — CamillaDSP is the
+        // Keep the Resonance device pinned at 100% on every poll — CamillaDSP is the
         // single gain master. librespot uses VOLUME_CTRL=fixed so this is a safety net.
-        if (state.device?.name === 'Resonance Connect' && state.device?.volume_percent !== 100) {
+        if (state.device?.name === LIBRESPOT_DEVICE_NAME && state.device?.volume_percent !== 100) {
           api.setVolume(token, 100).catch(() => {});
         }
       }
