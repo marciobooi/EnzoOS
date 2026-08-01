@@ -4,12 +4,13 @@ import {
   Shuffle, Repeat, Music, Heart, Radio, ListMusic, Info, Mic2, ChevronDown,
   Airplay, Network, Bluetooth, Music2,
 } from 'lucide-react';
-import { Tk, SpotifyIcon, fmt, sourceBadgeLabel } from '../shared';
+import { Tk, SpotifyIcon, fmt, sourceBadgeLabel, DJ_MOODS } from '../shared';
 import AlbumInfoSheet from '../AlbumInfoSheet';
 import LyricsSheet from '../LyricsSheet';
 import TabletQueueModal from './TabletQueueModal';
 import { useLocalQueue } from '../../../hooks/useLocalQueue';
 import { useI18n } from '../../../i18n';
+import { api } from '../../../api';
 
 // Mirrors SourceTab's source list (icons + ids only, not its Qobuz/Tidal
 // auth flow — tapping either of those here just hands off to the Source
@@ -55,6 +56,15 @@ export default function TabletPlayerHero() {
   const [showInfo, setShowInfo]     = useState(false);
   const [showLyrics, setShowLyrics] = useState(false);
   const [showQueue, setShowQueue]   = useState(false);
+  // Local-only, like the kiosk's own copy and PlayerTab's — server/dj.js
+  // resets its mood to null on every fresh start() anyway.
+  const [djMood, setDjMood] = useState(null);
+  const handleMoodTap = (id) => {
+    const next = djMood === id ? null : id; // tap the active one again to clear it
+    setDjMood(next);
+    api.setDjMood(next).catch(() => {});
+  };
+  useEffect(() => { if (source !== 'dj') setDjMood(null); }, [source]);
 
   // MPD's queue (local files/Tidal/Qobuz/etc.) isn't in playbackState like
   // Spotify's is — it's fetched separately. Previously this preview only
@@ -221,6 +231,26 @@ export default function TabletPlayerHero() {
               <SpotifyIcon className="h-5 w-5 fill-black shrink-0" />
               {t('settings.connectSpotify')}
             </a>
+          </div>
+        )}
+
+        {/* DJ mood cards — pin the announcer's energy, or pivot the lineup
+            immediately if tapped mid-session (server/dj.js's setMood). Tapping
+            the active one again clears it back to random. Mirrors PlayerTab's
+            phone version so the two can't drift apart. */}
+        {source === 'dj' && (
+          <div className="flex gap-3 overflow-x-auto pb-1 mb-6" style={{ scrollbarWidth: 'none' }}>
+            {DJ_MOODS.map(({ id, label, Icon }) => (
+              <button key={id} onClick={() => handleMoodTap(id)}
+                aria-pressed={djMood === id}
+                className="shrink-0 flex flex-col items-center justify-center gap-1.5 w-[84px] py-3.5 rounded-2xl active:scale-95 transition-all cursor-pointer"
+                style={djMood === id
+                  ? { background: C.champagne, color: '#1a1c1c' }
+                  : { background: cardWhite.background, border: cardWhite.border, color: C.text2 }}>
+                <Icon className="h-5 w-5" />
+                <span className="text-[11px] font-semibold uppercase tracking-wide">{label}</span>
+              </button>
+            ))}
           </div>
         )}
 
