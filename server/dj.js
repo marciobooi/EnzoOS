@@ -55,6 +55,21 @@
  * latency either and Spotify's own end-of-track handling never gets a
  * window to run (see also LIBRESPOT_AUTOPLAY=off in spotify-daemon.js).
  *
+ * Announcements OVERLAY the next track rather than pausing for them
+ * (duckAndAnnounce): the next track starts immediately, the shared
+ * CamillaDSP master volume dips ~14dB for the duration of the clip, then
+ * fades back up. Two things were tried and ruled out for doing this
+ * per-source instead of on the shared master — see the AUDIT comment on
+ * synthesize() for the full story: Spotify's own device volume doesn't
+ * reliably reach librespot at all for API-driven changes (confirmed live:
+ * zero effect, zero onevent trigger), and CamillaDSP only ever sees the
+ * already-mixed signal (both this clip and Spotify's audio converge at the
+ * shared ALSA loopback before CamillaDSP's capture ever sees either one), so
+ * it can't tell them apart to duck just one. The clip itself is instead
+ * pre-boosted by the same amount the master gets ducked by, so it lands back
+ * at ~full loudness once played through the ducked master while the music
+ * (never independently boosted) is genuinely quieter underneath it.
+ *
  * Audio path for the VOICE: Piper writes a WAV, played via `pw-play
  * --target ResonanceInput` — the exact same PipeWire virtual sink every
  * other source (MPD/Spotify/AirPlay/Bluetooth) already converges on (see
@@ -73,10 +88,11 @@ import fs from 'fs';
 import os from 'os';
 import path from 'path';
 import { getSetting } from './db.js';
-import { emit } from './event-service.js';
+import { emit, getCachedVolumeDb } from './event-service.js';
 import { getValidAccessToken } from './spotify-auth.js';
 import { spotifyApi } from '../src/api/spotify.js';
 import { LIBRESPOT_DEVICE_NAME } from './spotify-daemon.js';
+import { setCamillaVolume } from './camilla-config.js';
 
 const execFilePromise = promisify(execFile);
 const router = express.Router();
@@ -312,11 +328,37 @@ function synthesizeRaw(text, language) {
   });
 }
 
+// AUDIT-2026-08-01 (audio ducking): CamillaDSP's SetVolume is a SINGLE
+// master gain applied to the already-mixed signal — by the time it sees
+// anything, this clip and the Spotify track have already summed together at
+// the shared ALSA loopback (librespot writes straight to the camilla_input
+// dmix; this clip reaches the same loopback via pw-play → ResonanceInput →
+// PipeWire loopback module). There is no way to turn down "just the music"
+// at that stage. Spotify's own per-device volume was the other candidate —
+// tested live via PUT /me/player/volume against the real device: Spotify's
+// API accepted it and reported the new value back, but librespot never
+// applied it and never fired its volume_set onevent (confirmed via
+// journalctl — nothing, not even after 5+ seconds), so it doesn't reach the
+// device at all for API-driven changes. The only combination that actually
+// works: duck the shared master (see duckAndAnnounce below) AND boost this
+// clip's own gain by the exact same amount here, so once played back through
+// the ducked master it lands back at ~its original loudness while the music
+// (never independently boosted) is genuinely quieter. DUCK_DB is defined
+// with duckAndAnnounce a bit further down.
 async function synthesize(text, language) {
   const rawFile = await synthesizeRaw(text, language);
   const outFile = rawFile.replace(/\.raw\.wav$/, '.wav');
   try {
-    await execFilePromise('ffmpeg', ['-y', '-i', rawFile, '-ar', String(CLIP_RATE), '-ac', '2', outFile]);
+    // alimiter catches whatever peaks the +DUCK_DB boost would otherwise
+    // send over 0dBFS — Piper's own output already peaks close to full
+    // scale, so a flat +14dB boost with no limiter would clip audibly.
+    // level=disabled: alimiter's own auto-gain would otherwise fight the
+    // boost we're deliberately asking for.
+    await execFilePromise('ffmpeg', [
+      '-y', '-i', rawFile,
+      '-af', `volume=${DUCK_DB}dB,alimiter=limit=0.97:level=disabled`,
+      '-ar', String(CLIP_RATE), '-ac', '2', outFile,
+    ]);
   } finally {
     fs.unlink(rawFile, () => {});
   }
@@ -325,6 +367,35 @@ async function synthesize(text, language) {
 
 function playClip(wavPath) {
   return execFilePromise('pw-play', ['--target', 'ResonanceInput', wavPath], { env: PW_ENV, timeout: 30000 });
+}
+
+// Reduces the shared master volume while the clip plays, then smoothly
+// restores it — the only working way to make music sound quieter under the
+// DJ's voice without an independent per-source mixer (see the AUDIT comment
+// on synthesize() above for what was tried and ruled out). 14dB ≈ reduces
+// linear amplitude to ~20% (20*log10(0.2) ≈ -13.98dB), matching the
+// requested "duck to 20%, fade back to 100%" spec. Skips the whole dance if
+// the user has the system muted/near-silent already — nothing to duck.
+const DUCK_DB = 14;
+async function duckAndAnnounce(wavPath) {
+  const before = getCachedVolumeDb();
+  const canDuck = before > -90;
+  if (canDuck) await setCamillaVolume(before - DUCK_DB);
+  try {
+    await playClip(wavPath);
+  } catch (err) {
+    console.error('[DJ] playback failed:', err.message);
+  } finally {
+    if (canDuck) {
+      // Stepped rather than instant — "smoothly fade the music volume back
+      // up" per spec. 6 steps over ~700ms.
+      const STEPS = 6;
+      for (let i = 1; i <= STEPS; i++) {
+        await setCamillaVolume(before - DUCK_DB + (DUCK_DB * i) / STEPS);
+        await new Promise((r) => setTimeout(r, 120));
+      }
+    }
+  }
 }
 
 // Every clip this module creates is unlinked as soon as it's done with (see
@@ -500,12 +571,10 @@ async function runLoop() {
     // ~45s cold), skip the announcement THIS time and go straight to the
     // music with zero dead air. A fresh one is prepared below and plays
     // before whichever track it's actually ready in time for.
-    if (state.pending && (state.pending.isCheckIn || state.pending.forTrack?.uri === track.uri)) {
-      await spotifyApi.pause(token).catch(() => {});
-      broadcastState({ phase: 'announcing', line: state.pending.text });
-      try { await playClip(state.pending.wavPath); } catch (err) { console.error('[DJ] playback failed:', err.message); }
-      fs.unlink(state.pending.wavPath, () => {});
-    } else if (state.pending) {
+    const announcement = (state.pending && (state.pending.isCheckIn || state.pending.forTrack?.uri === track.uri))
+      ? state.pending
+      : null;
+    if (state.pending && state.pending !== announcement) {
       // Belongs to a track we're skipping past — by the time it finishes
       // generating it would be introducing something already mid-playback.
       // Discard rather than deliver a mismatched announcement.
@@ -514,12 +583,25 @@ async function runLoop() {
     state.pending = null;
     if (!state.active) break;
 
+    // Next track starts immediately — no pause, no gap. If there's an
+    // announcement, it plays OVER this track a moment later (duckAndAnnounce
+    // below), not instead of it: "song ends → next song starts → duck it →
+    // DJ talks over the quiet intro → fade back up", matching how a real
+    // radio handoff (and Spotify's own DJ feature) actually sounds, and per
+    // explicit spec. Never pausing means there's no dead air even when no
+    // announcement is ready at all.
     broadcastState({ phase: 'playing', mood: state.mood, track: { title: track.name, artist: (track.artists || []).map(a => a.name).join(', ') } });
     try {
       await spotifyApi.play(token, state.deviceId, null, [track.uri]);
       state.playedUris.add(track.uri);
       broadcastSpotifyState(track, false, 0);
     } catch (err) { console.error('[DJ] Spotify play failed:', err.message); }
+
+    if (announcement) {
+      broadcastState({ phase: 'announcing', line: announcement.text });
+      await duckAndAnnounce(announcement.wavPath);
+      fs.unlink(announcement.wavPath, () => {});
+    }
 
     // Prepare the NEXT segment in the background while this track plays —
     // the whole point: generation+synthesis latency hidden inside several
