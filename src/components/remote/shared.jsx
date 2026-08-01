@@ -1,6 +1,6 @@
 import React, { createContext, useContext } from 'react';
 import { createPortal } from 'react-dom';
-import { ChevronRight, ChevronLeft, Music, Library, Layers, Sliders, Search } from 'lucide-react';
+import { ChevronRight, ChevronLeft, Music, Library, Layers, Sliders, Search, Zap, Moon, Coffee, Flame, PartyPopper } from 'lucide-react';
 
 export const Tk = createContext({});
 
@@ -100,6 +100,19 @@ const SOURCE_BADGE_LABELS = {
   tidal: 'Tidal', qobuz: 'Qobuz',
 };
 export const sourceBadgeLabel = (source) => SOURCE_BADGE_LABELS[source] || 'Local';
+
+// DJ mood cards — ids MUST match server/dj.js's MOOD_IDS exactly. Shared by
+// PlayerTab (phone) and TabletPlayerHero (tablet) so the two can't drift
+// apart the way RcSlider did before it was deduplicated. Mirrors the icon-
+// only version already on the kiosk's own PlayerDisplay.jsx, just rendered
+// bigger/labeled here since the remote has the screen space for real cards.
+export const DJ_MOODS = [
+  { id: 'hype',     label: 'Hype',     Icon: Zap },
+  { id: 'chill',    label: 'Chill',    Icon: Moon },
+  { id: 'casual',   label: 'Casual',   Icon: Coffee },
+  { id: 'dramatic', label: 'Dramatic', Icon: Flame },
+  { id: 'playful',  label: 'Playful',  Icon: PartyPopper },
+];
 
 export const fmt = ms => {
   if (!ms || isNaN(ms)) return '0:00';
