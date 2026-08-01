@@ -1,4 +1,4 @@
-import { useContext, useState, useRef } from 'react';
+import { useContext, useState, useRef, useEffect } from 'react';
 import {
   RefreshCw, HardDrive, RotateCcw, Download, Sparkles, Power, Music, Sliders, Webhook, ShieldCheck,
   Usb, Bluetooth, BluetoothConnected, Server, FolderPlus, Trash2, Search,
@@ -74,12 +74,27 @@ export default function SystemSettings({ inline = false }) {
   const [btDevices, setBtDevices]     = useState([]);
   const [btScanning, setBtScanning]   = useState(false);
   const [btBusyMac, setBtBusyMac]     = useState(null);
+  // AUDIT-2026-08-02: btOutStatus used to start at null and ONLY get fetched
+  // when the user tapped this row — so the Row's own subtitle (rendered from
+  // btOutStatus, further down) showed the default "OFF — using the DAC" on
+  // every fresh page load/remount regardless of the REAL state, correcting
+  // itself only once tapped. Reported live as "I go to Settings and it's not
+  // connected, then I open it and it says connected, I didn't do anything" —
+  // not flapping state, just never having fetched yet. Fetch once on mount
+  // so the subtitle is right from the moment the page renders.
+  useEffect(() => {
+    api.bluetoothOutStatus().then(setBtOutStatus).catch(() => {});
+  }, []);
   // Previously-used speakers are listed immediately on open, so reconnecting
   // to a known one is one tap instead of sitting through a 15s scan every
   // time — scanning is only needed to add something new.
   const handleOpenBtOut = async () => {
     if (showBtOut) { setShowBtOut(false); return; }
-    try { setBtOutStatus(await api.bluetoothOutStatus()); } catch { setBtOutStatus({ enabled: false }); }
+    // A failed fetch here used to force-set {enabled: false} — actively
+    // asserting "definitely off" when the truth is just "request failed,
+    // status unknown". Leave the last-known status in place instead of
+    // lying about it.
+    try { setBtOutStatus(await api.bluetoothOutStatus()); } catch { /* keep last-known status */ }
     setShowBtOut(true);
     try { const d = await api.bluetoothOutPaired(); setBtDevices(d.devices || []); } catch { /* scan still available */ }
   };
