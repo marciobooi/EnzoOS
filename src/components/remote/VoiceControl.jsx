@@ -144,7 +144,9 @@ export default function VoiceControl({ onClose }) {
           if (!c.trackDuration) return finish(t('voice.nothingPlaying'), false, 2000);
           const deltaMs = cmd.arg * 1000 * (cmd.intent === 'seekBack' ? -1 : 1);
           const newMs = Math.max(0, Math.min(c.trackDuration, (c.trackPosition || 0) + deltaMs));
-          await c.handleSeek({ target: { value: String(newMs) } });
+          const seekEvent = { target: { value: String(newMs) } };
+          c.handleSeek(seekEvent);
+          await c.commitSeek(seekEvent);
           return finish(cmd.intent === 'seekForward' ? t('voice.seekForward', { s: cmd.arg }) : t('voice.seekBack', { s: cmd.arg }));
         }
         case 'playRadio': {

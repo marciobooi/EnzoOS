@@ -49,6 +49,7 @@ const PlayerDisplay = React.memo(function PlayerDisplay({
   handlePlayPause,
   handleNext,
   handleSeek,
+  commitSeek,
   handleVolumeChange,
   handleToggleMute,
   handleToggleShuffle,
@@ -1001,12 +1002,14 @@ const PlayerDisplay = React.memo(function PlayerDisplay({
                   />
                 </div>
                 {/* Transparent input slider on top */}
-                <input 
+                <input
                   type="range"
                   min={0}
                   max={trackDuration || 0}
                   value={trackPosition || 0}
                   onChange={handleSeek}
+                  onPointerUp={commitSeek}
+                  onPointerCancel={commitSeek}
                   className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                 />
               </div>

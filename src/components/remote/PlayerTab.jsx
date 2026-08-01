@@ -18,7 +18,7 @@ export default function PlayerTab() {
     volume, isMuted, shuffleState, repeatState,
     activeDevice, isCurrentFav, currentTrack,
     handlePlayPause, handleNext, handlePrevious,
-    handleShuffle, handleRepeat, handleSeek,
+    handleShuffle, handleRepeat, handleSeek, commitSeek,
     handleVolumeChange, handleMuteToggle,
     handleToggleFavRadio, setActiveTab,
     setQueueOpen,
@@ -228,6 +228,8 @@ export default function PlayerTab() {
                 drags. */}
             <input type="range" min="0" max={trackDuration || 0} value={trackPosition}
               onChange={handleSeek}
+              onPointerUp={commitSeek}
+              onPointerCancel={commitSeek}
               disabled={spotify ? !token || !trackDuration : !trackDuration}
               className="absolute -inset-y-5 inset-x-0 w-full opacity-0 cursor-pointer disabled:cursor-default touch-pan-y" />
           </div>

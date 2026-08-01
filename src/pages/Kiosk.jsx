@@ -42,6 +42,10 @@ export default function Kiosk() {
   const [trackPosition, setTrackPosition] = useState(0);
   const [trackDuration, setTrackDuration] = useState(0);
   const progressInterval = useRef(null);
+  // True for the duration of a drag on the seek bar — guards the 1s ticker
+  // below from fighting the user's in-progress drag (AUDIT-2026-08-02, see
+  // handleSeek/commitSeek).
+  const isSeekingRef = useRef(false);
 
   // Volume state (0 - 100)
   const [volume, setVolume] = useState(50);
@@ -871,6 +875,7 @@ export default function Kiosk() {
     if (playbackState && !playbackState.paused) {
       progressInterval.current = setInterval(() => {
         setTrackPosition(prev => {
+          if (isSeekingRef.current) return prev; // user is mid-drag — don't fight it
           if (prev + 1000 >= trackDuration) {
             clearInterval(progressInterval.current);
             // Local ticker caps out here and stops until the next 3s poll
@@ -1294,23 +1299,31 @@ export default function Kiosk() {
     }
   }
 
-  // Manual Seek
-  const handleSeek = async (e) => {
+  // Manual Seek — split into visual (every onChange, fired continuously
+  // while dragging a range input) and commit (once, on release). Wiring the
+  // API call straight to onChange used to fire a full seek request per
+  // pixel of drag; those overlapping requests can resolve out of order,
+  // landing the track wherever the race settles rather than where the user
+  // actually released the thumb. Reported live: "the time seek in Spotify
+  // still doesn't work, it jumps but not in the position I want"
+  // (AUDIT-2026-08-02).
+  const handleSeek = (e) => {
+    isSeekingRef.current = true;
+    setTrackPosition(parseInt(e.target.value, 10));
+  };
+  const commitSeek = async (e) => {
     const seekMs = parseInt(e.target.value, 10);
-    setTrackPosition(seekMs);
-    if (!spotify) {
-      try {
+    try {
+      if (!spotify) {
         const percent = trackDuration ? Math.round((seekMs / trackDuration) * 100) : 0;
         await api.localSeek(`${percent}%`);
-      } catch (err) {
-        console.error('Local seek error:', err);
+      } else {
+        await api.seek(token, seekMs);
       }
-      return;
-    }
-    try {
-      await api.seek(token, seekMs);
     } catch (err) {
       console.error('Seek error:', err);
+    } finally {
+      isSeekingRef.current = false;
     }
   };
 
@@ -1514,6 +1527,7 @@ export default function Kiosk() {
           handlePlayPause={handlePlayPause}
           handleNext={handleNext}
           handleSeek={handleSeek}
+          commitSeek={commitSeek}
           handleVolumeChange={handleVolumeChange}
           handleToggleMute={handleToggleMute}
           handleToggleShuffle={handleToggleShuffle}

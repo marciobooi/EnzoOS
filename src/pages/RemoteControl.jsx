@@ -247,6 +247,10 @@ export default function RemoteControl() {
   const prevTrackUriRef      = useRef(null);
   const eqSyncTimeout        = useRef(null);
   const progressInterval     = useRef(null);
+  // True for the duration of a drag on the seek bar — guards the 1s ticker
+  // below from fighting the user's in-progress drag (AUDIT-2026-08-02, see
+  // handleSeek/commitSeek).
+  const isSeekingRef         = useRef(false);
   const volumeApiTimeout     = useRef(null);
   const lastVolumeChangeTime = useRef(0);
   const lastNonZeroVolume    = useRef(50);
@@ -441,6 +445,7 @@ export default function RemoteControl() {
     if (isAuthenticated && playbackState && isPlaying) {
       progressInterval.current = setInterval(() => {
         setTrackPosition(p => {
+          if (isSeekingRef.current) return p; // user is mid-drag — don't fight it
           if (p + 1000 >= trackDuration) { clearInterval(progressInterval.current); return trackDuration; }
           return p + 1000;
         });
@@ -629,7 +634,24 @@ export default function RemoteControl() {
   const handlePrevious = async () => { if (!spotify) { try { await api.localPrevious(); } catch {} return; } if (!token) return; try { await api.skipPrevious(token); requestWSStateSync(); } catch {} };
   const handleShuffle  = async () => { if (!spotify || !token) return; const n = !shuffleState; setShuffleState(n); try { await api.setShuffle(token, n); requestWSStateSync(); } catch { setShuffleState(!n); } };
   const handleRepeat   = async () => { if (!spotify || !token) return; const n = { off: 'context', context: 'track', track: 'off' }[repeatState] || 'off'; setRepeatState(n); try { await api.setRepeat(token, n); requestWSStateSync(); } catch { setRepeatState(repeatState); } };
-  const handleSeek     = async e => { const ms = parseInt(e.target.value, 10); setTrackPosition(ms); if (!spotify) { try { await api.localSeek(`${Math.round((ms / (trackDuration || 1)) * 100)}%`); } catch {} return; } if (!token) return; try { await api.seek(token, ms); requestWSStateSync(); } catch {} };
+  // Split into visual (fires continuously while dragging) and commit (once,
+  // on release) — wiring the API call straight to onChange used to fire a
+  // full seek request per pixel of drag; overlapping requests can resolve
+  // out of order, landing the track wherever the race settles rather than
+  // where the user released the thumb. Reported live: "the time seek in
+  // Spotify still doesn't work, it jumps but not in the position I want"
+  // (AUDIT-2026-08-02).
+  const handleSeek     = e => { isSeekingRef.current = true; setTrackPosition(parseInt(e.target.value, 10)); };
+  const commitSeek     = async e => {
+    const ms = parseInt(e.target.value, 10);
+    try {
+      if (!spotify) { try { await api.localSeek(`${Math.round((ms / (trackDuration || 1)) * 100)}%`); } catch {} return; }
+      if (!token) return;
+      try { await api.seek(token, ms); requestWSStateSync(); } catch {}
+    } finally {
+      isSeekingRef.current = false;
+    }
+  };
 
   // Volume is owned by the CamillaDSP master stage for EVERY source (incl. Spotify),
   // so a single persisted level survives source switches, reboot and wake without
@@ -738,7 +760,7 @@ export default function RemoteControl() {
     albumImage, trackName, trackArtist,
     favoriteStations, isCurrentFav,
     handlePlayPause, handleNext, handlePrevious,
-    handleShuffle, handleRepeat, handleSeek,
+    handleShuffle, handleRepeat, handleSeek, commitSeek,
     handleVolumeChange, handleMuteToggle,
     handleToggleFavRadio, handleToggleFavorite, wakeKiosk, requestWSStateSync,
     favorites, liveFormat,

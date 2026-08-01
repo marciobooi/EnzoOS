@@ -44,7 +44,7 @@ export default function TabletPlayerHero() {
     volume, isMuted, shuffleState, repeatState,
     activeDevice, isCurrentFav, currentTrack,
     handlePlayPause, handleNext, handlePrevious,
-    handleShuffle, handleRepeat, handleSeek,
+    handleShuffle, handleRepeat, handleSeek, commitSeek,
     handleVolumeChange, handleMuteToggle,
     handleToggleFavRadio, handleToggleSource, setActiveTab,
     queue,
@@ -266,6 +266,8 @@ export default function TabletPlayerHero() {
                   swing, have to precisely place it" (AUDIT-2026-08-02). */}
               <input type="range" min="0" max={trackDuration || 0} value={trackPosition}
                 onChange={handleSeek}
+                onPointerUp={commitSeek}
+                onPointerCancel={commitSeek}
                 disabled={spotify ? !token || !trackDuration : !trackDuration}
                 className="absolute -inset-y-5 inset-x-0 w-full opacity-0 cursor-pointer disabled:cursor-default touch-pan-y" />
             </div>
