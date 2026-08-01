@@ -94,7 +94,12 @@ const OLLAMA_KEEP_ALIVE = '15m';
 const PIPER_BIN = '/opt/piper-tts/piper/piper';
 const PIPER_ESPEAK_DATA = '/opt/piper-tts/piper/espeak-ng-data';
 const VOICES = {
-  en: '/opt/piper-tts/piper/voices/en_US-lessac-medium.onnx',
+  // High-quality tier, not medium (user-requested voice change 2026-08-01) —
+  // noticeably more natural/energetic than the previous en_US-lessac-medium.
+  // Slower to synthesize (~2.7x realtime vs medium's ~1x, live-benchmarked),
+  // but that's fully absorbed by the several-minutes-of-runway background
+  // prepare — never on the critical path to a track transition.
+  en: '/opt/piper-tts/piper/voices/en_US-ryan-high.onnx',
   pt: '/opt/piper-tts/piper/voices/pt_PT-tugao-medium.onnx',
 };
 const SONGS_PER_SET = 5;
