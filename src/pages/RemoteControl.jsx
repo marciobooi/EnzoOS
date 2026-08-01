@@ -685,8 +685,44 @@ export default function RemoteControl() {
     setIsSearching(true);
     try { const r = await fetch(`/api/player/radio-search?q=${encodeURIComponent(q)}&limit=25`); const d = await r.json(); const f = d.map(s => ({ name: s.name.length > 26 ? s.name.substring(0, 24) + '…' : s.name, url: s.url_resolved || s.url, favicon: s.favicon, country: s.country, tags: s.tags })); if (!f.length) reportError('No stations found.'); else setSearchStations(f); } catch { reportError('Search failed.'); } finally { setIsSearching(false); }
   };
-  const handlePlayTrack   = async uri => { try { await api.play(token, activeDevice?.id || resonanceDevice?.id || null, null, [uri]); setActiveTab('player'); setTimeout(() => { localSync(); requestWSStateSync(); }, 800); } catch (e) { reportError(e.message); } };
-  const handlePlayContext = async uri => { try { await api.play(token, activeDevice?.id || resonanceDevice?.id || null, uri); setActiveTab('player'); setTimeout(() => { localSync(); requestWSStateSync(); }, 800); } catch (e) { reportError(e.message); } };
+  // AUDIT-2026-08-02: mirrors Kiosk.jsx's playOnResonance — `activeDevice ||
+  // resonanceDevice || null` resolved to null (and Spotify's play call 404'd
+  // with "No active device found") whenever the cached device list was stale
+  // or empty: right after a raspotify restart, a reboot, or a reinstall.
+  // librespot itself was fine — nothing had transferred playback to it yet,
+  // so Spotify correctly reported no active device. Re-fetches the live
+  // device list before giving up, restarts raspotify only as a last resort,
+  // and if Spotify still reports no active device on the actual play
+  // attempt, transfers playback and retries once.
+  const playOnResonance = async (doPlay) => {
+    let id = activeDevice?.id || resonanceDevice?.id;
+    if (!id) {
+      const data = await api.getDevices(token).catch(() => null);
+      const list = data?.devices || [];
+      if (list.length) setDevices(list);
+      id = list.find(d => d.is_active)?.id || list.find(d => d.name === LIBRESPOT_DEVICE_NAME)?.id;
+    }
+    if (!id) {
+      try { await fetch('/api/system/service/raspotify/restart', { method: 'POST' }); } catch {}
+      for (let i = 0; i < 8 && !id; i++) {
+        await new Promise(r => setTimeout(r, 1500));
+        const data = await api.getDevices(token).catch(() => null);
+        const found = (data?.devices || []).find(d => d.name === LIBRESPOT_DEVICE_NAME);
+        if (found) { setDevices(data.devices); id = found.id; }
+      }
+      if (!id) { reportError(`${LIBRESPOT_DEVICE_NAME} did not come online. Check raspotify.`); return; }
+    }
+    try {
+      await doPlay(id);
+    } catch (err) {
+      if (!/no active device/i.test(err?.message || '')) throw err;
+      await api.transferPlayback(token, id, false).catch(() => {});
+      await new Promise(r => setTimeout(r, 600));
+      await doPlay(id);
+    }
+  };
+  const handlePlayTrack   = async uri => { try { await playOnResonance(id => api.play(token, id, null, [uri])); setActiveTab('player'); setTimeout(() => { localSync(); requestWSStateSync(); }, 800); } catch (e) { reportError(e.message); } };
+  const handlePlayContext = async uri => { try { await playOnResonance(id => api.play(token, id, uri)); setActiveTab('player'); setTimeout(() => { localSync(); requestWSStateSync(); }, 800); } catch (e) { reportError(e.message); } };
   const handleDeactivateDsp = async () => { try { const c = await api.getDspCalibration() || {}; c[0] = 'eq'; await api.saveDspCalibration(c); setDspActive(false); } catch {} };
 
   // ── context value ─────────────────────────────────────────────────────────
