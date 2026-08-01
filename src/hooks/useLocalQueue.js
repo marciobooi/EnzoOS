@@ -14,10 +14,15 @@ import { toast } from '../lib/toast';
 // that preview stayed empty ("Nothing queued") for anything but Spotify
 // even though the queue itself was populated.
 export function useLocalQueue() {
-  const { source, spotify, setActiveTab } = useContext(Tk);
+  const { source, spotifyBacked, setActiveTab } = useContext(Tk);
   const [localQueue, setLocalQueue] = useState([]);
   const [localLoading, setLocalLoading] = useState(false);
-  const isLocal = !spotify && source !== 'radio';
+  // spotifyBacked (not spotify): DJ mode plays real Spotify tracks under the
+  // hood and needs the Spotify-shaped queue path, not MPD's — dj.js stops
+  // MPD outright at session start, so `!spotify` alone routed DJ mode here
+  // and got a permanently empty MPD queue back. Reported live: "in dj the
+  // up next is also empty too" (AUDIT-2026-08-02).
+  const isLocal = !spotifyBacked && source !== 'radio';
 
   useEffect(() => {
     if (!isLocal) return;

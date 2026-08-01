@@ -26,4 +26,13 @@ export const djApi = {
     });
     return handleJson(response);
   },
+
+  // { active, upNext, mood, moods, queue } — queue is DJ's own pre-selected
+  // upcoming tracks (Spotify's real /me/player/queue is always empty during
+  // DJ mode, since every transition is a fresh single-URI play call rather
+  // than a queue push).
+  async getDjStatus() {
+    const response = await fetch('/api/dj/status');
+    return handleJson(response);
+  },
 };

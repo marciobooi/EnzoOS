@@ -192,6 +192,15 @@ export default function RemoteControl() {
   // ── source / standby ──────────────────────────────────────────────────────
   const [source, setSource]   = useState('spotify');
   const spotify = source === 'spotify';
+  // DJ mode plays real Spotify tracks under the hood (server/dj.js drives
+  // the same spotifyApi as plain Spotify playback) but reports its own
+  // `source: 'dj'` so the UI can hide the Spotify chrome — `spotify` alone
+  // is therefore the wrong check for "does this action need to go through
+  // Spotify's Web API instead of MPD's local /api/player/* routes."
+  // Missed for seek specifically: it fell into the MPD branch, POSTing to
+  // /api/player/seek while MPD wasn't even the active player — 500 live
+  // (AUDIT-2026-08-02).
+  const spotifyBacked = spotify || source === 'dj';
   const [standby, setStandby] = useState(false);
   const [remoteAccessEnabled, setRemoteAccessEnabled] = useState(true);
 
@@ -433,7 +442,7 @@ export default function RemoteControl() {
   useEffect(() => {
     if (activeTab === 'library' && libraryItems.length === 0 && libraryView === 'artists') fetchLibraryArtists();
   }, [activeTab]);
-  useEffect(() => { if (queueOpen && spotify && token) fetchQueue(); }, [queueOpen]);
+  useEffect(() => { if (queueOpen && spotifyBacked && token) fetchQueue(); }, [queueOpen]);
   useEffect(() => {
     if (activeTab === 'settings') { fetchSystemHealth(); fetchServices(); }
     // Source tab needs `services` too, for the AirPlay/UPnP/Bluetooth
@@ -511,7 +520,22 @@ export default function RemoteControl() {
   const fetchSystemHealth = async () => { try { setSystemHealth(await api.getSystemHealth()); } catch {} };
   const fetchServices     = async () => { try { setServices((await api.getServices()).services || {}); } catch {} };
 
+  // DJ mode never touches Spotify's real /me/player/queue (every track
+  // transition is a fresh single-URI play call), so it always came back
+  // empty here — reported live as "in dj the up next is also empty too, we
+  // should see the next couple of musics too right?" server/dj.js's own
+  // pre-selected upcoming tracks (AUDIT-2026-08-02's new /api/dj/status
+  // `queue` field) fill that gap during DJ mode specifically.
   const fetchQueue = async () => {
+    if (source === 'dj') {
+      setQueueLoading(true);
+      try {
+        const data = await api.getDjStatus();
+        setQueue(data?.queue || []);
+      } catch {}
+      finally { setQueueLoading(false); }
+      return;
+    }
     if (!token) return;
     setQueueLoading(true);
     try {
@@ -622,16 +646,22 @@ export default function RemoteControl() {
     catch (e) { reportError(e.message); }
   };
 
+  // spotifyBacked (not spotify) on all three — DJ mode routes real playback
+  // through Spotify's Web API same as plain Spotify (server/dj.js stops MPD
+  // outright at session start), so `!spotify` alone sent these into the MPD
+  // branch and hit local endpoints against a player that wasn't running.
+  // Same bug shape as the seek 500 (AUDIT-2026-08-02) — fixed proactively
+  // here since it's the identical root cause.
   const handlePlayPause = async () => {
-    if (!spotify) {
+    if (!spotifyBacked) {
       try { if (playbackState ? playbackState.paused : true) { wakeKiosk(); await api.localPlay(); setPlaybackState(p => ({ ...p, paused: false })); } else { await api.localPause(); setPlaybackState(p => ({ ...p, paused: true })); } } catch (e) { reportError(e.message); }
       return;
     }
     if (!token) return;
     try { if (isPlaying) await api.pause(token); else { wakeKiosk(); await api.play(token, activeDevice?.id || resonanceDevice?.id || null); } requestWSStateSync(); } catch (e) { reportError(e.message); }
   };
-  const handleNext     = async () => { if (!spotify) { try { await api.localNext(); } catch {} return; } if (!token) return; try { await api.skipNext(token); requestWSStateSync(); } catch {} };
-  const handlePrevious = async () => { if (!spotify) { try { await api.localPrevious(); } catch {} return; } if (!token) return; try { await api.skipPrevious(token); requestWSStateSync(); } catch {} };
+  const handleNext     = async () => { if (!spotifyBacked) { try { await api.localNext(); } catch {} return; } if (!token) return; try { await api.skipNext(token); requestWSStateSync(); } catch {} };
+  const handlePrevious = async () => { if (!spotifyBacked) { try { await api.localPrevious(); } catch {} return; } if (!token) return; try { await api.skipPrevious(token); requestWSStateSync(); } catch {} };
   const handleShuffle  = async () => { if (!spotify || !token) return; const n = !shuffleState; setShuffleState(n); try { await api.setShuffle(token, n); requestWSStateSync(); } catch { setShuffleState(!n); } };
   const handleRepeat   = async () => { if (!spotify || !token) return; const n = { off: 'context', context: 'track', track: 'off' }[repeatState] || 'off'; setRepeatState(n); try { await api.setRepeat(token, n); requestWSStateSync(); } catch { setRepeatState(repeatState); } };
   // Split into visual (fires continuously while dragging) and commit (once,
@@ -645,7 +675,7 @@ export default function RemoteControl() {
   const commitSeek     = async e => {
     const ms = parseInt(e.target.value, 10);
     try {
-      if (!spotify) { try { await api.localSeek(`${Math.round((ms / (trackDuration || 1)) * 100)}%`); } catch {} return; }
+      if (!spotifyBacked) { try { await api.localSeek(`${Math.round((ms / (trackDuration || 1)) * 100)}%`); } catch {} return; }
       if (!token) return;
       try { await api.seek(token, ms); requestWSStateSync(); } catch {}
     } finally {
@@ -745,6 +775,19 @@ export default function RemoteControl() {
   };
   const handlePlayTrack   = async uri => { try { await playOnResonance(id => api.play(token, id, null, [uri])); setActiveTab('player'); setTimeout(() => { localSync(); requestWSStateSync(); }, 800); } catch (e) { reportError(e.message); } };
   const handlePlayContext = async uri => { try { await playOnResonance(id => api.play(token, id, uri)); setActiveTab('player'); setTimeout(() => { localSync(); requestWSStateSync(); }, 800); } catch (e) { reportError(e.message); } };
+  // Tapping a track already in "Up Next" used handlePlayTrack (a plain
+  // uris:[uri] play call), which tells Spotify to play EXACTLY that one
+  // track and nothing else — wiping whatever was queued after it. Reported
+  // live: "I click in one of the items of Spotify up next then the list is
+  // empty, no next song, previously the list was full." Queueing the track
+  // then skipping to it instead leaves the rest of the real queue intact
+  // (AUDIT-2026-08-02).
+  const handlePlayFromQueue = async uri => {
+    try {
+      await playOnResonance(() => api.addToQueue(token, uri).then(() => api.skipNext(token)));
+      setTimeout(() => { localSync(); requestWSStateSync(); fetchQueue(); }, 800);
+    } catch (e) { reportError(e.message); }
+  };
   const handleDeactivateDsp = async () => { try { const c = await api.getDspCalibration() || {}; c[0] = 'eq'; await api.saveDspCalibration(c); setDspActive(false); } catch {} };
 
   // ── context value ─────────────────────────────────────────────────────────
@@ -753,7 +796,7 @@ export default function RemoteControl() {
     activeTab, setActiveTab: changeTab,
     isConnected, ws, sendUpdate,
     standby, handleToggleStandby,
-    source, spotify, setSource, handleToggleSource,
+    source, spotify, spotifyBacked, setSource, handleToggleSource,
     token, isPlaying, trackPosition, trackDuration, progressPct,
     volume, isMuted, shuffleState, repeatState,
     playbackState, currentTrack, activeDevice, resonanceDevice, devices,
@@ -764,7 +807,7 @@ export default function RemoteControl() {
     handleVolumeChange, handleMuteToggle,
     handleToggleFavRadio, handleToggleFavorite, wakeKiosk, requestWSStateSync,
     favorites, liveFormat,
-    handlePlayTrack, handlePlayContext,
+    handlePlayTrack, handlePlayContext, handlePlayFromQueue,
     libraryView, selectedArtist, selectedAlbum, libraryItems, libraryLoading,
     handleLibraryBack, handleLibraryPlayTrack,
     fetchLibraryArtists, fetchLibraryAlbums, fetchLibraryTracks,
@@ -794,7 +837,7 @@ export default function RemoteControl() {
     setToken, setPlaybackState, setDevices,
   }), [
     darkMode, activeTab, isConnected, ws, sendUpdate,
-    standby, source, spotify, token, isPlaying,
+    standby, source, spotify, spotifyBacked, token, isPlaying,
     trackPosition, trackDuration, progressPct,
     volume, isMuted, shuffleState, repeatState,
     playbackState, currentTrack, activeDevice, resonanceDevice, devices,

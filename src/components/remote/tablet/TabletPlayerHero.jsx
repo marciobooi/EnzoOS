@@ -39,7 +39,7 @@ export default function TabletPlayerHero() {
   const { t } = useI18n();
   const {
     C, card, cardWhite, darkMode,
-    albumImage, trackName, trackArtist, source, spotify, token,
+    albumImage, trackName, trackArtist, source, spotify, spotifyBacked, token,
     isPlaying, trackPosition, trackDuration, progressPct,
     volume, isMuted, shuffleState, repeatState,
     activeDevice, isCurrentFav, currentTrack,
@@ -80,10 +80,12 @@ export default function TabletPlayerHero() {
   // inline), so nothing ever called fetchQueue() here and `queue` stayed
   // permanently empty. Fetch on mount and again whenever the track changes
   // (a skip shifts what's "next"), same trigger granularity the phone gets
-  // from a user re-opening the sheet.
+  // from a user re-opening the sheet. spotifyBacked (not spotify) so DJ mode
+  // also fetches — fetchQueue itself routes to /api/dj/status's own upcoming
+  // list there, since DJ never populates Spotify's real queue.
   useEffect(() => {
-    if (spotify && token) fetchQueue();
-  }, [spotify, token, trackName]); // eslint-disable-line react-hooks/exhaustive-deps
+    if (spotifyBacked && token) fetchQueue();
+  }, [spotifyBacked, token, trackName]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const albumName = currentTrack?.album?.name || '';
   const canInfo   = source !== 'radio' && !!trackArtist && !!albumName && trackName !== 'Nothing playing';
@@ -103,7 +105,7 @@ export default function TabletPlayerHero() {
   // enough to push the input-source carousel below it out of the pane.
   const upNext = isLocal
     ? localQueue.slice(0, 1).map(tr => ({ uri: tr.id, name: tr.title, artists: [{ name: tr.artist }], art: null }))
-    : (spotify && Array.isArray(queue)
+    : (spotifyBacked && Array.isArray(queue)
       ? queue.slice(0, 1).map(tr => ({ ...tr, art: tr.album?.images?.[2]?.url || tr.album?.images?.[0]?.url }))
       : []);
 

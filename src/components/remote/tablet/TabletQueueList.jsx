@@ -10,7 +10,7 @@ import { useLocalQueue } from '../../../hooks/useLocalQueue';
 // uses; this is its tablet-inline equivalent, not a replacement for it —
 // QueuePanel itself is untouched).
 export default function TabletQueueList() {
-  const { C, queue, queueLoading, handlePlayTrack } = useContext(Tk);
+  const { C, queue, queueLoading, handlePlayFromQueue } = useContext(Tk);
   const { isLocal, localQueue, localLoading, removeLocal, playLocal } = useLocalQueue();
 
   const loading = isLocal ? localLoading : queueLoading;
@@ -36,7 +36,7 @@ export default function TabletQueueList() {
           <div key={isLocal ? tr.id : `${tr.uri}-${idx}`}
             className="flex items-center gap-2.5 py-2"
             style={idx > 0 ? { borderTop: `0.5px solid ${C.outline}` } : undefined}>
-            <button onClick={() => (isLocal ? playLocal(tr.id) : handlePlayTrack(tr.uri))}
+            <button onClick={() => (isLocal ? playLocal(tr.id) : handlePlayFromQueue(tr.uri))}
               className="flex-1 min-w-0 flex items-center gap-2.5 cursor-pointer text-left">
               <span className="text-[11px] w-4 text-right shrink-0 font-semibold tabular-nums" style={{ color: C.text4 }}>{idx + 1}</span>
               <div className="w-9 h-9 rounded-lg overflow-hidden shrink-0 flex items-center justify-center"

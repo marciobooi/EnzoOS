@@ -5,7 +5,7 @@ import { useLocalQueue } from '../../hooks/useLocalQueue';
 import { useI18n } from '../../i18n';
 
 export default function QueuePanel({ queue, queueLoading, onClose }) {
-  const { C, cardWhite, darkMode, albumImage, trackName, trackArtist, handlePlayTrack } = useContext(Tk);
+  const { C, cardWhite, darkMode, albumImage, trackName, trackArtist, handlePlayFromQueue } = useContext(Tk);
   const { t } = useI18n();
 
   const { isLocal, localQueue, localLoading, removeLocal, playLocal } = useLocalQueue();
@@ -120,7 +120,7 @@ export default function QueuePanel({ queue, queueLoading, onClose }) {
                     {idx > 0 && (
                       <div className="ml-14" style={{ height: '0.5px', background: `linear-gradient(90deg, transparent 0%, ${C.outline} 15%, ${C.outline} 85%, transparent 100%)` }} />
                     )}
-                    <button onClick={() => { handlePlayTrack(t.uri); onClose(); }}
+                    <button onClick={() => { handlePlayFromQueue(t.uri); onClose(); }}
                       className="w-full flex items-center gap-3 px-3 py-2.5 cursor-pointer text-left">
                       <span className="text-[11px] w-5 text-right shrink-0 font-semibold tabular-nums"
                         style={{ color: C.text4 }}>{idx + 1}</span>

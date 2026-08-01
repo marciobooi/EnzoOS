@@ -755,7 +755,16 @@ router.post('/mood', async (req, res) => {
 });
 
 router.get('/status', (req, res) => {
-  res.json({ active: state.active, upNext: state.queue.length, mood: state.mood, moods: MOOD_IDS });
+  // DJ mode never touches Spotify's real /me/player/queue (every track
+  // transition is a fresh single-URI play call, not a queue push — see the
+  // module docstring), so the remote's "Up Next" panel found it permanently
+  // empty here even mid-session. state.queue already holds the actual
+  // upcoming Spotify track objects (pickTracks' pre-selected batch minus
+  // whatever's already played) — shape them the same way Spotify's own
+  // queue endpoint does so the client's existing queue UI needs no changes
+  // beyond picking this endpoint as its source while source === 'dj'.
+  const queue = state.queue.map(t => ({ uri: t.uri, name: t.name, artists: t.artists, album: { images: t.album?.images } }));
+  res.json({ active: state.active, upNext: state.queue.length, mood: state.mood, moods: MOOD_IDS, queue });
 });
 
 export default router;

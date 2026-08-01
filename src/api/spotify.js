@@ -100,6 +100,21 @@ export const spotifyApi = {
     return handleResponse(response);
   },
 
+  /**
+   * Add a track to the end of the current play queue, without touching
+   * whatever's already playing/queued. Used together with skipNext to jump
+   * to a specific track while KEEPING the rest of the queue intact — see
+   * playTrackFromQueue in RemoteControl.jsx for why this exists instead of
+   * a plain uris:[uri] play call.
+   */
+  async addToQueue(token, uri) {
+    const response = await fetch(`${SPOTIFY_API_URL}/me/player/queue?uri=${encodeURIComponent(uri)}`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    return handleResponse(response);
+  },
+
   /** Skip to previous track. */
   async skipPrevious(token) {
     const response = await fetch(`${SPOTIFY_API_URL}/me/player/previous`, {
