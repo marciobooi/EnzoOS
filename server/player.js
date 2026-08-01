@@ -1259,6 +1259,18 @@ router.post('/bluetooth-out/pair', async (req, res) => {
     if (!/Connected:\s*yes/i.test(finalInfo)) {
       return sendError(res, badRequest(btReason('not-discovered')));
     }
+
+    // Same stale-PipeWire-link risk as the /connect route above: a device
+    // that lost its bonding record and had to be removed+re-paired here is
+    // exactly the case where CamillaDSP's existing stream (if this mac was
+    // already the selected output) needs a forced restart to re-link.
+    const current = await readBluetoothOutputSetting();
+    if (current.mac === mac) {
+      await updateCamillaConfigFromSettings({ forceRestart: true }).catch(err =>
+        console.warn('[Bluetooth Out] CamillaDSP restart after re-pair failed (non-fatal):', err.message)
+      );
+    }
+
     res.json({ success: true });
   } catch (err) {
     console.error('[Bluetooth Out] Pair failed:', err.message);
@@ -1274,6 +1286,20 @@ router.post('/bluetooth-out/connect', async (req, res) => {
     // Same exit-code caveat as pair above — read the reason out of the output.
     const { error } = await btctl(['connect', mac]);
     if (error) return sendError(res, badRequest(btReason(error)));
+
+    // If this device is the currently-selected CamillaDSP output, force a
+    // restart so its PipeWire stream re-links to the bluez node that JUST
+    // came back — a plain reconnect leaves CamillaDSP's existing (already
+    // open) connection pointed at whatever it fell back to while the device
+    // was away, silently producing zero audible output (AUDIT-2026-08-01,
+    // see the forceRestart comment in updateCamillaConfigFromSettings).
+    const current = await readBluetoothOutputSetting();
+    if (current.mac === mac) {
+      await updateCamillaConfigFromSettings({ forceRestart: true }).catch(err =>
+        console.warn('[Bluetooth Out] CamillaDSP restart after reconnect failed (non-fatal):', err.message)
+      );
+    }
+
     res.json({ success: true });
   } catch (err) {
     sendError(res, err);
@@ -1314,7 +1340,12 @@ router.post('/bluetooth-out/select', async (req, res) => {
   if (enabled && !MAC_RE.test(mac || '')) return sendError(res, badRequest('Invalid MAC address'));
   try {
     await setSetting('bluetooth_output', JSON.stringify(enabled ? { enabled: true, mac, name: name || mac } : { enabled: false, mac: null, name: null }));
-    const dacInfo = await updateCamillaConfigFromSettings();
+    // forceRestart: switching the playback target to/from camilla_bt_output
+    // needs CamillaDSP to actually reopen its PipeWire connection so
+    // WirePlumber re-resolves playback_node against the CURRENT bluez node —
+    // a hot-reload alone can leave it linked to the stale/default sink even
+    // though the config on disk is correct (AUDIT-2026-08-01).
+    const dacInfo = await updateCamillaConfigFromSettings({ forceRestart: true });
     res.json({ success: true, dacInfo });
   } catch (err) {
     console.error('[Bluetooth Out] Select failed:', err.message);
@@ -1336,6 +1367,36 @@ router.get('/bluetooth-out/status', async (req, res) => {
     sendError(res, err);
   }
 });
+
+// ── Auto-reconnect watchdog (AUDIT-2026-08-01) ──────────────────────────────
+// The /pair, /connect and /select routes above all force a CamillaDSP restart
+// when THIS server drives the (re)connection — but real earbuds mostly don't
+// go through those routes at all. AirPods reconnect at the BlueZ level the
+// instant they're taken out of the case (they're already paired+trusted), with
+// zero HTTP traffic to us. Without this watchdog, that spontaneous reconnect
+// left CamillaDSP's already-open PipeWire stream linked to whatever it fell
+// back to while the earbuds were away (the "ResonanceInput" default sink) —
+// "it says connected but no sound" with no user action that could have fixed
+// it, because nothing ever told CamillaDSP to reopen its output device.
+const BT_RECONNECT_POLL_MS = 15_000;
+let btLastKnownConnected = null; // null = unknown baseline, not yet a transition
+
+setInterval(async () => {
+  try {
+    const setting = await readBluetoothOutputSetting();
+    if (!setting.enabled || !setting.mac) { btLastKnownConnected = null; return; }
+    const { stdout } = await execFilePromise('bluetoothctl', ['info', setting.mac]).catch(() => ({ stdout: '' }));
+    const connected = /Connected:\s*yes/i.test(stdout);
+
+    if (btLastKnownConnected === false && connected) {
+      console.log(`[Bluetooth Out] ${setting.mac} reconnected outside our own routes — forcing CamillaDSP restart to re-link PipeWire output.`);
+      await updateCamillaConfigFromSettings({ forceRestart: true }).catch(err =>
+        console.warn('[Bluetooth Out] CamillaDSP restart after auto-reconnect failed (non-fatal):', err.message)
+      );
+    }
+    btLastKnownConnected = connected;
+  } catch { /* transient bluetoothctl hiccup — next tick retries */ }
+}, BT_RECONNECT_POLL_MS);
 
 // Play a resolved hi-res stream URL through MPD — reuses the exact path web radio
 // uses (MPD → ALSA loopback → CamillaDSP → DAC), so EQ/DSP/volume all apply.

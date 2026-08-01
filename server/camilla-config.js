@@ -898,7 +898,7 @@ pcm.camilla_bt_output {
 }
 
 // Exportable helper to update configuration on any settings change
-export async function updateCamillaConfigFromSettings({ skipAlsa = false, samplerate = null, pureDirect = false } = {}) {
+export async function updateCamillaConfigFromSettings({ skipAlsa = false, samplerate = null, pureDirect = false, forceRestart = false } = {}) {
   const [dspVal, eqVal, balanceVal, phaseVal, bitPerfectVal, headroomVal, btOutVal] = await Promise.all([
     getSetting('dsp_calibration'),
     getSetting('eq_settings'),
@@ -974,8 +974,28 @@ export async function updateCamillaConfigFromSettings({ skipAlsa = false, sample
   console.log(`[CamillaDSP] Generated sound profile successfully: ${configPath}`);
 
   // Apply config via CamillaDSP WebSocket hot-reload (no audio gap).
-  // Falls back to systemctl restart only when CamillaDSP WS isn't available.
-  const hotReloaded = await hotReloadCamilla(yamlString);
+  // Falls back to systemctl restart only when CamillaDSP WS isn't available —
+  // UNLESS forceRestart is set, which skips straight to a real restart.
+  //
+  // forceRestart exists because hot-reload (SetConfig) never closes/reopens
+  // the underlying ALSA/PipeWire device when the device NAME string in the
+  // config is unchanged — it just swaps filters on the already-open stream.
+  // That's normally exactly what you want (no audio gap on an EQ tweak), but
+  // it's wrong for Bluetooth: `camilla_bt_output` is a stable alias in
+  // /etc/asound.conf whose underlying `playback_node` target can point at a
+  // different (or freshly-reconnected) bluez_output.<mac>.1 node than the one
+  // that existed when CamillaDSP's PipeWire client last opened it. WirePlumber
+  // only resolves that target AT OPEN TIME — if CamillaDSP has been running
+  // since before this Bluetooth device connected (or across a disconnect/
+  // reconnect cycle), its already-open stream stays linked to whatever it
+  // fell back to (the "ResonanceInput" default sink), silently producing zero
+  // audible output despite every layer below it (BlueZ, the ALSA bridge PCM,
+  // the speaker itself) working fine. Confirmed live 2026-08-01: `wpctl
+  // status` showed CamillaDSP's own stream linked to "Resonance HiFi Input"
+  // instead of the AirPods node while capture-side RMS proved real audio was
+  // flowing through — only a full `systemctl restart camilladsp` (forcing a
+  // fresh PipeWire connection) made it re-link to the correct output.
+  const hotReloaded = forceRestart ? false : await hotReloadCamilla(yamlString);
   if (!hotReloaded) {
     try {
       await execPromise('sudo systemctl restart camilladsp');
