@@ -1,6 +1,6 @@
 import { useContext } from 'react';
 import { RotateCcw, Flame, AudioLines, Sparkles, Sliders, Cpu } from 'lucide-react';
-import { Tk } from './shared';
+import { Tk, RcSlider } from './shared';
 import { EQ_PRESETS } from '../EqualizerControl';
 
 const BAND_LABELS = ['60', '250', '1k', '4k', '16k'];
@@ -10,23 +10,6 @@ const ACCENT = {
   sat:   '#c8841c', // warmth / saturation
   noise: '#0e9ab8', // clarity / noise floor
 };
-
-// ─── horizontal slider with the remote's champagne fill + invisible thumb ────
-function RcSlider({ value, min, max, step, onChange, accent, fill }) {
-  const { C } = useContext(Tk);
-  const pct = ((value - min) / (max - min)) * 100;
-  return (
-    <div className="relative h-1.5 rounded-full" style={{ background: C.container }}>
-      <div className="absolute inset-y-0 left-0 rounded-full"
-        style={{ width: `${pct}%`, background: fill || accent || C.champagne }} />
-      <div className="absolute w-[18px] h-[18px] rounded-full -translate-x-1/2 -translate-y-1/2 top-1/2"
-        style={{ left: `${pct}%`, background: '#ffffff', border: `2px solid ${fill || accent || C.champagne}`, boxShadow: '0 1px 5px rgba(0,0,0,0.25)' }} />
-      <input type="range" min={min} max={max} step={step} value={value}
-        onChange={e => onChange(Number(e.target.value))}
-        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
-    </div>
-  );
-}
 
 export default function RemoteEqualizer({
   currentPreset, onPresetChange,
@@ -127,7 +110,21 @@ export default function RemoteEqualizer({
                 <span className="text-[12px] font-bold tabular-nums mb-1.5" style={{ color: C.champagne }}>
                   {val > 0 ? `+${val}` : val}
                 </span>
-                <div className="relative w-9 flex-1 flex items-center justify-center">
+                {/* Track container widened to 52px (was 36px, AUDIT-2026-08-02
+                    — reported live as "hard to swing, have to precisely
+                    place it"). The invisible input fills this via its own
+                    width:100% (.remote-range-vertical), so widening the
+                    container is what actually grows its touch target — an
+                    inset-based expansion on the input itself would silently
+                    lose its right-side offset here, since CSS treats
+                    left+width+right as over-constrained and drops one when
+                    a class already sets an explicit width. The visual track
+                    stays exactly as thin as before (w-1.5, independently
+                    sized, not relative to this container). Slightly wider
+                    than the 48px column it sits in is intentional and safe
+                    — only the invisible hit-target overflows a couple of
+                    pixels into the gap between bands, not anything visible. */}
+                <div className="relative w-[52px] flex-1 flex items-center justify-center">
                   {/* track */}
                   <div className="absolute left-1/2 -translate-x-1/2 w-1.5 h-full rounded-full"
                     style={{ background: C.container }}>

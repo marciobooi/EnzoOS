@@ -2,7 +2,7 @@ import { useContext, useState, useRef, useEffect } from 'react';
 import { Sliders, Cpu, Timer, Scale, RefreshCw, FlipHorizontal, RotateCcw, Disc3, SlidersHorizontal, Merge, ChevronLeft } from 'lucide-react';
 import { toast } from '../../../lib/toast';
 import { reportError } from '../../../lib/errors';
-import { Tk, Row as SharedRow, Section as SharedSection, Sheet } from '../shared';
+import { Tk, Row as SharedRow, Section as SharedSection, Sheet, RcSlider } from '../shared';
 import { TabletRow, TabletSection } from '../tablet/TabletSection';
 import RemoteEqualizer from '../RemoteEqualizer';
 import { api } from '../../../api';
@@ -177,10 +177,14 @@ function AdvancedAudioSettings({ inline = false }) {
           onPress={() => setShowBalance(v => !v)} />
         {showBalance && (
           <div className="px-4 pb-4">
-            <input type="range" min="-12" max="12" step="0.5" value={balance}
-              onChange={e => handleBalanceChange(parseFloat(e.target.value))}
-              className="w-full" />
-            <div className="flex justify-between text-[11px] mt-1" style={{ color: C.text3, fontFamily: C.fontLabel }}>
+            {/* Was a bare native <input type="range">, unstyled and with the
+                browser's own (typically ~24-28px, still cramped) thumb —
+                switched to the shared champagne-styled slider both for visual
+                consistency with the rest of the app and its wider touch
+                target (AUDIT-2026-08-02). */}
+            <RcSlider value={balance} min={-12} max={12} step={0.5}
+              onChange={handleBalanceChange} />
+            <div className="flex justify-between text-[11px] mt-2" style={{ color: C.text3, fontFamily: C.fontLabel }}>
               <span>L</span><span>{t('settings.centre')}</span><span>R</span>
             </div>
           </div>

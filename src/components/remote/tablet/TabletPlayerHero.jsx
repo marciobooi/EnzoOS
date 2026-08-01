@@ -231,10 +231,13 @@ export default function TabletPlayerHero() {
                 style={{ width: `${progressPct}%`, background: accentFill }} />
               <div className="absolute w-4 h-4 rounded-full top-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none"
                 style={{ left: `${progressPct}%`, background: '#ffffff', boxShadow: '0 4px 10px rgba(180,170,150,0.25)' }} />
+              {/* -inset-y-5 (was -inset-y-2.5, ~24px touch height — still
+                  short of the ~44px guideline): reported live as "hard to
+                  swing, have to precisely place it" (AUDIT-2026-08-02). */}
               <input type="range" min="0" max={trackDuration || 0} value={trackPosition}
                 onChange={handleSeek}
                 disabled={spotify ? !token || !trackDuration : !trackDuration}
-                className="absolute -inset-y-2.5 inset-x-0 w-full opacity-0 cursor-pointer disabled:cursor-default" />
+                className="absolute -inset-y-5 inset-x-0 w-full opacity-0 cursor-pointer disabled:cursor-default" />
             </div>
             <div className="flex justify-between text-[12px] font-semibold"
               style={{ color: C.text3, fontFamily: C.fontLabel, letterSpacing: '0.04em' }}>
@@ -345,7 +348,7 @@ export default function TabletPlayerHero() {
           <input type="range" min="0" max="100" value={isMuted ? 0 : volume}
             onChange={handleVolumeChange} aria-label={t('player.volume')}
             disabled={spotify ? !token : false}
-            className="absolute -inset-y-2.5 inset-x-0 w-full opacity-0 cursor-pointer disabled:cursor-default" />
+            className="absolute -inset-y-5 inset-x-0 w-full opacity-0 cursor-pointer disabled:cursor-default" />
         </div>
         <button style={{ color: C.text2 }} aria-label={t('player.maxVolume')}
           className="w-11 h-11 flex items-center justify-center rounded-full active:scale-90 transition-all cursor-pointer shrink-0"

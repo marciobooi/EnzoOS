@@ -184,10 +184,15 @@ export default function PlayerTab() {
               style={{ width: `${progressPct}%`, background: C.champagne }} />
             <div className="absolute w-[18px] h-[18px] rounded-full top-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none"
               style={{ left: `${progressPct}%`, background: '#ffffff', border: `2px solid ${C.champagne}`, boxShadow: '0 1px 4px rgba(0,0,0,0.28)' }} />
+            {/* -inset-y-5 expands the invisible touch target well beyond the
+                1.5px-tall visual track (AUDIT-2026-08-02 — reported live as
+                "hard to swing, have to precisely place it in the circle
+                knob"); the 18px thumb drawn above is pointer-events-none, so
+                without this the ACTUAL hit area used to be just 6px tall. */}
             <input type="range" min="0" max={trackDuration || 0} value={trackPosition}
               onChange={handleSeek}
               disabled={spotify ? !token || !trackDuration : !trackDuration}
-              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-default" />
+              className="absolute -inset-y-5 inset-x-0 w-full opacity-0 cursor-pointer disabled:cursor-default" />
           </div>
           <div className="flex justify-between text-[11px] font-semibold"
             style={{ color: C.text3, fontFamily: C.fontLabel, letterSpacing: '0.04em' }}>
@@ -270,7 +275,7 @@ export default function PlayerTab() {
           <input type="range" min="0" max="100" value={isMuted ? 0 : volume}
             onChange={handleVolumeChange} aria-label={t('player.volume')}
             disabled={spotify ? !token : false}
-            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-default" />
+            className="absolute -inset-y-5 inset-x-0 w-full opacity-0 cursor-pointer disabled:cursor-default" />
         </div>
         <button style={{ color: C.text3 }} aria-label="Maximum volume"
           className="w-11 h-11 flex items-center justify-center rounded-full active:scale-90 transition-all cursor-pointer shrink-0"

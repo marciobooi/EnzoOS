@@ -59,6 +59,36 @@ export function Sheet({ C, kicker, title, onBack, children, padded = true, inlin
   );
 }
 
+// Horizontal slider with the remote's champagne fill + invisible thumb.
+// Shared by RemoteEqualizer (saturation/noise/preamp) and
+// RemoteThemeSettings (brightness) — was duplicated identically in both
+// until AUDIT-2026-08-02.
+//
+// The invisible <input type="range"> touch target used to be sized to match
+// the visual track (h-1.5, i.e. 6px) via `inset-0 h-full` — the 18px thumb
+// drawn on top is purely decorative (pointer-events-none), so the ACTUAL
+// touch-sensitive area was only 6px tall despite looking much bigger.
+// Reported live as "hard to swing, have to precisely place it in the
+// circle." -inset-y-5 expands the input 20px above and below the visual
+// track (any Tailwind height here still yields ~44-46px total), landing
+// close to Apple/Google's ~44px minimum touch-target guidance, while the
+// visual track/thumb stay exactly as thin/small as before.
+export function RcSlider({ value, min, max, step, onChange, accent, fill }) {
+  const { C } = useContext(Tk);
+  const pct = ((value - min) / (max - min)) * 100;
+  const color = fill || accent || C.champagne;
+  return (
+    <div className="relative h-1.5 rounded-full" style={{ background: C.container }}>
+      <div className="absolute inset-y-0 left-0 rounded-full" style={{ width: `${pct}%`, background: color }} />
+      <div className="absolute w-[18px] h-[18px] rounded-full -translate-x-1/2 -translate-y-1/2 top-1/2 pointer-events-none"
+        style={{ left: `${pct}%`, background: '#ffffff', border: `2px solid ${color}`, boxShadow: '0 1px 5px rgba(0,0,0,0.25)' }} />
+      <input type="range" min={min} max={max} step={step} value={value}
+        onChange={e => onChange(Number(e.target.value))}
+        className="absolute -inset-y-5 inset-x-0 w-full opacity-0 cursor-pointer" />
+    </div>
+  );
+}
+
 export const fmt = ms => {
   if (!ms || isNaN(ms)) return '0:00';
   const s = Math.floor(ms / 1000);
