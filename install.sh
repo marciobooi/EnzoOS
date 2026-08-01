@@ -1619,13 +1619,31 @@ BTROUTEEOF
 
 echo -e "${GREEN}Bluetooth configured: PipeWire handles A2DP sink natively via WirePlumber.${NC}"
 
-# Bluetooth pairing agent — DisplayYesNo capability.
-# The connecting device shows a 6-digit confirmation code and the user must
-# press "Pair" on their phone. This prevents any background device from pairing
-# without explicit user action. NoInputNoOutput (old setting) auto-accepted
-# everything silently — replaced here for household security.
-# Bluetooth is also only discoverable when the user activates it from the
-# kiosk menu (on-demand activation), providing a second layer of control.
+# Bluetooth pairing agent — NoInputNoOutput capability.
+#
+# AUDIT-2026-08-02: this was DisplayYesNo ("the connecting device shows a
+# 6-digit confirmation code and the user must press Pair on their phone")
+# for household security — but that confirmation requires a HUMAN watching
+# bt-agent's own terminal and typing yes/no in real time. bt-agent runs
+# headless here (Type=simple systemd service, no TTY, nobody ever attached
+# to its stdin), so that confirmation step can never actually be answered.
+# Reported live as "Bluetooth never remembers the connection, every time I
+# have to pair again": every pairing initiated through this app's own UI
+# (POST /api/player/bluetooth-out/pair → `bluetoothctl pair <mac>`) got far
+# enough to show Paired: yes, but the confirmation-gated final key exchange
+# never completed, so the device only ever landed in BlueZ's ephemeral
+# `cache/` (Bonded: no) instead of a real per-device bonded record — meaning
+# every reconnect needed a full re-pair from scratch, confirmed live via
+# `find /var/lib/bluetooth -iname '<mac-fragment>'` only matching the cache
+# path, never a proper <adapter>/<device>/info with a [LinkKey] section.
+#
+# NoInputNoOutput auto-accepts pairing instead of blocking on an
+# unanswerable prompt. This is the correct trade for how the feature is
+# actually used: pairing is only ever INITIATED by this app in response to
+# the user explicitly tapping a device they just scanned for in the kiosk/
+# remote UI — never an unsolicited incoming request — and Bluetooth is only
+# discoverable on-demand from the kiosk menu in the first place, which
+# remains the real control against an unattended device pairing itself.
 cat <<BTEOF > /etc/systemd/system/bt-agent.service
 [Unit]
 Description=Bluetooth Pairing Agent (Resonance HiFi)
@@ -1635,7 +1653,7 @@ Requires=bluetooth.service
 [Service]
 Type=simple
 User=${TARGET_USER}
-ExecStart=/usr/bin/bt-agent -c DisplayYesNo
+ExecStart=/usr/bin/bt-agent -c NoInputNoOutput
 Restart=always
 RestartSec=3
 
