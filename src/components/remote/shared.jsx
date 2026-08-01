@@ -89,6 +89,18 @@ export function RcSlider({ value, min, max, step, onChange, accent, fill }) {
   );
 }
 
+// Badge label for the active source, shown on the album-art corner badge in
+// PlayerTab (phone) and TabletPlayerHero. Was `spotify ? 'Spotify' :
+// source === 'radio' ? 'Radio' : 'Local'` in both files — defaulted EVERY
+// other source (dj, tidal, qobuz, airplay, upnp, bluetooth) to "Local".
+// Reported live: DJ mode showed "LOCAL" on the badge (AUDIT-2026-08-02).
+const SOURCE_BADGE_LABELS = {
+  spotify: 'Spotify', local: 'Local', radio: 'Radio', dj: 'DJ',
+  airplay: 'AirPlay', upnp: 'UPnP', bluetooth: 'Bluetooth',
+  tidal: 'Tidal', qobuz: 'Qobuz',
+};
+export const sourceBadgeLabel = (source) => SOURCE_BADGE_LABELS[source] || 'Local';
+
 export const fmt = ms => {
   if (!ms || isNaN(ms)) return '0:00';
   const s = Math.floor(ms / 1000);

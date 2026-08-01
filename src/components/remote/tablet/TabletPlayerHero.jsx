@@ -4,7 +4,7 @@ import {
   Shuffle, Repeat, Music, Heart, Radio, ListMusic, Info, Mic2, ChevronDown,
   Airplay, Network, Bluetooth, Music2,
 } from 'lucide-react';
-import { Tk, SpotifyIcon, fmt } from '../shared';
+import { Tk, SpotifyIcon, fmt, sourceBadgeLabel } from '../shared';
 import AlbumInfoSheet from '../AlbumInfoSheet';
 import LyricsSheet from '../LyricsSheet';
 import TabletQueueModal from './TabletQueueModal';
@@ -185,7 +185,7 @@ export default function TabletPlayerHero() {
             <span className="w-1.5 h-1.5 rounded-full" style={{ background: C.champagne }} />
             <span className="text-[11px] font-semibold uppercase tracking-wider"
               style={{ color: C.text3, fontFamily: C.fontLabel }}>
-              {spotify ? 'Spotify' : source === 'radio' ? 'Radio' : 'Local'}
+              {sourceBadgeLabel(source)}
             </span>
           </div>
           {canInfo && (
@@ -237,7 +237,7 @@ export default function TabletPlayerHero() {
               <input type="range" min="0" max={trackDuration || 0} value={trackPosition}
                 onChange={handleSeek}
                 disabled={spotify ? !token || !trackDuration : !trackDuration}
-                className="absolute -inset-y-5 inset-x-0 w-full opacity-0 cursor-pointer disabled:cursor-default" />
+                className="absolute -inset-y-5 inset-x-0 w-full opacity-0 cursor-pointer disabled:cursor-default touch-pan-y" />
             </div>
             <div className="flex justify-between text-[12px] font-semibold"
               style={{ color: C.text3, fontFamily: C.fontLabel, letterSpacing: '0.04em' }}>
@@ -348,7 +348,7 @@ export default function TabletPlayerHero() {
           <input type="range" min="0" max="100" value={isMuted ? 0 : volume}
             onChange={handleVolumeChange} aria-label={t('player.volume')}
             disabled={spotify ? !token : false}
-            className="absolute -inset-y-5 inset-x-0 w-full opacity-0 cursor-pointer disabled:cursor-default" />
+            className="absolute -inset-y-5 inset-x-0 w-full opacity-0 cursor-pointer disabled:cursor-default touch-pan-y" />
         </div>
         <button style={{ color: C.text2 }} aria-label={t('player.maxVolume')}
           className="w-11 h-11 flex items-center justify-center rounded-full active:scale-90 transition-all cursor-pointer shrink-0"
