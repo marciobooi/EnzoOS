@@ -450,7 +450,20 @@ export default function Kiosk() {
     setSource,
     setDevices,
     onRequestSync: () => {
-      if (ws.current?.readyState === WebSocket.OPEN) {
+      // AUDIT-2026-08-02: during DJ mode this used to re-broadcast the
+      // kiosk's own CACHED playbackState unconditionally — which is stale
+      // during DJ mode specifically, because syncCurrentState()'s own poll
+      // (a few lines down) is gated on source === 'spotify' and never runs
+      // while source === 'dj'. dj.js already broadcasts authoritative state
+      // itself on every track start and poll tick, so this echo is not just
+      // redundant during DJ mode but actively harmful: a remote seek calls
+      // requestWSStateSync() right after seeking, which reaches the kiosk
+      // here, and the kiosk's stale pre-seek position would immediately
+      // overwrite the just-seeked one on every screen. For a non-DJ source
+      // this self-corrects near-instantly (syncCurrentState below DOES run
+      // and fetches a fresh position moments later), which is why the same
+      // action "worked in Spotify, not in DJ" — reported live.
+      if (source !== 'dj' && ws.current?.readyState === WebSocket.OPEN) {
         ws.current.send(JSON.stringify({
           type: 'BROADCAST_STATE',
           payload: { ...(playbackState || {}), volume, is_muted: isMuted },
