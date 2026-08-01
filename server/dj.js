@@ -109,6 +109,11 @@ const OLLAMA_MODEL = 'qwen2.5:1.5b';
 const OLLAMA_KEEP_ALIVE = '15m';
 const PIPER_BIN = '/opt/piper-tts/piper/piper';
 const PIPER_ESPEAK_DATA = '/opt/piper-tts/piper/espeak-ng-data';
+// Piper's --length_scale is a phoneme-duration multiplier (1.0 = the
+// model's native pace); >1 stretches it out. Reported live as talking too
+// fast — 1.2 lands close to a natural, unhurried radio-DJ cadence without
+// dragging (tune here if it still isn't slow enough).
+const SPEECH_LENGTH_SCALE = 1.2;
 const VOICES = {
   // High-quality tier, not medium (user-requested voice change 2026-08-01) —
   // noticeably more natural/energetic than the previous en_US-lessac-medium.
@@ -315,7 +320,7 @@ function synthesizeRaw(text, language) {
   return new Promise((resolve, reject) => {
     const voice = VOICES[language] || VOICES.en;
     const outFile = path.join(os.tmpdir(), `dj-line-${Date.now()}-${Math.random().toString(36).slice(2, 7)}.raw.wav`);
-    const proc = spawn(PIPER_BIN, ['--model', voice, '--output_file', outFile, '--espeak_data', PIPER_ESPEAK_DATA]);
+    const proc = spawn(PIPER_BIN, ['--model', voice, '--output_file', outFile, '--espeak_data', PIPER_ESPEAK_DATA, '--length_scale', String(SPEECH_LENGTH_SCALE)]);
     let stderr = '';
     proc.stderr.on('data', (d) => { stderr += d; });
     proc.on('error', reject);
