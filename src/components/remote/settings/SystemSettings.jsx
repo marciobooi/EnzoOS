@@ -393,7 +393,17 @@ export default function SystemSettings({ inline = false }) {
                   ? { background: C.champagne, color: '#1a1c1c' }
                   : { background: C.containerLow, color: C.text2, border: `0.5px solid ${C.outline}` }}>
                 <span className="text-[13px] font-medium truncate">{d.name}</span>
-                <span className="text-[11px] opacity-70">{btBusyMac === d.mac ? '…' : t('settings.btOutConnectBtn')}</span>
+                {/* Was hardcoded to "Connect" for every row regardless of
+                    which device is actually connected — the row's background
+                    already highlighted the active device correctly, but the
+                    label next to it never reflected that (AUDIT-2026-08-02). */}
+                <span className="text-[11px] opacity-70">
+                  {btBusyMac === d.mac
+                    ? '…'
+                    : (btOutStatus?.enabled && btOutStatus?.connected && btOutStatus?.mac === d.mac)
+                      ? t('settings.btOutConnectedBtn')
+                      : t('settings.btOutConnectBtn')}
+                </span>
               </button>
             ))}
           </div>

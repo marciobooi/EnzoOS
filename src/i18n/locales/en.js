@@ -503,6 +503,7 @@ export default {
     btOutScan: 'Scan for devices',
     btOutScanning: 'Scanning… (8s)',
     btOutConnectBtn: 'Connect',
+    btOutConnectedBtn: 'Connected',
     btOutConnected: 'Now playing through {name}',
     btOutUsingDac: 'Switched back to the DAC',
     language: 'Language',

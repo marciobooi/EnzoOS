@@ -501,6 +501,7 @@ export default {
     btOutScan: 'Procurar dispositivos',
     btOutScanning: 'A procurar… (8s)',
     btOutConnectBtn: 'Ligar',
+    btOutConnectedBtn: 'Ligado',
     btOutConnected: 'A tocar em {name}',
     btOutUsingDac: 'Voltou ao DAC',
     language: 'Idioma',
