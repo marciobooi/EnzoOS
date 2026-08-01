@@ -40,8 +40,20 @@
  * roughly real-time synthesis. That's 15-20s of dead air if done
  * synchronously between tracks — unacceptable. So the NEXT track's
  * announcement is always generated in the background WHILE the current
- * track plays (typically 3+ minutes of runway vs ~20s of prep), and the
- * only real wait is the very first announcement when DJ mode switches on.
+ * track plays (typically 3+ minutes of runway vs ~20s of prep).
+ *
+ * DJ is Spotify, disguised — the music must never wait on the AI
+ * (AUDIT-2026-08-01). runLoop() only ever plays an announcement that's
+ * already finished generating AND was written for the exact track about to
+ * play (matched by forTrack.uri); if it isn't ready in time (cold start, a
+ * pivot, or a slow generation), that track just plays with no intro and the
+ * announcement — once it finishes — is delivered before whichever later
+ * track it's actually ready for instead. There is no code path left that
+ * blocks playback waiting on Ollama/Piper. The handoff between tracks also
+ * fires ~8s BEFORE the current one actually ends (waitForSpotifyTrackEnd),
+ * not after Spotify reports it over, so there's no dead air from poll
+ * latency either and Spotify's own end-of-track handling never gets a
+ * window to run (see also LIBRESPOT_AUTOPLAY=off in spotify-daemon.js).
  *
  * Audio path for the VOICE: Piper writes a WAV, played via `pw-play
  * --target ResonanceInput` — the exact same PipeWire virtual sink every
@@ -379,7 +391,14 @@ async function prepare(track, language, isCheckIn = false, isPivot = false) {
     isPivot,
   });
   const wavPath = await synthesize(text, language);
-  return { text, wavPath, forTrack: track };
+  // forTrack: which track this was written FOR (used to match it up before
+  // playing — see runLoop). A check-in is different: it's written ABOUT the
+  // track that just finished (so it has something concrete to react to) but
+  // is meant to play before WHATEVER comes next, not specifically require
+  // that exact track — it never names an upcoming track the way a normal
+  // intro or pivot line does. forTrack is set for logging/debugging only in
+  // that case; matching is skipped via isCheckIn instead.
+  return { text, wavPath, forTrack: track, isCheckIn };
 }
 
 // Polls Spotify's own playback state (no push API for third parties) both to
@@ -391,6 +410,13 @@ function waitForSpotifyTrackEnd(token, expectedUri, maxMs = 12 * 60 * 1000) {
   // our device / not playing yet" as "still starting" rather than "ended"
   // for this long, so a slow Connect handover can't abort the track instantly.
   const graceMs = 12000;
+  // Hand off a bit BEFORE the track actually ends rather than reacting after
+  // Spotify reports it's over — requested live as "call it 5-10s before the
+  // end so it feels fluid". This also eliminates the ~0-3s poll-detection lag
+  // after a real end, and means Spotify's own end-of-track handling never
+  // gets a window to run at all (see LIBRESPOT_AUTOPLAY=off in
+  // spotify-daemon.js for the belt-and-suspenders half of that).
+  const HANDOFF_LEAD_MS = 8000;
   return new Promise((resolve) => {
     state.pollInterval = setInterval(async () => {
       if (!state.active || state.pivotRequested) { clearInterval(state.pollInterval); resolve(); return; }
@@ -417,7 +443,11 @@ function waitForSpotifyTrackEnd(token, expectedUri, maxMs = 12 * 60 * 1000) {
         }
 
         if (data.item) broadcastSpotifyState(data.item, !data.is_playing, data.progress_ms);
-        if (!data.is_playing || data.item?.uri !== expectedUri) {
+
+        const remainingMs = (data.item?.duration_ms ?? Infinity) - (data.progress_ms ?? 0);
+        const nearEnd = data.item?.uri === expectedUri && data.is_playing && remainingMs <= HANDOFF_LEAD_MS;
+
+        if (!data.is_playing || data.item?.uri !== expectedUri || nearEnd) {
           if (settling && data.item?.uri !== expectedUri) return; // our track hasn't shown up yet
           clearInterval(state.pollInterval); resolve();
         }
@@ -450,28 +480,30 @@ async function runLoop() {
 
     const track = state.queue.shift();
 
-    // Cleared as soon as this iteration picks it up — setMood() is what
-    // sets it, purely to cut waitForSpotifyTrackEnd's poll short; from here
-    // it's just a local flag for which prompt variant to generate.
+    // Consumed here regardless of outcome below — carried into the
+    // background prepare call further down, so a pivot's "we're switching
+    // things up" framing lands on the very next announcement instead of
+    // ever blocking playback to say it immediately (see the no-blocking
+    // design right below).
     const wasPivot = state.pivotRequested;
     state.pivotRequested = false;
 
-    // The very first announcement of a session has no lookahead runway —
-    // this is the one moment DJ mode has a real, visible wait. Every
-    // subsequent one was already prepared while the previous track played
-    // (or, after a pivot, prepared fresh right here instead).
-    if (!state.pending) {
-      broadcastState({ phase: 'preparing' });
-      try { state.pending = await prepare(track, language, false, wasPivot); }
-      catch (err) { console.error('[DJ] prepare failed:', err.message); state.pending = null; }
-    }
-
-    if (!state.active) break;
-
-    if (state.pending) {
+    // DJ is Spotify, disguised — the music must never wait on the AI. Only
+    // announce if the segment prepared FOR THIS EXACT track is ready; if
+    // nothing's ready (session just started, a pivot just reset the queue,
+    // or generation simply ran long — an LLM+TTS round trip can take up to
+    // ~45s cold), skip the announcement THIS time and go straight to the
+    // music with zero dead air. A fresh one is prepared below and plays
+    // before whichever track it's actually ready in time for.
+    if (state.pending && (state.pending.isCheckIn || state.pending.forTrack?.uri === track.uri)) {
       await spotifyApi.pause(token).catch(() => {});
       broadcastState({ phase: 'announcing', line: state.pending.text });
       try { await playClip(state.pending.wavPath); } catch (err) { console.error('[DJ] playback failed:', err.message); }
+      fs.unlink(state.pending.wavPath, () => {});
+    } else if (state.pending) {
+      // Belongs to a track we're skipping past — by the time it finishes
+      // generating it would be introducing something already mid-playback.
+      // Discard rather than deliver a mismatched announcement.
       fs.unlink(state.pending.wavPath, () => {});
     }
     state.pending = null;
@@ -485,8 +517,8 @@ async function runLoop() {
     } catch (err) { console.error('[DJ] Spotify play failed:', err.message); }
 
     // Prepare the NEXT segment in the background while this track plays —
-    // the whole point: ~15-20s of generation+synthesis hidden inside
-    // several minutes of song instead of sitting between tracks as dead air.
+    // the whole point: generation+synthesis latency hidden inside several
+    // minutes of song instead of ever sitting between tracks as dead air.
     // Tagged with the current generation so that if a mood pivot happens
     // before this resolves, the stale result (built for a lineup that no
     // longer exists) gets discarded instead of clobbering the fresh pivot
@@ -496,7 +528,7 @@ async function runLoop() {
     const nextTrack = isSetEnd ? null : state.queue[0];
     const prepPromise = isSetEnd
       ? prepare(track, language, true) // check-in line refers to the track that just finished
-      : prepare(nextTrack, language);
+      : prepare(nextTrack, language, false, wasPivot);
     prepPromise
       .then((p) => { if (state.active && gen === state.generation) state.pending = p; else fs.unlink(p.wavPath, () => {}); })
       .catch((err) => console.error('[DJ] background prepare failed:', err.message));
@@ -542,6 +574,14 @@ async function start() {
   // the existing "stop the previous source" teardown runs too.
   // Verified live: active_source read 'spotify' throughout a DJ session.
   emit('SET_SOURCE', { source: 'dj', spotify: false });
+  // Belt-and-suspenders beyond SET_SOURCE's own previousSource-based teardown:
+  // that logic only fires correctly if cachedSourceState already reflects
+  // whatever was really playing (radio, local, etc.) — a stale/reset value
+  // (e.g. right after a resonance-api restart) would skip it, leaving MPD's
+  // stream mixed into the shared PipeWire input alongside DJ's Spotify audio.
+  // Reported live as "DJ is passing radio". DJ must own the input exclusively
+  // no matter what the tracked previous source was, so stop MPD unconditionally.
+  await execFilePromise('mpc', ['stop']).catch(() => {});
 
   state.pool = pool;
   state.active = true;

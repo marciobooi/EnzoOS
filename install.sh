@@ -894,6 +894,13 @@ LIBRESPOT_MIXER=softvol
 LIBRESPOT_VOLUME_CTRL=fixed
 LIBRESPOT_ENABLE_VOLUME_NORMALISATION=true
 LIBRESPOT_FORMAT=S16
+# Off, not "follow client setting" (the default): DJ mode plays one explicit
+# track URI at a time with no queue/context behind it, so the instant that
+# track ends, Spotify's own autoplay would otherwise pick something from ITS
+# OWN algorithmic "radio" mix to keep going — reported live as "DJ is
+# passing radio" content dj.js never selected. Matches server/spotify-daemon.js's
+# copy of this same conf block.
+LIBRESPOT_AUTOPLAY=off
 LIBRESPOT_ONEVENT=$PROJECT_DIR/scripts/librespot-event.sh
 # --- end Resonance HiFi managed block ---
 RASPOEOF

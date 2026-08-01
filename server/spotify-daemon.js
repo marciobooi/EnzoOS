@@ -49,6 +49,15 @@ function buildRaspotifyConf(extraLines = []) {
       'LIBRESPOT_VOLUME_CTRL=fixed',
       'LIBRESPOT_ENABLE_VOLUME_NORMALISATION=true',
       'LIBRESPOT_FORMAT=S16',
+      // Off, not "follow client setting" (the default): DJ mode (dj.js) plays
+      // one explicit track URI at a time with no queue/context behind it, so
+      // the instant that track ends, Spotify's own autoplay would otherwise
+      // pick something from ITS OWN algorithmic "radio" mix to keep going —
+      // reported live as "DJ is passing radio" content that was never
+      // selected by dj.js's own Liked-Songs/Top-Tracks pool. This device is
+      // driven entirely by explicit play() calls; nothing should ever start
+      // playing here that dj.js (or the user, via a real client) didn't ask for.
+      'LIBRESPOT_AUTOPLAY=off',
       // Fire librespot-event.sh on every Spotify Connect event (volumeset, etc.)
       // The script translates volume commands to CamillaDSP via /api/player/spotify-volume.
       'LIBRESPOT_ONEVENT=/home/pi/EnzoOS/scripts/librespot-event.sh',
