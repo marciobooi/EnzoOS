@@ -380,7 +380,17 @@ const DUCK_DB = 14;
 async function duckAndAnnounce(wavPath) {
   const before = getCachedVolumeDb();
   const canDuck = before > -90;
-  if (canDuck) await setCamillaVolume(before - DUCK_DB);
+  if (canDuck) {
+    // One immediate retry: live-tested, the WS command occasionally reports
+    // failure (transient — CamillaDSP's connection isn't always instantly
+    // ready). Worth retrying here specifically because the clip is already
+    // baked with the +DUCK_DB boost — if the duck never lands, the
+    // announcement plays louder than intended over full-volume music
+    // instead of just being a bit quiet.
+    let ok = await setCamillaVolume(before - DUCK_DB);
+    if (!ok) ok = await setCamillaVolume(before - DUCK_DB);
+    if (!ok) console.warn('[DJ] Duck failed twice — announcement will play louder than intended over full-volume music.');
+  }
   try {
     await playClip(wavPath);
   } catch (err) {
