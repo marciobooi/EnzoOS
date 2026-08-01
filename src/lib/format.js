@@ -1,10 +1,14 @@
 // Pure display/formatting helpers shared by the player UI.
 
-// Map 0–100 slider value to a dB string for display (matches server toDb()).
+// Map 0–100 slider value to a dB string for display.
+// Cubic law taper — matches server player.js's toDb() exactly (AUDIT-2026-08-01:
+// the previous linear-in-dB curve put 50% at -30dB, reported live as
+// "middle is like mute"). Keep the two in sync if either changes.
 export function toVolumeDb(vol) {
   if (vol <= 0) return '−∞';
-  const db = -60 * (1 - vol / 100);
-  return db === 0 ? '0.0' : db.toFixed(1);
+  if (vol >= 100) return '0.0';
+  const db = 60 * Math.log10(vol / 100);
+  return db.toFixed(1);
 }
 
 // Time-of-day greeting for the kiosk welcome screen.

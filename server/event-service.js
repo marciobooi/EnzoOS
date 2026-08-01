@@ -87,10 +87,16 @@ export function getStandbyState() {
 /**
  * Returns the current cached volume as a dB value for CamillaDSP SetVolume.
  * Used by player.js to restore volume after CamillaDSP config apply/restart.
+ *
+ * Cubic law taper — MUST match player.js's toDb() and format.js's
+ * toVolumeDb() exactly (AUDIT-2026-08-01), or volume audibly jumps every
+ * time this restores a level that /api/player/volume set with a different
+ * curve (e.g. after every CamillaDSP config reload).
  */
 export function getCachedVolumeDb() {
   if (cachedMuted || cachedVolume <= 0) return -100;
-  return -60 * (1 - cachedVolume / 100);
+  if (cachedVolume >= 100) return 0;
+  return 60 * Math.log10(cachedVolume / 100);
 }
 
 /**

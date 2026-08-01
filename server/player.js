@@ -101,11 +101,27 @@ router.post('/previous', async (req, res) => {
 });
 
 // Map 0-100 slider → dB for CamillaDSP volume control.
-// Equal dB steps = equal perceived loudness steps (linear dB range).
-// 0 → mute, 50 → -30dB (medium), 75 → -15dB, 100 → 0dB (full).
+//
+// AUDIT-2026-08-01: the previous formula (-60 * (1 - vol/100)) is LINEAR IN
+// dB across the full range, which put 50% at -30dB — roughly 3% of max
+// amplitude, i.e. very quiet, not "half volume". Reported live as "middle is
+// like mute, and even max isn't loud enough" (compared directly against an
+// iPhone at the same nominal setting). A linear-dB curve puts far too much
+// attenuation in the slider's lower-middle range because it treats the WHOLE
+// 0-100 range as equally spaced in dB, rather than shaping the curve to
+// match how loudness is actually perceived.
+//
+// Cubic law (gain = (vol/100)^3, i.e. dB = 60*log10(vol/100)) is the
+// standard perceptual taper for volume controls — it front-loads the steep
+// attenuation into the bottom of the slider (where fine control matters less
+// because everything already sounds quiet) and keeps the top half close to
+// unity gain (where perceived loudness differences per dB are largest).
+// 25% ≈ -36dB, 50% ≈ -18dB, 75% ≈ -7dB, 100% = 0dB — the halfway point is
+// now audibly "about half as loud" instead of nearly silent.
 function toDb(userVol) {
   if (userVol <= 0) return -100;
-  return -60 * (1 - userVol / 100);
+  if (userVol >= 100) return 0;
+  return 60 * Math.log10(userVol / 100);
 }
 
 // POST /api/player/volume -> Set volume via CamillaDSP (instant, all sources)
