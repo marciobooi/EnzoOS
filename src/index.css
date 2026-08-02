@@ -77,7 +77,13 @@ body {
   border: 2px solid #2a2826;
   cursor: pointer;
   box-shadow: 0 1px 4px rgba(42,40,38,0.25);
-  transition: transform 0.12s ease, box-shadow 0.12s ease;
+  /* transform only — box-shadow used to be in this list too, animated on
+     every drag/press. Reported live: "the touch in kiosk isn't fluid... same
+     when I press btns etc looks like isn't responsive" (AUDIT-2026-08-02;
+     box-shadow forces a CPU repaint every frame, unlike transform which the
+     compositor handles for free — see the ui-animation-hardware-constraints
+     rule this file already follows in a few other places). */
+  transition: transform 0.12s ease;
 }
 .stone-range::-webkit-slider-thumb:hover  { transform: scale(1.15); box-shadow: 0 2px 8px rgba(42,40,38,0.30); }
 .stone-range::-webkit-slider-thumb:active { transform: scale(0.92); }
@@ -509,7 +515,8 @@ div[data-theme="ruby"] *::selection {
   gap: 0.45rem;
   color: var(--color-active);
   font-weight: 700;
-  transition: box-shadow 0.18s ease, transform 0.18s ease;
+  /* transform only — see the AUDIT-2026-08-02 note on .stone-range above. */
+  transition: transform 0.18s ease;
 }
 
 .status-pill:hover {
@@ -812,8 +819,15 @@ div[data-theme="ruby"] *::selection {
   opacity: 0.85;
   cursor: pointer;
   box-shadow: inset 0 1px 0 rgba(255,255,255,0.3);
+  /* box-shadow dropped from this list — animated on every tap of every
+     play/pause/skip/shuffle/repeat button (this class is the kiosk's core
+     transport-control style). Reported live: "the touch in kiosk isn't
+     fluid... same when I press btns etc looks like isn't responsive"
+     (AUDIT-2026-08-02; see the .stone-range note above for why). The
+     box-shadow VALUE still changes instantly on hover/active/playing below,
+     it just no longer costs a repaint on every animation frame getting there. */
   transition: background-color 0.2s ease, color 0.2s ease,
-    transform 0.18s cubic-bezier(.34,1.56,.64,1), border-color 0.2s ease, box-shadow 0.2s ease;
+    transform 0.18s cubic-bezier(.34,1.56,.64,1), border-color 0.2s ease;
 }
 
 .icon-button:hover {
@@ -1003,7 +1017,12 @@ div[data-theme="ruby"] *::selection {
   align-items: center;
   background: linear-gradient(165deg, #d2d3ce 0%, #c8c9c4 100%);
   box-shadow: inset 0 2px 4px rgba(42,40,38,0.14), inset 0 -1px 0 rgba(255,255,255,0.4);
-  transition: transform 0.3s cubic-bezier(.34,1.56,.64,1), box-shadow 0.3s ease, background 0.3s ease;
+  /* transform only — box-shadow/background used to be in this list too,
+     animated on every tap of every DefinitionsMenu card (a ~3000px-wide row
+     the user swipes through). Reported live: "I swipe the definition menu
+     and there's a delay... not fluid" (AUDIT-2026-08-02; see the
+     .stone-range note above for why). */
+  transition: transform 0.3s cubic-bezier(.34,1.56,.64,1);
 }
 
 .menu-card:hover .icon-badge {
