@@ -950,6 +950,15 @@ cat <<EOF > /etc/sudoers.d/resonance
 $TARGET_USER ALL=(ALL) NOPASSWD: /usr/bin/tee /etc/raspotify/conf, /bin/tee /etc/raspotify/conf
 $TARGET_USER ALL=(ALL) NOPASSWD: /usr/bin/tee /etc/asound.conf, /bin/tee /etc/asound.conf
 $TARGET_USER ALL=(ALL) NOPASSWD: /usr/bin/tee /etc/pipewire/pipewire.conf.d/52-resonance-bitperfect.conf, /bin/tee /etc/pipewire/pipewire.conf.d/52-resonance-bitperfect.conf
+# AUDIT-2026-08-02: updateAloopSinkFormat() (server/camilla-config.js) has been
+# calling `sudo tee` against this exact path since AUDIT-2026-08-01 introduced
+# it, but this grant was never added — the write silently succeeded only on
+# boxes where the base OS image ALSO grants the user blanket passwordless sudo
+# (e.g. Ubuntu's cloud-init default-user provisioning), masking the gap. On a
+# plain install without that blanket grant, every bitperfect toggle would fail
+# to update this file, risking the exact PipeWire crash that audit describes
+# (aloop-sink audio.format mismatched against asound.conf's camilla_input).
+$TARGET_USER ALL=(ALL) NOPASSWD: /usr/bin/tee /etc/pipewire/pipewire.conf.d/52-resonance-aloop-sink.conf, /bin/tee /etc/pipewire/pipewire.conf.d/52-resonance-aloop-sink.conf
 $TARGET_USER ALL=(ALL) NOPASSWD: /usr/bin/systemctl restart raspotify, /bin/systemctl restart raspotify
 $TARGET_USER ALL=(ALL) NOPASSWD: /usr/bin/systemctl restart camilladsp, /bin/systemctl restart camilladsp, /usr/bin/systemctl reload camilladsp, /bin/systemctl reload camilladsp
 $TARGET_USER ALL=(ALL) NOPASSWD: /usr/local/bin/kiosk-power.sh, /usr/local/bin/kiosk-brightness.sh
