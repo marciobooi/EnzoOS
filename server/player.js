@@ -17,6 +17,7 @@ import { sendError, badRequest, badGateway, unauthorized } from './lib/errors.js
 import {
   setCamillaVolume, updateCamillaConfigFromSettings, detectDac, getCamillaStatus, getLastHeadroomDb,
 } from './camilla-config.js';
+import { mpdReadPicture } from './mpd-art.js';
 // Re-exported so event-service.js's `import('./player.js')` (used to avoid a
 // circular import at module load time) keeps working unchanged.
 export { setCamillaVolume, updateCamillaConfigFromSettings };
@@ -490,6 +491,126 @@ async function mpdCommand(cmd) {
   });
 }
 
+/**
+ * Send a single MPD protocol command over the raw TCP connection and return
+ * its full response text (same connect/greet pattern as mpdCommand above,
+ * which only reports success/failure — this is for commands like `lsinfo`
+ * whose actual response body is the point). Resolves to null on ACK/timeout/
+ * error rather than throwing, matching this file's existing MPD-helper style.
+ */
+async function mpdQuery(cmd) {
+  const net = await import('net');
+  return new Promise((resolve) => {
+    const socket = net.createConnection(6600, '127.0.0.1');
+    let buf = '';
+    let greeted = false;
+    const timer = setTimeout(() => { socket.destroy(); resolve(null); }, 2000);
+    socket.on('data', (chunk) => {
+      buf += chunk.toString();
+      if (!greeted && buf.includes('\n')) {
+        greeted = true; buf = '';
+        socket.write(`${cmd}\n`);
+        return;
+      }
+      if (greeted && (buf.includes('\nOK\n') || buf.endsWith('\nOK') || buf.includes('ACK ['))) {
+        clearTimeout(timer);
+        socket.destroy();
+        resolve(buf.includes('ACK [') ? null : buf);
+      }
+    });
+    socket.on('error', () => { clearTimeout(timer); resolve(null); });
+  });
+}
+
+// MPD protocol string quoting: wrap in double quotes, backslash-escape any
+// literal backslash or double quote already in the value.
+function mpdQuoteArg(str) {
+  return `"${String(str).replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`;
+}
+
+/**
+ * Folder browsing (as opposed to the artist/album/track tag-based views
+ * above) — MPD's own `lsinfo` protocol command returns typed directory/file
+ * entries for one level of its virtual filesystem (sandboxed to
+ * music_directory) PLUS full tags per file in a single round trip. Not
+ * exposed as an `mpc` CLI subcommand on this build, hence the raw socket
+ * call — confirmed live against the real MPD instance that `lsinfo ""` and
+ * `lsinfo "<path>"` both work (an invalid/nonexistent path comes back as an
+ * ACK error, handled by mpdQuery returning null above).
+ */
+async function mpdLsInfo(relPath) {
+  const text = await mpdQuery(`lsinfo ${mpdQuoteArg(relPath || '')}`);
+  if (text == null) return null;
+  const directories = [];
+  const files = [];
+  let current = null;
+  for (const raw of text.split('\n')) {
+    const line = raw.trim();
+    if (!line || line === 'OK') continue;
+    const dirM = line.match(/^directory:\s*(.*)$/);
+    if (dirM) { current = null; directories.push(dirM[1]); continue; }
+    const fileM = line.match(/^file:\s*(.*)$/);
+    if (fileM) { current = { file: fileM[1], title: '', artist: '', track: null, disc: 1 }; files.push(current); continue; }
+    if (!current) continue; // playlist: entries or anything before the first file/directory
+    const tagM = line.match(/^(Title|Artist|Track|Disc):\s*(.*)$/);
+    if (!tagM) continue;
+    const [, tag, value] = tagM;
+    if (tag === 'Title') current.title = value;
+    else if (tag === 'Artist') current.artist = value;
+    else if (tag === 'Track') current.track = parseTagNumber(value);
+    else if (tag === 'Disc') current.disc = parseTagNumber(value) || 1;
+  }
+  directories.sort((a, b) => a.localeCompare(b));
+  return { directories, files };
+}
+
+// GET /api/player/library/browse?path=<relative path, omit/empty for root>
+// Path segments are user-supplied — reject traversal attempts before they
+// ever reach MPD, on top of MPD's own sandboxing to music_directory.
+router.get('/library/browse', async (req, res) => {
+  const path = (req.query.path || '').toString();
+  if (path.length > 500 || path.split('/').some(seg => seg === '..')) {
+    return sendError(res, badRequest('Invalid path'));
+  }
+  const result = await mpdLsInfo(path);
+  if (!result) return res.json({ path, directories: [], files: [] });
+  res.json({ path, ...result });
+});
+
+// Small in-memory cache — a given file's embedded art never changes without a
+// library rescan, so this is a plain recency-capped map with no TTL (same
+// shape as metadata.js's memCache, minus the time-based expiry that makes
+// sense for external API results but not for a file's own embedded bytes).
+const ART_CACHE_MAX = 64;
+const artCache = new Map(); // file → { data: Buffer, mimeType } | null (null = confirmed no art)
+function artCacheGet(file) {
+  if (!artCache.has(file)) return undefined;
+  const v = artCache.get(file);
+  artCache.delete(file); artCache.set(file, v); // recency bump
+  return v;
+}
+function artCacheSet(file, value) {
+  artCache.delete(file);
+  artCache.set(file, value);
+  if (artCache.size > ART_CACHE_MAX) artCache.delete(artCache.keys().next().value);
+}
+
+// GET /api/player/library/art?file=<relative path>
+// Embedded cover art (ID3/FLAC picture tags or a folder-level cover file) via
+// MPD's binary protocol — see mpd-art.js. Untagged files are the common case,
+// not an error, so a genuine miss 404s quietly rather than logging a warning.
+router.get('/library/art', async (req, res) => {
+  const file = (req.query.file || '').toString();
+  if (!file || file.length > 500) return sendError(res, badRequest('Invalid file'));
+  const cached = artCacheGet(file);
+  const art = cached !== undefined ? cached : await mpdReadPicture(file).catch(() => null);
+  if (cached === undefined) artCacheSet(file, art);
+  if (!art) return res.status(404).end();
+  res.set('Content-Type', art.mimeType);
+  res.set('Cache-Control', 'public, max-age=2592000');
+  res.send(art.data);
+});
+
 // ── DSD Direct Bypass ─────────────────────────────────────────────────────────
 // Purists expect their DAC's "DSD" indicator to light up on .dsf/.dff playback.
 // That only happens if the DSD bitstream reaches the DAC untouched — i.e. NOT
@@ -731,17 +852,44 @@ router.get('/library/albums/all', async (req, res) => {
   }
 });
 
+// MPD's %track%/%disc% values are often "3/12"-style (track/total) — only the
+// number before any slash is meaningful for sorting/grouping. Untagged tracks
+// come back as an empty string from `-f`, not absent, so this must handle ''
+// explicitly rather than relying on parseInt's NaN-on-empty-string behavior
+// looking intentional.
+function parseTagNumber(raw) {
+  const n = parseInt(String(raw || '').split('/')[0], 10);
+  return Number.isFinite(n) ? n : null;
+}
+
 // GET /api/player/library/tracks?album=X&artist=Y
+// Track/disc numbers come along for free via the same `-f` custom-format
+// technique already proven in /library/search and /library/by-genre below —
+// this used to be a plain `mpc find` returning bare file paths, which is why
+// multi-disc albums rendered in whatever order MPD's database happened to
+// return them, with no way to group by disc at all.
 router.get('/library/tracks', async (req, res) => {
   const { album, artist } = req.query;
   if (artist && artist.length > 500) return sendError(res, badRequest('Artist name too long'));
   if (album && album.length > 500) return sendError(res, badRequest('Album name too long'));
   try {
-    const args = ['find'];
+    const args = ['-f', '%track%||%disc%||%title%||%artist%||%file%', 'find'];
     if (artist) args.push('artist', artist);
     if (album) args.push('album', album);
     const { stdout } = await execFilePromise('mpc', args);
-    const tracks = stdout.split('\n').map(s => s.trim()).filter(Boolean);
+    const tracks = stdout.split('\n')
+      .map(s => s.trim()).filter(Boolean)
+      .map(line => {
+        const [track, disc, title, artistTag, file] = line.split('||');
+        return {
+          file: file || '',
+          title: title || '',
+          artist: artistTag || '',
+          track: parseTagNumber(track),
+          disc: parseTagNumber(disc) || 1,
+        };
+      })
+      .filter(t => t.file);
     res.json({ tracks });
   } catch {
     res.json({ tracks: [] });

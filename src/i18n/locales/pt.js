@@ -299,6 +299,10 @@ export default {
     history: 'Histórico',
     favorites: 'Favoritos',
     tapHeart: 'Toque em ♥ em qualquer faixa para guardá-la aqui',
+    folders: 'Pastas',
+    emptyFolder: 'Esta pasta está vazia',
+    discN: 'Disco {n}',
+    albumInfo: 'Informação do álbum',
   },
 
   radio: {

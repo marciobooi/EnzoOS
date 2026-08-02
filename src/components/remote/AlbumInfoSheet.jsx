@@ -49,7 +49,13 @@ function Chip({ C, children, accent }) {
 // covering the whole screen as a modal — see TabletPlayerHero, the only
 // caller that passes it. Phone always omits it, so it always gets the
 // original portaled full-screen sheet.
-export default function AlbumInfoSheet({ artist, album, albumImage, onClose, inline = false }) {
+// `sampleFile`: a representative local track path for this album (library
+// browsing passes one, now-playing callers omit it) — when present, its own
+// embedded cover art (server/mpd-art.js) is tried FIRST, ahead of the
+// external aggregator's art, since it's guaranteed to be the exact release
+// actually in this library rather than whatever edition MusicBrainz/Last.fm
+// happens to have art for.
+export default function AlbumInfoSheet({ artist, album, albumImage, sampleFile, onClose, inline = false }) {
   const { C, cardWhite, darkMode } = useContext(Tk);
   const { lang, t } = useI18n();
   const [state, setState] = useState({ loading: true, error: null, data: null });
@@ -101,8 +107,10 @@ export default function AlbumInfoSheet({ artist, album, albumImage, onClose, inl
           }} />
           <div className="relative flex items-end gap-4 px-5" style={{ paddingTop: 'calc(env(safe-area-inset-top) + 72px)', paddingBottom: 16 }}>
             <div className="w-28 h-28 rounded-2xl overflow-hidden shrink-0 flex items-center justify-center" style={cardWhite}>
-              <SmartImg srcs={[d?.coverArt, d?.albumImage, albumImage]} alt="" className="w-full h-full object-cover" />
-              {!d?.coverArt && !d?.albumImage && !albumImage && <Disc3 className="h-9 w-9" style={{ color: C.text4 }} />}
+              <SmartImg
+                srcs={[sampleFile ? `/api/player/library/art?file=${encodeURIComponent(sampleFile)}` : null, d?.coverArt, d?.albumImage, albumImage]}
+                alt="" className="w-full h-full object-cover" />
+              {!sampleFile && !d?.coverArt && !d?.albumImage && !albumImage && <Disc3 className="h-9 w-9" style={{ color: C.text4 }} />}
             </div>
             <div className="min-w-0 pb-1">
               <h2 className="text-[22px] font-semibold leading-tight truncate" style={{ color: C.text1, letterSpacing: '-0.01em' }}>{d?.title || album}</h2>

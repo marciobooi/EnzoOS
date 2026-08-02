@@ -301,6 +301,10 @@ export default {
     history: 'History',
     favorites: 'Favorites',
     tapHeart: 'Tap ♥ on any track to save it here',
+    folders: 'Folders',
+    emptyFolder: 'This folder is empty',
+    discN: 'Disc {n}',
+    albumInfo: 'Album info',
   },
 
   radio: {

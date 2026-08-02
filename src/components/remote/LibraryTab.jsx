@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useContext } from 'react';
 import {
   ChevronLeft, ChevronRight, RefreshCw,
-  User, Disc2, Music, Library, Play, Clock, Heart,
+  User, Disc2, Music, Library, Play, Clock, Heart, Info, Folder, FolderOpen,
 } from 'lucide-react';
 import { Tk } from './shared';
 import { api } from '../../api';
@@ -9,6 +9,7 @@ import { toast } from '../../lib/toast';
 import SkeletonList from '../ui/SkeletonList';
 import { useI18n } from '../../i18n';
 import TabletAlbumCard from './tablet/TabletAlbumCard';
+import AlbumInfoSheet from './AlbumInfoSheet';
 
 const SOURCE_COLORS = { spotify: '#1ed760', local: '#f59e0b', radio: '#3b82f6', tidal: '#0078ff', qobuz: '#a855f7' };
 
@@ -69,11 +70,54 @@ export default function LibraryTab({ inline = false }) {
     }
   }, [libTab, inline]);
 
+  // Folder browsing — kept entirely local to this component (like history/
+  // albums above), not lifted into the shared Tk context, since nothing else
+  // in the app needs to know or restore this navigation state.
+  const [folderPath, setFolderPath] = useState('');
+  const [folderData, setFolderData] = useState({ directories: [], files: [] });
+  const [folderLoading, setFolderLoading] = useState(false);
+
+  const loadFolder = async (path) => {
+    setFolderLoading(true);
+    try {
+      const d = await api.getLibraryFolders(path);
+      setFolderPath(d.path ?? path);
+      setFolderData({ directories: d.directories || [], files: d.files || [] });
+    } catch {
+      setFolderData({ directories: [], files: [] });
+    }
+    setFolderLoading(false);
+  };
+
+  useEffect(() => {
+    if (libTab === 'folders' && folderData.directories.length === 0 && folderData.files.length === 0 && !folderLoading) {
+      loadFolder('');
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [libTab]);
+
+  // Richer album pages — reuses the existing AlbumInfoSheet/metadata
+  // aggregator (server/metadata.js) rather than building a second one; only
+  // reachable via an explicit tap so browsing/scrolling never fires it.
+  const [albumInfo, setAlbumInfo] = useState(null); // { artist, album, sampleFile } | null
+
   const separator = i => i > 0 && (
     <div className="ml-16" style={{ height: '0.5px', background: `linear-gradient(90deg, transparent 0%, ${C.outline} 15%, ${C.outline} 85%, transparent 100%)` }} />
   );
 
   /* ── deep drill-down (albums / tracks) ─────────────────────── */
+  const isTracksView = libraryView === 'tracks';
+  // Tracks now come back as {file,title,artist,track,disc} objects (see
+  // server/player.js's -f-based rewrite) — sort by disc then track number so
+  // multi-disc albums play/display in the right order, and only show "Disc N"
+  // headers when the album genuinely has more than one disc (untagged/
+  // single-disc albums all default to disc 1, so this never fires for them).
+  const sortedTracks = isTracksView
+    ? [...libraryItems].sort((a, b) => (a.disc || 1) - (b.disc || 1) || (a.track ?? 999) - (b.track ?? 999))
+    : libraryItems;
+  const discCount = isTracksView ? new Set(sortedTracks.map(t => t.disc || 1)).size : 1;
+  const firstTrackFile = isTracksView ? sortedTracks[0]?.file : null;
+
   if (isDeep) return (
     <div className="flex flex-col pt-5 pb-2">
       <div className="flex items-center gap-3 px-5 mb-4">
@@ -92,34 +136,70 @@ export default function LibraryTab({ inline = false }) {
             {libraryView === 'albums' ? selectedArtist : selectedAlbum || 'Tracks'}
           </h2>
         </div>
+        {isTracksView && (
+          <button onClick={() => setAlbumInfo({ artist: selectedArtist, album: selectedAlbum, sampleFile: firstTrackFile })}
+            aria-label={t('library.albumInfo')}
+            className="w-9 h-9 rounded-full flex items-center justify-center active:scale-90 transition-all cursor-pointer shrink-0"
+            style={btn}>
+            <Info className="h-4 w-4" style={{ color: C.champagne }} />
+          </button>
+        )}
       </div>
       <div className="px-4">
         {libraryLoading
           ? <SkeletonList count={6} />
           : (
             <div className="rounded-xl overflow-hidden" style={listCard}>
-              {libraryItems.map((item, idx) => {
-                const isTrack    = libraryView === 'tracks';
-                const displayName = isTrack ? item.split('/').pop().replace(/\.[^.]+$/, '') : item;
-                const IconEl     = libraryView === 'albums' ? Disc2 : Music;
+              {(isTracksView ? sortedTracks : libraryItems).map((item, idx) => {
+                const isTrack     = isTracksView;
+                const displayName = isTrack ? (item.title || item.file.split('/').pop().replace(/\.[^.]+$/, '')) : item;
+                const showDiscHeader = isTrack && discCount > 1 && (idx === 0 || (sortedTracks[idx - 1].disc || 1) !== (item.disc || 1));
                 return (
-                  <React.Fragment key={`${item}-${idx}`}>
-                    {separator(idx)}
-                    <button
-                      className="w-full flex items-center gap-3 px-4 py-3.5 active:opacity-60 transition-opacity cursor-pointer text-left"
-                      onClick={() => {
-                        if (libraryView === 'albums') { setSelectedAlbum(item); setLibraryView('tracks'); fetchLibraryTracks(item, selectedArtist); }
-                        else { handleLibraryPlayTrack(item); }
-                      }}>
-                      <span className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
-                        style={{ background: C.containerLow, border: `0.5px solid ${C.outline}` }}>
-                        <IconEl className="h-4 w-4" style={{ color: isTrack ? C.text4 : C.champagne }} />
-                      </span>
-                      <span className="flex-1 text-[15px] font-medium truncate" style={{ color: C.text1 }}>{displayName}</span>
-                      {isTrack
-                        ? <Play className="h-3.5 w-3.5 shrink-0" style={{ color: C.outline }} />
-                        : <ChevronRight className="h-4 w-4 shrink-0" style={{ color: C.outline }} />}
-                    </button>
+                  <React.Fragment key={isTrack ? item.file : `${item}-${idx}`}>
+                    {showDiscHeader && (
+                      <div className="px-4 pt-3 pb-1 text-[11px] font-semibold uppercase tracking-widest"
+                        style={{ color: C.text3, fontFamily: C.fontLabel }}>
+                        {t('library.discN', { n: item.disc || 1 })}
+                      </div>
+                    )}
+                    {!showDiscHeader && separator(idx)}
+                    <div className="w-full flex items-center gap-1 px-4 py-1.5">
+                      <button
+                        className="flex-1 min-w-0 flex items-center gap-3 py-2 active:opacity-60 transition-opacity cursor-pointer text-left"
+                        onClick={() => {
+                          if (libraryView === 'albums') { setSelectedAlbum(item); setLibraryView('tracks'); fetchLibraryTracks(item, selectedArtist); }
+                          else { handleLibraryPlayTrack(item.file); }
+                        }}>
+                        {isTrack ? (
+                          <span className="relative w-10 h-10 rounded-xl flex items-center justify-center shrink-0 overflow-hidden"
+                            style={{ background: C.containerLow, border: `0.5px solid ${C.outline}` }}>
+                            <Music className="h-4 w-4 absolute" style={{ color: C.text4 }} />
+                            <img src={`/api/player/library/art?file=${encodeURIComponent(item.file)}`} alt=""
+                              className="absolute inset-0 w-full h-full object-cover" onError={e => { e.target.style.display = 'none'; }} />
+                          </span>
+                        ) : (
+                          <span className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+                            style={{ background: C.containerLow, border: `0.5px solid ${C.outline}` }}>
+                            <Disc2 className="h-4 w-4" style={{ color: C.champagne }} />
+                          </span>
+                        )}
+                        <span className="flex-1 min-w-0">
+                          <span className="block text-[15px] font-medium truncate" style={{ color: C.text1 }}>
+                            {isTrack && item.track != null ? `${item.track}. ` : ''}{displayName}
+                          </span>
+                        </span>
+                        {isTrack
+                          ? <Play className="h-3.5 w-3.5 shrink-0" style={{ color: C.outline }} />
+                          : <ChevronRight className="h-4 w-4 shrink-0" style={{ color: C.outline }} />}
+                      </button>
+                      {!isTrack && (
+                        <button onClick={() => setAlbumInfo({ artist: selectedArtist, album: item })}
+                          aria-label={t('library.albumInfo')}
+                          className="w-8 h-8 flex items-center justify-center rounded-full active:scale-90 transition-all cursor-pointer shrink-0">
+                          <Info className="h-4 w-4" style={{ color: C.text4 }} />
+                        </button>
+                      )}
+                    </div>
                   </React.Fragment>
                 );
               })}
@@ -127,6 +207,7 @@ export default function LibraryTab({ inline = false }) {
           )
         }
       </div>
+      {albumInfo && <AlbumInfoSheet {...albumInfo} onClose={() => setAlbumInfo(null)} />}
     </div>
   );
 
@@ -158,6 +239,7 @@ export default function LibraryTab({ inline = false }) {
         {[
           { id: 'library', label: t('nav.library'), Icon: Library },
           ...(inline ? [{ id: 'albums', label: t('library.albums'), Icon: Disc2 }] : []),
+          { id: 'folders', label: t('library.folders'), Icon: Folder },
           { id: 'history', label: t('library.history'), Icon: Clock },
           { id: 'favorites', label: t('library.favorites'), Icon: Heart },
         ].map(({ id, label, Icon }) => (
@@ -334,6 +416,92 @@ export default function LibraryTab({ inline = false }) {
           }
         </div>
       )}
+
+      {/* ── Folders view — MPD's own virtual filesystem (sandboxed to
+          music_directory), not the artist/album/track tag-based views above.
+          Kept as plain breadcrumb navigation rather than lifted into the
+          shared libraryView/selectedArtist state, since nothing outside this
+          component needs to know or restore this navigation. ── */}
+      {libTab === 'folders' && (
+        <div className="px-4">
+          {/* Breadcrumbs — root is always tappable, each segment jumps straight there */}
+          <div className="flex items-center gap-1 flex-wrap mb-3 px-1">
+            <button onClick={() => loadFolder('')}
+              className="text-[12px] font-semibold active:opacity-60 cursor-pointer"
+              style={{ color: folderPath ? C.text3 : C.champagne, fontFamily: C.fontLabel }}>
+              {t('library.folders')}
+            </button>
+            {folderPath && folderPath.split('/').filter(Boolean).map((seg, idx, arr) => {
+              const segPath = arr.slice(0, idx + 1).join('/');
+              const isLast = idx === arr.length - 1;
+              return (
+                <React.Fragment key={segPath}>
+                  <span className="text-[12px]" style={{ color: C.outline }}>/</span>
+                  <button onClick={() => loadFolder(segPath)}
+                    className="text-[12px] font-semibold truncate max-w-[120px] active:opacity-60 cursor-pointer"
+                    style={{ color: isLast ? C.champagne : C.text3, fontFamily: C.fontLabel }}>
+                    {seg}
+                  </button>
+                </React.Fragment>
+              );
+            })}
+          </div>
+          {folderLoading
+            ? <SkeletonList count={6} />
+            : folderData.directories.length === 0 && folderData.files.length === 0
+              ? (
+                <div className="flex flex-col items-center gap-4 py-8 text-center">
+                  <FolderOpen className="h-10 w-10" style={{ color: C.outline }} />
+                  <p className="text-[15px]" style={{ color: C.text4 }}>{t('library.emptyFolder')}</p>
+                </div>
+              ) : (
+                <div className="rounded-xl overflow-hidden" style={listCard}>
+                  {folderData.directories.map((dir, idx) => {
+                    const name = dir.split('/').pop();
+                    return (
+                      <React.Fragment key={dir}>
+                        {separator(idx)}
+                        <button
+                          className="w-full flex items-center gap-3 px-4 py-3.5 active:opacity-60 transition-opacity cursor-pointer text-left"
+                          onClick={() => loadFolder(dir)}>
+                          <span className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+                            style={{ background: C.containerLow, border: `0.5px solid ${C.outline}` }}>
+                            <Folder className="h-4 w-4" style={{ color: C.champagne }} />
+                          </span>
+                          <span className="flex-1 text-[15px] font-medium truncate" style={{ color: C.text1 }}>{name}</span>
+                          <ChevronRight className="h-4 w-4 shrink-0" style={{ color: C.outline }} />
+                        </button>
+                      </React.Fragment>
+                    );
+                  })}
+                  {folderData.files.map((f, idx) => (
+                    <React.Fragment key={f.file}>
+                      {separator(folderData.directories.length + idx)}
+                      <button
+                        className="w-full flex items-center gap-3 px-4 py-3.5 active:opacity-60 transition-opacity cursor-pointer text-left"
+                        onClick={() => handleLibraryPlayTrack(f.file)}>
+                        <span className="relative w-10 h-10 rounded-xl flex items-center justify-center shrink-0 overflow-hidden"
+                          style={{ background: C.containerLow, border: `0.5px solid ${C.outline}` }}>
+                          <Music className="h-4 w-4 absolute" style={{ color: C.text4 }} />
+                          <img src={`/api/player/library/art?file=${encodeURIComponent(f.file)}`} alt=""
+                            className="absolute inset-0 w-full h-full object-cover" onError={e => { e.target.style.display = 'none'; }} />
+                        </span>
+                        <span className="flex-1 min-w-0">
+                          <span className="block text-[15px] font-medium truncate" style={{ color: C.text1 }}>
+                            {f.title || f.file.split('/').pop().replace(/\.[^.]+$/, '')}
+                          </span>
+                          {f.artist && <span className="block text-[12px] truncate" style={{ color: C.text3 }}>{f.artist}</span>}
+                        </span>
+                        <Play className="h-3.5 w-3.5 shrink-0" style={{ color: C.outline }} />
+                      </button>
+                    </React.Fragment>
+                  ))}
+                </div>
+              )
+          }
+        </div>
+      )}
+      {albumInfo && <AlbumInfoSheet {...albumInfo} onClose={() => setAlbumInfo(null)} />}
     </div>
   );
 }

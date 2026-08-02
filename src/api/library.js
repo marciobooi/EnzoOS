@@ -30,6 +30,14 @@ export const libraryApi = {
     return handleJson(r);
   },
 
+  // Folder/filesystem browsing (as opposed to the artist/album/track tag
+  // views above) — path is relative to MPD's music_directory root, '' (or
+  // omitted) lists the root itself.
+  async getLibraryFolders(path = '') {
+    const r = await fetch(`/api/player/library/browse?path=${encodeURIComponent(path)}`);
+    return handleJson(r);
+  },
+
   async searchLibrary(q, limit = 12) {
     const r = await fetch(`/api/player/library/search?q=${encodeURIComponent(q)}&limit=${limit}`);
     // Search is used inline in multi-source Promise.allSettled combos (see
