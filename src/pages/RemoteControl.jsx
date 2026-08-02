@@ -1005,8 +1005,19 @@ export default function RemoteControl() {
 
         {voiceOpen && <VoiceControl onClose={() => setVoiceOpen(false)} />}
 
+        {/* z above 9999, not 9999: opened from a Row *inside* DisplaySettings,
+            which itself renders inside Settings' own Sheet (portaled to
+            document.body at z-9999) — that Sheet stays mounted underneath
+            (tapping this row doesn't close it), and since the portal lands
+            later in DOM order, equal z-index let it paint on top and hide
+            this overlay entirely, even though it had opened. Reported live:
+            "I click the btn and nothing happens, only appears when I click
+            back to [the settings] menu" — clicking the Sheet's own back
+            button unmounted it, revealing the theme overlay that had been
+            open the whole time. Same exact bug/fix as isDspWizardOpen below
+            (AUDIT-2026-08-02; see that comment for the original instance). */}
         {!isTablet && isThemeSettingsOpen && (
-          <div className="remote-root fixed inset-0 z-[9999] flex flex-col overflow-y-auto"
+          <div className="remote-root fixed inset-0 z-[10010] flex flex-col overflow-y-auto"
             style={{ ...rcVars, background: C.bg, fontFamily: C.font, paddingTop: 'env(safe-area-inset-top)' }}>
             <div className="flex justify-between items-center px-5 pt-4 pb-4 sticky top-0 z-10 shrink-0"
               style={{ background: C.bg, borderBottom: `0.5px solid ${C.outline}` }}>
