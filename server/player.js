@@ -852,6 +852,25 @@ router.get('/library/albums/all', async (req, res) => {
   }
 });
 
+// GET /api/player/library/tracks?album=X&artist=Y
+// Track/disc numbers come along for free via the same `-f` custom-format
+// technique used in /library/search and /library/by-genre below — this used
+// to be a plain `mpc find` returning bare file paths, which is why multi-disc
+// albums rendered in whatever order MPD's database happened to return them,
+// with no way to group by disc at all.
+//
+// AUDIT-2026-08-02c: the separator between tags in a `-f` format string must
+// NOT be `|` — confirmed live that mpc's format-string parser treats `|`
+// specially (truncates the entire rest of the line at the first `|`, doubled
+// or not: `%title%||%artist%` prints ONLY the title, nothing after it, not
+// even a literal pipe). This was silently broken in every existing route
+// using `||` as a separator (`/library/search`, `/library/by-genre`,
+// `/queue/detailed`, the recently-added smart playlist below) — all fixed in
+// the same pass this was found, using a literal tab instead (confirmed live
+// to pass every field through untouched, and can never collide with a real
+// tag value the way a printable character in principle could).
+const MPC_FIELD_SEP = '\t';
+
 // MPD's %track%/%disc% values are often "3/12"-style (track/total) — only the
 // number before any slash is meaningful for sorting/grouping. Untagged tracks
 // come back as an empty string from `-f`, not absent, so this must handle ''
@@ -862,25 +881,19 @@ function parseTagNumber(raw) {
   return Number.isFinite(n) ? n : null;
 }
 
-// GET /api/player/library/tracks?album=X&artist=Y
-// Track/disc numbers come along for free via the same `-f` custom-format
-// technique already proven in /library/search and /library/by-genre below —
-// this used to be a plain `mpc find` returning bare file paths, which is why
-// multi-disc albums rendered in whatever order MPD's database happened to
-// return them, with no way to group by disc at all.
 router.get('/library/tracks', async (req, res) => {
   const { album, artist } = req.query;
   if (artist && artist.length > 500) return sendError(res, badRequest('Artist name too long'));
   if (album && album.length > 500) return sendError(res, badRequest('Album name too long'));
   try {
-    const args = ['-f', '%track%||%disc%||%title%||%artist%||%file%', 'find'];
+    const args = ['-f', `%track%${MPC_FIELD_SEP}%disc%${MPC_FIELD_SEP}%title%${MPC_FIELD_SEP}%artist%${MPC_FIELD_SEP}%file%`, 'find'];
     if (artist) args.push('artist', artist);
     if (album) args.push('album', album);
     const { stdout } = await execFilePromise('mpc', args);
     const tracks = stdout.split('\n')
       .map(s => s.trim()).filter(Boolean)
       .map(line => {
-        const [track, disc, title, artistTag, file] = line.split('||');
+        const [track, disc, title, artistTag, file] = line.split(MPC_FIELD_SEP);
         return {
           file: file || '',
           title: title || '',
@@ -904,14 +917,14 @@ router.get('/library/search', async (req, res) => {
   if (!q || q.length > 500) return res.json({ tracks: [] });
   try {
     const { stdout } = await execFilePromise('mpc', [
-      '-f', '%title%||%artist%||%album%||%file%',
+      '-f', `%title%${MPC_FIELD_SEP}%artist%${MPC_FIELD_SEP}%album%${MPC_FIELD_SEP}%file%`,
       'search', 'any', q,
     ]);
     const tracks = stdout.split('\n')
       .map(s => s.trim()).filter(Boolean)
       .slice(0, limit)
       .map(line => {
-        const [title, artist, album, file] = line.split('||');
+        const [title, artist, album, file] = line.split(MPC_FIELD_SEP);
         return { title: title || '', artist: artist || '', album: album || '', file: file || '' };
       })
       .filter(t => t.file);
@@ -1898,9 +1911,9 @@ router.post('/auto-headroom', async (req, res) => {
 // GET /api/player/queue/detailed — returns id + title + artist + file
 router.get('/queue/detailed', async (req, res) => {
   try {
-    const { stdout } = await execPromise('mpc -f "%id%||%title%||%artist%||%file%" playlist');
+    const { stdout } = await execFilePromise('mpc', ['-f', `%id%${MPC_FIELD_SEP}%title%${MPC_FIELD_SEP}%artist%${MPC_FIELD_SEP}%file%`, 'playlist']);
     const tracks = stdout.split('\n').map(s => s.trim()).filter(Boolean).map(line => {
-      const [id, title, artist, file] = line.split('||');
+      const [id, title, artist, file] = line.split(MPC_FIELD_SEP);
       return { id: id || '', title: title || file?.split('/').pop() || '', artist: artist || '', file: file || '' };
     });
     res.json({ tracks });
@@ -2082,11 +2095,11 @@ router.get('/library/by-genre', async (req, res) => {
   if (!genre || genre.length > 500) return res.json({ tracks: [] });
   try {
     const { stdout } = await execFilePromise('mpc', [
-      '-f', '%title%||%artist%||%album%||%file%',
+      '-f', `%title%${MPC_FIELD_SEP}%artist%${MPC_FIELD_SEP}%album%${MPC_FIELD_SEP}%file%`,
       'find', 'genre', genre,
     ]);
     const tracks = stdout.split('\n').map(s => s.trim()).filter(Boolean).map(line => {
-      const [title, artist, album, file] = line.split('||');
+      const [title, artist, album, file] = line.split(MPC_FIELD_SEP);
       return { title: title || '', artist: artist || '', album: album || '', file: file || '' };
     }).filter(t => t.file);
     res.json({ tracks });
@@ -2180,7 +2193,7 @@ async function getRecentlyAddedTracks(limit) {
     return recentlyAddedCache.tracks.slice(0, limit);
   }
   const { stdout } = await execFilePromise('mpc', [
-    '-f', '%file%||%title%||%artist%||%album%',
+    '-f', `%file%${MPC_FIELD_SEP}%title%${MPC_FIELD_SEP}%artist%${MPC_FIELD_SEP}%album%`,
     'listall',
   ]);
   const lines = stdout.split('\n').map(s => s.trim()).filter(Boolean);
@@ -2191,7 +2204,7 @@ async function getRecentlyAddedTracks(limit) {
   const withMtime = [];
   for (let i = 0; i < lines.length; i += STAT_BATCH) {
     const batch = await Promise.all(lines.slice(i, i + STAT_BATCH).map(async (line) => {
-      const [file, title, artist, album] = line.split('||');
+      const [file, title, artist, album] = line.split(MPC_FIELD_SEP);
       if (!file) return null;
       try {
         const st = await fs.promises.stat(path.join(MPD_MUSIC_DIR, file));
