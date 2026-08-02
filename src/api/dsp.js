@@ -170,4 +170,22 @@ export const dspApi = {
     const r = await fetch('/api/player/dsp/fir-filter', { method: 'DELETE' });
     return handleJson(r);
   },
+
+  // ── Digital Transport ──────────────────────────────────────────────────────────
+  async getAudioCards() {
+    const r = await fetch('/api/player/audio-cards');
+    return handleJson(r);
+  },
+  async getDigitalTransport() {
+    const r = await fetch('/api/player/digital-transport');
+    return handleJson(r);
+  },
+  /** Pass `device` to (re)point the transport at a card, `enabled` to toggle it — either or both. */
+  async setDigitalTransport({ enabled, device } = {}) {
+    const r = await fetch('/api/player/digital-transport', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ enabled, device }),
+    });
+    return handleJson(r);
+  },
 };

@@ -1,5 +1,5 @@
 import { useContext, useState, useRef, useEffect } from 'react';
-import { Sliders, Cpu, Timer, Scale, RefreshCw, FlipHorizontal, RotateCcw, Disc3, SlidersHorizontal, Merge, ChevronLeft, Waves, Upload, Trash2 } from 'lucide-react';
+import { Sliders, Cpu, Timer, Scale, RefreshCw, FlipHorizontal, RotateCcw, Disc3, SlidersHorizontal, Merge, ChevronLeft, Waves, Upload, Trash2, Cable } from 'lucide-react';
 import { toast } from '../../../lib/toast';
 import { reportError } from '../../../lib/errors';
 import { Tk, Row as SharedRow, Section as SharedSection, Sheet, RcSlider } from '../shared';
@@ -40,6 +40,10 @@ function AdvancedAudioSettings({ inline = false }) {
   const [firState, setFirState] = useState({ enabled: false, name: null });
   const [showFir, setShowFir] = useState(false);
   const [firUploading, setFirUploading] = useState(false);
+  const [transport, setTransport] = useState({ enabled: false, configured: false });
+  const [audioCards, setAudioCards] = useState([]);
+  const [showTransport, setShowTransport] = useState(false);
+  const [transportBusy, setTransportBusy] = useState(false);
   const balanceDebounce = useRef(null);
   const spotifyTrimDebounce = useRef(null);
   const firFileInput = useRef(null);
@@ -65,6 +69,8 @@ function AdvancedAudioSettings({ inline = false }) {
     api.getAutoHeadroom().then(d => { setAutoHeadroom(d.enabled !== false); setHeadroomDb(d.headroomDb || 0); }).catch(() => {});
     api.getSpotifyTrim().then(d => setSpotifyTrim(d.trimDb ?? -4)).catch(() => {});
     api.getFirFilter().then(setFirState).catch(() => {});
+    api.getDigitalTransport().then(setTransport).catch(() => {});
+    api.getAudioCards().then(d => setAudioCards(d.cards || [])).catch(() => {});
   }, []);
 
   const handleReplayGainChange = async (mode) => {
@@ -142,6 +148,33 @@ function AdvancedAudioSettings({ inline = false }) {
       setFirState({ enabled: false, name: null });
       toast.success('Custom filter removed');
     } catch (e) { reportError(e.message); }
+  };
+
+  const handleTransportPickCard = async (device) => {
+    setTransportBusy(true);
+    try {
+      const result = await api.setDigitalTransport({ device });
+      setTransport(result);
+      toast.success('Digital Transport device set');
+    } catch (e) {
+      reportError(e.message);
+    } finally {
+      setTransportBusy(false);
+    }
+  };
+
+  const handleTransportToggle = async () => {
+    const next = !transport.enabled;
+    setTransportBusy(true);
+    try {
+      const result = await api.setDigitalTransport({ enabled: next });
+      setTransport(result);
+      if (result.enabled !== next) reportError('Could not enable Digital Transport — check the selected card.');
+    } catch (e) {
+      reportError(e.message);
+    } finally {
+      setTransportBusy(false);
+    }
   };
 
   const handleBitPerfectToggle = async () => {
@@ -273,6 +306,38 @@ function AdvancedAudioSettings({ inline = false }) {
           value={dsdBypass ? 'Native' : 'PCM'}
           chevron={false}
           onPress={handleDsdBypassToggle} />
+        <Row label={t('settings.digitalTransport')}
+          icon={<Cable className="h-4 w-4" style={{ color: transport.enabled ? C.champagne : C.text4 }} />}
+          value={transport.enabled ? t('common.on') : t('common.off')}
+          chevron={false}
+          onPress={() => setShowTransport(v => !v)} />
+        {showTransport && (
+          <div className="px-4 pb-4 flex flex-col gap-3">
+            <p className="text-[11px] leading-snug" style={{ color: C.text3 }}>
+              {t('settings.digitalTransportHint')}
+            </p>
+            <div className="flex flex-col gap-1.5">
+              {audioCards.length === 0 && (
+                <p className="text-[12px]" style={{ color: C.text4 }}>{t('settings.digitalTransportNoCards')}</p>
+              )}
+              {audioCards.map(c => (
+                <button key={c.device} onClick={() => handleTransportPickCard(c.device)} disabled={transportBusy}
+                  className="flex items-center justify-between px-3 py-2.5 rounded-xl text-[13px] font-medium active:scale-[0.98] transition-all cursor-pointer disabled:opacity-50"
+                  style={{ ...card, color: C.text1 }}>
+                  <span>{c.cardName}{c.isCurrentDac ? ` (${t('settings.digitalTransportCurrentDac')})` : ''}</span>
+                  {transport.configured && c.device === transport.device && <span style={{ color: C.champagne }}>✓</span>}
+                </button>
+              ))}
+            </div>
+            <button onClick={handleTransportToggle} disabled={transportBusy || !transport.configured}
+              className="px-4 py-2.5 rounded-xl text-[13px] font-semibold active:scale-95 transition-all cursor-pointer disabled:opacity-50"
+              style={transport.enabled
+                ? { background: C.champagne, color: '#1a1c1c' }
+                : { ...card, color: C.text3 }}>
+              {transport.enabled ? t('settings.digitalTransportDisable') : t('settings.digitalTransportEnable')}
+            </button>
+          </div>
+        )}
         <Row label={t('settings.autoHeadroom')}
           icon={<Scale className="h-4 w-4" style={{ color: autoHeadroom ? C.champagne : C.text4 }} />}
           value={autoHeadroom ? `−${headroomDb} dB` : 'Static'}

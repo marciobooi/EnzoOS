@@ -553,11 +553,20 @@ sticker_file            "/var/lib/mpd/sticker.sql"
 # USB auto-play and NAS shares (server/storage.js) add a symlink under
 # music_directory pointing at the actual mount (udisksctl / mount.cifs /
 # mount.nfs), then just \`mpc update <name>\` — MPD's "mount" protocol command
-# needs a cache_directory this package's MPD 0.23.14 build doesn't actually
+# needs a cache_directory this package's MPD 0.23.5 build doesn't actually
 # support ("unrecognized parameter"), so a plain symlink into the regular
 # library is the reliable path instead. Requires this to be "yes" since the
 # symlink target lives outside music_directory.
 follow_outside_symlinks "yes"
+
+# Digital Transport (Phase 4): a third named audio_output the user can point
+# at any ALSA card, bypassing CamillaDSP entirely — added at runtime by
+# server/mpd-transport.js (ensureDigitalTransportInclude()) on already-
+# installed boxes too, since install.sh only runs once. include_optional
+# tolerates the file not existing yet (confirmed live 2026-08-02: MPD starts
+# fine either way), so this line is safe to ship even before the file is
+# ever created.
+include_optional        "/etc/mpd-digital-transport.conf"
 
 # Loopback only — nothing off-box needs MPD (upmpdcli connects to
 # 127.0.0.1, the server and kiosk are local, mpc defaults to localhost).
@@ -959,6 +968,13 @@ $TARGET_USER ALL=(ALL) NOPASSWD: /usr/bin/tee /etc/pipewire/pipewire.conf.d/52-r
 # to update this file, risking the exact PipeWire crash that audit describes
 # (aloop-sink audio.format mismatched against asound.conf's camilla_input).
 $TARGET_USER ALL=(ALL) NOPASSWD: /usr/bin/tee /etc/pipewire/pipewire.conf.d/52-resonance-aloop-sink.conf, /bin/tee /etc/pipewire/pipewire.conf.d/52-resonance-aloop-sink.conf
+# Digital Transport (Phase 4) — ensureDigitalTransportInclude() rewrites the
+# whole of /etc/mpd.conf (same read-compare-tee-full-content pattern as
+# ensureAsoundConf() above, not an append, so no separate `-a` grant is
+# needed) to add the include_optional line on already-installed boxes;
+# writeDigitalTransportConf() writes the actual output block it points at.
+$TARGET_USER ALL=(ALL) NOPASSWD: /usr/bin/tee /etc/mpd.conf, /bin/tee /etc/mpd.conf
+$TARGET_USER ALL=(ALL) NOPASSWD: /usr/bin/tee /etc/mpd-digital-transport.conf, /bin/tee /etc/mpd-digital-transport.conf
 $TARGET_USER ALL=(ALL) NOPASSWD: /usr/bin/systemctl restart raspotify, /bin/systemctl restart raspotify
 $TARGET_USER ALL=(ALL) NOPASSWD: /usr/bin/systemctl restart camilladsp, /bin/systemctl restart camilladsp
 $TARGET_USER ALL=(ALL) NOPASSWD: /usr/local/bin/kiosk-power.sh, /usr/local/bin/kiosk-brightness.sh

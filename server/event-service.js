@@ -242,6 +242,11 @@ export async function getFullStatus() {
     getSetting('theme_settings').catch(() => null),
     getSetting('remote_access_enabled').catch(() => 'true'),
   ]);
+  // Dynamic import: mpd-transport.js imports from player.js, which imports
+  // from this file — a static import here would be circular.
+  const digitalTransportActive = await import('./mpd-transport.js')
+    .then(({ isDigitalTransportEnabled }) => isDigitalTransportEnabled())
+    .catch(() => false);
 
   let eq = { preset: 'Clinical Reference', bands: [0,0,0,0,0], saturation: 0, noiseFloor: 0, preAmp: 0 };
   try { if (eqRaw) eq = JSON.parse(eqRaw); } catch {}
@@ -266,6 +271,7 @@ export async function getFullStatus() {
     source:              cachedSourceState.source ?? 'spotify',
     standby:             cachedStandbyState,
     pureDirect:          cachedPureDirect,
+    digitalTransportActive,
     remoteAccessEnabled: remoteRaw !== 'false',
     playback: {
       paused:   cachedPlaybackState?.paused   ?? true,

@@ -18,6 +18,7 @@ import metadataRouter from './metadata.js';
 import authRouter from './auth-routes.js';
 import djRouter from './dj.js';
 import firFiltersRouter from './fir-filters.js';
+import mpdTransportRouter, { ensureDigitalTransportInclude } from './mpd-transport.js';
 import { setupWebSocket, stopAudioLevelMonitor } from './websocket.js';
 import { loadStateFromDB } from './event-service.js';
 import { closeDB } from './db.js';
@@ -154,6 +155,9 @@ app.use('/api/player', requireAuth, storageRouter);
 // FIR/convolution filter import (Phase 3 DSP refinements) — same base path,
 // separate router (see server/fir-filters.js).
 app.use('/api/player', requireAuth, firFiltersRouter);
+// Digital Transport (Phase 4 DSP refinements) — same base path, separate
+// router (see server/mpd-transport.js).
+app.use('/api/player', requireAuth, mpdTransportRouter);
 
 // Spotify Connect daemon configuration routes
 app.use('/api/spotify', requireAuth, spotifyDaemonRouter);
@@ -197,6 +201,9 @@ server.listen(PORT, () => {
   // Start the persistent MPD idle watcher: follows per-track sample-rate changes
   // (bit-perfect capture) and flips the DSD Direct bypass on .dsf/.dff playback.
   startMpdRateWatcher();
+  // Digital Transport (Phase 4) — patches /etc/mpd.conf on already-installed
+  // boxes that predate this feature; install.sh covers fresh installs.
+  ensureDigitalTransportInclude();
   // Re-apply crossfade / ReplayGain — MPD doesn't persist these across restarts.
   applyPersistedMpdSettings();
   // Re-mount any saved NAS shares — mount.cifs/mount.nfs don't survive a reboot.

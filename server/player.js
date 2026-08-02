@@ -636,7 +636,7 @@ const DSD_OUTPUT_NAME = 'DSD Direct';
 const PCM_OUTPUT_NAME = 'CamillaDSP Input';
 let _dsdActive = false;
 
-async function getMpdOutputs() {
+export async function getMpdOutputs() {
   try {
     const { stdout } = await execPromise('mpc outputs');
     return stdout.split('\n').map(l => {
@@ -647,7 +647,7 @@ async function getMpdOutputs() {
 }
 
 // Enable exactly one output by name, disabling the others — without stopping playback.
-async function mpcEnableOnly(name) {
+export async function mpcEnableOnly(name) {
   const outs = await getMpdOutputs();
   const target = outs.find(o => o.name === name);
   if (!target) { console.warn(`[DSD] MPD output "${name}" not found (check /etc/mpd.conf).`); return false; }
@@ -667,6 +667,14 @@ async function getCurrentMpdFile() {
 
 // Re-evaluate routing for the current track. Safe to call on every player event.
 export async function applyDsdRouting() {
+  // Digital Transport (Phase 4), when enabled, unconditionally owns MPD's
+  // output selection — the automatic per-track DSD-bypass logic below must
+  // never fight it. Plain getSetting check rather than importing
+  // mpd-transport.js's isDigitalTransportEnabled(), which itself imports
+  // from this file — would be circular.
+  const transportVal = await getSetting('digital_transport_enabled').catch(() => null);
+  if (transportVal === 'true') return false;
+
   const [bypassVal, pdVal] = await Promise.all([
     getSetting('dsd_bypass').catch(() => null),
     getSetting('pure_direct').catch(() => null),
