@@ -5,7 +5,7 @@ LAST_WAKE=0
 # Touch device names X knows the panel by (same list xinitrc's map_touch uses).
 TOUCH_NAMES="WaveShare|Waveshare|waveshare|eGalaxTouch|ILITEK|Goodix"
 
-STATE_FILE="/tmp/resonance-display-state"
+STATE_FILE="/home/pi/.resonance-display-state"
 
 echo "Watching input for wake events..."
 

@@ -4,9 +4,14 @@ export DISPLAY=:0
 # Shared with kiosk-wake-monitor.sh, which needs to know whether the display
 # is currently supposed to be off but can't rely on `xset q` (goes silent on
 # monitor state the instant DPMS is re-disabled below) or vcgencmd (dead, see
-# AUDIT-2026-08-02b). World-writable so root (standby/wake, via sudo) and pi
-# (disable_auto_blank, wake-monitor's own reads) can both update/read it.
-STATE_FILE="/tmp/resonance-display-state"
+# AUDIT-2026-08-02b). Deliberately NOT in /tmp: both pi (disable_auto_blank)
+# and root (standby/wake, via sudo) write this file, and the kernel's
+# fs.protected_regular hardening (default-on) blocks a non-owner — including
+# root — from opening a file it doesn't own inside a sticky world-writable
+# directory like /tmp, chmod 666 or not (confirmed live: root got "Permission
+# denied" writing a pi-owned file there). pi's home dir isn't sticky or
+# world-writable, so root's normal write-anywhere privilege applies cleanly.
+STATE_FILE="/home/pi/.resonance-display-state"
 
 # AUDIT-2026-08-02b: vcgencmd display_power is DEAD on this hardware.
 # Confirmed live: `vcgencmd display_power 0` immediately reports back
