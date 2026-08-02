@@ -137,7 +137,7 @@ export default function DefinitionsMenu({
         style={{ animationDelay: '0ms' }}
       >
         <span className="text-sm font-light tracking-[0.25em] uppercase" style={{ color: S.label }}>{t('kiosk.streamService')}</span>
-        <div className="my-auto flex justify-center py-2 icon-badge">
+        <div className="my-auto flex justify-center items-center py-2">
           <svg viewBox="0 0 24 24" className="h-16 w-16 transition-colors duration-300"
             style={{ fill: source === 'spotify' ? S.accent : S.track }}>
             <path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm4.586 14.424a.622.622 0 01-.857.207c-2.348-1.435-5.304-1.76-8.785-.964a.622.622 0 01-.277-1.215c3.809-.87 7.077-.496 9.712 1.115a.622.622 0 01.207.857zm1.223-2.722a.779.779 0 01-1.07.257c-2.687-1.652-6.785-2.131-9.965-1.166a.78.78 0 01-.973-.519.781.781 0 01.519-.972c3.632-1.102 8.147-.568 11.233 1.33a.779.779 0 01.256 1.07zm.105-2.835C14.692 8.95 9.375 8.775 6.297 9.71a.935.935 0 11-.543-1.79c3.533-1.072 9.404-.866 13.115 1.338a.936.936 0 01-.955 1.609z"/>
@@ -161,7 +161,7 @@ export default function DefinitionsMenu({
         style={{ animationDelay: '30ms' }}
       >
         <span className="text-sm font-light tracking-[0.25em] uppercase" style={{ color: S.label }}>{t('kiosk.localSystem')}</span>
-        <div className="my-auto flex justify-center py-2 icon-badge">
+        <div className="my-auto flex justify-center items-center py-2">
           <Music strokeWidth={1} className="h-16 w-16 transition-colors duration-300"
             style={{ color: source === 'local' ? S.accent : S.track }} />
         </div>
@@ -183,7 +183,7 @@ export default function DefinitionsMenu({
         style={{ animationDelay: '60ms' }}
       >
         <span className="text-sm font-light tracking-[0.25em] uppercase" style={{ color: S.label }}>{t('kiosk.streamRadio')}</span>
-        <div className="my-auto flex justify-center py-2 icon-badge">
+        <div className="my-auto flex justify-center items-center py-2">
           <Radio strokeWidth={1} className="h-16 w-16 transition-colors duration-300"
             style={{ color: source === 'radio' ? S.accent : S.track }} />
         </div>
@@ -209,7 +209,7 @@ export default function DefinitionsMenu({
         style={{ animationDelay: '75ms' }}
       >
         <span className="text-sm font-light tracking-[0.25em] uppercase" style={{ color: S.label }}>{t('kiosk.djMode')}</span>
-        <div className="my-auto flex justify-center py-2 icon-badge">
+        <div className="my-auto flex justify-center items-center py-2">
           <Mic2 strokeWidth={1} className="h-16 w-16 transition-colors duration-300"
             style={{ color: source === 'dj' ? S.accent : S.track }} />
         </div>
@@ -231,7 +231,7 @@ export default function DefinitionsMenu({
         style={{ animationDelay: '90ms' }}
       >
         <span className="text-sm font-light tracking-[0.25em] uppercase" style={{ color: S.label }}>{t('kiosk.appleAirplay')}</span>
-        <div className="my-auto flex justify-center py-2 icon-badge">
+        <div className="my-auto flex justify-center items-center py-2">
           <Airplay strokeWidth={1} className="h-16 w-16 transition-colors duration-300"
             style={{ color: source === 'airplay' ? S.accent : S.track }} />
         </div>
@@ -253,7 +253,7 @@ export default function DefinitionsMenu({
         style={{ animationDelay: '120ms' }}
       >
         <span className="text-sm font-light tracking-[0.25em] uppercase" style={{ color: S.label }}>{t('kiosk.upnpDlna')}</span>
-        <div className="my-auto flex justify-center py-2 icon-badge">
+        <div className="my-auto flex justify-center items-center py-2">
           <Network strokeWidth={1} className="h-16 w-16 transition-colors duration-300"
             style={{ color: source === 'upnp' ? S.accent : S.track }} />
         </div>
@@ -275,7 +275,7 @@ export default function DefinitionsMenu({
         style={{ animationDelay: '150ms' }}
       >
         <span className="text-sm font-light tracking-[0.25em] uppercase" style={{ color: S.label }}>{t('kiosk.bluetoothA2dp')}</span>
-        <div className="my-auto flex justify-center py-2 icon-badge">
+        <div className="my-auto flex justify-center items-center py-2">
           <Bluetooth strokeWidth={1} className="h-16 w-16 transition-colors duration-300"
             style={{ color: source === 'bluetooth' ? S.accent : S.track }} />
         </div>
@@ -297,7 +297,7 @@ export default function DefinitionsMenu({
         style={{ animationDelay: '180ms' }}
       >
         <span className="text-sm font-light tracking-[0.25em] uppercase" style={{ color: S.label }}>{t('kiosk.hifiStreaming')}</span>
-        <div className="my-auto flex justify-center py-2 icon-badge">
+        <div className="my-auto flex justify-center items-center py-2">
           <Music2 strokeWidth={1} className="h-16 w-16 transition-colors duration-300"
             style={{ color: source === 'tidal' ? S.accent : S.track }} />
         </div>
@@ -319,7 +319,7 @@ export default function DefinitionsMenu({
         style={{ animationDelay: '210ms' }}
       >
         <span className="text-sm font-light tracking-[0.25em] uppercase" style={{ color: S.label }}>{t('kiosk.losslessStreaming')}</span>
-        <div className="my-auto flex justify-center py-2 icon-badge">
+        <div className="my-auto flex justify-center items-center py-2">
           <Music strokeWidth={1} className="h-16 w-16 transition-colors duration-300"
             style={{ color: source === 'qobuz' ? S.accent : S.track }} />
         </div>
@@ -339,7 +339,7 @@ export default function DefinitionsMenu({
         style={{ animationDelay: '240ms' }}
       >
         <span className="text-sm font-light tracking-[0.25em] uppercase" style={{ color: S.label }}>{t('kiosk.appearance')}</span>
-        <div className="my-auto flex justify-center py-2 icon-badge">
+        <div className="my-auto flex justify-center items-center py-2">
           <Sliders strokeWidth={1} className="h-16 w-16 transition-colors duration-300"
             style={{ color: S.track }} />
         </div>
@@ -356,7 +356,7 @@ export default function DefinitionsMenu({
         style={{ animationDelay: '120ms' }}
       >
         <span className="text-sm font-light tracking-[0.25em] uppercase" style={{ color: S.label }}>{t('kiosk.acousticProfiler')}</span>
-        <div className="my-auto flex justify-center py-2 icon-badge">
+        <div className="my-auto flex justify-center items-center py-2">
           <Waves strokeWidth={1} className="h-16 w-16 transition-colors duration-300"
             style={{ color: S.track }} />
         </div>
@@ -373,7 +373,7 @@ export default function DefinitionsMenu({
         style={{ animationDelay: '135ms' }}
       >
         <span className="text-sm font-light tracking-[0.25em] uppercase" style={{ color: S.label }}>{t('kiosk.setupWizard')}</span>
-        <div className="my-auto flex justify-center py-2 icon-badge">
+        <div className="my-auto flex justify-center items-center py-2">
           <Sparkles strokeWidth={1} className="h-16 w-16 transition-colors duration-300"
             style={{ color: S.track }} />
         </div>
@@ -395,7 +395,7 @@ export default function DefinitionsMenu({
         style={{ animationDelay: '150ms' }}
       >
         <span className="text-sm font-light tracking-[0.25em] uppercase" style={{ color: S.label }}>{t('kiosk.accessPanel')}</span>
-        <div className="my-auto flex justify-center py-2 icon-badge">
+        <div className="my-auto flex justify-center items-center py-2">
           <Smartphone strokeWidth={1} className="h-16 w-16 transition-colors duration-300"
             style={{ color: remoteAccessEnabled ? S.accent : S.track,
                      opacity: remoteAccessEnabled ? 1 : 0.45 }} />
@@ -417,7 +417,7 @@ export default function DefinitionsMenu({
         style={{ animationDelay: '165ms' }}
       >
         <span className="text-sm font-light tracking-[0.25em] uppercase" style={{ color: S.label }}>{t('net.wifi')}</span>
-        <div className="my-auto flex justify-center py-2 icon-badge">
+        <div className="my-auto flex justify-center items-center py-2">
           <Wifi strokeWidth={1} className="h-16 w-16 transition-colors duration-300"
             style={{ color: S.track }} />
         </div>
@@ -434,7 +434,7 @@ export default function DefinitionsMenu({
         style={{ animationDelay: '172ms' }}
       >
         <span className="text-sm font-light tracking-[0.25em] uppercase" style={{ color: S.label }}>{t('settings.systemAdmin')}</span>
-        <div className="my-auto flex justify-center py-2 icon-badge">
+        <div className="my-auto flex justify-center items-center py-2">
           <HardDrive strokeWidth={1} className="h-16 w-16 transition-colors duration-300"
             style={{ color: S.track }} />
         </div>
@@ -533,7 +533,7 @@ export default function DefinitionsMenu({
           style={{ animationDelay: '240ms' }}
         >
           <span className="text-sm font-light tracking-[0.25em] uppercase" style={{ color: S.label }}>{t('kiosk.connections')}</span>
-          <div className="my-auto flex justify-center py-2 icon-badge">
+          <div className="my-auto flex justify-center items-center py-2">
             <LogOut strokeWidth={1} className="h-16 w-16 transition-colors duration-300"
               style={{ color: S.track }} />
           </div>

@@ -1006,56 +1006,6 @@ div[data-theme="ruby"] *::selection {
     0 6px 16px -6px rgba(42,40,38,0.20) !important;
 }
 
-/* Circular recessed "coin" bezel behind each Definitions Menu card icon
-   (the wrapper div already existed — see DefinitionsMenu.jsx's icon-badge
-   className addition); lights up subtly on hover and when the card is the
-   active source, echoing the player screen's recessed-gauge treatment. */
-.icon-badge {
-  width: 92px;
-  height: 92px;
-  border-radius: 50%;
-  align-items: center;
-  background: linear-gradient(165deg, #d2d3ce 0%, #c8c9c4 100%);
-  box-shadow: inset 0 2px 4px rgba(42,40,38,0.14), inset 0 -1px 0 rgba(255,255,255,0.4);
-  /* transform only — box-shadow/background used to be in this list too,
-     animated on every tap of every DefinitionsMenu card (a ~3000px-wide row
-     the user swipes through). Reported live: "I swipe the definition menu
-     and there's a delay... not fluid" (AUDIT-2026-08-02; see the
-     .stone-range note above for why). */
-  transition: transform 0.3s cubic-bezier(.34,1.56,.64,1);
-}
-
-.menu-card:hover .icon-badge {
-  transform: scale(1.05);
-  box-shadow:
-    inset 0 2px 5px rgba(42,40,38,0.16),
-    inset 0 -1px 0 rgba(255,255,255,0.45),
-    0 3px 8px -3px rgba(42,40,38,0.14);
-}
-
-/* Touch equivalent — this menu is only ever tapped, never hovered. A press
-   sinks the badge in further rather than lifting it, matching a finger
-   pushing down instead of a cursor floating over it. */
-.menu-card:active .icon-badge {
-  transform: scale(0.94);
-  box-shadow: inset 0 3px 6px rgba(42,40,38,0.22), inset 0 -1px 0 rgba(255,255,255,0.3);
-}
-
-.active-card .icon-badge {
-  background: linear-gradient(165deg, #dfe0da 0%, #cfd0ca 100%);
-  box-shadow:
-    inset 0 0 0 1px rgba(42,40,38,0.08),
-    inset 0 2px 3px rgba(255,255,255,0.55),
-    0 3px 10px -3px rgba(42,40,38,0.20);
-  /* The live source's badge floats gently — "this one is running". */
-  animation: badge-float 4.5s ease-in-out infinite;
-}
-
-@keyframes badge-float {
-  0%, 100% { transform: translateY(0); }
-  50%      { transform: translateY(-3px); }
-}
-
 /* OLED Burn-in prevention / pixel shifter */
 @keyframes screensaver-drift {
   0% {
@@ -1209,7 +1159,6 @@ div[data-theme="ruby"] *::selection {
   .music-player.is-playing .album-column::before,
   .icon-button.play.playing::before,
   .status-dot,
-  .active-card .icon-badge,
   .icon-button.play svg,
   .track-title-enter,
   .track-artist-enter,
