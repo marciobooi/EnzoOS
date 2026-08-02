@@ -1082,6 +1082,26 @@ hdmi_drive=2
 DISPLAYEOF
   fi
   echo -e "${GREEN}  HDMI config written to $CONFIG_TXT (Pi model: ${PI_MODEL:-unknown})${NC}"
+
+  # Disable the Waveshare panel's own HDMI audio codec (vc4-hdmi, shows up as
+  # ALSA cards 2/3 — "vc4hdmi0"/"vc4hdmi1") — requested live: "the waveshare
+  # screen has audio built in so we can disable for good." This appliance's
+  # actual output is always the DAC via bcm2835 "Headphones" (card 1) /
+  # camilla_input's ALSA loopback; the HDMI audio codec is never used for
+  # anything and just adds two always-enumerated, always-irrelevant playback
+  # devices for PipeWire/ALSA to sort through on every audio-subsystem
+  # restart. `noaudio` is vc4-kms-v3d's own documented overlay parameter
+  # (kernel source overlays/vc4-kms-v3d-overlay.dts __overrides__) — it only
+  # disables the HDMI audio fragment, leaving KMS video and the separate
+  # analog "Headphones" device completely untouched. Anchored to the exact
+  # bare `dtoverlay=vc4-kms-v3d` line (the [pi3+]/[pi02] sections' own
+  # `,cma-128` variant is left alone — this appliance targets Pi 4) and
+  # idempotent (skips if already applied). Requires a reboot to take effect;
+  # this script does not reboot on your behalf.
+  if ! grep -q '^dtoverlay=vc4-kms-v3d,noaudio' "$CONFIG_TXT"; then
+    sed -i 's/^dtoverlay=vc4-kms-v3d$/dtoverlay=vc4-kms-v3d,noaudio/' "$CONFIG_TXT"
+    echo -e "${GREEN}  HDMI audio codec disabled (noaudio) — takes effect on next reboot.${NC}"
+  fi
 else
   echo -e "${YELLOW}  /boot/firmware/config.txt not found — skipping HDMI config (QEMU/non-Pi).${NC}"
 fi
