@@ -688,9 +688,10 @@ export default function Kiosk() {
   // (no music, no activity) as requested live: "if music is playing we will
   // never enter standby... what we can do is dim a bit after 10 minutes...
   // the full screen standby is only when nothing happens, no music etc"
-  // (AUDIT-2026-08-02). Does not touch localStorage — this is a temporary
-  // auto-dim, not a change to the user's actual brightness preference.
-  const DIM_IDLE_MS = 10 * 60 * 1000;
+  // (AUDIT-2026-08-02) — timeout later bumped to 1 hour per follow-up
+  // request. Does not touch localStorage — this is a temporary auto-dim,
+  // not a change to the user's actual brightness preference.
+  const DIM_IDLE_MS = 60 * 60 * 1000;
   const DIM_BRIGHTNESS = 15;
   const isDimmedRef = useRef(false);
   const preDimBrightness = useRef(null);
