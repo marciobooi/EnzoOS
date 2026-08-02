@@ -1,9 +1,10 @@
 # CamillaDSP 4.1.3 (pinned)
 
 Pinned in `install.sh` (`CAMILLADSP_VERSION`) because the YAML schema must
-match `server/player.js:generateCamillaConfig()`. Never bump casually.
-Sources: github.com/HEnquist/camilladsp (tag v4.1.3): `README.md`,
-`websocket.md`.
+match `server/camilla-config.js:generateCamillaConfig()` (moved out of
+`server/player.js` — fix this reference wherever else it's copy-pasted
+stale). Never bump casually. Sources: github.com/HEnquist/camilladsp (tag
+v4.1.3): `README.md`, `websocket.md`.
 
 ## Project integration
 - Unit: `camilladsp.service`, `ExecStart=/usr/bin/camilladsp /home/pi/EnzoOS/camilladsp.yml -p 1234`.
@@ -44,6 +45,69 @@ sends `{GetStatus:null}` and always gets `Invalid` back (TODO §9.1). Use
 | `volume_ramp_time` | 400 ms | SetVolume ramp |
 
 Sample formats: `S16_LE`, `S24_3_LE` (3-byte), `S24_4_RJ_LE`/`S24_4_LJ_LE`, `S32_LE`, `F32_LE`, `F64_LE`.
+
+## Filter types (previously undocumented here — added 2026-08-02 for the
+## Phase 3 real-parametric-EQ + FIR-import work; confirmed against
+## CamillaDSP's own GitHub docs, not just this project's usage of them)
+
+### Biquad (IIR) — `server/camilla-config.js:_biquadCoeffs()` implements a subset
+Full sub-type list CamillaDSP supports, `type: Biquad, parameters: { type: <subtype>, ... }`:
+
+| Sub-type | Parameters | Implemented in this project's own auto-headroom math? |
+|---|---|---|
+| `Free` | `a1,a2,b0,b1,b2` (raw coefficients) | No |
+| `Highpass` / `Lowpass` | `freq`, `q` (2nd order, 12dB/oct) | **Yes** |
+| `HighpassFO` / `LowpassFO` | `freq` (1st order, 6dB/oct) | No |
+| `Highshelf` / `Lowshelf` | `freq`, `gain`, `slope` OR `q` | **Yes** |
+| `HighshelfFO` / `LowshelfFO` | `freq`, `gain` (1st-order shelf) | No |
+| `Peaking` | `freq`, `gain`, `q` OR `bandwidth` | **Yes** |
+| `Notch` | `freq`, `q` OR `bandwidth` | No |
+| `GeneralNotch` | `freq_z`, `freq_p`, `q_p`, optional `normalize_at_dc` | No |
+| `Bandpass` | `freq`, `q` OR `bandwidth` | No |
+| `Allpass` / `AllpassFO` | `freq`, `q` OR `bandwidth` (2nd order) / `freq` only (1st order) | No |
+| `LinkwitzTransform` | `freq_act`, `q_act`, `freq_target`, `q_target` | No |
+
+This project's own 5-band manual EQ only ever uses `Peaking`/`Lowshelf`/
+`Highshelf` (Phase 3: freq/gain/Q are now all genuinely user-adjustable per
+band, previously freq/Q were hardcoded); Room Calibration's Harman-curve
+pipeline additionally uses `Highpass`/`Lowshelf`/`Highshelf`/`Peaking` for
+its master curve and crossover filters. `_biquadCoeffs()`'s auto-headroom
+peak calculation only implements the "Implemented?" column above — adding a
+free-form Biquad type picker to the manual EQ UI would need that function
+extended first, or auto-headroom will silently compute a wrong (usually
+zero) peak for anything else.
+
+### Conv (FIR/convolution) — `server/fir-filters.js` + `generateCamillaConfig()`
+```yaml
+filters:
+  my_fir:
+    type: Conv
+    parameters:
+      type: Wav          # or "Raw" (type: TEXT/... + skip_bytes_lines/read_bytes_lines) or "Values" (inline coefficients)
+      filename: /path/to/impulse.wav
+      channel: 0          # optional — selects one channel from a multichannel WAV
+```
+Longer filters use segmented convolution automatically once tap count
+exceeds the `chunksize` device setting — CPU cost scales with tap count, a
+real concern on a Pi 4 (this project caps uploads at 65536 taps, ~1.4s at
+48kHz, in `server/fir-filters.js`, flagged there as a conservative starting
+point pending real `GetProcessingLoad` measurement, not empirically tuned).
+
+**Critical gotcha, confirmed via CamillaDSP's own docs**: hot-reloading via
+`SetConfig` only picks up new FIR coefficients when the **filename itself
+changes** — overwriting the same path with new content while CamillaDSP is
+running does NOT reload it. `server/fir-filters.js` writes every upload to a
+new timestamped filename (`fir-<timestamp>.wav`) and deletes the previous
+one specifically because of this; don't "simplify" that back to a fixed
+filename.
+
+This project's `generateCamillaConfig()` treats a FIR filter as **replacing**
+the 5-band manual EQ entirely when active, not layering on top of it (same
+reasoning as Room Calibration already excluding manual EQ: an impulse
+response already contains whatever tonal correction it needs). Auto-headroom
+can't analyze a convolution kernel's peak the way it does a biquad cascade —
+a fixed -6dB pre-amp trim is used instead while FIR is active, called out in
+the UI as approximate.
 
 ## Dither filter (for 16-bit outputs — TODO §9.2)
 `type: Dither` with `parameters.type`: recommended **Fweighted441** (9 taps)

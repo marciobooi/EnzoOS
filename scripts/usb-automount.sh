@@ -9,7 +9,7 @@
 # MPD's music_directory (as "usb") and runs a targeted `mpc update`. This
 # makes it instantly browsable with no restart. MPD's own "mount" protocol
 # command would be the more obvious fit, but it needs a cache_directory this
-# project's packaged MPD 0.23.14 doesn't support ("unrecognized parameter" —
+# project's packaged MPD 0.23.5 doesn't support ("unrecognized parameter" —
 # confirmed live), hence the symlink instead (needs
 # `follow_outside_symlinks "yes"` in mpd.conf — see install.sh). Finally
 # pings the running server so any open remote/kiosk gets a live update.

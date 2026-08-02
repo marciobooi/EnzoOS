@@ -4,7 +4,7 @@
 // symlink under music_directory pointing at the real mount, then a targeted
 // `mpc update <name>`. MPD's own pluggable "mount" protocol command (nfs://,
 // smb://, udisks://) looked like the more idiomatic route, but it requires a
-// `cache_directory` that this project's packaged MPD 0.23.14 build doesn't
+// `cache_directory` that this project's packaged MPD 0.23.5 build doesn't
 // actually support ("unrecognized parameter" — confirmed live) — so this
 // falls back to the plain symlink-into-the-regular-library approach, which
 // only needs `follow_outside_symlinks "yes"` in mpd.conf (see install.sh).

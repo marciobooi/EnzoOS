@@ -26,6 +26,7 @@ Resonance HiFi is an open-source, self-hosted audio streaming platform for Raspb
 
 ### Audio Output
 - **Bluetooth OUT (headphones / speakers)** — scan, pair, and switch CamillaDSP's playback device to a Bluetooth sink from Settings → Bluetooth Output; audio is routed to the paired device's `bluez_output` PipeWire node via the `pipewire-alsa` plugin instead of the physical DAC, with one tap back to "Use DAC" to return to wired output
+- **Digital Transport** — route local/radio/Tidal/Qobuz playback straight to a chosen ALSA card, bypassing CamillaDSP/DSP entirely, for feeding an external DAC or processor over S/PDIF, AES/EBU or I²S (any such card presents to ALSA as an ordinary PCM device — no special driver support needed on this side). Generalizes the same MPD output-switching mechanism DSD Native Bypass already uses (a second named output, toggled via `mpc enable/disable` with no playback interruption). Pick a card and enable from Settings → Sound → Advanced → **Digital Transport** (or `GET`/`POST /api/player/digital-transport`); falls back automatically to the normal DSP path if the selected card fails to open. *Scope*: only MPD-driven sources are affected — Spotify, AirPlay, UPnP and Bluetooth always stay on the normal PipeWire/CamillaDSP path regardless of this setting. *Design-verified, hardware-pending* — the MPD-side plumbing is live-tested; behaviour with real S/PDIF/AES/I²S hardware attached hasn't been validated yet
 
 ### Audio Quality
 - **Bit-perfect playback** — PipeWire `clock.allowed-rates` switches the graph clock to the source's native sample rate (44.1 / 48 / 88.2 / 96 / 176.4 / 192 kHz), eliminating inter-domain resampling. Allowed rates are derived from the detected DAC's actual hardware capabilities — no rate is advertised that the DAC cannot handle. The full PipeWire → loopback → CamillaDSP bridge runs in a **32-bit** container so source bit-depth survives (no 16-bit truncation). Bit-perfect rate-following is on by default; a one-tap **Fixed 48 kHz fallback** (Settings → DSP → Bit-Perfect) covers DACs that mishandle loopback rate switching. *Rate-following behaviour is hardware-dependent — validate with your specific DAC.*
@@ -37,6 +38,7 @@ Resonance HiFi is an open-source, self-hosted audio streaming platform for Raspb
 - **-1 dB safety headroom** — applied at Stage E (preamp gain) across all built-in and custom pipelines as a guard against multi-stage EQ filter gains summing above 0 dBFS
 - **Safe startup sequence** — CamillaDSP is pre-muted to -100 dB before config apply on startup, then volume is restored from the stored value. Prevents the 0 dB (full volume) window that occurs on every CamillaDSP process start
 - **DSD native bypass** — when a DSD file (`.dsf` / `.dff`) plays while **Pure Direct** is active, MPD's output is flipped from the CamillaDSP loopback to a dedicated DoP **"DSD Direct"** output wired straight to the hardware DAC (`hw:CARD=…`). The DSD bitstream reaches the DAC untouched — no PCM conversion, no DSP — so the DAC lights its native "DSD" indicator. PCM playback is unaffected and CamillaDSP is restored automatically on the next non-DSD track. Toggle in Settings → DSP → **DSD Native Bypass** (or `POST /api/player/dsd-bypass`); the MPD output flip is driven from `server/player.js` via the rate watcher (`mpc enable/disable`). *DSD output behaviour is DAC-dependent — validate DoP/native support with your specific DAC.* The "DSD Direct" MPD output device is detected at install time using a name-based `hw:CARD=…` address (stable across card-number reordering); if you later swap to a different DAC model, re-run the installer (or edit the `DSD Direct` output in `/etc/mpd.conf`).
+- **Spotify Level Trim (cross-source loudness)** — a single adjustable dB offset (default -4dB, Settings → Sound → Advanced) applied to CamillaDSP's master volume only while Spotify/DJ mode is the active source, compensating for the systematic gap between Spotify's own internal loudness normalization target and whatever ReplayGain reference the local library is tagged against — MPD's own ReplayGain has no effect on Spotify Connect, which bypasses MPD entirely. Applied/removed automatically on every source switch (`GET`/`POST /api/player/spotify-trim`)
 
 ### Real-Time Performance
 - **Threaded interrupts (`threadirqs`)** — added to the kernel boot cmdline so every hardware IRQ runs as a schedulable kernel thread, the prerequisite for assigning interrupts individual real-time priorities
@@ -64,11 +66,12 @@ Resonance HiFi is an open-source, self-hosted audio streaming platform for Raspb
 - **CamillaDSP 4.1.3** — real-time parametric EQ, biquad filters, crossovers, room correction
 - **Hot-reload** — EQ/filter changes apply via WebSocket `SetConfig` with no audio interruption
 - **Three audio processing modes** — selected from a single wizard screen:
-  - *Manual Equalizer* — parametric EQ with 5 bands, saturation, noise floor, and pre-amp
+  - *Manual Equalizer* — real parametric EQ, 5 bands, each with independently adjustable frequency (20Hz–20kHz), Q (0.1–10) and gain (±12dB), plus saturation, noise floor, and pre-amp. Tap a band's frequency label to reveal its Freq/Q editor
   - *Acoustic Room Correction* — guided 8-question wizard generates a Harman-curve corrective pipeline
   - *Pure Direct* — flat pipeline, all filters bypassed, volume control only
 - **EQ guard** — opening the equalizer while Pure Direct or Room Correction is active shows a blocking overlay explaining the conflict and offering a one-tap switch
 - **5 built-in valve presets** — Clinical Reference, Warm Valve, Bass Boost, Vocal Clarity, Hi-Fi Spatial
+- **Custom filter import (FIR/convolution)** — upload a WAV impulse response (Settings → Sound → Advanced → Custom Filter) to replace the 5-band EQ with a measured correction curve, using CamillaDSP's native `Conv` filter type. Capped at ~1.4s (65,536 taps) for Pi 4 CPU headroom; every upload gets applied under a fresh filename, since CamillaDSP's hot-reload only picks up new FIR coefficients when the filename itself changes. A fixed -6dB pre-amp trim is used in place of the biquad-based auto-headroom calculation, which can't analyze a convolution kernel's peak (`GET`/`POST`/`DELETE /api/player/dsp/fir-filter`)
 
 ### Live Signal Telemetry (`GET /api/player/signal-path`)
 - **Real-time rate display** — shows actual codec, bit depth, and sample rate from MPD and CamillaDSP
@@ -98,6 +101,10 @@ Resonance HiFi is an open-source, self-hosted audio streaming platform for Raspb
 - **Play history** — last 50 tracks recorded automatically on every track change, persisted in SQLite `play_history` table; viewable from the Library tab with source badges and timestamps
 - **Unified favorites** — heart any track across all sources (local, Spotify, Tidal, Qobuz, radio); stored in SQLite `favorites` table; browsable from the Library tab
 - **Synchronized lyrics** — tap the mic icon to open a bottom sheet with word-synced LRC lyrics fetched from [LRCLIB](https://lrclib.net); auto-scrolls to the current line based on playback position; falls back to plain text when synced lyrics are unavailable
+- **Folder browsing** (remote only) — a new "Folders" tab browses MPD's own virtual filesystem directly (breadcrumb navigation, via `lsinfo`), alongside the existing artist/album/track drill-down
+- **Multi-disc albums** — track listings are sorted by disc then track number and show "Disc N" headers for genuinely multi-disc albums, pulled from MPD tags via the same `-f` custom-format technique the search/genre routes already use
+- **Richer album pages while browsing** — a tap-gated ⓘ button on album rows and the tracks-view header opens the same aggregated album/artist metadata panel (bio, credits, tracklist) the now-playing screen already has, reusing the existing 30-day-cached aggregator rather than a second lookup pipeline
+- **Embedded cover art** — track and folder-file rows show a thumbnail sourced from the file's own embedded picture (ID3/FLAC tags) via MPD's `readpicture`/`albumart` protocol commands, falling back to the external metadata aggregator where a sample file isn't available (e.g. the flat cross-library Albums grid)
 
 ### Playback Controls
 - **Queue editing** — view the current MPD queue and delete individual tracks without stopping playback
@@ -427,6 +434,29 @@ On every startup, `detectDac()` scans `/proc/asound/card*/stream*` and returns:
 | `GET` | `/api/player/auto-headroom` | Auto-headroom setting + last computed attenuation `{ enabled, headroomDb }` |
 | `POST` | `/api/player/auto-headroom` | Toggle dynamic peak pre-attenuation vs static preset headroom `{ enabled: bool }` |
 | `GET` | `/api/player/lyrics` | Fetch synced LRC lyrics from LRCLIB `?title=&artist=&album=&duration=` |
+| `GET` | `/api/player/spotify-trim` | Current Spotify Level Trim `{ trimDb }` |
+| `POST` | `/api/player/spotify-trim` | Set the Spotify Level Trim `{ trimDb: -12..6 }` — applied only while source is spotify/dj |
+| `GET` | `/api/player/dsp/fir-filter` | Current custom filter state `{ enabled, name, tapCount, sampleRate, channels, uploadedAt }` |
+| `POST` | `/api/player/dsp/fir-filter` | Upload a WAV impulse response (raw body, `Content-Type: audio/wav`, `X-Filter-Name` header) — replaces and enables the custom filter |
+| `POST` | `/api/player/dsp/fir-filter/toggle` | Enable/disable the uploaded filter without re-uploading `{ enabled: bool }` |
+| `DELETE` | `/api/player/dsp/fir-filter` | Remove the custom filter and revert to the 5-band EQ |
+| `GET` | `/api/player/audio-cards` | Every ALSA playback card currently available (excludes the internal loopback) `[{ id, device, cardName, isCurrentDac }]` |
+| `GET` | `/api/player/digital-transport` | Current Digital Transport state `{ enabled, configured, device }` |
+| `POST` | `/api/player/digital-transport` | Set the transport device and/or toggle it `{ device?, enabled? }` — validates the device against a live card scan first |
+
+### Library Browsing
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/api/player/library/artists` | All artists in the local library |
+| `GET` | `/api/player/library/albums?artist=` | Albums, optionally scoped to one artist |
+| `GET` | `/api/player/library/albums/all` | Every (artist, album) pair, flat — powers the tablet Albums grid |
+| `GET` | `/api/player/library/tracks?artist=&album=` | Tracks in an album, with track/disc numbers `[{ file, title, artist, track, disc }]` |
+| `GET` | `/api/player/library/browse?path=` | Folder browsing via MPD's own virtual filesystem — directories + files with tags, one level at a time |
+| `GET` | `/api/player/library/art?file=` | Embedded cover art (ID3/FLAC picture tag or folder cover) for one file, via MPD's `readpicture`/`albumart` |
+| `GET` | `/api/player/library/search?q=&limit=` | Full-text search across title/artist/album/any |
+| `GET` | `/api/player/library/genres` | All genres tagged in the local library |
+| `GET` | `/api/player/library/by-genre?genre=` | Tracks tagged with a given genre |
 
 ### Library & History
 
@@ -766,9 +796,13 @@ TIDAL_CLIENT_SECRET=…       # public tidalapi TV-client secret (see .env.examp
 
 | File | Purpose |
 |------|---------|
-| `server/player.js` | CamillaDSP config gen, DAC detection, signal-path API, volume, MPD/radio routes |
+| `server/player.js` | DAC detection, signal-path API, volume, MPD/radio/library routes, DSD Native Bypass |
+| `server/camilla-config.js` | CamillaDSP YAML config generator (EQ, FIR/Conv, Pure Direct, headroom), PipeWire/ALSA config writers |
+| `server/mpd-art.js` | Embedded cover art via MPD's `readpicture`/`albumart` binary protocol (raw socket, no `mpc` CLI equivalent) |
+| `server/fir-filters.js` | FIR/convolution filter upload, WAV header parsing, hot-reload-safe filename rotation |
+| `server/mpd-transport.js` | Digital Transport — generalizes DSD Native Bypass into a user-picked ALSA output, bypassing CamillaDSP entirely |
 | `server/websocket.js` | WebSocket hub, VU meter monitor, standby management |
-| `server/event-service.js` | Central event bus, state cache, serial queue, safe startup sequence |
+| `server/event-service.js` | Central event bus, state cache, serial queue, safe startup sequence, cross-source volume layering (Spotify Level Trim) |
 | `server/metadata.js` | Album metadata aggregator (MusicBrainz + Last.fm + TheAudioDB), SQLite-cached |
 | `server/db.js` | SQLite helpers — settings, favourite radios, metadata cache, play history, unified favorites |
 | `server/index.js` | Express entry point, Spotify OAuth, HTTPS setup |
