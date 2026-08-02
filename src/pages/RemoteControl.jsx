@@ -653,6 +653,23 @@ export default function RemoteControl() {
   // Same bug shape as the seek 500 (AUDIT-2026-08-02) — fixed proactively
   // here since it's the identical root cause.
   const handlePlayPause = async () => {
+    // DJ has no real "pause and resume later" — its own runLoop treats a
+    // Spotify-level pause as "the track ended" (waitForSpotifyTrackEnd's
+    // !data.is_playing check) and immediately advances to and plays the
+    // next track anyway, silently undoing the pause a moment later.
+    // Reported live: "the play pause in mobile didn't stop dj, the kiosk
+    // did" — kiosk's own button had a separate bug (routed to MPD's
+    // /api/player/pause, a no-op since DJ stops MPD outright) that merely
+    // LOOKED like it worked by broadcasting a stale local "paused" state
+    // without touching the real Spotify-backed audio at all. Neither path
+    // actually paused the session; stopping DJ outright is the only
+    // meaningful action a "pause" press can take here.
+    if (source === 'dj') {
+      try { await api.stopDjMode(); } catch {}
+      setSource('spotify');
+      requestWSStateSync();
+      return;
+    }
     if (!spotifyBacked) {
       try { if (playbackState ? playbackState.paused : true) { wakeKiosk(); await api.localPlay(); setPlaybackState(p => ({ ...p, paused: false })); } else { await api.localPause(); setPlaybackState(p => ({ ...p, paused: true })); } } catch (e) { reportError(e.message); }
       return;

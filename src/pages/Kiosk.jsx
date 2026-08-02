@@ -1240,6 +1240,24 @@ export default function Kiosk() {
 
   // Playback Control Handlers
   const handlePlayPause = async () => {
+    // DJ has no real "pause and resume later" — its own runLoop treats a
+    // Spotify-level pause as "the track ended" (waitForSpotifyTrackEnd's
+    // !data.is_playing check) and immediately advances to and plays the
+    // next track anyway, silently undoing the pause a moment later. This
+    // branch used to fall into the generic !spotify/local path below
+    // instead (routing to MPD's /api/player/pause — a no-op, since DJ
+    // stops MPD outright), which merely LOOKED like it worked because it
+    // broadcast a stale local "paused" state without touching the real
+    // Spotify-backed audio at all. Reported live: "the play pause in
+    // mobile didn't stop dj, the kiosk did" — kiosk's version only
+    // appeared to work for that same reason; neither path actually
+    // paused the session. Stopping DJ outright is the only meaningful
+    // action a "pause" press can take here.
+    if (source === 'dj') {
+      try { await api.stopDjMode(); } catch {}
+      setSource('spotify');
+      return;
+    }
     if (!spotify) {
       try {
         const isPaused = playbackState ? playbackState.paused : true;
