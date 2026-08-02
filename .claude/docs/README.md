@@ -16,6 +16,8 @@ in production so they never get rediscovered the hard way.
 | [airplay-upnp.md](airplay-upnp.md) | shairport-sync 5.x config, NQPTP, upmpdcli | shairport-sync 5.0.4 / nqptp 1.2.8 |
 | [web-apis.md](web-apis.md) | Spotify PKCE, Tidal device flow, Qobuz, radio-browser, metadata APIs | — |
 | [node-react-stack.md](node-react-stack.md) | Express 5 (!), ws, sqlite3, React 19, Vite 8, Tailwind v4 | package.json 2026-07 |
+| [dj-mode.md](dj-mode.md) | AI DJ: Ollama prompt/generation, Piper TTS, audio ducking, device-targeting gotchas | Ollama 0.32.5, qwen2.5:1.5b, Piper (Aug 2026 build) |
+| [voice-control.md](voice-control.md) | Remote push-to-talk: Web Speech API, browser support matrix, command grammar | — (browser-native, no pinned server version) |
 
 Update policy: when a pinned version is bumped (`install.sh` version pins,
 `package.json`) or a live audit contradicts one of these files, update the

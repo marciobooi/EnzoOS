@@ -42,3 +42,14 @@ mirror, don't hammer. Station click counting: `url/<uuid>`.
 Lyrics fetch in `server/player.js:getLyricsFetch()` (lrclib-style). Cover
 art via the streaming services' own metadata + MusicBrainz Cover Art
 Archive (coverartarchive.org, no key).
+
+## Live radio track art — iTunes Search (`server/metadata.js:fromItunesTrackArt`)
+No key: `https://itunes.apple.com/search?term=<artist title>&media=music&entity=song&limit=1`.
+`artworkUrl100` upscaled to `600x600bb` by string-replacing the size in the
+URL. Artist name is fuzzy-matched (`norm()` — lowercase, strip non-alnum,
+substring check both directions) against the result before accepting it, to
+reject false positives on generic/mistagged ICY titles. `GET
+/api/metadata/track-art?artist=&title=` — same SQLite cache pattern as
+`/album` (**caches misses too, as `null`**, so an unreleased/mistagged track
+doesn't get re-queried on every ~10s ICY poll). Client wrapper:
+`src/api/metadata.js:getTrackArt()`.

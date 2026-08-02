@@ -78,7 +78,9 @@ PipeWire sources                              ├→ hw:Loopback,0,0
 ## Key Files
 - `server/player.js` — CamillaDSP config generator, `ensureAsoundConf()`, MPD/radio API routes
 - `server/websocket.js` — WebSocket state management, audio level monitor (arecord), standby
-- `scripts/kiosk-power.sh` — display standby: use `vcgencmd display_power` on real Pi, `xset dpms` on QEMU
+- `server/dj.js` — AI DJ mode (Ollama + Piper TTS), fully self-contained — see `.claude/docs/dj-mode.md`
+- `src/components/remote/VoiceControl.jsx` — remote push-to-talk voice control (Web Speech API, client-only, no relation to DJ's AI) — see `.claude/docs/voice-control.md`
+- `scripts/kiosk-power.sh` — display standby: `xset dpms force off/on` on both real Pi and QEMU (`vcgencmd display_power` is dead under this project's `vc4-kms-v3d` driver — confirmed 2026-08-02, don't reintroduce it); requires `xhost +local:` (in `scripts/xinitrc`) since the standby/wake calls run as root via `sudo`
 - `install.sh` — master installer; writes `/etc/asound.conf`, `/etc/mpd.conf`, disables PulseAudio
 - `/etc/asound.conf` — ALSA routing (written by server on startup via `ensureAsoundConf()`)
 - `/etc/mpd.conf` — MPD config (written by install.sh)

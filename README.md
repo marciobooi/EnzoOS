@@ -8,7 +8,7 @@ Resonance HiFi is an open-source, self-hosted audio streaming platform for Raspb
 [![Platform](https://img.shields.io/badge/platform-Raspberry%20Pi%204%2F5-red.svg)](https://www.raspberrypi.com/)
 [![OS](https://img.shields.io/badge/OS-Ubuntu%2024.04%20ARM64-orange.svg)](https://ubuntu.com/)
 [![CI](https://github.com/marciobooi/EnzoOS/actions/workflows/ci.yml/badge.svg)](https://github.com/marciobooi/EnzoOS/actions/workflows/ci.yml)
-[![Version](https://img.shields.io/badge/version-1.0.0-brightgreen.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-1.0.0-brightgreen.svg)](https://github.com/marciobooi/EnzoOS/commits/main)
 
 ---
 
@@ -102,6 +102,21 @@ Resonance HiFi is an open-source, self-hosted audio streaming platform for Raspb
 ### Playback Controls
 - **Queue editing** — view the current MPD queue and delete individual tracks without stopping playback
 - **Streaming quality badge** — live format label (e.g. `FLAC 24-bit / 96 kHz`, `AAC 320`, `ALAC`) derived from MPD format and CamillaDSP capture rate; shown beneath the track title in the player
+
+### AI DJ Mode
+- **Locally-generated, locally-synthesized radio DJ** — plays a rotating block of 5 tracks from your Spotify Liked Songs + Top Tracks with a spoken announcer between blocks, like a real radio DJ. Fully on-device: [Ollama](https://ollama.com) (`qwen2.5:1.5b`) writes each line, [Piper](https://github.com/rhasspy/piper) synthesizes it — no cloud AI service, no API key. Spotify-only (`GET/POST /api/dj/*`, see [dj-mode.md](.claude/docs/dj-mode.md))
+- **Mood pivoting** — five mood presets (Hype, Chill, Casual, Dramatic, Playful) selectable live from the kiosk or either remote; picking one cuts the current track immediately and draws a fresh block in that energy, mirroring Spotify's own DJ "pivot the mix" moment
+- **Never blocks music on the AI** — the next line is always generated in the background during the current track (minutes of runway); if generation runs long, that track simply plays with no intro rather than introducing any dead air
+- **Ducked track transitions** — every handoff (announced or not) briefly ducks the master volume through the cut and fades back up, approximating a real mixer's crossfade since Spotify's Web API has no crossfade primitive of its own
+- **English + Portuguese**, matching the app's own language setting
+- **Requires manual setup** — Ollama, Piper, and ffmpeg are not installed by `install.sh`; see [dj-mode.md](.claude/docs/dj-mode.md) for exact paths/versions
+
+### Voice Control
+- **Push-to-talk on the remote** — tap the mic, speak a command, done. Runs entirely in the browser (Web Speech API) — no server round-trip, no cloud speech/NLU service
+- **English + Portuguese**, diacritic-insensitive matching
+- Covers playback (play/pause/skip/volume/seek/shuffle/repeat/mute), source switching, standby, favoriting, "what's playing," voice search (play a named artist/track/radio station), and routing playback to the Resonance device
+- Works as an installed PWA on iOS ≥14.5 (requires Dictation enabled in Settings) and Android Chrome; the overlay explains inline exactly why voice is unavailable (missing API, insecure origin, mic denied) rather than hiding the mic button
+- See [voice-control.md](.claude/docs/voice-control.md) for the full command grammar
 
 ### DSP & Signal Processing
 - **ReplayGain** — set MPD ReplayGain mode (off / track / album / auto) from Settings; gain applied per-track to normalise loudness across sources
@@ -446,8 +461,20 @@ On every startup, `detectDac()` scans `/proc/asound/card*/stream*` and returns:
 | Method | Endpoint | Description |
 |--------|----------|-------------|
 | `GET` | `/api/metadata/album?artist=&album=` | Aggregated album/artist metadata (bio, review, tracklist, credits, artwork, band facts). SQLite-cached 30 days; called on demand when the cover is tapped |
+| `GET` | `/api/metadata/track-art?artist=&title=` | Cover art for a live radio ICY now-playing track, via iTunes Search; SQLite-cached (misses cached too, to avoid re-querying every ~10s ICY poll for an unreleased/mistagged track) |
 | `GET` | `/api/metadata/keys` | Current configured metadata keys (for the Settings form to pre-fill) |
 | `POST` | `/api/metadata/keys` | Save Last.fm / TheAudioDB / Discogs keys to the database `{ lastfm, theaudiodb, discogs }` |
+
+### DJ Mode
+
+See [AI DJ Mode](#ai-dj-mode) above and [dj-mode.md](.claude/docs/dj-mode.md) for the full architecture (Ollama prompt design, Piper synthesis, audio ducking).
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `POST` | `/api/dj/start` | Start a session — builds the Spotify track pool, claims the librespot device, sets the active source to `dj` |
+| `POST` | `/api/dj/stop` | Stop the session, pause Spotify, unload the Ollama model |
+| `POST` | `/api/dj/mood` | Pin (or clear) the announcer's energy `{ mood: "hype"\|"chill"\|"casual"\|"dramatic"\|"playful"\|null }`; pivots immediately if a session is active |
+| `GET` | `/api/dj/status` | `{ active, upNext, mood, moods, queue }` |
 
 ---
 
@@ -670,7 +697,7 @@ Streaming sources (AirPlay, UPnP, Bluetooth) are activated on demand — they do
 
 ## Versioning, CI & verification
 
-- **Semantic versioning** — tracked in `package.json` and [`CHANGELOG.md`](CHANGELOG.md) (Keep a Changelog format). Current: **1.0.0**.
+- **Semantic versioning** — tracked in `package.json`. Current: **1.0.0**. There is no `CHANGELOG.md` (removed in the 2026-07-02 repo cleanup and never reinstated) — [commit history](https://github.com/marciobooi/EnzoOS/commits/main) is the change record.
 - **Continuous integration** — [`.github/workflows/ci.yml`](.github/workflows/ci.yml) runs on every push/PR to `main`: `npm ci`, server module validation (`node --check`), shell-script validation (`bash -n`), a production frontend build, plus advisory ESLint and ShellCheck.
 - **Local validation** — `npm run check:server`, `npm run check:scripts`, and `npm run build` mirror CI.
 - **Post-install verification** — `npm run verify` (or `bash scripts/verify-install.sh`) reports the live state of every install step and premium optimization (active / pending-reboot / skipped / failed), so a tuning helper that "continued past" a failure can't silently hide a missing feature. The installer runs it automatically at the end.
@@ -746,6 +773,8 @@ TIDAL_CLIENT_SECRET=…       # public tidalapi TV-client secret (see .env.examp
 | `server/db.js` | SQLite helpers — settings, favourite radios, metadata cache, play history, unified favorites |
 | `server/index.js` | Express entry point, Spotify OAuth, HTTPS setup |
 | `server/status.js` | Full status snapshot endpoint |
+| `server/dj.js` | AI DJ mode — self-contained: Ollama line generation, Piper TTS, ducked track transitions, mood pivoting (see [dj-mode.md](.claude/docs/dj-mode.md)) |
+| `src/components/remote/VoiceControl.jsx`, `VoiceOrb.jsx`, `src/lib/voiceCommands.js` | Remote push-to-talk voice control — Web Speech API + local command grammar, no server involvement (see [voice-control.md](.claude/docs/voice-control.md)) |
 | `src/remote.css` | Dedicated mobile-remote design system (scoped under `.remote-root`) |
 | `src/components/ResonanceLogo.jsx` | Pure CSS/HTML origami logo intro + static wordmark (kiosk welcome/goodbye) |
 | `scripts/setup-rtaudio.sh` | Real-time audio tuning — `threadirqs`, `rtirq` IRQ priority, `isolcpus=2,3` core isolation, per-service CPU affinity (idempotent; run by installer and OTA update) |
@@ -756,7 +785,8 @@ TIDAL_CLIENT_SECRET=…       # public tidalapi TV-client secret (see .env.examp
 | `scripts/cleanup-build-deps.sh` | Optional, run once post-install — removes the `-dev` headers/build toolchain (autoconf, meson, pkg-config, ...) used only to compile NQPTP/shairport-sync/upmpdcli from source; reclaims disk space on real hardware. Deliberately keeps `build-essential`/`libsqlite3-dev` (needed if a future OTA `npm install` has to rebuild a native Node addon) |
 | `.github/workflows/ci.yml` | CI — build, server `node --check`, script `bash -n`, advisory lint + shellcheck |
 | `scripts/resonance-mlockall.c` | `LD_PRELOAD` shim source — `mlockall(MCL_CURRENT\|MCL_FUTURE)` constructor, compiled to `/usr/local/lib/resonance-mlockall.so` at install |
-| `scripts/kiosk-power.sh` | Display standby: `vcgencmd` on Pi, `xset dpms` on QEMU |
+| `scripts/kiosk-power.sh` | Display standby: `xset dpms force off/on`, immediately re-disabling DPMS after each so X11's own idle timer never re-arms — the app is the sole authority over display power. `vcgencmd display_power` looked like the natural choice on real Pi hardware but is dead under this project's `vc4-kms-v3d` KMS driver (fails outright, confirmed live); `xhost +local:` in `scripts/xinitrc` grants the root-invoked (`sudo`, from `event-service.js`) calls X access, which they don't have by default |
+| `scripts/kiosk-wake-monitor.sh` | Watches raw input devices for touch/key activity to wake the display faster than the API round-trip, and swallows the waking tap itself (detaches touch from X while dark, so a tap near the play button doesn't also press it). Tracks display-on/off state via `/home/pi/.resonance-display-state`, written by `kiosk-power.sh` — deliberately not `/tmp` (Linux's `fs.protected_regular` blocks even root from writing a file it doesn't own inside a sticky world-writable dir) |
 | `install.sh` | Master installer — packages, PipeWire, CamillaDSP, shairport-sync, upmpdcli |
 | `camilladsp.yml` | Active CamillaDSP pipeline config (auto-generated on startup — do not hand-edit) |
 | `/etc/asound.conf` | ALSA routing — rate-agnostic `loop_dsnoop` (written by server on startup) |
