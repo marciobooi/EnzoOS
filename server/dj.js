@@ -56,13 +56,21 @@
  * window to run (see also LIBRESPOT_AUTOPLAY=off in spotify-daemon.js).
  *
  * Announcements OVERLAY the next track rather than pausing for them
- * (duckAndAnnounce): the next track starts immediately, the shared
+ * (duckThroughCut): the next track starts immediately, the shared
  * CamillaDSP master volume dips ~14dB for the duration of the clip, then
- * fades back up. Two things were tried and ruled out for doing this
- * per-source instead of on the shared master — see the AUDIT comment on
- * synthesize() for the full story: Spotify's own device volume doesn't
- * reliably reach librespot at all for API-driven changes (confirmed live:
- * zero effect, zero onevent trigger), and CamillaDSP only ever sees the
+ * fades back up. EVERY track handoff ducks through the cut this way now,
+ * not just announced ones — Spotify's Web API has no crossfade/mix
+ * primitive (it can only replace what's playing instantly), so this can't
+ * literally overlap the end of one song with the start of the next the way
+ * a real mixer (or Spotify's own first-party DJ feature) does; a brief duck
+ * through the edit is the closest approximation available and reads far
+ * less like a jump-cut than switching at full volume (requested live: "we
+ * don't add breaks between songs, Spotify DJ is like this, they mix the end
+ * and start of the songs like radio"). Two things were tried and ruled out
+ * for doing this per-source instead of on the shared master — see the AUDIT
+ * comment on synthesize() for the full story: Spotify's own device volume
+ * doesn't reliably reach librespot at all for API-driven changes (confirmed
+ * live: zero effect, zero onevent trigger), and CamillaDSP only ever sees the
  * already-mixed signal (both this clip and Spotify's audio converge at the
  * shared ALSA loopback before CamillaDSP's capture ever sees either one), so
  * it can't tell them apart to duck just one. The clip itself is instead
@@ -345,11 +353,11 @@ function synthesizeRaw(text, language) {
 // applied it and never fired its volume_set onevent (confirmed via
 // journalctl — nothing, not even after 5+ seconds), so it doesn't reach the
 // device at all for API-driven changes. The only combination that actually
-// works: duck the shared master (see duckAndAnnounce below) AND boost this
+// works: duck the shared master (see duckThroughCut below) AND boost this
 // clip's own gain by the exact same amount here, so once played back through
 // the ducked master it lands back at ~its original loudness while the music
 // (never independently boosted) is genuinely quieter. DUCK_DB is defined
-// with duckAndAnnounce a bit further down.
+// with duckThroughCut a bit further down.
 async function synthesize(text, language) {
   const rawFile = await synthesizeRaw(text, language);
   const outFile = rawFile.replace(/\.raw\.wav$/, '.wav');
@@ -374,30 +382,48 @@ function playClip(wavPath) {
   return execFilePromise('pw-play', ['--target', 'ResonanceInput', wavPath], { env: PW_ENV, timeout: 30000 });
 }
 
-// Reduces the shared master volume while the clip plays, then smoothly
-// restores it — the only working way to make music sound quieter under the
-// DJ's voice without an independent per-source mixer (see the AUDIT comment
-// on synthesize() above for what was tried and ruled out). 14dB ≈ reduces
-// linear amplitude to ~20% (20*log10(0.2) ≈ -13.98dB), matching the
-// requested "duck to 20%, fade back to 100%" spec. Skips the whole dance if
-// the user has the system muted/near-silent already — nothing to duck.
+// Ducks the shared master volume, runs the actual track cut (playNextTrack)
+// while ducked, optionally plays an announcement clip (already pre-boosted
+// for exactly this DUCK_DB — see synthesize()) while still ducked, then
+// smoothly fades back up — the only working way to make music sound quieter
+// under the DJ's voice without an independent per-source mixer (see the
+// AUDIT comment on synthesize() above for what was tried and ruled out).
+// 14dB ≈ reduces linear amplitude to ~20% (20*log10(0.2) ≈ -13.98dB),
+// matching the requested "duck to 20%, fade back to 100%" spec.
+//
+// EVERY handoff goes through this now, not just announced ones (AUDIT-
+// 2026-08-02): Spotify's Web API can only replace what's playing instantly,
+// there's no crossfade primitive, so the cut itself needs masking too — a
+// plain announcement-free transition briefly ducks, executes the cut, holds
+// for a beat, then swells back up, instead of switching at full volume.
+// Requested live: "we don't add breaks between songs, Spotify DJ is like
+// this, they mix the end and start of the songs like radio." Skips the
+// whole dance if the user has the system muted/near-silent already —
+// nothing to duck.
 const DUCK_DB = 14;
-async function duckAndAnnounce(wavPath) {
+async function duckThroughCut(playNextTrack, announcementWavPath) {
   const before = getCachedVolumeDb();
   const canDuck = before > -90;
   if (canDuck) {
     // One immediate retry: live-tested, the WS command occasionally reports
     // failure (transient — CamillaDSP's connection isn't always instantly
-    // ready). Worth retrying here specifically because the clip is already
-    // baked with the +DUCK_DB boost — if the duck never lands, the
-    // announcement plays louder than intended over full-volume music
-    // instead of just being a bit quiet.
+    // ready). Worth retrying here specifically because an announcement clip
+    // is already baked with the +DUCK_DB boost — if the duck never lands, it
+    // plays louder than intended over full-volume music instead of just
+    // being a bit quiet.
     let ok = await setCamillaVolume(before - DUCK_DB);
     if (!ok) ok = await setCamillaVolume(before - DUCK_DB);
-    if (!ok) console.warn('[DJ] Duck failed twice — announcement will play louder than intended over full-volume music.');
+    if (!ok) console.warn('[DJ] Duck failed twice — transition/announcement will play louder than intended over full-volume music.');
   }
+  await playNextTrack();
   try {
-    await playClip(wavPath);
+    if (announcementWavPath) {
+      await playClip(announcementWavPath);
+    } else if (canDuck) {
+      // No announcement this time — just hold briefly so the cut itself
+      // lands while quiet, then straight into the fade-up below.
+      await new Promise((r) => setTimeout(r, 250));
+    }
   } catch (err) {
     console.error('[DJ] playback failed:', err.message);
   } finally {
@@ -598,25 +624,22 @@ async function runLoop() {
     state.pending = null;
     if (!state.active) break;
 
-    // Next track starts immediately — no pause, no gap. If there's an
-    // announcement, it plays OVER this track a moment later (duckAndAnnounce
-    // below), not instead of it: "song ends → next song starts → duck it →
-    // DJ talks over the quiet intro → fade back up", matching how a real
-    // radio handoff (and Spotify's own DJ feature) actually sounds, and per
-    // explicit spec. Never pausing means there's no dead air even when no
-    // announcement is ready at all.
+    // Next track starts immediately — no pause, no gap, and the cut always
+    // happens ducked (duckThroughCut) rather than at full volume: "song ends
+    // → next song starts, ducked → DJ talks over the quiet intro (if ready)
+    // → fade back up", matching how a real radio handoff (and Spotify's own
+    // DJ feature) actually sounds, and per explicit spec. Never pausing
+    // means there's no dead air even when no announcement is ready at all.
     broadcastState({ phase: 'playing', mood: state.mood, track: { title: track.name, artist: (track.artists || []).map(a => a.name).join(', ') } });
-    try {
-      await spotifyApi.play(token, state.deviceId, null, [track.uri]);
-      state.playedUris.add(track.uri);
-      broadcastSpotifyState(track, false, 0);
-    } catch (err) { console.error('[DJ] Spotify play failed:', err.message); }
-
-    if (announcement) {
-      broadcastState({ phase: 'announcing', line: announcement.text });
-      await duckAndAnnounce(announcement.wavPath);
-      fs.unlink(announcement.wavPath, () => {});
-    }
+    if (announcement) broadcastState({ phase: 'announcing', line: announcement.text });
+    await duckThroughCut(async () => {
+      try {
+        await spotifyApi.play(token, state.deviceId, null, [track.uri]);
+        state.playedUris.add(track.uri);
+        broadcastSpotifyState(track, false, 0);
+      } catch (err) { console.error('[DJ] Spotify play failed:', err.message); }
+    }, announcement?.wavPath);
+    if (announcement) fs.unlink(announcement.wavPath, () => {});
 
     // Prepare the NEXT segment in the background while this track plays —
     // the whole point: generation+synthesis latency hidden inside several
@@ -649,7 +672,20 @@ async function runLoop() {
     }
     if (prepPromise) {
       prepPromise
-        .then((p) => { if (state.active && gen === state.generation) state.pending = p; else fs.unlink(p.wavPath, () => {}); })
+        .then((p) => {
+          if (state.active && gen === state.generation) {
+            // A second block boundary (or another pivot) can race past
+            // before this one finishes generating — skip through an entire
+            // block faster than the ~10-45s an LLM+TTS round trip takes and
+            // two prepares end up in flight at once. The newer one always
+            // wins; clean up whichever one loses instead of leaking its
+            // wav file in /tmp.
+            if (state.pending?.wavPath) fs.unlink(state.pending.wavPath, () => {});
+            state.pending = p;
+          } else {
+            fs.unlink(p.wavPath, () => {});
+          }
+        })
         .catch((err) => console.error('[DJ] background prepare failed:', err.message));
     }
 
