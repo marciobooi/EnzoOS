@@ -405,11 +405,18 @@ export default function Kiosk() {
   // search will still return a "closest guess" for genuinely non-song input.
   const radioFaviconRef = useRef(null);
   const lastIcyKeyRef = useRef(null);
+  // Key of the track we've actually found+applied real art for — NOT set on
+  // a miss/failure, so a transient network hiccup or a genuine no-match
+  // keeps retrying on every subsequent 10s poll (cheap: a miss is cached
+  // server-side) for as long as that same track keeps playing, rather than
+  // permanently giving up after a single failed attempt.
+  const artResolvedKeyRef = useRef(null);
 
   useEffect(() => {
     if (source !== 'radio') return;
     radioFaviconRef.current = null;
     lastIcyKeyRef.current = null;
+    artResolvedKeyRef.current = null;
 
     const syncRadioIcy = async () => {
       try {
@@ -431,42 +438,51 @@ export default function Kiosk() {
         const key = `${icyArtist || ''}::${icyTitle}`;
         const isNewTrack = key !== lastIcyKeyRef.current;
         lastIcyKeyRef.current = key;
-        if (!isNewTrack) return;
 
-        setPlaybackState(prev => {
-          if (!prev) return prev;
-          const cur = prev.track_window?.current_track;
-          if (cur?.name === icyTitle) return prev; // no change
-          // Remember the station's own icon (set when the station started
-          // playing) the first time we touch this track, so a failed/no-art
-          // lookup below has something correct to fall back to instead of a
-          // stale previous track's cover.
-          if (radioFaviconRef.current === null) {
-            radioFaviconRef.current = cur?.album?.images?.[0]?.url || '';
-          }
-          return {
-            ...prev,
-            track_window: {
-              ...prev.track_window,
-              current_track: {
-                ...cur,
-                name:    icyTitle,
-                artists: icyArtist ? [{ name: icyArtist }] : (cur?.artists || [{ name: 'Live Stream' }]),
-                album: {
-                  name: cur?.album?.name || 'Web Radio Broadcast',
-                  images: radioFaviconRef.current ? [{ url: radioFaviconRef.current }] : [],
+        if (isNewTrack) {
+          setPlaybackState(prev => {
+            if (!prev) return prev;
+            const cur = prev.track_window?.current_track;
+            if (cur?.name === icyTitle) return prev; // no change
+            // Remember the station's own icon (set when the station started
+            // playing) the first time we touch this track, so an in-flight
+            // or failed lookup below has something correct to show instead
+            // of a stale previous track's cover.
+            if (radioFaviconRef.current === null) {
+              radioFaviconRef.current = cur?.album?.images?.[0]?.url || '';
+            }
+            return {
+              ...prev,
+              track_window: {
+                ...prev.track_window,
+                current_track: {
+                  ...cur,
+                  name:    icyTitle,
+                  artists: icyArtist ? [{ name: icyArtist }] : (cur?.artists || [{ name: 'Live Stream' }]),
+                  album: {
+                    name: cur?.album?.name || 'Web Radio Broadcast',
+                    images: radioFaviconRef.current ? [{ url: radioFaviconRef.current }] : [],
+                  },
                 },
               },
-            },
-          };
-        });
+            };
+          });
+        }
 
+        // Keep retrying on every poll until real art is actually found for
+        // THIS track, or it changes — a single miss (transient network
+        // error, or iTunes genuinely finding nothing that round) shouldn't
+        // permanently give up on a 3-4 minute song when a retry moments
+        // later is nearly free. Radio image stays showing throughout.
+        if (artResolvedKeyRef.current === key) return;
         if (!icyArtist || !icyTitle || NON_MUSIC_PATTERN.test(icyArtist) || NON_MUSIC_PATTERN.test(icyTitle)) return;
         try {
           const art = await api.getTrackArt(icyArtist, icyTitle);
           // Bail if the station moved on to another track while this was in
           // flight — never apply a stale lookup's art to whatever's airing now.
-          if (!art?.artworkUrl || lastIcyKeyRef.current !== key) return;
+          if (lastIcyKeyRef.current !== key) return;
+          if (!art?.artworkUrl) return; // no match (yet) — try again next poll
+          artResolvedKeyRef.current = key;
           setPlaybackState(prev => {
             if (!prev) return prev;
             const cur = prev.track_window?.current_track;
@@ -479,7 +495,7 @@ export default function Kiosk() {
               },
             };
           });
-        } catch {}
+        } catch {} // network/server hiccup — try again next poll
       } catch {}
     };
 
