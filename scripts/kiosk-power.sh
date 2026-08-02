@@ -1,10 +1,37 @@
 #!/bin/bash
 export DISPLAY=:0
 
-# Prefer vcgencmd (Raspberry Pi) — cuts backlight without dropping HDMI signal,
-# so the monitor never shows "No signal / display output not active".
-# Falls back to xset DPMS on non-Pi hardware (QEMU, x86, etc.)
-HAS_VCGENCMD=$(command -v vcgencmd &>/dev/null && echo yes || echo no)
+# Shared with kiosk-wake-monitor.sh, which needs to know whether the display
+# is currently supposed to be off but can't rely on `xset q` (goes silent on
+# monitor state the instant DPMS is re-disabled below) or vcgencmd (dead, see
+# AUDIT-2026-08-02b). World-writable so root (standby/wake, via sudo) and pi
+# (disable_auto_blank, wake-monitor's own reads) can both update/read it.
+STATE_FILE="/tmp/resonance-display-state"
+
+# AUDIT-2026-08-02b: vcgencmd display_power is DEAD on this hardware.
+# Confirmed live: `vcgencmd display_power 0` immediately reports back
+# `display_power=1` — it fails outright, not just with a delay. This is a
+# known, documented Raspberry Pi firmware limitation, not a regression: the
+# vc4-kms-v3d "full KMS" overlay this project has always used (required for
+# GPU-accelerated rendering — see install.sh) intentionally dropped
+# vcgencmd's display-power support in favor of standard DRM/Linux tooling.
+# It only *works* under the legacy vc4-fkms-v3d overlay, which we don't use.
+#
+# This bug pre-dates tonight but was masked until now: before the
+# disable_auto_blank() fix below existed, X11's own independent 5-minute
+# DPMS idle timer eventually blanked the screen on its own, so standby()
+# *looked* like it worked (just later than the app's own 10-minute timer
+# intended). With that independent timer gone, standby()'s vcgencmd call
+# had no fallback left, and the screen stopped turning off at all.
+#
+# Fix: use `xset dpms force off/on` unconditionally — confirmed live to
+# actually change monitor power state under vc4-kms-v3d. Its one side
+# effect is re-enabling the DPMS *extension* it just used (confirmed live:
+# `xset -dpms` → Disabled, then `xset dpms force on` → Enabled again), which
+# would re-arm X11's own automatic idle-blank timer that disable_auto_blank()
+# turned off — so every standby()/wake() call re-disables it immediately
+# after forcing the state, to keep the app the sole authority over display
+# power.
 
 # AUDIT-2026-08-02: this used to ENABLE X11's own idle-based screensaver/DPMS
 # timeout (5 min) here, running completely independent of and unsynchronized
@@ -24,25 +51,25 @@ HAS_VCGENCMD=$(command -v vcgencmd &>/dev/null && echo yes || echo no)
 disable_auto_blank() {
   xset s off
   xset -dpms
+  echo "on" > "$STATE_FILE" 2>/dev/null
+  chmod 666 "$STATE_FILE" 2>/dev/null
   echo "X11 automatic screen blanking disabled — display power is app-controlled only."
 }
 
 standby() {
   echo "Forcing standby"
-  if [ "$HAS_VCGENCMD" = "yes" ]; then
-    vcgencmd display_power 0
-  else
-    xset dpms force off
-  fi
+  xset dpms force off
+  xset -dpms
+  echo "off" > "$STATE_FILE" 2>/dev/null
+  chmod 666 "$STATE_FILE" 2>/dev/null
 }
 
 wake() {
   echo "Waking display"
-  if [ "$HAS_VCGENCMD" = "yes" ]; then
-    vcgencmd display_power 1
-  else
-    xset dpms force on
-  fi
+  xset dpms force on
+  xset -dpms
+  echo "on" > "$STATE_FILE" 2>/dev/null
+  chmod 666 "$STATE_FILE" 2>/dev/null
 }
 
 case "$1" in

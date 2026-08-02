@@ -9,7 +9,17 @@
 # of the visual "seams" in the boot flow (splash → black → UI).
 xsetroot -solid "#F0ECE4" 2>/dev/null || true
 
-# Start power manager (enables DPMS with 5-minute timeout)
+# AUDIT-2026-08-02b: root has no X11 authorization by default (verified live:
+# `sudo DISPLAY=:0 xset q` → "Authorization required, but no authorization
+# protocol specified"). kiosk-power.sh's standby()/wake() are invoked via
+# `sudo` from event-service.js (server runs as user pi, sudoers grants
+# passwordless access to this one script) and need to run `xset dpms`
+# commands as root — this grants that access. Kiosk-only, single-user,
+# physically-secured device, so allowing local (non-network) connections is
+# an acceptable tradeoff for a working display-power path.
+xhost +local: 2>/dev/null || true
+
+# Start power manager (disables X11's own auto-blank; app is sole authority)
 /usr/local/bin/kiosk-power.sh &
 
 # Start wake monitor (touch + keyboard + media keys)

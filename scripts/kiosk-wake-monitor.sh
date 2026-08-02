@@ -5,7 +5,7 @@ LAST_WAKE=0
 # Touch device names X knows the panel by (same list xinitrc's map_touch uses).
 TOUCH_NAMES="WaveShare|Waveshare|waveshare|eGalaxTouch|ILITEK|Goodix"
 
-HAS_VCGENCMD=$(command -v vcgencmd &>/dev/null && echo yes || echo no)
+STATE_FILE="/tmp/resonance-display-state"
 
 echo "Watching input for wake events..."
 
@@ -30,16 +30,16 @@ set_touch() { # $1 = enable | disable
 }
 
 display_is_off() {
-  # DPMS covers the X idle-blank path (QEMU and real Pi share it: kiosk-power
-  # sets the same timeout for screensaver and DPMS, and DPMS is what actually
-  # darkens the panel).
-  xset q 2>/dev/null | grep -q "Monitor is Off" && return 0
-  # vcgencmd covers the server's forced standby on real Pi hardware
-  # (kiosk-power.sh standby → vcgencmd display_power 0 — X still believes the
-  # display is on in that state).
-  if [ "$HAS_VCGENCMD" = "yes" ]; then
-    [ "$(vcgencmd display_power 2>/dev/null | cut -d= -f2)" = "0" ] && return 0
-  fi
+  # AUDIT-2026-08-02b: neither of this function's original two checks is
+  # reliable any more. `xset q`'s "Monitor is Off" line only exists while
+  # DPMS is enabled — but kiosk-power.sh's standby() now re-disables DPMS
+  # immediately after forcing the screen off (to stop it re-arming X11's own
+  # idle timer), so the line disappears the instant standby completes.
+  # vcgencmd display_power is simply dead under this project's vc4-kms-v3d
+  # driver (confirmed live: commanding it off immediately reports back "1",
+  # still on) — a known, documented firmware limitation, not fixable here.
+  # kiosk-power.sh now writes ground truth to a shared state file instead.
+  [ "$(cat "$STATE_FILE" 2>/dev/null)" = "off" ] && return 0
   return 1
 }
 
@@ -95,23 +95,13 @@ while read -r line <&3; do
         # Throttling: only run wake routines if it's been at least 2 seconds since last wake
         if [ $((CURRENT_TIME - LAST_WAKE)) -ge 2 ]; then
             echo "Activity detected -> waking display"
-            # AUDIT-2026-08-02: `xset dpms force on` unconditionally RE-ENABLES
-            # the DPMS extension as a side effect, even after kiosk-power.sh
-            # explicitly disabled it (`xset -dpms`) so the app's own standby/
-            # dim logic would be the sole authority over display power —
-            # confirmed live: `xset -dpms` → "DPMS is Disabled", then `xset
-            # dpms force on` → "DPMS is Enabled" again. Every single touch was
-            # silently re-arming X11's own independent 5-minute idle-blank
-            # timer, defeating that fix almost immediately. On real Pi
-            # hardware vcgencmd alone fully covers waking the physical
-            # display; xset dpms is now only the fallback for hardware
-            # without vcgencmd (QEMU, x86), where there's no DPMS-disabling
-            # kiosk-power.sh path to undo in the first place.
-            if [ "$HAS_VCGENCMD" = "yes" ]; then
-              vcgencmd display_power 1 >/dev/null 2>&1
-            else
-              xset dpms force on
-            fi
+            # AUDIT-2026-08-02b: call kiosk-power.sh directly (not via sudo —
+            # this script already runs as pi, which owns the X session and
+            # needs no extra authorization) so the force-on + immediate
+            # re-disable-DPMS + state-file update all happen in one place.
+            # This runs ahead of the async POST below purely for latency; the
+            # API call remains the source of truth for standby state in the DB.
+            /usr/local/bin/kiosk-power.sh wake >/dev/null 2>&1
             # Trigger API software wake
             curl -s -X POST -H "Content-Type: application/json" -d '{"enabled":false}' http://localhost:5000/api/player/standby || true
             LAST_WAKE=$CURRENT_TIME
