@@ -1256,6 +1256,13 @@ export default function Kiosk() {
     if (source === 'dj') {
       try { await api.stopDjMode(); } catch {}
       setSource('spotify');
+      // Local setSource only updates this client's own React state — without
+      // this, cachedSourceState.source stays stuck on 'dj' server-side even
+      // though the DJ session genuinely stopped (observed live via
+      // /api/status still reporting source:"dj" after /api/dj/status
+      // correctly showed active:false), so every other screen (and this one
+      // after a refresh) would still think DJ mode was running.
+      sendUpdate('SET_SOURCE', { spotify: true, source: 'spotify' });
       return;
     }
     if (!spotify) {
