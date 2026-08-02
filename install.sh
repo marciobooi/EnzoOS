@@ -960,7 +960,7 @@ $TARGET_USER ALL=(ALL) NOPASSWD: /usr/bin/tee /etc/pipewire/pipewire.conf.d/52-r
 # (aloop-sink audio.format mismatched against asound.conf's camilla_input).
 $TARGET_USER ALL=(ALL) NOPASSWD: /usr/bin/tee /etc/pipewire/pipewire.conf.d/52-resonance-aloop-sink.conf, /bin/tee /etc/pipewire/pipewire.conf.d/52-resonance-aloop-sink.conf
 $TARGET_USER ALL=(ALL) NOPASSWD: /usr/bin/systemctl restart raspotify, /bin/systemctl restart raspotify
-$TARGET_USER ALL=(ALL) NOPASSWD: /usr/bin/systemctl restart camilladsp, /bin/systemctl restart camilladsp, /usr/bin/systemctl reload camilladsp, /bin/systemctl reload camilladsp
+$TARGET_USER ALL=(ALL) NOPASSWD: /usr/bin/systemctl restart camilladsp, /bin/systemctl restart camilladsp
 $TARGET_USER ALL=(ALL) NOPASSWD: /usr/local/bin/kiosk-power.sh, /usr/local/bin/kiosk-brightness.sh
 $TARGET_USER ALL=(ALL) NOPASSWD: /usr/bin/systemctl start shairport-sync, /bin/systemctl start shairport-sync, /usr/bin/systemctl stop shairport-sync, /bin/systemctl stop shairport-sync
 $TARGET_USER ALL=(ALL) NOPASSWD: /usr/bin/systemctl start upmpdcli, /bin/systemctl start upmpdcli, /usr/bin/systemctl stop upmpdcli, /bin/systemctl stop upmpdcli
@@ -968,7 +968,7 @@ $TARGET_USER ALL=(ALL) NOPASSWD: /usr/bin/systemctl restart mpd, /bin/systemctl 
 $TARGET_USER ALL=(ALL) NOPASSWD: /usr/bin/systemctl reboot, /bin/systemctl reboot, /usr/bin/systemctl poweroff, /bin/systemctl poweroff
 $TARGET_USER ALL=(ALL) NOPASSWD: /usr/bin/nmcli device wifi rescan, /bin/nmcli device wifi rescan, /usr/bin/nmcli device wifi connect *, /bin/nmcli device wifi connect *
 $TARGET_USER ALL=(ALL) NOPASSWD: /usr/bin/timedatectl set-timezone *, /bin/timedatectl set-timezone *
-$TARGET_USER ALL=(ALL) NOPASSWD: /usr/bin/systemctl restart resonance-api, /bin/systemctl restart resonance-api, /usr/bin/systemctl start resonance-api, /bin/systemctl start resonance-api, /usr/bin/systemctl stop resonance-api, /bin/systemctl stop resonance-api
+$TARGET_USER ALL=(ALL) NOPASSWD: /usr/bin/systemctl restart resonance-api, /bin/systemctl restart resonance-api
 # NAS shares (server/storage.js) — mount targets scoped to our own directories
 # so a compromised resonance-api process can only mount/unmount into paths it
 # already controls, not arbitrary system locations.
