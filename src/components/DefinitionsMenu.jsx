@@ -33,7 +33,6 @@ export default function DefinitionsMenu({
   // Auto check updates on mount. Deliberately mount-only: the effect itself
   // drives updateStatus through checking → available/no-update, so listing
   // updateStatus as a dependency would re-trigger the check it just ran.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     const checkInitialUpdates = async () => {
       try {

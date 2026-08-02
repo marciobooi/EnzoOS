@@ -34,7 +34,6 @@ export async function toApiError(response, fallback) {
 // Returns the resolved message so callers can reuse it.
 export function reportError(err, fallback) {
   const message = getErrorMessage(err, fallback);
-  // eslint-disable-next-line no-console
   console.error('[error]', err);
   toast.error(message);
   return message;

@@ -37,8 +37,12 @@ export default function VoiceControl({ onClose }) {
   const finalHandled = useRef(false);
 
   // Latest ctx in a ref so the recognition callbacks never act on stale state.
+  // Written in an effect, not directly in the render body — mutating a ref
+  // during render is a React rule violation (a render that never commits
+  // would still have mutated it) even though it's low-risk in this app's
+  // synchronous rendering model (AUDIT-2026-08-02 hooks review).
   const ctxRef = useRef(ctx);
-  ctxRef.current = ctx;
+  useEffect(() => { ctxRef.current = ctx; }, [ctx]);
 
   const finish = (msg, ok = true, delay = 1500) => {
     setPhase('done');

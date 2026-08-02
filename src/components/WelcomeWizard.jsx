@@ -282,7 +282,7 @@ export default function WelcomeWizard({ onClose }) {
   // Scan for networks the first time the Wi-Fi step is shown.
   useEffect(() => {
     if (s?.wifi && !wifiScanned && !wifiScanning) scanWifi();
-  }, [s, wifiScanned, wifiScanning]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [s, wifiScanned, wifiScanning]);
 
   // Apply the setup browser's detected timezone once, the first time the
   // timezone step is shown — fresh installs boot on UTC with nothing else

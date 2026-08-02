@@ -242,7 +242,6 @@ export default function UniversalSearch({ inline = false }) {
       .catch(() => {});
     loadRadioDir(null);
     return () => { alive = false; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const savePreset = async (slot, item) => {

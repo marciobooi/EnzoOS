@@ -172,7 +172,12 @@ const MOODS = {
 export default function VoiceOrb({ levelRef, mood = 'listen', size = 280 }) {
   const canvasRef = useRef(null);
   const moodRef = useRef(mood);
-  moodRef.current = mood;
+  // Written in an effect, not directly in the render body — mutating a ref
+  // during render is a React rule violation (a render that never commits
+  // would still have mutated it) even though it's low-risk here since the
+  // WebGL render loop below only ever reads it from a rAF callback, never
+  // during render (AUDIT-2026-08-02 hooks review).
+  useEffect(() => { moodRef.current = mood; }, [mood]);
   // CSS pulse stands in only when WebGL2 is genuinely unavailable — the
   // canvas is transparent now, so the fallback can't just sit underneath it.
   const [glFailed, setGlFailed] = useState(false);

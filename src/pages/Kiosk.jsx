@@ -418,7 +418,7 @@ export default function Kiosk() {
     syncRadioIcy();
     const id = setInterval(() => { if (!standbyRef.current) syncRadioIcy(); }, 10000);
     return () => clearInterval(id);
-  }, [source]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [source]);
 
   // Poll MPD state for local source so track info and paused state stay current
   // on both kiosk and remote. Torn down when source changes away from local.
