@@ -552,7 +552,22 @@ const PlayerDisplay = React.memo(function PlayerDisplay({
   const [extractedRgb, setExtractedRgb] = useState('5, 10, 20');
 
   useEffect(() => {
-    const el = document.documentElement;
+    // The minimalist CSS rule this feeds is `div[data-active-theme="minimalist"]
+    // { --ink: rgba(255,255,255,0.94); ... }` — a DIRECT (non-descendant) match
+    // on Kiosk.jsx's own root div (the element that actually carries
+    // data-active-theme), not on document.documentElement. That div has its
+    // own static declaration for --ink/--ink-2/--ink-3/--ink-btn-bg/
+    // --ink-btn-txt/--deep, which always wins over whatever gets set on an
+    // ANCESTOR further up the tree (document.documentElement) — a local
+    // declaration on the matching element itself beats inheriting from a
+    // more distant ancestor, regardless of the JS-computed value. This is
+    // why --album-art-url "already worked": Kiosk.jsx's div ALSO sets that
+    // one directly via its own inline style, but nothing did the same for
+    // the ink variables, so the luminance-based light/dark switch below was
+    // computing correctly but never actually reaching the screen — reported
+    // live: "now the album is white, the overlay is white, and it's
+    // perfect, now the text is also white so that's bad" (AUDIT-2026-08-02).
+    const el = document.querySelector('[data-active-theme]') || document.documentElement;
 
     if (activeTheme !== 'minimalist') {
       setExtractedRgb('5, 10, 20');
