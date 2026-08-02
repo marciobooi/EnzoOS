@@ -247,7 +247,10 @@ export default function TabletPlayerHero() {
                 aria-pressed={djMood === id}
                 className="shrink-0 flex flex-col items-center justify-center gap-1.5 w-[84px] py-3.5 rounded-2xl active:scale-95 transition-all cursor-pointer"
                 style={djMood === id
-                  ? { background: C.champagne, color: '#1a1c1c' }
+                  // Explicit border + glow, not just a solid fill — reported
+                  // live: "the active card of dj we should add gold color
+                  // and border so user know that active" (AUDIT-2026-08-02).
+                  ? { background: C.champagne, color: '#1a1c1c', border: `2px solid ${C.champagne}`, boxShadow: '0 2px 12px rgba(212,175,55,0.35)' }
                   : { background: cardWhite.background, border: cardWhite.border, color: C.text2 }}>
                 <Icon className="h-5 w-5" />
                 <span className="text-[11px] font-semibold uppercase tracking-wide">{label}</span>

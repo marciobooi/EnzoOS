@@ -197,7 +197,12 @@ export default function PlayerTab() {
               aria-pressed={djMood === id}
               className="shrink-0 flex flex-col items-center justify-center gap-1.5 w-[72px] py-3 rounded-2xl active:scale-95 transition-all cursor-pointer"
               style={djMood === id
-                ? { background: C.champagne, color: '#1a1c1c' }
+                // Explicit border + glow, not just a solid fill — the flat
+                // block alone read as barely different from the surrounding
+                // cards on a real screen. Reported live: "the active card of
+                // dj we should add gold color and border so user know that
+                // active" (AUDIT-2026-08-02).
+                ? { background: C.champagne, color: '#1a1c1c', border: `2px solid ${C.champagne}`, boxShadow: '0 2px 12px rgba(212,175,55,0.35)' }
                 : { ...cardWhite, color: C.text2 }}>
               <Icon className="h-5 w-5" />
               <span className="text-[10px] font-semibold uppercase tracking-wide">{label}</span>

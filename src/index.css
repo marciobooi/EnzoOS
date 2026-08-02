@@ -568,13 +568,18 @@ div[data-theme="ruby"] *::selection {
   background-color: rgba(42,40,38,0.08);
 }
 
+/* Fixed gold, not var(--theme-color) — DJ mood is its own brand accent
+   (matches the remote's champagne #d4af37), so the active mood always reads
+   the same regardless of whatever accent color the user picked for the rest
+   of the UI. Reported live: "the active card of dj we should add gold color
+   and border so user know that active" (AUDIT-2026-08-02). */
 .mood-button.active {
-  border-color: var(--theme-color);
+  border-color: #d4af37;
   border-style: solid;
-  color: var(--theme-color);
-  background-color: var(--theme-color-dim);
+  color: #d4af37;
+  background-color: rgba(212, 175, 55, 0.18);
   opacity: 1;
-  box-shadow: 0 0 0 1px var(--theme-color-glow);
+  box-shadow: 0 0 0 1px rgba(212, 175, 55, 0.45);
 }
 
 @keyframes status-dot-breathe {
