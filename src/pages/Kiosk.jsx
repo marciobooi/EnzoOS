@@ -25,6 +25,13 @@ import RadioSearchOverlay from '../components/kiosk/RadioSearchOverlay';
 import WifiOverlay from '../components/kiosk/WifiOverlay';
 import SystemAdminOverlay from '../components/kiosk/SystemAdminOverlay';
 
+// Guards the radio "now playing" art lookup (see syncRadioIcy below) against
+// commercial breaks, news segments, and station IDs that some encoders push
+// through ICY's StreamTitle instead of leaving it alone — wasting a lookup
+// on these is harmless, but the server-side match-quality check can't help
+// if the "artist" being searched for is itself junk to begin with.
+const NON_MUSIC_PATTERN = /publicidade|an[uú]ncio|not[íi]cias?|\bnews\b|advert|commercial break|jingle|station\s?id/i;
+
 export default function Kiosk() {
   // Authentication state (server-managed, synchronized via WebSocket)
   const [token, setToken] = useState('');
@@ -377,8 +384,32 @@ export default function Kiosk() {
 
   // Poll MPD ICY metadata for radio source — some stations send StreamTitle
   // in "Artist - Song" format. Falls back silently when no ICY data present.
+  //
+  // Also opportunistically fetches real cover art for whatever's actually
+  // playing (radio has no album art of its own — ICY never carries one) and
+  // swaps it in when found, falling back to the station's own icon
+  // otherwise. Requested live: "we could improve and fetch the album of
+  // that band pic... or maybe the radio provides this? if not we could
+  // fetch from one of the services we already have" (AUDIT-2026-08-02).
+  //
+  // Deliberately reactive only, never predictive — live radio has no queue
+  // to look ahead into ("careful, it's live radio, I don't know how to get
+  // the next song"), so this only ever reacts to whatever ICY says is
+  // playing right now, the instant it changes.
+  //
+  // NON_MUSIC_PATTERN (module-level, above) guards against wasting a lookup
+  // (or worse, showing a confidently wrong cover) during a commercial break,
+  // news segment, or station ID ("we need to be smart with this"). The
+  // server side (fromItunesTrackArt) additionally verifies the returned
+  // artist actually matches before trusting any result, since iTunes' fuzzy
+  // search will still return a "closest guess" for genuinely non-song input.
+  const radioFaviconRef = useRef(null);
+  const lastIcyKeyRef = useRef(null);
+
   useEffect(() => {
     if (source !== 'radio') return;
+    radioFaviconRef.current = null;
+    lastIcyKeyRef.current = null;
 
     const syncRadioIcy = async () => {
       try {
@@ -396,10 +427,23 @@ export default function Kiosk() {
           icyTitle  = sep > 0 ? status.name.slice(sep + 3) : status.name;
           icyArtist = sep > 0 ? status.name.slice(0, sep)  : null;
         }
+
+        const key = `${icyArtist || ''}::${icyTitle}`;
+        const isNewTrack = key !== lastIcyKeyRef.current;
+        lastIcyKeyRef.current = key;
+        if (!isNewTrack) return;
+
         setPlaybackState(prev => {
           if (!prev) return prev;
           const cur = prev.track_window?.current_track;
           if (cur?.name === icyTitle) return prev; // no change
+          // Remember the station's own icon (set when the station started
+          // playing) the first time we touch this track, so a failed/no-art
+          // lookup below has something correct to fall back to instead of a
+          // stale previous track's cover.
+          if (radioFaviconRef.current === null) {
+            radioFaviconRef.current = cur?.album?.images?.[0]?.url || '';
+          }
           return {
             ...prev,
             track_window: {
@@ -408,10 +452,34 @@ export default function Kiosk() {
                 ...cur,
                 name:    icyTitle,
                 artists: icyArtist ? [{ name: icyArtist }] : (cur?.artists || [{ name: 'Live Stream' }]),
+                album: {
+                  name: cur?.album?.name || 'Web Radio Broadcast',
+                  images: radioFaviconRef.current ? [{ url: radioFaviconRef.current }] : [],
+                },
               },
             },
           };
         });
+
+        if (!icyArtist || !icyTitle || NON_MUSIC_PATTERN.test(icyArtist) || NON_MUSIC_PATTERN.test(icyTitle)) return;
+        try {
+          const art = await api.getTrackArt(icyArtist, icyTitle);
+          // Bail if the station moved on to another track while this was in
+          // flight — never apply a stale lookup's art to whatever's airing now.
+          if (!art?.artworkUrl || lastIcyKeyRef.current !== key) return;
+          setPlaybackState(prev => {
+            if (!prev) return prev;
+            const cur = prev.track_window?.current_track;
+            if (cur?.name !== icyTitle) return prev;
+            return {
+              ...prev,
+              track_window: {
+                ...prev.track_window,
+                current_track: { ...cur, album: { ...cur.album, images: [{ url: art.artworkUrl }] } },
+              },
+            };
+          });
+        } catch {}
       } catch {}
     };
 

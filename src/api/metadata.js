@@ -12,6 +12,18 @@ export const metadataApi = {
     return r.json();
   },
 
+  /**
+   * Best-effort cover art for a live radio "now playing" track (artist +
+   * title only — radio's ICY metadata never carries an album). Returns
+   * { artworkUrl: string|null } — null means no match, not an error; the
+   * caller falls back to the station's own icon.
+   */
+  async getTrackArt(artist, title) {
+    const r = await fetch(`/api/metadata/track-art?artist=${encodeURIComponent(artist)}&title=${encodeURIComponent(title)}`);
+    if (!r.ok) throw new Error('Track art unavailable');
+    return r.json();
+  },
+
   /** Current metadata provider keys (pre-fills the Settings form). */
   async getMetadataKeys() {
     const r = await fetch('/api/metadata/keys');

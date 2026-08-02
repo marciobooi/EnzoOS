@@ -446,6 +446,68 @@ router.get('/album', async (req, res) => {
   }
 });
 
+// ── Live radio "now playing" cover art ───────────────────────────────────────
+// Radio's ICY metadata (server/player.js's status parsing) only ever gives an
+// artist + track title, never an album — so the /album route above (which
+// requires both) can't be used here. iTunes' public search API needs no key
+// (unlike Last.fm/TheAudioDB, which are for the on-demand album-info sheet)
+// and its catalog is deep for exactly the case this targets — mainstream/
+// commercial radio — confirmed live against the station actually playing:
+// "Closer to the Edge" / "Thirty Seconds to Mars" from ICY resolved on the
+// first try. Deliberately best-effort and reactive only: live radio has no
+// queue to look ahead into, so this never tries to predict what's next, only
+// looks up whatever the station says is playing right now.
+const norm = (s) => (s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+
+async function fromItunesTrackArt(artist, title) {
+  const term = enc(`${artist} ${title}`);
+  const data = await jget(`https://itunes.apple.com/search?term=${term}&media=music&entity=song&limit=1`);
+  const hit = data?.results?.[0];
+  if (!hit?.artworkUrl100) return null;
+  // Sanity check the match, don't just trust the top hit: iTunes' search is
+  // fuzzy and will happily return a "closest guess" for input that isn't
+  // really a song at all (a commercial break or news segment some encoders
+  // push through StreamTitle instead of leaving it alone, a station ID) —
+  // reject anything where the returned artist doesn't plausibly correspond
+  // to what was actually searched for, rather than risk showing a
+  // confidently wrong cover for something that was never a track.
+  const wantArtist = norm(artist);
+  const gotArtist = norm(hit.artistName);
+  if (!wantArtist || !gotArtist || (!gotArtist.includes(wantArtist) && !wantArtist.includes(gotArtist))) {
+    return null;
+  }
+  // iTunes serves a 100x100 thumbnail by default; every size up to ~600-1200
+  // is available at the same path by swapping the dimension segment.
+  return hit.artworkUrl100.replace('100x100bb', '600x600bb');
+}
+
+// GET /api/metadata/track-art?artist=&title= — on-demand, cached, for radio's
+// now-playing cover. No lang variants (no text content, just an image URL).
+router.get('/track-art', async (req, res) => {
+  const artist = (req.query.artist || '').toString().trim();
+  const title = (req.query.title || '').toString().trim();
+  if (!artist || !title) return sendError(res, badRequest('artist and title are required'));
+
+  const cacheKey = `track-art:v1:${artist}|${title}`.toLowerCase();
+  try {
+    const mem = memGet(cacheKey);
+    if (mem) return res.json({ artworkUrl: mem.data, cached: true });
+    const cached = await getCachedMetadata(cacheKey);
+    if (cached && Date.now() - cached.updatedAt < CACHE_TTL) {
+      memSet(cacheKey, cached.data, cached.updatedAt);
+      return res.json({ artworkUrl: cached.data, cached: true });
+    }
+    const artworkUrl = await fromItunesTrackArt(artist, title);
+    // Cache misses too (as null) — a one-off/local/unreleased radio track
+    // would otherwise re-hit iTunes on every single ICY poll cycle forever.
+    memSet(cacheKey, artworkUrl);
+    await setCachedMetadata(cacheKey, artworkUrl);
+    res.json({ artworkUrl, cached: false });
+  } catch (err) {
+    sendError(res, err, req);
+  }
+});
+
 // GET /api/metadata/keys — current keys (for the Settings form to pre-fill).
 // The free TheAudioDB dev key '2' is reported as empty (not user-configured).
 router.get('/keys', async (req, res) => {
