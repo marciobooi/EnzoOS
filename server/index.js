@@ -17,6 +17,7 @@ import statusRouter from './status.js';
 import metadataRouter from './metadata.js';
 import authRouter from './auth-routes.js';
 import djRouter from './dj.js';
+import firFiltersRouter from './fir-filters.js';
 import { setupWebSocket, stopAudioLevelMonitor } from './websocket.js';
 import { loadStateFromDB } from './event-service.js';
 import { closeDB } from './db.js';
@@ -150,6 +151,9 @@ app.use('/api/player', requireAuth, playerRouter);
 // path, separate router (both live under /api/player/* alongside the rest of
 // the storage-and-library surface).
 app.use('/api/player', requireAuth, storageRouter);
+// FIR/convolution filter import (Phase 3 DSP refinements) — same base path,
+// separate router (see server/fir-filters.js).
+app.use('/api/player', requireAuth, firFiltersRouter);
 
 // Spotify Connect daemon configuration routes
 app.use('/api/spotify', requireAuth, spotifyDaemonRouter);

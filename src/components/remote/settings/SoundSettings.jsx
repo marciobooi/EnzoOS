@@ -1,5 +1,5 @@
 import { useContext, useState, useRef, useEffect } from 'react';
-import { Sliders, Cpu, Timer, Scale, RefreshCw, FlipHorizontal, RotateCcw, Disc3, SlidersHorizontal, Merge, ChevronLeft, Waves } from 'lucide-react';
+import { Sliders, Cpu, Timer, Scale, RefreshCw, FlipHorizontal, RotateCcw, Disc3, SlidersHorizontal, Merge, ChevronLeft, Waves, Upload, Trash2 } from 'lucide-react';
 import { toast } from '../../../lib/toast';
 import { reportError } from '../../../lib/errors';
 import { Tk, Row as SharedRow, Section as SharedSection, Sheet, RcSlider } from '../shared';
@@ -37,8 +37,12 @@ function AdvancedAudioSettings({ inline = false }) {
   const [headroomDb, setHeadroomDb]   = useState(0);
   const [spotifyTrim, setSpotifyTrim] = useState(-4);
   const [showSpotifyTrim, setShowSpotifyTrim] = useState(false);
+  const [firState, setFirState] = useState({ enabled: false, name: null });
+  const [showFir, setShowFir] = useState(false);
+  const [firUploading, setFirUploading] = useState(false);
   const balanceDebounce = useRef(null);
   const spotifyTrimDebounce = useRef(null);
+  const firFileInput = useRef(null);
   // Switching this setting rewrites /etc/asound.conf immediately, but the
   // PipeWire clock config it must agree with is only applied on the next
   // PipeWire session start (restarting PipeWire live would drop MPD's
@@ -60,6 +64,7 @@ function AdvancedAudioSettings({ inline = false }) {
     api.getDsdBypass().then(d => setDsdBypass(d.enabled !== false)).catch(() => {});
     api.getAutoHeadroom().then(d => { setAutoHeadroom(d.enabled !== false); setHeadroomDb(d.headroomDb || 0); }).catch(() => {});
     api.getSpotifyTrim().then(d => setSpotifyTrim(d.trimDb ?? -4)).catch(() => {});
+    api.getFirFilter().then(setFirState).catch(() => {});
   }, []);
 
   const handleReplayGainChange = async (mode) => {
@@ -106,6 +111,37 @@ function AdvancedAudioSettings({ inline = false }) {
       try { await api.setSpotifyTrim(v); }
       catch (e) { reportError(e.message); }
     }, 400);
+  };
+
+  const handleFirFileSelected = async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = ''; // allow re-selecting the same file later
+    if (!file) return;
+    setFirUploading(true);
+    try {
+      const state = await api.uploadFirFilter(file, file.name.replace(/\.wav$/i, ''));
+      setFirState(state);
+      toast.success('Custom filter uploaded and enabled');
+    } catch (e2) {
+      reportError(e2.message);
+    } finally {
+      setFirUploading(false);
+    }
+  };
+
+  const handleFirToggle = async () => {
+    const next = !firState.enabled;
+    setFirState(s => ({ ...s, enabled: next }));
+    try { setFirState(await api.setFirEnabled(next)); }
+    catch (e) { setFirState(s => ({ ...s, enabled: !next })); reportError(e.message); }
+  };
+
+  const handleFirRemove = async () => {
+    try {
+      await api.deleteFirFilter();
+      setFirState({ enabled: false, name: null });
+      toast.success('Custom filter removed');
+    } catch (e) { reportError(e.message); }
   };
 
   const handleBitPerfectToggle = async () => {
@@ -253,6 +289,50 @@ function AdvancedAudioSettings({ inline = false }) {
               onChange={handleSpotifyTrimChange} />
             <p className="text-[11px] leading-snug mt-2" style={{ color: C.text3 }}>
               {t('settings.spotifyTrimHint')}
+            </p>
+          </div>
+        )}
+        <Row label={t('settings.customFilter')}
+          icon={<SlidersHorizontal className="h-4 w-4" style={{ color: firState.enabled ? C.champagne : C.text4 }} />}
+          value={firState.name ? (firState.enabled ? t('common.on') : t('common.off')) : t('settings.customFilterNone')}
+          chevron={false}
+          onPress={() => setShowFir(v => !v)} />
+        {showFir && (
+          <div className="px-4 pb-4 flex flex-col gap-3">
+            {firState.name && (
+              <div className="flex items-center justify-between gap-2 px-3 py-2.5 rounded-xl" style={card}>
+                <div className="min-w-0">
+                  <p className="text-[13px] font-medium truncate" style={{ color: C.text1 }}>{firState.name}</p>
+                  {firState.tapCount != null && (
+                    <p className="text-[11px]" style={{ color: C.text3 }}>
+                      {firState.tapCount.toLocaleString()} taps · {firState.sampleRate}Hz · {firState.channels === 2 ? 'Stereo' : 'Mono'}
+                    </p>
+                  )}
+                </div>
+                <button onClick={handleFirRemove} aria-label={t('settings.customFilterRemove')}
+                  className="w-8 h-8 flex items-center justify-center rounded-full active:scale-90 transition-all cursor-pointer shrink-0">
+                  <Trash2 className="h-4 w-4" style={{ color: C.text4 }} />
+                </button>
+              </div>
+            )}
+            {firState.name && (
+              <button onClick={handleFirToggle}
+                className="px-4 py-2.5 rounded-xl text-[13px] font-semibold active:scale-95 transition-all cursor-pointer"
+                style={firState.enabled
+                  ? { background: C.champagne, color: '#1a1c1c' }
+                  : { ...card, color: C.text3 }}>
+                {firState.enabled ? t('settings.customFilterDisable') : t('settings.customFilterEnable')}
+              </button>
+            )}
+            <input ref={firFileInput} type="file" accept=".wav,audio/wav" className="hidden" onChange={handleFirFileSelected} />
+            <button onClick={() => firFileInput.current?.click()} disabled={firUploading}
+              className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-[13px] font-semibold active:scale-95 transition-all cursor-pointer disabled:opacity-50"
+              style={card}>
+              <Upload className={`h-4 w-4 ${firUploading ? 'animate-pulse' : ''}`} style={{ color: C.text3 }} />
+              {firUploading ? t('settings.customFilterUploading') : t('settings.customFilterUpload')}
+            </button>
+            <p className="text-[11px] leading-snug" style={{ color: C.text3 }}>
+              {t('settings.customFilterHint')}
             </p>
           </div>
         )}

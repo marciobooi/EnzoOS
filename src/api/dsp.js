@@ -144,4 +144,30 @@ export const dspApi = {
     });
     return handleJson(r);
   },
+
+  // ── FIR/convolution filter import ─────────────────────────────────────────────
+  async getFirFilter() {
+    const r = await fetch('/api/player/dsp/fir-filter');
+    return handleJson(r);
+  },
+  /** file: a browser File object (WAV). name: display name shown in Settings. */
+  async uploadFirFilter(file, name) {
+    const r = await fetch('/api/player/dsp/fir-filter', {
+      method: 'POST',
+      headers: { 'Content-Type': 'audio/wav', 'X-Filter-Name': encodeURIComponent(name || file.name || 'Custom Filter') },
+      body: file,
+    });
+    return handleJson(r);
+  },
+  async setFirEnabled(enabled) {
+    const r = await fetch('/api/player/dsp/fir-filter/toggle', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ enabled }),
+    });
+    return handleJson(r);
+  },
+  async deleteFirFilter() {
+    const r = await fetch('/api/player/dsp/fir-filter', { method: 'DELETE' });
+    return handleJson(r);
+  },
 };

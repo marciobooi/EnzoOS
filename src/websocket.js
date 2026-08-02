@@ -55,7 +55,7 @@ function applyFullStatus(status, setters) {
     if (setters.setDspActive)   setters.setDspActive(eq.dspActive);
     try {
       localStorage.setItem('resonance_eq_preset',  eq.preset);
-      localStorage.setItem('resonance_eq_bands',   JSON.stringify(eq.bands));
+      localStorage.setItem('resonance_eq_bands_v2', JSON.stringify(eq.bands));
       localStorage.setItem('resonance_eq_saturation', String(eq.saturation));
       localStorage.setItem('resonance_eq_noise',   String(eq.noiseFloor));
       localStorage.setItem('resonance_eq_preamp',  String(eq.preAmp));
@@ -270,7 +270,7 @@ export function useResonanceWS({
               if (setEqPreAmp) setEqPreAmp(payload.preAmp);
 
               localStorage.setItem('resonance_eq_preset', payload.preset);
-              localStorage.setItem('resonance_eq_bands', JSON.stringify(payload.bands));
+              localStorage.setItem('resonance_eq_bands_v2', JSON.stringify(payload.bands));
               localStorage.setItem('resonance_eq_saturation', payload.saturation);
               localStorage.setItem('resonance_eq_noise', payload.noiseFloor);
               localStorage.setItem('resonance_eq_preamp', payload.preAmp);

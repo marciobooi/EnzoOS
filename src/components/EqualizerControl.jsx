@@ -1,30 +1,39 @@
-import { Sliders, RotateCcw, Flame, AudioLines, Sparkles } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Sliders, RotateCcw, Flame, AudioLines, Sparkles, SlidersHorizontal } from 'lucide-react';
 import { S, cardShadow } from '../styles/stone';
+import { api } from '../api';
 
-// Bands map to fixed filters server-side: Lowshelf@60Hz, Peaking@250Hz/1kHz/4kHz,
-// Highshelf@16kHz (see generateCamillaConfig in server/player.js) — these gains
-// are the *actual* applied curve now, not just a display value, so they're kept
-// deliberately restrained (mostly ±1-3dB, one ±5dB shelf) with cuts alongside
-// boosts rather than one-directional "boost everything" moves. preAmp is left
-// at 0 for every preset: auto-headroom already computes the exact attenuation
-// needed to keep each curve's peak at unity, so a hand-tuned trim on top would
-// only add clip risk or waste headroom for no audible benefit.
+// Phase 3 (real parametric EQ): each band is a full {type,freq,gain,q}
+// object — freq and Q are now genuinely user-adjustable, not fixed. Server-
+// side generation lives in generateCamillaConfig (server/camilla-config.js);
+// migrateBands() (server/event-service.js) is the single normalizer this
+// shape must stay compatible with. These gains are the *actual* applied
+// curve now, not just a display value, so they're kept deliberately
+// restrained (mostly ±1-3dB, one ±5dB shelf) with cuts alongside boosts
+// rather than one-directional "boost everything" moves. preAmp is left at 0
+// for every preset: auto-headroom already computes the exact attenuation
+// needed to keep each curve's peak at unity, so a hand-tuned trim on top
+// would only add clip risk or waste headroom for no audible benefit.
+const T = (type, freq) => ({ type, freq, q: 0.707 });
+const BAND_SHAPE = [T('Lowshelf', 60), T('Peaking', 250), T('Peaking', 1000), T('Peaking', 4000), T('Highshelf', 16000)];
+const withGains = (gains) => BAND_SHAPE.map((b, i) => ({ ...b, gain: gains[i] }));
+
 export const EQ_PRESETS = [
   // Flat — reference monitoring, no coloration.
-  { name: 'Clinical Reference', bands: [0, 0, 0, 0, 0],   saturation: 0, noiseFloor: 0, preAmp: 0.0 },
+  { name: 'Clinical Reference', bands: withGains([0, 0, 0, 0, 0]),   saturation: 0, noiseFloor: 0, preAmp: 0.0 },
   // Gentle low lift, upper-mid/treble eased back — classic tube/tape smoothing
   // without burying detail. Moderate 2nd/3rd-harmonic saturation for glow.
-  { name: 'Warm Valve',         bands: [2, 1, 0, -2, -2], saturation: 6, noiseFloor: 2, preAmp: 0.0 },
+  { name: 'Warm Valve',         bands: withGains([2, 1, 0, -2, -2]), saturation: 6, noiseFloor: 2, preAmp: 0.0 },
   // Sub-bass lift paired with a 250Hz cut so the extra low end stays punchy
   // instead of turning muddy/boomy; a small 4kHz nudge keeps the mix from
   // getting buried under the added bass.
-  { name: 'Bass Boost',         bands: [5, -2, 0, 1, 0],  saturation: 5, noiseFloor: 1, preAmp: 0.0 },
+  { name: 'Bass Boost',         bands: withGains([5, -2, 0, 1, 0]),  saturation: 5, noiseFloor: 1, preAmp: 0.0 },
   // Declutter the boxy low-mids, lift vocal fundamental + consonant presence,
   // gentle air on top — no saturation, kept clean for speech/vocals.
-  { name: 'Vocal Clarity',      bands: [-1, -2, 2, 3, 1], saturation: 0, noiseFloor: 0, preAmp: 0.0 },
+  { name: 'Vocal Clarity',      bands: withGains([-1, -2, 2, 3, 1]), saturation: 0, noiseFloor: 0, preAmp: 0.0 },
   // Slight bass foundation, small 1kHz scoop to open up perceived space,
   // extended treble shelf for air/sparkle, subtle shimmer via saturation.
-  { name: 'Hi-Fi Spatial',      bands: [2, 0, -1, 1, 3],  saturation: 3, noiseFloor: 1, preAmp: 0.0 },
+  { name: 'Hi-Fi Spatial',      bands: withGains([2, 0, -1, 1, 3]),  saturation: 3, noiseFloor: 1, preAmp: 0.0 },
   // Concert venue simulation. The name is a server-side key: when
   // eq_settings.preset === 'On Stage', generateCamillaConfig (see
   // server/camilla-config.js) additionally builds a spatial pipeline —
@@ -34,10 +43,18 @@ export const EQ_PRESETS = [
   // don't turn muddy, presence + air on top); touching any slider drops to
   // 'Custom', which switches the spatial stage off — by design, since the
   // sliders can't represent it.
-  { name: 'On Stage',           bands: [2, -1, 0, 1, 2],  saturation: 3, noiseFloor: 0, preAmp: 0.0 },
+  { name: 'On Stage',           bands: withGains([2, -1, 0, 1, 2]),  saturation: 3, noiseFloor: 0, preAmp: 0.0 },
 ];
 
-const BAND_LABELS = ['60 Hz', '250 Hz', '1 kHz', '4 kHz', '16 kHz'];
+// Formats a band's live frequency for the tappable label (was a static
+// BAND_LABELS lookup array before Phase 3 made freq itself adjustable).
+export function formatBandFreq(hz) {
+  const n = Number(hz) || 0;
+  return n >= 1000 ? `${(n / 1000).toFixed(n % 1000 === 0 ? 0 : 1)}kHz` : `${Math.round(n)}Hz`;
+}
+// 0-100 linear slider <-> 20-20000Hz logarithmic, per the approved plan.
+export const freqToPct = (hz) => Math.max(0, Math.min(100, 100 * Math.log(Math.max(20, Number(hz) || 20) / 20) / Math.log(1000)));
+export const pctToFreq = (pct) => Math.round(20 * Math.pow(1000, pct / 100));
 
 // Accent colors per parameter — meaningful color coding kept in stone context
 const A = {
@@ -56,6 +73,20 @@ export default function EqualizerControl({
   pureDirect = false, onDisablePureDirect,
 }) {
   const handleReset = () => onPresetChange('Clinical Reference');
+  // Which band's freq/Q editor is open, if any — kept collapsed by default
+  // (the primary gain faders stay the uncluttered, always-visible control;
+  // freq/Q are a deliberate tap-to-reveal detail, not a 7th/8th slider
+  // crammed into an already-narrow 48px column on this 1480x320 screen).
+  const [expandedBand, setExpandedBand] = useState(null);
+  const safeBands = bands && bands.length ? bands : BAND_SHAPE.map(b => ({ ...b, gain: 0 }));
+  // FIR/convolution filter state (Phase 3) — fetched directly here rather
+  // than threaded through the shared Kiosk/Remote context, since it's an
+  // infrequently-changing setting, not a live playback value; matches how
+  // SoundSettings.jsx's own FIR panel already fetches it independently.
+  const [firActive, setFirActive] = useState(false);
+  useEffect(() => {
+    api.getFirFilter().then(d => setFirActive(!!d.enabled)).catch(() => {});
+  }, []);
 
   return (
     <div className="rounded-2xl p-5 relative overflow-hidden h-full flex flex-col justify-between font-sans"
@@ -118,6 +149,35 @@ export default function EqualizerControl({
               Use Manual EQ
             </button>
           </div>
+        </div>
+      )}
+
+      {/* ── Custom Filter (FIR) Active Overlay ───────────────────────────────
+          Third mutually-exclusive bypass state (Phase 3) — only shown when
+          neither of the other two already covers this same space, since
+          Pure Direct bypasses FIR too (its early-return in
+          generateCamillaConfig happens before the FIR branch even runs). */}
+      {firActive && !pureDirect && !dspActive && (
+        <div className="absolute inset-0 z-[110] flex flex-col items-center justify-center p-6 text-center rounded-2xl"
+          style={{ background: `${S.bg}f5`, backdropFilter: 'blur(4px)' }}>
+          <div className="w-12 h-12 rounded-full flex items-center justify-center mb-3"
+            style={{ background: `${S.accent}18`, border: `1px solid ${S.accent}50` }}>
+            <SlidersHorizontal className="h-6 w-6" style={{ color: S.accent }} strokeWidth={1} />
+          </div>
+          <p className="text-sm font-light tracking-[0.25em] uppercase mb-1" style={{ color: S.label }}>
+            custom filter active
+          </p>
+          <h3 className="text-base font-bold mb-2" style={{ color: S.strong }}>5-Band EQ Bypassed</h3>
+          <p className="text-sm font-light max-w-sm leading-relaxed mb-5" style={{ color: S.muted }}>
+            A custom convolution filter is replacing the 5-band equaliser. Manage it from Settings &gt; Sound &gt; Advanced &gt; Custom Filter (FIR).
+          </p>
+          {onClose && (
+            <button onClick={onClose}
+              className="py-2.5 px-6 rounded-xl text-sm font-extrabold transition-all active:scale-95 cursor-pointer"
+              style={{ background: S.accent, color: S.accentFg, border: 'none' }}>
+              Got it
+            </button>
+          )}
         </div>
       )}
 
@@ -270,8 +330,8 @@ export default function EqualizerControl({
             <div className="absolute left-0 right-0 top-1/2 -translate-y-1/2 border-t border-dashed" style={{ borderColor: S.track }} />
             <div className="absolute left-0 right-0 bottom-0 border-t" style={{ borderColor: S.border }} />
 
-            {(bands || [0,0,0,0,0]).map((rawVal, index) => {
-              const val = Number(rawVal) || 0;
+            {safeBands.map((band, index) => {
+              const val = Number(band.gain) || 0;
               const fillPct = ((val + 12) / 24) * 100;
               return (
                 <div key={index} className="flex flex-col items-center h-full relative z-10 w-12 justify-end">
@@ -299,17 +359,56 @@ export default function EqualizerControl({
                     {/* Invisible range input */}
                     <input type="range" min="-12" max="12" step="1" value={val}
                       style={{ writingMode: 'vertical-lr', direction: 'rtl' }}
-                      onChange={e => onBandChange(index, Number(e.target.value))}
+                      onChange={e => onBandChange(index, 'gain', Number(e.target.value))}
                       className="absolute inset-0 w-full h-full opacity-0 cursor-row-resize z-20" />
                   </div>
 
-                  <span className="text-sm font-light mt-1.5 uppercase select-none" style={{ color: S.label }}>
-                    {BAND_LABELS[index]}
-                  </span>
+                  {/* Tap to reveal this band's freq/Q editor below — the
+                      frequency label doubles as the toggle rather than
+                      adding a separate control, since it already shows
+                      exactly what's being edited. */}
+                  <button onClick={() => setExpandedBand(i => i === index ? null : index)}
+                    className="text-sm font-light mt-1.5 uppercase select-none cursor-pointer"
+                    style={{ color: expandedBand === index ? S.accent : S.label }}>
+                    {formatBandFreq(band.freq)}
+                  </button>
                 </div>
               );
             })}
           </div>
+
+          {/* Freq/Q editor for the tapped band — one shared row below all
+              bands rather than cramming two more sliders into each 48px
+              column. */}
+          {expandedBand !== null && safeBands[expandedBand] && (
+            <div className="mt-3 pt-3 flex flex-col gap-3 shrink-0" style={{ borderTop: `1px solid ${S.border}` }}>
+              <span className="text-sm font-light tracking-[0.2em] uppercase" style={{ color: S.label }}>
+                {safeBands[expandedBand].type} · band {expandedBand + 1}
+              </span>
+              <div className="flex gap-4">
+                <div className="flex-1">
+                  <div className="flex justify-between items-baseline mb-1.5">
+                    <span className="text-sm font-light" style={{ color: S.muted }}>Frequency</span>
+                    <span className="text-sm font-bold tabular-nums" style={{ color: S.strong }}>{formatBandFreq(safeBands[expandedBand].freq)}</span>
+                  </div>
+                  <input type="range" min="0" max="100" step="1"
+                    value={freqToPct(safeBands[expandedBand].freq)}
+                    onChange={e => onBandChange(expandedBand, 'freq', pctToFreq(Number(e.target.value)))}
+                    className="stone-range w-full" style={{ accentColor: S.accent, background: S.track }} />
+                </div>
+                <div className="flex-1">
+                  <div className="flex justify-between items-baseline mb-1.5">
+                    <span className="text-sm font-light" style={{ color: S.muted }}>Q</span>
+                    <span className="text-sm font-bold tabular-nums" style={{ color: S.strong }}>{Number(safeBands[expandedBand].q).toFixed(1)}</span>
+                  </div>
+                  <input type="range" min="0.1" max="10" step="0.1"
+                    value={safeBands[expandedBand].q}
+                    onChange={e => onBandChange(expandedBand, 'q', Number(e.target.value))}
+                    className="stone-range w-full" style={{ accentColor: S.accent, background: S.track }} />
+                </div>
+              </div>
+            </div>
+          )}
 
         </div>
       </div>

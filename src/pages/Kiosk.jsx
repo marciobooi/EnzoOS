@@ -64,10 +64,15 @@ export default function Kiosk() {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [eqPreset, setEqPreset] = useState(() => localStorage.getItem('resonance_eq_preset') || 'Clinical Reference');
   const [eqBands, setEqBands] = useState(() => {
+    // Phase 3 (real parametric EQ): bands are now {type,freq,gain,q} objects,
+    // not bare numbers — cache key bumped to v2 (matches metadata.js's own
+    // cache-key-bump precedent) so a stale flat-number array from before
+    // this change is simply orphaned rather than causing type confusion; the
+    // server resyncs the real value on next connect regardless.
     try {
-      return JSON.parse(localStorage.getItem('resonance_eq_bands')) || [0, 0, 0, 0, 0];
+      return JSON.parse(localStorage.getItem('resonance_eq_bands_v2')) || EQ_PRESETS[0].bands;
     } catch {
-      return [0, 0, 0, 0, 0];
+      return EQ_PRESETS[0].bands;
     }
   });
   const [eqSaturation, setEqSaturation] = useState(() => Number(localStorage.getItem('resonance_eq_saturation')) || 0);
@@ -236,7 +241,7 @@ export default function Kiosk() {
       setEqSaturation(found.saturation);
       setEqNoiseFloor(found.noiseFloor);
       setEqPreAmp(found.preAmp);
-      localStorage.setItem('resonance_eq_bands', JSON.stringify(found.bands));
+      localStorage.setItem('resonance_eq_bands_v2', JSON.stringify(found.bands));
       localStorage.setItem('resonance_eq_saturation', found.saturation);
       localStorage.setItem('resonance_eq_noise', found.noiseFloor);
       localStorage.setItem('resonance_eq_preamp', found.preAmp);
@@ -252,11 +257,13 @@ export default function Kiosk() {
     }
   });
 
-  const handleBandChange = useStableCallback((index, val) => {
-    const nextBands = [...eqBands];
-    nextBands[index] = val;
+  // Phase 3 (real parametric EQ): a band is now {type,freq,gain,q} — field
+  // is which of those to update ('gain' from the main fader, 'freq'/'q' from
+  // the tap-to-reveal editor in EqualizerControl.jsx).
+  const handleBandChange = useStableCallback((index, field, val) => {
+    const nextBands = eqBands.map((b, i) => i === index ? { ...b, [field]: val } : b);
     setEqBands(nextBands);
-    localStorage.setItem('resonance_eq_bands', JSON.stringify(nextBands));
+    localStorage.setItem('resonance_eq_bands_v2', JSON.stringify(nextBands));
     setEqPreset('Custom');
     localStorage.setItem('resonance_eq_preset', 'Custom');
     queueEqSync('Custom', nextBands, eqSaturation, eqNoiseFloor, eqPreAmp);

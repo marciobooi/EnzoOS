@@ -210,7 +210,7 @@ export default function RemoteControl() {
   const [dspActive, setDspActive]               = useState(false);
   const [pureDirect, setPureDirect]             = useState(false);
   const [eqPreset, setEqPreset]   = useState(() => localStorage.getItem('resonance_eq_preset') || 'Clinical Reference');
-  const [eqBands, setEqBands]     = useState(() => { try { return JSON.parse(localStorage.getItem('resonance_eq_bands')) || [0,0,0,0,0]; } catch { return [0,0,0,0,0]; } });
+  const [eqBands, setEqBands]     = useState(() => { try { return JSON.parse(localStorage.getItem('resonance_eq_bands_v2')) || EQ_PRESETS[0].bands; } catch { return EQ_PRESETS[0].bands; } });
   const [eqSaturation, setEqSaturation] = useState(() => Number(localStorage.getItem('resonance_eq_saturation')) || 0);
   const [eqNoiseFloor, setEqNoiseFloor] = useState(() => Number(localStorage.getItem('resonance_eq_noise')) || 0);
   const [eqPreAmp, setEqPreAmp]         = useState(() => Number(localStorage.getItem('resonance_eq_preamp')) || 0.0);
@@ -319,14 +319,21 @@ export default function RemoteControl() {
     const f = EQ_PRESETS.find(p => p.name === name);
     if (f) {
       setEqBands(f.bands); setEqSaturation(f.saturation); setEqNoiseFloor(f.noiseFloor); setEqPreAmp(f.preAmp);
-      localStorage.setItem('resonance_eq_bands', JSON.stringify(f.bands));
+      localStorage.setItem('resonance_eq_bands_v2', JSON.stringify(f.bands));
       localStorage.setItem('resonance_eq_saturation', f.saturation);
       localStorage.setItem('resonance_eq_noise', f.noiseFloor);
       localStorage.setItem('resonance_eq_preamp', f.preAmp);
       sendUpdate('SET_EQ_SETTINGS', { preset: name, bands: f.bands, saturation: f.saturation, noiseFloor: f.noiseFloor, preAmp: f.preAmp });
     }
   };
-  const handleBandChange       = (i, v) => { const n = [...eqBands]; n[i] = v; setEqBands(n); localStorage.setItem('resonance_eq_bands', JSON.stringify(n)); setEqPreset('Custom'); localStorage.setItem('resonance_eq_preset', 'Custom'); queueEqSync('Custom', n, eqSaturation, eqNoiseFloor, eqPreAmp); };
+  // Phase 3 (real parametric EQ): a band is now {type,freq,gain,q} — field
+  // is which of those to update.
+  const handleBandChange = (i, field, v) => {
+    const n = eqBands.map((b, idx) => idx === i ? { ...b, [field]: v } : b);
+    setEqBands(n); localStorage.setItem('resonance_eq_bands_v2', JSON.stringify(n));
+    setEqPreset('Custom'); localStorage.setItem('resonance_eq_preset', 'Custom');
+    queueEqSync('Custom', n, eqSaturation, eqNoiseFloor, eqPreAmp);
+  };
   const handleSaturationChange = v     => { setEqSaturation(v); localStorage.setItem('resonance_eq_saturation', v); setEqPreset('Custom'); localStorage.setItem('resonance_eq_preset', 'Custom'); queueEqSync('Custom', eqBands, v, eqNoiseFloor, eqPreAmp); };
   const handleNoiseFloorChange = v     => { setEqNoiseFloor(v); localStorage.setItem('resonance_eq_noise', v); setEqPreset('Custom'); localStorage.setItem('resonance_eq_preset', 'Custom'); queueEqSync('Custom', eqBands, eqSaturation, v, eqPreAmp); };
   const handlePreAmpChange     = v     => { setEqPreAmp(v); localStorage.setItem('resonance_eq_preamp', v); setEqPreset('Custom'); localStorage.setItem('resonance_eq_preset', 'Custom'); queueEqSync('Custom', eqBands, eqSaturation, eqNoiseFloor, v); };

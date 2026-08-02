@@ -1,9 +1,13 @@
-import { useContext } from 'react';
-import { RotateCcw, Flame, AudioLines, Sparkles, Sliders, Cpu } from 'lucide-react';
+import { useContext, useState, useEffect } from 'react';
+import { RotateCcw, Flame, AudioLines, Sparkles, Sliders, Cpu, SlidersHorizontal } from 'lucide-react';
 import { Tk, RcSlider } from './shared';
-import { EQ_PRESETS } from '../EqualizerControl';
+import { EQ_PRESETS, formatBandFreq, freqToPct, pctToFreq } from '../EqualizerControl';
+import { api } from '../../api';
 
-const BAND_LABELS = ['60', '250', '1k', '4k', '16k'];
+const BAND_SHAPE = [
+  { type: 'Lowshelf', freq: 60 }, { type: 'Peaking', freq: 250 }, { type: 'Peaking', freq: 1000 },
+  { type: 'Peaking', freq: 4000 }, { type: 'Highshelf', freq: 16000 },
+];
 
 // Parameter accent colours — kept meaningful, but muted to the remote palette.
 const ACCENT = {
@@ -21,6 +25,14 @@ export default function RemoteEqualizer({
   pureDirect = false, onDisablePureDirect,
 }) {
   const { C, card, cardWhite } = useContext(Tk);
+  const [expandedBand, setExpandedBand] = useState(null);
+  const safeBands = bands && bands.length ? bands : BAND_SHAPE.map(b => ({ ...b, q: 0.707, gain: 0 }));
+  // FIR/convolution filter state (Phase 3) — fetched directly here, same
+  // rationale as EqualizerControl.jsx's own copy of this effect.
+  const [firActive, setFirActive] = useState(false);
+  useEffect(() => {
+    api.getFirFilter().then(d => setFirActive(!!d.enabled)).catch(() => {});
+  }, []);
 
   // ── Pure Direct takeover — flat pipeline, EQ bypassed entirely ──
   if (pureDirect) {
@@ -70,6 +82,29 @@ export default function RemoteEqualizer({
     );
   }
 
+  // ── Custom filter (FIR) takeover — third mutually-exclusive bypass state
+  // (Phase 3). Pure Direct/dspActive already returned above, so this only
+  // fires when neither of those covers the same space; Pure Direct bypasses
+  // FIR too (its early-return in generateCamillaConfig runs before the FIR
+  // branch), which is why this check comes after both of theirs, not before.
+  if (firActive) {
+    return (
+      <div className="mx-4 mb-2 rounded-xl p-5 flex flex-col items-center text-center gap-3"
+        style={{ ...cardWhite }}>
+        <span className="w-12 h-12 rounded-full flex items-center justify-center"
+          style={{ background: `${C.champagne}18`, border: `0.5px solid ${C.champagne}55` }}>
+          <SlidersHorizontal className="h-5 w-5" style={{ color: C.champagne }} />
+        </span>
+        <p className="text-[11px] font-semibold uppercase tracking-widest"
+          style={{ color: C.text3, fontFamily: C.fontLabel }}>Custom Filter Active</p>
+        <p className="text-[14px] leading-relaxed" style={{ color: C.text4 }}>
+          A custom convolution filter is replacing the 5-band equaliser.
+          Manage it from Settings → Sound → Advanced → Custom Filter (FIR).
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div className="px-4 pb-4 pt-1 flex flex-col gap-3" style={{ fontFamily: C.font }}>
 
@@ -102,8 +137,8 @@ export default function RemoteEqualizer({
             style={{ color: C.text3, fontFamily: C.fontLabel }}>5-Band Parametric</span>
         </div>
         <div className="flex justify-around items-end" style={{ height: 150 }}>
-          {(bands || [0, 0, 0, 0, 0]).map((rawVal, i) => {
-            const val = Number(rawVal) || 0;
+          {safeBands.map((band, i) => {
+            const val = Number(band.gain) || 0;
             const fillPct = ((val + 12) / 24) * 100;
             return (
               <div key={i} className="flex flex-col items-center justify-end h-full w-12">
@@ -134,15 +169,44 @@ export default function RemoteEqualizer({
                       style={{ bottom: `${fillPct}%`, background: '#ffffff', border: `2px solid ${C.champagne}`, boxShadow: '0 1px 5px rgba(0,0,0,0.3)' }} />
                   </div>
                   <input type="range" min="-12" max="12" step="1" value={val}
-                    onChange={e => onBandChange(i, Number(e.target.value))}
+                    onChange={e => onBandChange(i, 'gain', Number(e.target.value))}
                     className="remote-range-vertical absolute inset-0 opacity-0 z-10" />
                 </div>
-                <span className="text-[10px] font-semibold mt-1.5 uppercase tracking-wide select-none"
-                  style={{ color: C.text3, fontFamily: C.fontLabel }}>{BAND_LABELS[i]}</span>
+                {/* Tap to reveal this band's freq/Q editor below (Phase 3:
+                    freq/Q are genuinely adjustable now, not fixed) — the
+                    frequency label doubles as the toggle. */}
+                <button onClick={() => setExpandedBand(x => x === i ? null : i)}
+                  className="text-[10px] font-semibold mt-1.5 uppercase tracking-wide select-none cursor-pointer"
+                  style={{ color: expandedBand === i ? C.champagne : C.text3, fontFamily: C.fontLabel }}>
+                  {formatBandFreq(band.freq)}
+                </button>
               </div>
             );
           })}
         </div>
+        {expandedBand !== null && safeBands[expandedBand] && (
+          <div className="mt-3 pt-3 flex flex-col gap-3" style={{ borderTop: `0.5px solid ${C.outline}` }}>
+            <span className="text-[11px] font-semibold uppercase tracking-widest" style={{ color: C.text3, fontFamily: C.fontLabel }}>
+              {safeBands[expandedBand].type} · Band {expandedBand + 1}
+            </span>
+            <div>
+              <div className="flex justify-between items-center mb-2">
+                <span className="text-[13px]" style={{ color: C.text4 }}>Frequency</span>
+                <span className="text-[14px] font-bold tabular-nums" style={{ color: C.text1 }}>{formatBandFreq(safeBands[expandedBand].freq)}</span>
+              </div>
+              <RcSlider value={freqToPct(safeBands[expandedBand].freq)} min={0} max={100} step={1}
+                onChange={v => onBandChange(expandedBand, 'freq', pctToFreq(v))} />
+            </div>
+            <div>
+              <div className="flex justify-between items-center mb-2">
+                <span className="text-[13px]" style={{ color: C.text4 }}>Q</span>
+                <span className="text-[14px] font-bold tabular-nums" style={{ color: C.text1 }}>{Number(safeBands[expandedBand].q).toFixed(1)}</span>
+              </div>
+              <RcSlider value={safeBands[expandedBand].q} min={0.1} max={10} step={0.1}
+                onChange={v => onBandChange(expandedBand, 'q', v)} />
+            </div>
+          </div>
+        )}
       </div>
 
       {/* tube / valve parameters */}

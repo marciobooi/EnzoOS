@@ -14,7 +14,7 @@ import { fileURLToPath } from 'url';
 import YAML from 'yaml';
 import { getSetting } from './db.js';
 import { sendCamillaCommand } from './camilla-ws.js';
-import { getEffectiveVolumeDb } from './event-service.js';
+import { getEffectiveVolumeDb, migrateBands } from './event-service.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -329,7 +329,10 @@ export function getLastHeadroomDb() { return _lastHeadroomDb; }
 // autoHeadroom = true: attenuate pre-amp by the computed EQ peak instead of the static preset value
 // Exported so the generated YAML can be validated offline against the real
 // binary (`camilladsp --check`) without touching the live service.
-export function generateCamillaConfig(answers, eqSettings, dacInfo, { pureDirect = false, balance = 0, phaseLeft = false, phaseRight = false, bitPerfect = true, autoHeadroom = true, btOutputActive = false } = {}) {
+export function generateCamillaConfig(answers, eqSettings, dacInfo, {
+  pureDirect = false, balance = 0, phaseLeft = false, phaseRight = false, bitPerfect = true, autoHeadroom = true, btOutputActive = false,
+  firEnabled = false, firFilterPath = null, firChannels = 1,
+} = {}) {
   const isDspActive = answers && (answers[0] === 'dsp' || answers['0'] === 'dsp');
   const isSubwooferSetup = answers && answers.q1_setup === "2 Speakers + 1 Subwoofer";
   // 'On Stage' preset (EQ_PRESETS in src/components/EqualizerControl.jsx) keys
@@ -348,26 +351,28 @@ export function generateCamillaConfig(answers, eqSettings, dacInfo, { pureDirect
   // Named presets and "Custom" are the same code path: the client always
   // sends bands/preAmp/noiseFloor/saturation alongside the preset name (see
   // EQ_PRESETS in src/components/EqualizerControl.jsx), so a preset IS just
-  // those five numbers. Previously a named preset used a hand-tuned, totally
-  // unrelated filter curve from `presetDatabase` (different frequencies,
-  // filter types, and preampGain) while only "Custom" honored eqSettings —
-  // the instant you nudged one slider, the whole curve and gain staging
-  // jumped from the preset's bespoke values to the slider-derived ones,
-  // which is exactly the "boosts 20x" discontinuity this fixes.
-  const bandGains = (eqSettings?.bands || [0, 0, 0, 0, 0]).map(Number);
+  // those five band definitions. Previously a named preset used a hand-tuned,
+  // totally unrelated filter curve from `presetDatabase` (different
+  // frequencies, filter types, and preampGain) while only "Custom" honored
+  // eqSettings — the instant you nudged one slider, the whole curve and gain
+  // staging jumped from the preset's bespoke values to the slider-derived
+  // ones, which is exactly the "boosts 20x" discontinuity this fixes.
+  //
+  // Phase 3 (real parametric EQ): bands are now {type,freq,gain,q} objects,
+  // not bare gain numbers against a hardcoded 60/250/1k/4k/16kHz template —
+  // freq and Q are genuinely user-adjustable per band. migrateBands() is
+  // called here too (not just in event-service.js's load/save paths)
+  // because this function is explicitly documented as usable standalone for
+  // offline YAML validation, so it can't assume that migration already ran.
+  const bands = migrateBands(eqSettings?.bands);
+  const bandGains = bands.map(b => b.gain);
   // Auto-headroom: subtract the largest positive band boost from pre-amp to prevent clipping.
   const maxBoost = Math.max(0, ...bandGains);
   const profile = {
     preampGain: (Number(eqSettings?.preAmp) || 0.0) - maxBoost,
     noiseFloorLevel: (eqSettings?.noiseFloor > 0) ? (-105.0 + (Number(eqSettings.noiseFloor) * 2.0)) : null,
     useSaturation: (eqSettings?.saturation > 0),
-    bands: [
-      { type: "Lowshelf", freq: 60,    gain: bandGains[0], q: 0.707 },
-      { type: "Peaking",  freq: 250,   gain: bandGains[1], q: 0.707 },
-      { type: "Peaking",  freq: 1000,  gain: bandGains[2], q: 0.707 },
-      { type: "Peaking",  freq: 4000,  gain: bandGains[3], q: 0.707 },
-      { type: "Highshelf",freq: 16000, gain: bandGains[4], q: 0.707 },
-    ]
+    bands,
   };
 
   // Compute per-channel balance gains (applied in mixer)
@@ -492,15 +497,32 @@ export function generateCamillaConfig(answers, eqSettings, dacInfo, { pureDirect
     pipeline: []
   };
 
-  // Build Profile 5-Band Filters
-  profile.bands.forEach((band, index) => {
-    const filterKey = `profile_band_${index + 1}`;
-    if (band.type === "Highpass" || band.type === "Lowpass") {
-      config.filters[filterKey] = { type: "Biquad", parameters: { type: band.type, freq: band.freq, q: band.q } };
+  // Phase 3 (FIR import): a custom convolution filter REPLACES the 5-band
+  // parametric EQ entirely rather than layering on top of it — a measured
+  // impulse response already contains whatever tonal correction it needs,
+  // and stacking a second, independently-tuned EQ on top risks double-
+  // correcting the same frequencies. Mirrors how Room Calibration already
+  // excludes manual EQ for the same reason (see the DSP Active overlay in
+  // EqualizerControl.jsx). Saturation/noiseFloor/preAmp are character
+  // effects, not corrective EQ, so they keep applying on top either way.
+  if (firEnabled && firFilterPath) {
+    if (firChannels >= 2) {
+      config.filters.fir_convolution_l = { type: "Conv", parameters: { type: "Wav", filename: firFilterPath, channel: 0 } };
+      config.filters.fir_convolution_r = { type: "Conv", parameters: { type: "Wav", filename: firFilterPath, channel: 1 } };
     } else {
-      config.filters[filterKey] = { type: "Biquad", parameters: { type: band.type, freq: band.freq, gain: band.gain, q: band.q } };
+      config.filters.fir_convolution = { type: "Conv", parameters: { type: "Wav", filename: firFilterPath } };
     }
-  });
+  } else {
+    // Build Profile 5-Band Filters
+    profile.bands.forEach((band, index) => {
+      const filterKey = `profile_band_${index + 1}`;
+      if (band.type === "Highpass" || band.type === "Lowpass") {
+        config.filters[filterKey] = { type: "Biquad", parameters: { type: band.type, freq: band.freq, q: band.q } };
+      } else {
+        config.filters[filterKey] = { type: "Biquad", parameters: { type: band.type, freq: band.freq, gain: band.gain, q: band.q } };
+      }
+    });
+  }
 
   // Build Saturation filter — one formula for every preset name, same
   // reasoning as the band unification above.
@@ -603,15 +625,25 @@ export function generateCamillaConfig(answers, eqSettings, dacInfo, { pureDirect
     rightPipeline.push(...masterCurveFilters);
   }
 
-  // --- STAGE B: INJECT PROFILE EQ BANDS ---
-  profile.bands.forEach((band, index) => {
-    const filterKey = `profile_band_${index + 1}`;
-    leftPipeline.push(filterKey);
-    rightPipeline.push(filterKey);
-    if (isSubwooferSetup && index < 2 && band.type !== "Highpass") {
-      subPipeline.push(filterKey);
+  // --- STAGE B: INJECT PROFILE EQ BANDS (or the FIR convolution replacing them) ---
+  if (firEnabled && firFilterPath) {
+    if (firChannels >= 2) {
+      leftPipeline.push("fir_convolution_l");
+      rightPipeline.push("fir_convolution_r");
+    } else {
+      leftPipeline.push("fir_convolution");
+      rightPipeline.push("fir_convolution");
     }
-  });
+  } else {
+    profile.bands.forEach((band, index) => {
+      const filterKey = `profile_band_${index + 1}`;
+      leftPipeline.push(filterKey);
+      rightPipeline.push(filterKey);
+      if (isSubwooferSetup && index < 2 && band.type !== "Highpass") {
+        subPipeline.push(filterKey);
+      }
+    });
+  }
 
   if (profile.useSaturation) {
     leftPipeline.push("analog_saturation");
@@ -673,7 +705,17 @@ export function generateCamillaConfig(answers, eqSettings, dacInfo, { pureDirect
   // safety margin is applied on top in every case as a guard against
   // inter-sample peaks and multi-stage summing exceeding 0 dBFS.
   let baseGainDb;
-  if (autoHeadroom) {
+  if (firEnabled && firFilterPath) {
+    // computeEqPeakDb analyzes a biquad cascade's frequency response — it
+    // has no way to know a convolution kernel's actual peak (that would
+    // need an FFT of the impulse itself, not implemented here). A fixed
+    // -6dB trim is a conservative v1 approximation, surfaced to the user as
+    // approximate rather than presenting a biquad-derived number that would
+    // be meaningless for FIR.
+    const userPreAmp = Number(eqSettings?.preAmp) || 0;
+    baseGainDb = userPreAmp - 6.0;
+    _lastHeadroomDb = 6.0;
+  } else if (autoHeadroom) {
     const fs = dacInfo?.samplerate || 48000;
     let peak = computeEqPeakDb(profile.bands || [], fs);
     if (profile.useSaturation) peak += 2.0;
@@ -899,7 +941,7 @@ pcm.camilla_bt_output {
 
 // Exportable helper to update configuration on any settings change
 export async function updateCamillaConfigFromSettings({ skipAlsa = false, samplerate = null, pureDirect = false, forceRestart = false } = {}) {
-  const [dspVal, eqVal, balanceVal, phaseVal, bitPerfectVal, headroomVal, btOutVal] = await Promise.all([
+  const [dspVal, eqVal, balanceVal, phaseVal, bitPerfectVal, headroomVal, btOutVal, firEnabledVal, firPathVal, firMetaVal] = await Promise.all([
     getSetting('dsp_calibration'),
     getSetting('eq_settings'),
     getSetting('balance'),
@@ -907,7 +949,13 @@ export async function updateCamillaConfigFromSettings({ skipAlsa = false, sample
     getSetting('bitperfect'),
     getSetting('auto_headroom'),
     getSetting('bluetooth_output'),
+    getSetting('fir_enabled'),
+    getSetting('fir_filter_path'),
+    getSetting('fir_filter_meta'),
   ]);
+  const firEnabled = firEnabledVal === 'true' && !!firPathVal;
+  let firChannels = 1;
+  try { firChannels = firMetaVal ? (JSON.parse(firMetaVal).channels || 1) : 1; } catch { firChannels = 1; }
   // Dynamic peak pre-attenuation is the default — set to "false"/"0" to fall back
   // to each preset's static manually-tuned headroom.
   const autoHeadroom = !(headroomVal === 'false' || headroomVal === '0');
@@ -965,6 +1013,7 @@ export async function updateCamillaConfigFromSettings({ skipAlsa = false, sample
   // Generate CamillaDSP yaml configuration
   const configObj = generateCamillaConfig(answers, eqSettings, dacInfo, {
     pureDirect, balance, phaseLeft: phase.left, phaseRight: phase.right, bitPerfect, autoHeadroom, btOutputActive,
+    firEnabled, firFilterPath: firPathVal, firChannels,
   });
   const yamlString = YAML.stringify(configObj, { indent: 2 });
 

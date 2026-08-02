@@ -13,6 +13,58 @@ import { scrobbleOnPlaybackChange } from './scrobbler.js';
 const isPlainObject = (v) => typeof v === 'object' && v !== null && !Array.isArray(v);
 const isFiniteNum = (v) => typeof v === 'number' && Number.isFinite(v);
 
+// ─── EQ band schema — Phase 3 (real parametric EQ) ────────────────────────────
+// Bands used to be bare gain numbers only (fixed freq/Q baked into
+// generateCamillaConfig in camilla-config.js); each band is now
+// {type,freq,gain,q}, with freq/Q genuinely user-adjustable. Type stays fixed
+// per index — _biquadCoeffs()'s auto-headroom math (camilla-config.js) only
+// implements Peaking/Lowshelf/Highshelf/Highpass/Lowpass, so a free-form type
+// picker would silently produce wrong headroom for anything else; the schema
+// still stores type explicitly, so a picker remains addable later without
+// another migration.
+export const EQ_BAND_TEMPLATE = [
+  { type: 'Lowshelf', freq: 60 },
+  { type: 'Peaking', freq: 250 },
+  { type: 'Peaking', freq: 1000 },
+  { type: 'Peaking', freq: 4000 },
+  { type: 'Highshelf', freq: 16000 },
+];
+const EQ_VALID_TYPES = ['Peaking', 'Lowshelf', 'Highshelf', 'Highpass', 'Lowpass'];
+
+/**
+ * Normalizes an eq_settings.bands array to the current {type,freq,gain,q}
+ * shape, whatever shape it came in as — the old bare-number array (upgraded
+ * via EQ_BAND_TEMPLATE, preserving each existing gain), a fully-formed
+ * current-shape array (defensively re-sanitized field-by-field rather than
+ * trusted blindly, in case an out-of-date cached client sends something
+ * stale mid-deploy), or anything malformed/missing (falls back to the
+ * template entirely). Idempotent and side-effect-free — safe to call from
+ * every path that touches bands (load, live update, and standalone config
+ * generation) without worrying about calling it "too often" or out of order.
+ */
+export function migrateBands(bands) {
+  const arr = Array.isArray(bands) ? bands : [];
+  return EQ_BAND_TEMPLATE.map((tmpl, i) => {
+    const b = arr[i];
+    if (isPlainObject(b)) {
+      const type = EQ_VALID_TYPES.includes(b.type) ? b.type : tmpl.type;
+      const freq = Number(b.freq);
+      const q = Number(b.q);
+      const gain = Number(b.gain);
+      return {
+        type,
+        freq: (Number.isFinite(freq) && freq >= 20 && freq <= 20000) ? freq : tmpl.freq,
+        q: (Number.isFinite(q) && q >= 0.1 && q <= 10) ? q : 0.707,
+        gain: (Number.isFinite(gain) && gain >= -12 && gain <= 12) ? gain : 0,
+      };
+    }
+    // Old bare-number shape (or missing/malformed) — upgrade via the
+    // template, preserving the existing gain value if it's a real number.
+    const gain = Number(b);
+    return { ...tmpl, q: 0.707, gain: (Number.isFinite(gain) && gain >= -12 && gain <= 12) ? gain : 0 };
+  });
+}
+
 function isValidBroadcastState(payload) {
   // BROADCAST_STATE may legitimately be null (source cleared its state).
   return payload === null || isPlainObject(payload);
@@ -23,7 +75,11 @@ function isValidEqSettings(payload) {
   if (payload.preset !== undefined && (typeof payload.preset !== 'string' || payload.preset.length > 100)) return false;
   if (payload.bands !== undefined) {
     if (!Array.isArray(payload.bands) || payload.bands.length > 10) return false;
-    if (!payload.bands.every((b) => isFiniteNum(Number(b)))) return false;
+    // Accept either the old bare-number shape or the new {type,freq,gain,q}
+    // shape — migrateBands() normalizes whichever one this turns out to be
+    // right after validation passes, so this only needs to reject genuine
+    // garbage (not an out-of-date cached client sending the "wrong" shape).
+    if (!payload.bands.every((b) => isFiniteNum(Number(b)) || isPlainObject(b))) return false;
   }
   for (const key of ['preAmp', 'noiseFloor', 'saturation']) {
     if (payload[key] !== undefined && !isFiniteNum(Number(payload[key]))) return false;
@@ -632,6 +688,10 @@ async function handleEvent(type, payload, excludeWs) {
         console.warn('[EventService] Rejected malformed SET_EQ_SETTINGS payload:', payload);
         break;
       }
+      // Normalize bands to the current {type,freq,gain,q} shape before
+      // persisting/broadcasting — a client on an older cached bundle mid-
+      // deploy could still send the old bare-number shape.
+      if (payload.bands !== undefined) payload = { ...payload, bands: migrateBands(payload.bands) };
       await setSetting('eq_settings', JSON.stringify(payload));
       broadcast({ type: 'EQ_SETTINGS', payload }, excludeWs);
       // Fire CamillaDSP hot-reload outside the serial queue so other events
@@ -720,26 +780,27 @@ export const loadStateFromDB = async () => {
       console.warn('[EventService] Failed parsing theme_settings from DB:', e);
     }
 
-    // EQ settings — validate schema and migrate if needed
+    // EQ settings — validate schema and migrate bands to the current
+    // {type,freq,gain,q} shape if needed. AUDIT-2026-08-02d: this used to
+    // treat OBJECT-shaped bands as invalid and wipe them back to the flat
+    // all-zero default on every restart — exactly backwards for the Phase 3
+    // parametric-EQ format, and would have silently destroyed every user's
+    // custom EQ on first deploy. Only a genuinely unparseable/missing value
+    // now falls back to the default; anything else goes through
+    // migrateBands(), which upgrades the old bare-number shape and
+    // defensively re-sanitizes the new shape, but never discards it wholesale.
     let eqSettingsVal = await getSetting('eq_settings');
-    let needsMigrate = false;
+    let parsedEq = null;
     if (eqSettingsVal) {
-      try {
-        const parsed = JSON.parse(eqSettingsVal);
-        if (!parsed || !Array.isArray(parsed.bands) || typeof parsed.bands[0] === 'object') {
-          needsMigrate = true;
-        }
-      } catch (e) {
-        needsMigrate = true;
-      }
-    } else {
-      needsMigrate = true;
+      try { parsedEq = JSON.parse(eqSettingsVal); } catch { parsedEq = null; }
     }
-    if (needsMigrate) {
-      const defaultEq = { preset: 'Clinical Reference', bands: [0, 0, 0, 0, 0], saturation: 0, noiseFloor: 0, preAmp: 0.0 };
-      await setSetting('eq_settings', JSON.stringify(defaultEq));
-      console.log('[EventService] Initialized/migrated default eq_settings in DB.');
+    if (!parsedEq || !isPlainObject(parsedEq)) {
+      parsedEq = { preset: 'Clinical Reference', bands: EQ_BAND_TEMPLATE.map(t => ({ ...t, q: 0.707, gain: 0 })), saturation: 0, noiseFloor: 0, preAmp: 0.0 };
+      console.log('[EventService] Initialized default eq_settings in DB.');
+    } else if (Array.isArray(parsedEq.bands)) {
+      parsedEq = { ...parsedEq, bands: migrateBands(parsedEq.bands) };
     }
+    await setSetting('eq_settings', JSON.stringify(parsedEq));
 
     // Active source
     let activeSource = await getSetting('active_source');
