@@ -140,6 +140,24 @@ if [ "$EUID" -eq 0 ]; then
   chmod 644 /etc/avahi/services/resonance.service
   systemctl restart avahi-daemon || true
 
+  # Sync display power/wake scripts — these live in /usr/local/bin (copied
+  # from scripts/ by install.sh) and were never re-synced on OTA before
+  # (AUDIT-2026-08-02), so a script fix here (e.g. disabling X11's own
+  # independent idle-blank timer in favor of the app's own standby/dim
+  # logic) never reached an already-installed box until the next full
+  # install.sh run. kiosk-power.sh's default (no-arg) action just issues
+  # `xset` calls against the already-running X session — safe/idempotent to
+  # re-run immediately so the fix applies without waiting for a reboot.
+  # kiosk-wake-monitor.sh is a long-running background loop, not a one-shot;
+  # copying it here keeps the file current for the next X session (reboot)
+  # without killing/restarting the actively-running instance mid-update.
+  echo -e "${YELLOW}Syncing display power/wake scripts...${NC}"
+  cp "$PROJECT_DIR/scripts/kiosk-power.sh" /usr/local/bin/kiosk-power.sh || true
+  chmod +x /usr/local/bin/kiosk-power.sh || true
+  cp "$PROJECT_DIR/scripts/kiosk-wake-monitor.sh" /usr/local/bin/kiosk-wake-monitor.sh || true
+  chmod +x /usr/local/bin/kiosk-wake-monitor.sh || true
+  DISPLAY=:0 /usr/local/bin/kiosk-power.sh 2>/dev/null || true
+
   # Re-apply real-time audio tuning (threadirqs, rtirq, isolcpus, CPU affinity).
   # Idempotent — picks up new tuning on existing installs. Boot-param changes
   # take effect on the next reboot; service affinity applies immediately.
