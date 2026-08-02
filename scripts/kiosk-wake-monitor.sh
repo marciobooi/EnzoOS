@@ -95,8 +95,23 @@ while read -r line <&3; do
         # Throttling: only run wake routines if it's been at least 2 seconds since last wake
         if [ $((CURRENT_TIME - LAST_WAKE)) -ge 2 ]; then
             echo "Activity detected -> waking display"
-            xset dpms force on
-            [ "$HAS_VCGENCMD" = "yes" ] && vcgencmd display_power 1 >/dev/null 2>&1
+            # AUDIT-2026-08-02: `xset dpms force on` unconditionally RE-ENABLES
+            # the DPMS extension as a side effect, even after kiosk-power.sh
+            # explicitly disabled it (`xset -dpms`) so the app's own standby/
+            # dim logic would be the sole authority over display power —
+            # confirmed live: `xset -dpms` → "DPMS is Disabled", then `xset
+            # dpms force on` → "DPMS is Enabled" again. Every single touch was
+            # silently re-arming X11's own independent 5-minute idle-blank
+            # timer, defeating that fix almost immediately. On real Pi
+            # hardware vcgencmd alone fully covers waking the physical
+            # display; xset dpms is now only the fallback for hardware
+            # without vcgencmd (QEMU, x86), where there's no DPMS-disabling
+            # kiosk-power.sh path to undo in the first place.
+            if [ "$HAS_VCGENCMD" = "yes" ]; then
+              vcgencmd display_power 1 >/dev/null 2>&1
+            else
+              xset dpms force on
+            fi
             # Trigger API software wake
             curl -s -X POST -H "Content-Type: application/json" -d '{"enabled":false}' http://localhost:5000/api/player/standby || true
             LAST_WAKE=$CURRENT_TIME
