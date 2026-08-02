@@ -625,15 +625,33 @@ async function runLoop() {
     // before this resolves, the stale result (built for a lineup that no
     // longer exists) gets discarded instead of clobbering the fresh pivot
     // announcement setMood()/this loop are about to prepare instead.
+    //
+    // Only prepare an announcement at a BLOCK boundary (the check-in, using
+    // the block's last song as material) or right after a mood pivot (the
+    // explicit, user-requested "switching things up" cue) — NOT before every
+    // individual song in the block. It used to announce every single track;
+    // a manual skip looks identical to a natural track-end here, so
+    // skipping through songs re-triggered a fresh announcement on every
+    // skip. Reported live: "if I skip songs we will trigger the same dj at
+    // the end of the block to present the next block, so we present block
+    // not songs... we use just the song to make conversation" — the block
+    // is the unit that gets announced; a specific song's details are still
+    // what the line is actually built from (prepare() below is unchanged),
+    // only the CADENCE moved from per-song to per-block.
     const gen = state.generation;
     const isSetEnd = state.queue.length === 0;
     const nextTrack = isSetEnd ? null : state.queue[0];
-    const prepPromise = isSetEnd
-      ? prepare(track, language, true) // check-in line refers to the track that just finished
-      : prepare(nextTrack, language, false, wasPivot);
-    prepPromise
-      .then((p) => { if (state.active && gen === state.generation) state.pending = p; else fs.unlink(p.wavPath, () => {}); })
-      .catch((err) => console.error('[DJ] background prepare failed:', err.message));
+    let prepPromise = null;
+    if (isSetEnd) {
+      prepPromise = prepare(track, language, true); // check-in line refers to the track that just finished
+    } else if (wasPivot) {
+      prepPromise = prepare(nextTrack, language, false, true);
+    }
+    if (prepPromise) {
+      prepPromise
+        .then((p) => { if (state.active && gen === state.generation) state.pending = p; else fs.unlink(p.wavPath, () => {}); })
+        .catch((err) => console.error('[DJ] background prepare failed:', err.message));
+    }
 
     await waitForSpotifyTrackEnd(token, track.uri);
   }
