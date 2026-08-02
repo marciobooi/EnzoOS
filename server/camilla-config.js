@@ -14,7 +14,7 @@ import { fileURLToPath } from 'url';
 import YAML from 'yaml';
 import { getSetting } from './db.js';
 import { sendCamillaCommand } from './camilla-ws.js';
-import { getCachedVolumeDb } from './event-service.js';
+import { getEffectiveVolumeDb } from './event-service.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -1019,7 +1019,7 @@ export async function updateCamillaConfigFromSettings({ skipAlsa = false, sample
   // whatever it currently has — on boot that is also 0 dB. Without this, the first
   // playback after startup or a service restart would be at full hardware volume.
   try {
-    const targetDb = getCachedVolumeDb();
+    const targetDb = getEffectiveVolumeDb();
     const ok = await setCamillaVolume(targetDb);
     if (ok) console.log(`[CamillaDSP] Volume restored to ${targetDb.toFixed(1)} dB after config apply.`);
   } catch (err) {

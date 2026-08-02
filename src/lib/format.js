@@ -1,9 +1,14 @@
 // Pure display/formatting helpers shared by the player UI.
 
 // Map 0–100 slider value to a dB string for display.
-// Cubic law taper — matches server player.js's toDb() exactly (AUDIT-2026-08-01:
-// the previous linear-in-dB curve put 50% at -30dB, reported live as
-// "middle is like mute"). Keep the two in sync if either changes.
+// Cubic law taper — matches server event-service.js's getCachedVolumeDb()
+// exactly (AUDIT-2026-08-01: the previous linear-in-dB curve put 50% at
+// -30dB, reported live as "middle is like mute"). Keep the two in sync if
+// either changes. Deliberately does NOT include the server-side Spotify
+// Level Trim (event-service.js's getEffectiveVolumeDb(), Phase 2 cross-source
+// loudness work) — the slider always displays what the USER set, the trim is
+// an invisible compensation applied only to what CamillaDSP actually
+// receives while Spotify/DJ is the active source.
 export function toVolumeDb(vol) {
   if (vol <= 0) return '−∞';
   if (vol >= 100) return '0.0';

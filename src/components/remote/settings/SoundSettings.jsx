@@ -1,5 +1,5 @@
 import { useContext, useState, useRef, useEffect } from 'react';
-import { Sliders, Cpu, Timer, Scale, RefreshCw, FlipHorizontal, RotateCcw, Disc3, SlidersHorizontal, Merge, ChevronLeft } from 'lucide-react';
+import { Sliders, Cpu, Timer, Scale, RefreshCw, FlipHorizontal, RotateCcw, Disc3, SlidersHorizontal, Merge, ChevronLeft, Waves } from 'lucide-react';
 import { toast } from '../../../lib/toast';
 import { reportError } from '../../../lib/errors';
 import { Tk, Row as SharedRow, Section as SharedSection, Sheet, RcSlider } from '../shared';
@@ -35,7 +35,10 @@ function AdvancedAudioSettings({ inline = false }) {
   const [dsdBypass, setDsdBypass]     = useState(true);
   const [autoHeadroom, setAutoHeadroom] = useState(true);
   const [headroomDb, setHeadroomDb]   = useState(0);
+  const [spotifyTrim, setSpotifyTrim] = useState(-4);
+  const [showSpotifyTrim, setShowSpotifyTrim] = useState(false);
   const balanceDebounce = useRef(null);
+  const spotifyTrimDebounce = useRef(null);
   // Switching this setting rewrites /etc/asound.conf immediately, but the
   // PipeWire clock config it must agree with is only applied on the next
   // PipeWire session start (restarting PipeWire live would drop MPD's
@@ -56,6 +59,7 @@ function AdvancedAudioSettings({ inline = false }) {
     api.getBitPerfect().then(d => setBitPerfect(d.enabled !== false)).catch(() => {});
     api.getDsdBypass().then(d => setDsdBypass(d.enabled !== false)).catch(() => {});
     api.getAutoHeadroom().then(d => { setAutoHeadroom(d.enabled !== false); setHeadroomDb(d.headroomDb || 0); }).catch(() => {});
+    api.getSpotifyTrim().then(d => setSpotifyTrim(d.trimDb ?? -4)).catch(() => {});
   }, []);
 
   const handleReplayGainChange = async (mode) => {
@@ -91,6 +95,15 @@ function AdvancedAudioSettings({ inline = false }) {
     clearTimeout(balanceDebounce.current);
     balanceDebounce.current = setTimeout(async () => {
       try { await api.setBalance(v); }
+      catch (e) { reportError(e.message); }
+    }, 400);
+  };
+
+  const handleSpotifyTrimChange = (v) => {
+    setSpotifyTrim(v);
+    clearTimeout(spotifyTrimDebounce.current);
+    spotifyTrimDebounce.current = setTimeout(async () => {
+      try { await api.setSpotifyTrim(v); }
       catch (e) { reportError(e.message); }
     }, 400);
   };
@@ -229,6 +242,20 @@ function AdvancedAudioSettings({ inline = false }) {
           value={autoHeadroom ? `−${headroomDb} dB` : 'Static'}
           chevron={false}
           onPress={handleAutoHeadroomToggle} />
+        <Row label={t('settings.spotifyTrim')}
+          icon={<Waves className="h-4 w-4" style={{ color: spotifyTrim !== 0 ? C.champagne : C.text4 }} />}
+          value={`${spotifyTrim > 0 ? '+' : ''}${spotifyTrim} dB`}
+          chevron={false}
+          onPress={() => setShowSpotifyTrim(v => !v)} />
+        {showSpotifyTrim && (
+          <div className="px-4 pb-4">
+            <RcSlider value={spotifyTrim} min={-12} max={6} step={0.5}
+              onChange={handleSpotifyTrimChange} />
+            <p className="text-[11px] leading-snug mt-2" style={{ color: C.text3 }}>
+              {t('settings.spotifyTrimHint')}
+            </p>
+          </div>
+        )}
       </Section>
     </div>
   );

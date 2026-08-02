@@ -86,17 +86,65 @@ export function getStandbyState() {
 
 /**
  * Returns the current cached volume as a dB value for CamillaDSP SetVolume.
- * Used by player.js to restore volume after CamillaDSP config apply/restart.
+ * The sole implementation of this curve as of the Phase 2 cross-source
+ * loudness work (player.js's own former toDb() copy was removed in favor of
+ * this one, via getEffectiveVolumeDb() below) — MUST still match format.js's
+ * client-side toVolumeDb() exactly (AUDIT-2026-08-01), or the displayed dB
+ * value drifts from what CamillaDSP is actually set to.
  *
- * Cubic law taper — MUST match player.js's toDb() and format.js's
- * toVolumeDb() exactly (AUDIT-2026-08-01), or volume audibly jumps every
- * time this restores a level that /api/player/volume set with a different
- * curve (e.g. after every CamillaDSP config reload).
+ * AUDIT-2026-08-01: the previous formula (-60 * (1 - vol/100)) was LINEAR IN
+ * dB across the full range, which put 50% at -30dB — roughly 3% of max
+ * amplitude, i.e. very quiet, not "half volume". Reported live as "middle is
+ * like mute, and even max isn't loud enough" (compared directly against an
+ * iPhone at the same nominal setting). Cubic law (gain = (vol/100)^3, i.e.
+ * dB = 60*log10(vol/100)) is the standard perceptual taper for volume
+ * controls — it front-loads the steep attenuation into the bottom of the
+ * slider (where fine control matters less because everything already sounds
+ * quiet) and keeps the top half close to unity gain (where perceived
+ * loudness differences per dB are largest). 25% ≈ -36dB, 50% ≈ -18dB,
+ * 75% ≈ -7dB, 100% = 0dB.
  */
 export function getCachedVolumeDb() {
   if (cachedMuted || cachedVolume <= 0) return -100;
   if (cachedVolume >= 100) return 0;
   return 60 * Math.log10(cachedVolume / 100);
+}
+
+// ── Cross-source loudness (Spotify Level Trim) ──────────────────────────────
+// Spotify Connect (raspotify/librespot) bypasses MPD entirely, so MPD's own
+// ReplayGain has zero effect on it. Spotify already normalizes loudness
+// internally (LIBRESPOT_ENABLE_VOLUME_NORMALISATION=true, spotify-daemon.js)
+// so tracks are even WITHIN Spotify — the audible jump switching sources is
+// one systematic offset between Spotify's own normalization target and
+// whatever ReplayGain reference the local library happens to be tagged
+// against (commonly ~4dB: Spotify targets roughly -14 LUFS, ReplayGain
+// 2.0/EBU R128 targets roughly -18 LUFS). A single manual, user-adjustable
+// trim closes that gap — deliberately not a per-track dynamic fetch from
+// Spotify's audio-features endpoint, which Spotify has heavily
+// access-restricted for apps in this category in recent years.
+let cachedSpotifyTrimDb = -4.0;
+
+export function setSpotifyTrimDb(db) {
+  const v = Number(db);
+  if (!Number.isFinite(v)) return;
+  cachedSpotifyTrimDb = Math.max(-12, Math.min(6, v));
+}
+export function getSpotifyTrimDb() { return cachedSpotifyTrimDb; }
+
+/**
+ * The dB value CamillaDSP's master volume should ACTUALLY be set to right
+ * now — getCachedVolumeDb()'s user-set level, plus the Spotify trim while
+ * (and only while) the active source is spotify/dj. Every call site that
+ * used to read getCachedVolumeDb() directly to decide "what should
+ * CamillaDSP be set to" now reads this instead (dj.js's ducking baseline,
+ * post-config-reload volume restore, standby-wake restore, the /volume and
+ * /spotify-volume routes) — kept synchronous, like getCachedVolumeDb()
+ * itself, since dj.js's duckThroughCut() calls it synchronously mid-flow.
+ */
+export function getEffectiveVolumeDb() {
+  const base = getCachedVolumeDb();
+  if (base <= -100) return base; // muted — a trim on top of silence is moot
+  return ['spotify', 'dj'].includes(cachedSourceState.source) ? base + cachedSpotifyTrimDb : base;
 }
 
 /**
@@ -294,7 +342,7 @@ async function applyStandby(enabled) {
       // level is restored even if CamillaDSP was restarted while asleep.
       try {
         const { setCamillaVolume } = await import('./player.js');
-        await setCamillaVolume(getCachedVolumeDb());
+        await setCamillaVolume(getEffectiveVolumeDb());
       } catch (err) {
         console.warn('[Standby] Volume re-apply on wake failed (non-fatal):', err.message);
       }
@@ -359,6 +407,16 @@ async function handleEvent(type, payload, excludeWs) {
       fireWebhook('source', { source: newSource, previous: previousSource });
       cachedSourceState = payload;
       await setSetting('active_source', newSource);
+
+      // Nothing previously re-applied CamillaDSP's volume on a source switch
+      // at all — this is the actual root cause of the audible loudness jump
+      // switching to/from Spotify (see getEffectiveVolumeDb() above): the
+      // Spotify trim only ever took effect the next time SOMETHING else
+      // happened to call setCamillaVolume (a volume-slider touch, a standby
+      // cycle, a config reload). Re-apply immediately on every switch,
+      // trim applied or removed as appropriate for the new source.
+      import('./player.js').then(({ setCamillaVolume }) => setCamillaVolume(getEffectiveVolumeDb()))
+        .catch(err => console.warn('[SET_SOURCE] Volume re-apply failed (non-fatal):', err.message));
 
       // Selecting a source implies intent to play, so wake from standby first.
       // The REST /start endpoints already did this; doing it here means the phone
@@ -700,6 +758,15 @@ export const loadStateFromDB = async () => {
     cachedMuted  = mutedVal === 'true';
     if (!volumeVal) await setSetting('volume', '50');
     console.log(`[EventService] Loaded volume: ${cachedVolume}, muted: ${cachedMuted}`);
+
+    // Spotify Level Trim (cross-source loudness)
+    const spotifyTrimVal = await getSetting('spotify_volume_trim_db');
+    if (!spotifyTrimVal) {
+      await setSetting('spotify_volume_trim_db', String(cachedSpotifyTrimDb));
+      console.log(`[EventService] Initialized default spotify_volume_trim_db in DB: ${cachedSpotifyTrimDb}`);
+    } else {
+      setSpotifyTrimDb(Number(spotifyTrimVal));
+    }
 
     // Remote access default
     const remoteAccessVal = await getSetting('remote_access_enabled');

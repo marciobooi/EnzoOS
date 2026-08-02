@@ -519,6 +519,8 @@ export default {
     bitPerfect: 'Bit-Perfect (rate-following)',
     dsdBypass: 'DSD Native Bypass',
     autoHeadroom: 'Auto-Headroom (peak attenuation)',
+    spotifyTrim: 'Spotify Level Trim',
+    spotifyTrimHint: 'Compensates for Spotify’s own loudness normalization so it doesn’t sound louder or quieter than your local library when you switch sources.',
     display: 'Display',
     themeAppearance: 'Theme & Appearance',
     kioskStandby: 'Kiosk Standby',

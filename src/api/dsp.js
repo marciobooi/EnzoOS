@@ -131,4 +131,17 @@ export const dspApi = {
     });
     return handleJson(r);
   },
+
+  // ── Spotify Level Trim (cross-source loudness) ────────────────────────────────
+  async getSpotifyTrim() {
+    const r = await fetch('/api/player/spotify-trim');
+    return handleJson(r);
+  },
+  async setSpotifyTrim(trimDb) {
+    const r = await fetch('/api/player/spotify-trim', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ trimDb }),
+    });
+    return handleJson(r);
+  },
 };

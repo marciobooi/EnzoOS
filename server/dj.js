@@ -96,7 +96,7 @@ import fs from 'fs';
 import os from 'os';
 import path from 'path';
 import { getSetting } from './db.js';
-import { emit, getCachedVolumeDb } from './event-service.js';
+import { emit, getEffectiveVolumeDb } from './event-service.js';
 import { getValidAccessToken } from './spotify-auth.js';
 import { spotifyApi } from '../src/api/spotify.js';
 import { LIBRESPOT_DEVICE_NAME } from './spotify-daemon.js';
@@ -402,7 +402,11 @@ function playClip(wavPath) {
 // nothing to duck.
 const DUCK_DB = 14;
 async function duckThroughCut(playNextTrack, announcementWavPath) {
-  const before = getCachedVolumeDb();
+  // getEffectiveVolumeDb() (not getCachedVolumeDb()) — DJ is Spotify-only,
+  // exactly where the Spotify Level Trim applies (event-service.js), so the
+  // duck-down/fade-back-up baseline must include it or resuming after an
+  // announcement produces its own small audible jump.
+  const before = getEffectiveVolumeDb();
   const canDuck = before > -90;
   if (canDuck) {
     // One immediate retry: live-tested, the WS command occasionally reports

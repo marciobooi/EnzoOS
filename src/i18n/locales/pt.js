@@ -517,6 +517,8 @@ export default {
     bitPerfect: 'Bit-Perfect (segue a taxa)',
     dsdBypass: 'Bypass Nativo DSD',
     autoHeadroom: 'Auto-Headroom (atenuação de pico)',
+    spotifyTrim: 'Ajuste de Volume do Spotify',
+    spotifyTrimHint: 'Compensa a normalização de volume própria do Spotify para que não soe mais alto ou mais baixo que a sua biblioteca local ao mudar de fonte.',
     display: 'Ecrã',
     themeAppearance: 'Tema e Aparência',
     kioskStandby: 'Suspensão do Quiosque',

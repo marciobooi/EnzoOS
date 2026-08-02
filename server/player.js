@@ -8,7 +8,9 @@ import {
   addPlayHistory, getPlayHistory, clearPlayHistory, getMostPlayedTracks,
   getFavorites, addFavorite, removeFavorite, removeFavoriteByUri, isFavorite,
 } from './db.js';
-import { emit, getStandbyState, setVolumeState } from './event-service.js';
+import {
+  emit, getStandbyState, setVolumeState, getEffectiveVolumeDb, getSpotifyTrimDb, setSpotifyTrimDb,
+} from './event-service.js';
 import {
   qobuzLogin, qobuzSearch, qobuzTrackUrl, qobuzConnected, clearQobuz,
   tidalDeviceAuth, tidalPollToken, tidalSearch, tidalTrackUrl, tidalConnected, clearTidal,
@@ -101,30 +103,6 @@ router.post('/previous', async (req, res) => {
   }
 });
 
-// Map 0-100 slider → dB for CamillaDSP volume control.
-//
-// AUDIT-2026-08-01: the previous formula (-60 * (1 - vol/100)) is LINEAR IN
-// dB across the full range, which put 50% at -30dB — roughly 3% of max
-// amplitude, i.e. very quiet, not "half volume". Reported live as "middle is
-// like mute, and even max isn't loud enough" (compared directly against an
-// iPhone at the same nominal setting). A linear-dB curve puts far too much
-// attenuation in the slider's lower-middle range because it treats the WHOLE
-// 0-100 range as equally spaced in dB, rather than shaping the curve to
-// match how loudness is actually perceived.
-//
-// Cubic law (gain = (vol/100)^3, i.e. dB = 60*log10(vol/100)) is the
-// standard perceptual taper for volume controls — it front-loads the steep
-// attenuation into the bottom of the slider (where fine control matters less
-// because everything already sounds quiet) and keeps the top half close to
-// unity gain (where perceived loudness differences per dB are largest).
-// 25% ≈ -36dB, 50% ≈ -18dB, 75% ≈ -7dB, 100% = 0dB — the halfway point is
-// now audibly "about half as loud" instead of nearly silent.
-function toDb(userVol) {
-  if (userVol <= 0) return -100;
-  if (userVol >= 100) return 0;
-  return 60 * Math.log10(userVol / 100);
-}
-
 // POST /api/player/volume -> Set volume via CamillaDSP (instant, all sources)
 // CamillaDSP applies gain after all ALSA buffers so there is zero lag.
 // MPD software mixer stays at 100% — CamillaDSP owns the volume stage.
@@ -134,8 +112,11 @@ router.post('/volume', async (req, res) => {
     return sendError(res, badRequest('Invalid volume: must be 0–100'));
   }
   try {
-    await setCamillaVolume(toDb(vol));
+    // setVolumeState first, then read event-service.js's getEffectiveVolumeDb()
+    // (base cubic-law dB + Spotify Level Trim while active) off the
+    // now-updated cachedVolume, rather than computing dB independently here.
     setVolumeState(vol, vol <= 0);
+    await setCamillaVolume(getEffectiveVolumeDb());
     // Unlike /spotify-volume (below), this route never broadcast the change —
     // the ONLY way another connected client learned about a volume set from
     // here was the sender's own client-side WS send, which is itself gated on
@@ -160,16 +141,48 @@ router.post('/spotify-volume', async (req, res) => {
   const vol = Math.max(0, Math.min(100, Math.round(Number(req.body.volume))));
   if (!Number.isFinite(vol)) return res.status(400).end();
   try {
-    await setCamillaVolume(toDb(vol));
     setVolumeState(vol, vol <= 0);
+    const effectiveDb = getEffectiveVolumeDb();
+    await setCamillaVolume(effectiveDb);
     // Broadcast so every connected client updates its volume slider immediately.
     emit('SET_VOLUME', { volume: vol, is_muted: vol <= 0 });
-    console.log(`[Spotify] Volume event: ${vol}% → CamillaDSP ${toDb(vol).toFixed(1)} dB`);
+    console.log(`[Spotify] Volume event: ${vol}% → CamillaDSP ${effectiveDb.toFixed(1)} dB`);
     res.json({ success: true });
   } catch (err) {
     console.error('[Spotify Volume] Failed:', err.message);
     res.status(500).json({ success: false });
   }
+});
+
+// GET/POST /api/player/spotify-trim — the Spotify Level Trim from event-
+// service.js's cross-source loudness work: a static, user-adjustable dB
+// offset applied only while the active source is spotify/dj, compensating
+// for the systematic gap between Spotify's own loudness normalization
+// target and whatever ReplayGain reference the local library is tagged
+// against (MPD's ReplayGain has zero effect on Spotify, which bypasses MPD
+// entirely). See getEffectiveVolumeDb() in event-service.js.
+router.get('/spotify-trim', (req, res) => {
+  res.json({ trimDb: getSpotifyTrimDb() });
+});
+
+router.post('/spotify-trim', async (req, res) => {
+  const trimDb = Number(req.body.trimDb);
+  if (!Number.isFinite(trimDb) || trimDb < -12 || trimDb > 6) {
+    return sendError(res, badRequest('trimDb must be between -12 and 6'));
+  }
+  setSpotifyTrimDb(trimDb);
+  await setSetting('spotify_volume_trim_db', String(trimDb));
+  // Re-apply immediately if it's actually audible right now, same as any
+  // other live DSP-adjacent setting in this file.
+  try {
+    const activeSource = await getSetting('active_source');
+    if (['spotify', 'dj'].includes(activeSource)) {
+      await setCamillaVolume(getEffectiveVolumeDb());
+    }
+  } catch (err) {
+    console.warn('[Spotify Trim] Live re-apply failed (non-fatal):', err.message);
+  }
+  res.json({ trimDb: getSpotifyTrimDb() });
 });
 
 // POST /api/player/seek -> Seek local track
