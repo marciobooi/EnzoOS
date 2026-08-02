@@ -874,7 +874,7 @@ pcm.camilla_bt_output {
   // Control naming is not standardised: bcm2835 exposes "PCM", most USB DACs
   // "Master" or "Speaker", some DAC HATs "Digital" or "Playback". Probe what
   // this card actually has rather than guessing one name.
-  let controls = '';
+  let controls;
   try {
     ({ stdout: controls } = await execPromise(`amixer -c ${dacCard} scontrols`));
   } catch (err) {

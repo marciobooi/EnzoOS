@@ -153,7 +153,7 @@ async function fromMusicBrainzArtistLinks(artistMbid) {
   for (const rel of detail.relations || []) {
     const url = rel.url?.resource;
     if (!url || rel.ended) continue;
-    let host = '';
+    let host;
     try { host = new URL(url).hostname.replace(/^www\./, ''); } catch { continue; }
     if (host.includes('spotify.com'))            links.streaming.spotify    ??= url;
     else if (host === 'music.apple.com')         links.streaming.appleMusic ??= url;
