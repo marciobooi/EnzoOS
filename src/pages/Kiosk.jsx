@@ -562,13 +562,19 @@ export default function Kiosk() {
         }
       }, 2200);
     } else {
+      // No 'welcome' transition screen here (removed AUDIT-2026-08-02) — it
+      // used to hold a branded logo animation over the player for ~2.8s on
+      // EVERY wake, stacked on top of the physical display's own hardware
+      // power-on latency and the wake-monitor's tap-swallow delay. Reported
+      // live as "touch to activate... takes time to activate." Waking from
+      // standby is a routine, frequent action (unlike a first boot), so it
+      // should be instant — the player is visible the moment the physical
+      // screen lights back up, not several seconds after.
       standbyRef.current = false;
       setStandby(false);
       if (ws.current && ws.current.readyState === WebSocket.OPEN) {
         ws.current.send(JSON.stringify({ type: 'SET_STANDBY', payload: { enabled: false } }));
       }
-      setTransitionScreen('welcome');
-      setTimeout(() => setTransitionScreen(null), 2800);
     }
   });
 
@@ -586,6 +592,72 @@ export default function Kiosk() {
 
     return () => clearTimeout(idleTimeout);
   }, [isPlaying, standby]);
+
+  // Auto-dim (not full standby) while music plays and the screen goes
+  // untouched for a while. Full black standby above is deliberately gated on
+  // !isPlaying — it never fires while music is going, which used to mean NO
+  // power-saving at all during a long unattended playback session (the
+  // physical display just stayed at full brightness indefinitely). Dimming
+  // instead keeps now-playing glanceable without a wake gesture and restores
+  // instantly on the next touch (no display power-cycle, no hardware wake
+  // latency) — reserving the heavier full-standby treatment for genuine idle
+  // (no music, no activity) as requested live: "if music is playing we will
+  // never enter standby... what we can do is dim a bit after 10 minutes...
+  // the full screen standby is only when nothing happens, no music etc"
+  // (AUDIT-2026-08-02). Does not touch localStorage — this is a temporary
+  // auto-dim, not a change to the user's actual brightness preference.
+  const DIM_IDLE_MS = 10 * 60 * 1000;
+  const DIM_BRIGHTNESS = 15;
+  const isDimmedRef = useRef(false);
+  const preDimBrightness = useRef(null);
+  const dimTimeoutRef = useRef(null);
+  // Kept in sync below so the timer callback (captured once per effect run,
+  // which could be up to DIM_IDLE_MS stale) always dims from the CURRENT
+  // brightness rather than whatever it was when the effect last (re-)ran.
+  const brightnessRef = useRef(brightness);
+  useEffect(() => { brightnessRef.current = brightness; }, [brightness]);
+
+  const applyBrightnessNow = useStableCallback((val) => {
+    setBrightness(val);
+    queueThemeSync(theme, activeTheme, val, visualizerMode);
+  });
+
+  const wakeFromDim = useStableCallback(() => {
+    if (!isDimmedRef.current) return;
+    isDimmedRef.current = false;
+    if (preDimBrightness.current != null) applyBrightnessNow(preDimBrightness.current);
+    preDimBrightness.current = null;
+  });
+
+  useEffect(() => {
+    if (!isPlaying || standby) { clearTimeout(dimTimeoutRef.current); return; }
+
+    const armDimTimer = () => {
+      clearTimeout(dimTimeoutRef.current);
+      dimTimeoutRef.current = setTimeout(() => {
+        preDimBrightness.current = brightnessRef.current;
+        isDimmedRef.current = true;
+        applyBrightnessNow(DIM_BRIGHTNESS);
+      }, DIM_IDLE_MS);
+    };
+
+    const onActivity = () => { wakeFromDim(); armDimTimer(); };
+
+    armDimTimer();
+    window.addEventListener('pointerdown', onActivity);
+    return () => {
+      clearTimeout(dimTimeoutRef.current);
+      window.removeEventListener('pointerdown', onActivity);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isPlaying, standby]);
+
+  // Music stopping or standby engaging while dimmed shouldn't leave the
+  // display stuck dim — restore immediately rather than waiting for a touch
+  // that may not come until the next listening session.
+  useEffect(() => {
+    if (!isPlaying || standby) wakeFromDim();
+  }, [isPlaying, standby, wakeFromDim]);
 
   const handleToggleSource = useStableCallback((targetSource) => {
     let nextSource = targetSource;
