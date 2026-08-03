@@ -209,13 +209,18 @@ export default function PlayerTab() {
 
       {/* DJ mood cards — pin the announcer's energy, or pivot the lineup
           immediately if tapped mid-session (server/dj.js's setMood). Tapping
-          the active one again clears it back to random. */}
+          the active one again clears it back to random (Random is itself
+          now a selectable card — see shared.jsx's DJ_MOODS). Sized to match
+          the transport's own w-11 (44px) volume/mute buttons rather than the
+          old 72px labeled cards, and a real snap carousel with the scrollbar
+          hidden — reported live: "make this same size as volume and a
+          carousel with hidden [scrollbar]" (AUDIT-2026-08-03). */}
       {source === 'dj' && (
-        <div className="flex gap-2.5 overflow-x-auto pb-1 mb-5 -mx-5 px-5" style={{ scrollbarWidth: 'none' }}>
+        <div className="mood-carousel flex gap-2.5 overflow-x-auto pb-1 mb-5 -mx-5 px-5">
           {DJ_MOODS.map(({ id, label, Icon }) => (
-            <button key={id} onClick={() => handleMoodTap(id)}
-              aria-pressed={djMood === id}
-              className="shrink-0 flex flex-col items-center justify-center gap-1.5 w-[72px] py-3 rounded-2xl active:scale-95 transition-all cursor-pointer"
+            <button key={id ?? 'random'} onClick={() => handleMoodTap(id)}
+              aria-pressed={djMood === id} aria-label={label} title={label}
+              className="shrink-0 w-11 h-11 flex items-center justify-center rounded-full active:scale-90 transition-all cursor-pointer"
               style={djMood === id
                 // Explicit border + glow, not just a solid fill — the flat
                 // block alone read as barely different from the surrounding
@@ -224,8 +229,7 @@ export default function PlayerTab() {
                 // active" (AUDIT-2026-08-02).
                 ? { background: C.champagne, color: '#1a1c1c', border: `2px solid ${C.champagne}`, boxShadow: '0 2px 12px rgba(212,175,55,0.35)' }
                 : { ...cardWhite, color: C.text2 }}>
-              <Icon className="h-5 w-5" />
-              <span className="text-[10px] font-semibold uppercase tracking-wide">{label}</span>
+              <Icon className="h-[18px] w-[18px]" />
             </button>
           ))}
         </div>

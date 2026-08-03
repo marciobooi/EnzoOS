@@ -4,11 +4,16 @@ import AutoScroll from './AutoScroll';
 import { toVolumeDb, sanitizeTrackName } from '../lib/format';
 import { api } from '../api';
 
-// DJ mode mood buttons (server/dj.js MOODS) — ids must match exactly.
-// Isolated here (not threaded through Kiosk.jsx's props/state) so the
-// feature stays deletable by removing just this block + its JSX/CSS, per
-// dj.js's own "don't spread this around" design.
+// DJ mode mood buttons (server/dj.js MOODS) — ids must match exactly, except
+// Random (id null), which IS exactly what "no mood pinned" already means
+// server-side. Isolated here (not threaded through Kiosk.jsx's props/state)
+// so the feature stays deletable by removing just this block + its JSX/CSS,
+// per dj.js's own "don't spread this around" design.
+// AUDIT-2026-08-03: Random used to be invisible (no button highlighted at
+// all when mood was null) — reported live as "I start dj and no card is
+// highlighted". Same fix as the remote's shared DJ_MOODS (shared.jsx).
 const DJ_MOODS = [
+  { id: null,       label: 'Random',   Icon: Shuffle },
   { id: 'hype',     label: 'Hype',     Icon: Zap },
   { id: 'chill',    label: 'Chill',    Icon: Moon },
   { id: 'casual',   label: 'Casual',   Icon: Coffee },
@@ -759,7 +764,7 @@ const PlayerDisplay = React.memo(function PlayerDisplay({
                 <div className="mood-row" role="group" aria-label="DJ mood">
                   {DJ_MOODS.map(({ id, label, Icon }) => (
                     <button
-                      key={id}
+                      key={id ?? 'random'}
                       type="button"
                       onClick={() => handleMoodClick(id)}
                       className={`mood-button ${djMood === id ? 'active' : ''}`}

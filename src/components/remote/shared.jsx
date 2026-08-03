@@ -1,6 +1,6 @@
 import React, { createContext, useContext } from 'react';
 import { createPortal } from 'react-dom';
-import { ChevronRight, ChevronLeft, Music, Library, Layers, Sliders, Search, Zap, Moon, Coffee, Flame, PartyPopper } from 'lucide-react';
+import { ChevronRight, ChevronLeft, Music, Library, Layers, Sliders, Search, Zap, Moon, Coffee, Flame, PartyPopper, Shuffle } from 'lucide-react';
 
 export const Tk = createContext({});
 
@@ -101,12 +101,23 @@ const SOURCE_BADGE_LABELS = {
 };
 export const sourceBadgeLabel = (source) => SOURCE_BADGE_LABELS[source] || 'Local';
 
-// DJ mood cards — ids MUST match server/dj.js's MOOD_IDS exactly. Shared by
-// PlayerTab (phone) and TabletPlayerHero (tablet) so the two can't drift
-// apart the way RcSlider did before it was deduplicated. Mirrors the icon-
-// only version already on the kiosk's own PlayerDisplay.jsx, just rendered
-// bigger/labeled here since the remote has the screen space for real cards.
+// DJ mood cards — ids MUST match server/dj.js's MOOD_IDS exactly (Random is
+// the one exception: id null, which is exactly what "no mood pinned" already
+// means server-side — server/dj.js's setMood(null) and state.mood's own
+// default). Shared by PlayerTab (phone) and TabletPlayerHero (tablet) so the
+// two can't drift apart the way RcSlider did before it was deduplicated.
+// Mirrors the icon-only version already on the kiosk's own PlayerDisplay.jsx,
+// just rendered bigger/labeled here since the remote has the screen space
+// for real cards.
+//
+// AUDIT-2026-08-03: Random used to be an implicit, invisible state — no card
+// highlighted at all when mood was null, which on a fresh DJ session (the
+// common case — nobody's tapped a mood yet) reads as "nothing loaded /
+// broken" rather than "this is a deliberate choice". Reported live: "I start
+// dj and no card is highlighted". Making it a selectable card like any other
+// means SOMETHING is always highlighted.
 export const DJ_MOODS = [
+  { id: null,       label: 'Random',   Icon: Shuffle },
   { id: 'hype',     label: 'Hype',     Icon: Zap },
   { id: 'chill',    label: 'Chill',    Icon: Moon },
   { id: 'casual',   label: 'Casual',   Icon: Coffee },

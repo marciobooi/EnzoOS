@@ -111,6 +111,15 @@ body {
 .stone-scrollbar::-webkit-scrollbar-corner { background: transparent; }
 .stone-scrollbar { scrollbar-width: thin; scrollbar-color: #c0c1bc transparent; }
 
+/* DJ mood row (remote phone/tablet) — a real swipeable carousel: scrollbar
+   fully hidden (the global *::-webkit-scrollbar rule above would otherwise
+   still paint a thin bar under it) and each card snaps into place instead of
+   landing wherever a swipe happens to stop. Reported live: "make this same
+   size as volume and a carousel with hidden [scrollbar]" (AUDIT-2026-08-03). */
+.mood-carousel { scrollbar-width: none; scroll-snap-type: x mandatory; }
+.mood-carousel::-webkit-scrollbar { display: none; }
+.mood-carousel > * { scroll-snap-align: start; }
+
 
 
 /* Scrolling Marquee — original (kept for compatibility) */
