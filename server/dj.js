@@ -229,10 +229,19 @@ const MOOD_GENRE_KEYWORDS = {
   playful:  ['pop', 'dance pop', 'k-pop', 'disco', 'funk', 'party', 'bubblegum', 'ska'],
 };
 
-function genreMatchesMood(genres, moodId) {
+// Score, not a flat yes/no: counts how many of a track's (deduped, ALL-
+// artists) genre tags match the mood's keyword list — a track tagged both
+// "edm" and "party" for Hype should outrank one that just barely touches
+// "pop", not tie with it under a binary check. AUDIT-2026-08-03 improvement
+// pass on the original match/no-match version, per "so we can improve this?".
+function genreMatchScore(genres, moodId) {
   const keywords = MOOD_GENRE_KEYWORDS[moodId];
-  if (!keywords || !genres?.length) return false;
-  return genres.some(g => keywords.some(kw => g.includes(kw)));
+  if (!keywords || !genres?.length) return 0;
+  let score = 0;
+  for (const g of genres) {
+    if (keywords.some(kw => g.includes(kw))) score++;
+  }
+  return score;
 }
 
 // Session-lifetime cache (never cleared — genres don't change, and it's
@@ -244,7 +253,12 @@ function genreMatchesMood(genres, moodId) {
 const artistGenreCache = new Map(); // artistId -> genres[]
 
 async function enrichPoolWithGenres(token, tracks) {
-  const ids = [...new Set(tracks.map(t => t.artists?.[0]?.id).filter(Boolean))]
+  // ALL credited artists, not just the primary one — a feature/collab track
+  // whose lead artist has no useful genre tags (common for one-off
+  // collaborators) can still match through a featured artist's genres.
+  // AUDIT-2026-08-03 improvement pass on the original primary-artist-only
+  // version, per "so we can improve this?".
+  const ids = [...new Set(tracks.flatMap(t => (t.artists || []).map(a => a?.id)).filter(Boolean))]
     .filter(id => !artistGenreCache.has(id));
   for (let i = 0; i < ids.length; i += 50) {
     const chunk = ids.slice(i, i + 50);
@@ -255,13 +269,15 @@ async function enrichPoolWithGenres(token, tracks) {
       }
     } catch (err) {
       console.error('[DJ] Artist genre batch lookup failed:', err.message);
-      // Leave these artists uncached — they'll just carry no genres this
-      // round, which genreMatchesMood() already treats as "no match" and
-      // pickTracks() already tops up from the general pool for.
+      // Leave these artists uncached — they'll just contribute no genres
+      // this round, which genreMatchScore() already treats as 0 and
+      // pickTracks() already handles via its score-descending sort (a
+      // score-0 track just sorts to the bottom, never dropped).
     }
   }
   for (const t of tracks) {
-    t._genres = artistGenreCache.get(t.artists?.[0]?.id) || [];
+    const combined = (t.artists || []).flatMap(a => artistGenreCache.get(a?.id) || []);
+    t._genres = [...new Set(combined)];
   }
 }
 
@@ -546,15 +562,17 @@ function pickTracks(n) {
   if (!state.mood) {
     return [...source].sort(() => Math.random() - 0.5).slice(0, n);
   }
-  // Mood pinned — prefer genre-matched tracks first, then top up with the
-  // rest of the pool so a mood with few/no matches never runs the set dry.
-  // See enrichPoolWithGenres()/MOOD_GENRE_KEYWORDS above.
-  const matches = source.filter(t => genreMatchesMood(t._genres, state.mood));
-  const matchSet = new Set(matches);
-  const rest = source.filter(t => !matchSet.has(t));
-  const shuffledMatches = [...matches].sort(() => Math.random() - 0.5);
-  const shuffledRest = [...rest].sort(() => Math.random() - 0.5);
-  return [...shuffledMatches, ...shuffledRest].slice(0, n);
+  // Mood pinned — rank by genre-match score (see genreMatchScore() and
+  // MOOD_GENRE_KEYWORDS above), highest first, so a mood with few/no matches
+  // still never runs the set dry: score-0 tracks just sort to the bottom
+  // rather than being excluded. Shuffle BEFORE the score sort (not after) so
+  // ties within the same score don't always resolve in pool order — sort()
+  // is stable in Node, so the pre-shuffle order survives within each tier.
+  const shuffled = [...source].sort(() => Math.random() - 0.5);
+  const ranked = shuffled
+    .map(t => ({ t, score: genreMatchScore(t._genres, state.mood) }))
+    .sort((a, b) => b.score - a.score);
+  return ranked.slice(0, n).map(x => x.t);
 }
 
 function broadcastState(extra = {}) {
