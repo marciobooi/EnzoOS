@@ -892,9 +892,11 @@ pcm.camilla_bt_output {
     console.warn('[ALSA] Failed to write /etc/asound.conf (non-root context or missing sudoers permission):', err.message);
   }
 
-  // Open the DAC's hardware mixer fully so CamillaDSP owns the entire gain
-  // stage via SetVolume — any analogue attenuation here is pure lost output
-  // the user can never get back with the volume knob.
+  // Set the DAC's hardware mixer to unity gain (0dB) so CamillaDSP owns the
+  // entire gain stage via SetVolume — any analogue attenuation here is pure
+  // lost output the user can never get back with the volume knob, and any
+  // analogue BOOST here (some controls' 100% sits above 0dB) is uncontrolled
+  // gain CamillaDSP's own fader can't account for.
   //
   // AUDIT-2026-08-01: this used a hardcoded `-c 0`, which on a Pi 4 is the
   // snd-aloop LOOPBACK (card 0), not the DAC — `cat /proc/asound/cards`:
@@ -932,8 +934,22 @@ pcm.camilla_bt_output {
     return;
   }
   try {
-    await execPromise(`amixer -c ${dacCard} sset '${target}' 100% unmute`);
-    console.log(`[ALSA] Opened hardware volume fully: card ${dacCard}, control '${target}' → 100%.`);
+    // AUDIT-2026-08-03: was `100%` — correct on a DAC whose control tops out
+    // AT 0dB, but wrong on this board's bcm2835 "Headphones" PCM control,
+    // whose own raw range (-10239..400 in 0.01dB units, per the
+    // AUDIT-2026-08-01 comment above) tops out at +4.00dB. "100%" landed
+    // there, silently adding a real +4dB of hardware gain on top of
+    // CamillaDSP's own fader on every restart — reported live as "volume is
+    // up... looks like gain" right after a restart re-asserted this pin.
+    // `0dB` is an explicit absolute value amixer resolves directly (not a
+    // percentage of the control's own range), so it lands at true unity
+    // regardless of where a given card's ceiling sits — still fully open on
+    // a card whose ceiling IS 0dB, no longer an unintended boost on one
+    // whose ceiling sits above it. amixer clamps out-of-range requests to
+    // the nearest valid step, so this degrades safely even on a control
+    // whose range doesn't actually include 0dB.
+    await execPromise(`amixer -c ${dacCard} sset '${target}' 0dB unmute`);
+    console.log(`[ALSA] Set hardware volume to unity gain: card ${dacCard}, control '${target}' → 0dB.`);
   } catch (err) {
     console.warn(`[ALSA] Could not set '${target}' on card ${dacCard} (non-fatal):`, err.message);
   }
