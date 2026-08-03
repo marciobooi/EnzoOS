@@ -602,7 +602,7 @@ All three modes are selected from the first screen of the **Acoustic Calibration
 
 | Mode | Pipeline | EQ controls |
 |------|----------|-------------|
-| Manual Equalizer | Full filter chain: profile EQ → saturation → preamp | Active |
+| Manual Equalizer | Full filter chain: profile EQ (5-band parametric, *or* a FIR/convolution filter in its place — see Custom Filter Import under DSP above) → saturation → preamp | Active |
 | Acoustic Room Correction | DSP Harman curve + room filters → profile EQ → preamp | Bypassed |
 | Pure Direct | Mixer only | Bypassed |
 
@@ -610,7 +610,13 @@ All three modes are selected from the first screen of the **Acoustic Calibration
 Pure Direct path:  Source → PipeWire → CamillaDSP (mixer + SetVolume) → DAC
 ```
 
-**EQ guard:** opening the equalizer while Pure Direct or Room Correction is active shows a blocking overlay. It explains what is active and offers a one-tap switch to Manual EQ — preventing edits to settings that would have no audible effect.
+**EQ guard:** opening the equalizer while Pure Direct or Room Correction is active shows a blocking overlay. It explains what is active and offers a one-tap switch to Manual EQ — preventing edits to settings that would have no audible effect. A fourth overlay state exists for the same reason when a Custom (FIR) Filter is active, since it also replaces the same profile-EQ pipeline slot.
+
+Two more mechanisms bypass this whole CamillaDSP pipeline outright rather
+than changing what runs inside it — **DSD Native Bypass** (a `.dsf`/`.dff`
+file playing under Pure Direct) and **Digital Transport** (see Audio Output
+above) both flip MPD's own output routing instead, so neither shows up in
+the table above.
 
 ---
 
@@ -645,7 +651,7 @@ Tapping the now-playing cover inside the remote opens the [album metadata](#albu
 |---------|--------------|
 | Source selection | Settings button → source cards |
 | Volume | Drag slider on kiosk or remote; dB value shown in popup |
-| Parametric EQ | Tap the VU meter display |
+| Parametric EQ | Tap the VU meter display — gain sliders always visible; tap a band's frequency label to reveal Freq/Q sliders for that band |
 | Audio processing mode | Settings → **Acoustic** → Calibration Wizard → first screen |
 | Pure Direct | Calibration Wizard → **Pure Direct** option |
 | ReplayGain | Settings → **Playback** → ReplayGain mode |
@@ -656,7 +662,10 @@ Tapping the now-playing cover inside the remote opens the [album metadata](#albu
 | Phase Inversion | Settings → **DSP** → Phase L / Phase R toggles |
 | Bit-Perfect | Settings → **DSP** → Bit-Perfect (rate-following ↔ fixed 48 kHz) |
 | DSD Native Bypass | Settings → **DSP** → DSD Native Bypass (DoP direct ↔ PCM decode) |
+| Digital Transport | Settings → **Sound → Advanced** → Digital Transport (pick a card, bypasses DSP entirely) — remote only |
 | Auto-Headroom | Settings → **DSP** → Auto-Headroom (dynamic peak attenuation ↔ static) |
+| Spotify Level Trim | Settings → **Sound → Advanced** → Spotify Level Trim (cross-source loudness offset, -12..+6dB) — remote only |
+| Custom Filter (FIR) | Settings → **Sound → Advanced** → Custom Filter — upload a WAV impulse response to replace the 5-band EQ — remote only |
 | Theme | Settings → **Theme** card |
 | Remote access | Settings → **Remote** card |
 | Wi-Fi | Settings → **Wi-Fi** → scan and connect |
