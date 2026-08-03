@@ -8,15 +8,16 @@ codebase layout from scratch.
 
 ## 1. Codebase map — use this instead of exploring blind
 
-Line counts as of the last audit (2026-07-02). Files over ~300 lines should
+Line counts as of the last audit (2026-08-02). Files over ~300 lines should
 **never be read in full** for a targeted task — Grep for the symbol/route
 first, then `Read` with `offset`/`limit` around the match.
 
 ### Backend (`server/`)
 | File | Lines | What's in it |
 |---|---|---|
-| `player.js` | 2219 | **Largest file in the repo.** CamillaDSP config generator, DAC detection, DSD bypass, seek/volume/queue routes, Tidal/Qobuz routes, lyrics, favorites/history routes. Grep for the route path (e.g. `router.post('/seek'`) rather than reading top-to-bottom. |
-| `event-service.js` | 682 | Central event bus — `emit()`/`handleEvent()` switch statement is the source of truth for every WS event type (`SET_SOURCE`, `SET_STANDBY`, `BROADCAST_STATE`, etc.) and the standby side-effects (`applyStandby`). |
+| `player.js` | 2254 | **Largest file in the repo.** DAC detection, signal-path API, DSD bypass, seek/volume/queue routes, library browsing (artists/albums/tracks/folders/search), Tidal/Qobuz routes, lyrics, favorites/history routes. The CamillaDSP config generator itself moved to `camilla-config.js` (below) — don't expect to find `generateCamillaConfig()` here. Grep for the route path (e.g. `router.post('/seek'`) rather than reading top-to-bottom. |
+| `camilla-config.js` | 1127 | CamillaDSP YAML config generator (`generateCamillaConfig()`/`updateCamillaConfigFromSettings()`), DAC detection (`detectDac()`), PipeWire/ALSA config writers, EQ band migration + FIR/Conv integration, auto-headroom math. Extracted out of `player.js` as "the one genuinely self-contained subsystem." See `.claude/docs/camilladsp.md`. |
+| `event-service.js` | 939 | Central event bus — `emit()`/`handleEvent()` switch statement is the source of truth for every WS event type (`SET_SOURCE`, `SET_STANDBY`, `BROADCAST_STATE`, etc.), standby side-effects (`applyStandby`), EQ band migration (`migrateBands()`), and cross-source volume layering (`getEffectiveVolumeDb()`, Spotify Level Trim). |
 | `db.js` | 340 | SQLite schema + all query helpers. Small enough to read in full if touching persistence. |
 | `metadata.js` | 337 | MusicBrainz/Last.fm/TheAudioDB aggregator — self-contained, rarely needs cross-referencing other files. |
 | `spotify-auth.js` | 324 | PKCE OAuth flow + token refresh. |
