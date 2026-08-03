@@ -29,16 +29,24 @@ export default function PlayerTab() {
   const touchStartRef = useRef(null);
   const [showInfo, setShowInfo]     = useState(false);
   const [showLyrics, setShowLyrics] = useState(false);
-  // Local-only, like the kiosk's own copy — server/dj.js resets its mood to
-  // null on every fresh start() anyway, so there's nothing worth persisting
-  // beyond "did I tap one this session".
   const [djMood, setDjMood] = useState(null);
   const handleMoodTap = (id) => {
     const next = djMood === id ? null : id; // tap the active one again to clear it
     setDjMood(next);
     api.setDjMood(next).catch(() => {});
   };
-  useEffect(() => { if (source !== 'dj') setDjMood(null); }, [source]);
+  // AUDIT-2026-08-03: used to only ever clear djMood, never populate it from
+  // the server — opening this tab while DJ mode was already running (e.g.
+  // this screen wasn't the one that started it) always showed no mood
+  // highlighted regardless of what was actually pinned. Fetch the real value
+  // whenever this becomes the active source instead. Same fix applied to
+  // the kiosk's PlayerDisplay.jsx and the tablet's TabletPlayerHero.jsx.
+  useEffect(() => {
+    if (source !== 'dj') { setDjMood(null); return; }
+    let alive = true;
+    api.getDjStatus().then(d => { if (alive) setDjMood(d.mood || null); }).catch(() => {});
+    return () => { alive = false; };
+  }, [source]);
 
   const albumName = currentTrack?.album?.name || '';
   const canInfo   = source !== 'radio' && !!trackArtist && !!albumName && trackName !== 'Nothing playing';
@@ -82,7 +90,12 @@ export default function PlayerTab() {
       if (p.includes('.wav')) return 'PCM WAV';
       return 'LOCAL FILE';
     }
-    return source === 'spotify' ? 'SPOTIFY OGG' : 'STREAMING';
+    // DJ mode plays through Spotify Connect under the hood (dj.js issues
+    // the exact same Web API play calls) — it just isn't literally
+    // source === 'spotify', so it fell through to the generic 'STREAMING'
+    // placeholder instead of a real quality label (reported live: "if is
+    // lossless flac bit 48 etc" badges missing specifically in DJ mode).
+    return (source === 'spotify' || source === 'dj') ? 'SPOTIFY OGG' : 'STREAMING';
   })();
 
   return (

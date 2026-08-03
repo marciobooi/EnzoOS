@@ -56,15 +56,22 @@ export default function TabletPlayerHero() {
   const [showInfo, setShowInfo]     = useState(false);
   const [showLyrics, setShowLyrics] = useState(false);
   const [showQueue, setShowQueue]   = useState(false);
-  // Local-only, like the kiosk's own copy and PlayerTab's — server/dj.js
-  // resets its mood to null on every fresh start() anyway.
   const [djMood, setDjMood] = useState(null);
   const handleMoodTap = (id) => {
     const next = djMood === id ? null : id; // tap the active one again to clear it
     setDjMood(next);
     api.setDjMood(next).catch(() => {});
   };
-  useEffect(() => { if (source !== 'dj') setDjMood(null); }, [source]);
+  // AUDIT-2026-08-03: fetch the real server-side mood whenever this becomes
+  // the active source, rather than only ever clearing it — see the matching
+  // fix in PlayerDisplay.jsx (kiosk) and PlayerTab.jsx (phone) for the full
+  // story ("when I start dj ... idk which mood is selected").
+  useEffect(() => {
+    if (source !== 'dj') { setDjMood(null); return; }
+    let alive = true;
+    api.getDjStatus().then(d => { if (alive) setDjMood(d.mood || null); }).catch(() => {});
+    return () => { alive = false; };
+  }, [source]);
 
   // MPD's queue (local files/Tidal/Qobuz/etc.) isn't in playbackState like
   // Spotify's is — it's fetched separately. Previously this preview only
@@ -127,7 +134,11 @@ export default function TabletPlayerHero() {
       if (p.includes('.wav')) return 'PCM WAV';
       return 'LOCAL FILE';
     }
-    return source === 'spotify' ? 'SPOTIFY OGG' : 'STREAMING';
+    // DJ mode plays through Spotify Connect under the hood (dj.js issues
+    // the exact same Web API play calls) — it just isn't literally
+    // source === 'spotify', so it fell through to the generic 'STREAMING'
+    // placeholder instead of a real quality label. Same fix in PlayerTab.jsx.
+    return (source === 'spotify' || source === 'dj') ? 'SPOTIFY OGG' : 'STREAMING';
   })();
 
   // Reference design tokens (matched against the target mock's Tailwind

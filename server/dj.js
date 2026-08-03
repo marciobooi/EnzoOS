@@ -96,7 +96,7 @@ import fs from 'fs';
 import os from 'os';
 import path from 'path';
 import { getSetting } from './db.js';
-import { emit, getEffectiveVolumeDb } from './event-service.js';
+import { emit, getEffectiveVolumeDb, getState } from './event-service.js';
 import { getValidAccessToken } from './spotify-auth.js';
 import { spotifyApi } from '../src/api/spotify.js';
 import { LIBRESPOT_DEVICE_NAME } from './spotify-daemon.js';
@@ -539,9 +539,29 @@ function waitForSpotifyTrackEnd(token, expectedUri, maxMs = 12 * 60 * 1000) {
   // spotify-daemon.js for the belt-and-suspenders half of that).
   const HANDOFF_LEAD_MS = 8000;
   return new Promise((resolve) => {
+    // AUDIT-2026-08-03: exposed on `state` so setMood() can resolve this
+    // immediately on a pivot instead of either (a) waiting up to 3s for the
+    // next poll tick, or (b) what it used to do — calling spotifyApi.pause()
+    // directly as a separate, unsynchronized request. That pause raced
+    // against THIS function's own in-flight getPlaybackState() calls and,
+    // worse, against runLoop()'s very next spotifyApi.play() call for the
+    // track the pivot is cutting TO — confirmed live: a pause fired from a
+    // second/third rapid mood click could land on Spotify's servers AFTER
+    // the new track's play() call, leaving Spotify genuinely paused while
+    // the app's own state believed it was playing (silent audio, "STREAMING"
+    // still shown). Spotify's play endpoint with a specific track URI
+    // already replaces whatever's currently playing atomically — no
+    // separate pause was ever needed for that; it just wasn't safe here.
+    const finish = () => {
+      clearInterval(state.pollInterval);
+      state.pollInterval = null;
+      if (state.resolveTrackWait === finish) state.resolveTrackWait = null;
+      resolve();
+    };
+    state.resolveTrackWait = finish;
     state.pollInterval = setInterval(async () => {
-      if (!state.active || state.pivotRequested) { clearInterval(state.pollInterval); resolve(); return; }
-      if (Date.now() - startedAt > maxMs) { clearInterval(state.pollInterval); resolve(); return; }
+      if (!state.active || state.pivotRequested) { finish(); return; }
+      if (Date.now() - startedAt > maxMs) { finish(); return; }
       try {
         const data = await spotifyApi.getPlaybackState(token);
         const settling = Date.now() - startedAt < graceMs;
@@ -560,7 +580,7 @@ function waitForSpotifyTrackEnd(token, expectedUri, maxMs = 12 * 60 * 1000) {
         const isOurDevice = !!state.deviceId && data?.device?.id === state.deviceId;
         if (!data || !isOurDevice) {
           if (settling) return; // still handing over — keep waiting
-          clearInterval(state.pollInterval); resolve(); return;
+          finish(); return;
         }
 
         if (data.item) broadcastSpotifyState(data.item, !data.is_playing, data.progress_ms);
@@ -570,7 +590,7 @@ function waitForSpotifyTrackEnd(token, expectedUri, maxMs = 12 * 60 * 1000) {
 
         if (!data.is_playing || data.item?.uri !== expectedUri || nearEnd) {
           if (settling && data.item?.uri !== expectedUri) return; // our track hasn't shown up yet
-          clearInterval(state.pollInterval); resolve();
+          finish();
         }
       } catch { /* transient network hiccup — keep polling, don't abort the session over it */ }
     }, 3000);
@@ -697,7 +717,26 @@ async function runLoop() {
   }
 
   state.active = false;
+  await releaseSourceIfStillDj();
   broadcastState({ phase: 'stopped' });
+}
+
+// AUDIT-2026-08-03: DJ mode ending — whether by an explicit stop() call, or
+// runLoop() breaking out of its own while loop on an error (token expired,
+// empty Spotify pool) — used to leave cachedSourceState.source stuck on
+// 'dj' forever, since nothing here ever told the server the active source
+// had reverted to plain Spotify. /api/dj/status would correctly report
+// active:false, but /api/status kept reporting source:"dj" indefinitely —
+// reported live as DJ mode "sometimes failing to [switch back to] Spotify
+// source". Guarded on the source still actually being 'dj' at the moment
+// this runs (not unconditional) so it can never stomp on a legitimate
+// concurrent switch to a THIRD source (e.g. the user hit "Radio" while this
+// was mid-shutdown) — last-write-wins is correct there, same as any other
+// two-clients-switch-source-at-once case already possible today.
+async function releaseSourceIfStillDj() {
+  if (getState().sourceState?.source === 'dj') {
+    emit('SET_SOURCE', { source: 'spotify', spotify: true });
+  }
 }
 
 async function start() {
@@ -769,13 +808,21 @@ async function setMood(moodId) {
   if (!state.active) return { mood: state.mood, active: false };
 
   state.generation++; // invalidate any in-flight background prepare for the old lineup
-  state.pivotRequested = true; // cuts waitForSpotifyTrackEnd's poll short
+  state.pivotRequested = true;
   state.queue = [];
   if (state.pending?.wavPath) fs.unlink(state.pending.wavPath, () => {});
   state.pending = null;
 
-  const token = await getValidAccessToken().catch(() => null);
-  if (token) await spotifyApi.pause(token).catch(() => {});
+  // Resolve the current waitForSpotifyTrackEnd() immediately rather than
+  // waiting up to 3s for its next poll tick — this used to instead call
+  // spotifyApi.pause() directly here, which raced against runLoop()'s own
+  // upcoming play() call for the track being pivoted TO (see the audit
+  // comment on waitForSpotifyTrackEnd). Calling the exposed resolver is
+  // synchronous and safe to call more than once in a row (rapid repeated
+  // mood clicks) — each call just lets runLoop's single-threaded while loop
+  // reach its next iteration a little sooner; only the LAST mood/queue state
+  // before runLoop actually reads it takes effect either way.
+  if (state.resolveTrackWait) state.resolveTrackWait();
   broadcastState({ phase: 'pivoting', mood: state.mood });
   return { mood: state.mood, active: true };
 }
@@ -785,7 +832,16 @@ async function stop() {
   state.generation++; // invalidate any in-flight background prepare
   state.pivotRequested = false;
   state.mood = null;
-  if (state.pollInterval) clearInterval(state.pollInterval);
+  // AUDIT-2026-08-03: this used to clearInterval() directly instead of
+  // calling the promise's own resolver — clearing the interval stops it from
+  // firing again, but never resolves runLoop()'s `await
+  // waitForSpotifyTrackEnd(...)`, leaving that call hanging forever (state.active
+  // is false, but the while loop can't get back around to check it). The
+  // dangling promise meant runLoop() never reached its own post-loop cleanup
+  // on an explicit stop — including the releaseSourceIfStillDj() call below,
+  // which is why this function calls it directly too rather than relying on
+  // runLoop() to eventually get there.
+  if (state.resolveTrackWait) state.resolveTrackWait();
   if (state.pending?.wavPath) fs.unlink(state.pending.wavPath, () => {});
   state.pending = null;
   state.queue = [];
@@ -793,6 +849,7 @@ async function stop() {
   const token = await getValidAccessToken().catch(() => null);
   if (token) await spotifyApi.pause(token).catch(() => {});
   await unloadOllamaModel();
+  await releaseSourceIfStillDj();
   broadcastState({ phase: 'stopped' });
   return { stopped: true };
 }

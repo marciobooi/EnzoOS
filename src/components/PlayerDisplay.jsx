@@ -74,11 +74,21 @@ const PlayerDisplay = React.memo(function PlayerDisplay({
   const [showVolumePopup, setShowVolumePopup] = useState(false);
   const [djMood, setDjMood] = useState(null);
 
-  // Local-only UI state (server/dj.js's own state.mood resets on every fresh
-  // start() anyway) — clear the highlight whenever DJ mode isn't the active
-  // source, so switching away and back never shows a stale selection.
+  // AUDIT-2026-08-03: this used to only ever clear djMood (unconditionally
+  // null whenever source !== 'dj') and never populate it from the server —
+  // so mounting this component while DJ mode was ALREADY running (e.g. a
+  // page refresh, or a second screen opening mid-session) always showed no
+  // mood highlighted regardless of what was actually pinned server-side,
+  // reported live as "when I start dj ... idk which mood is selected".
+  // Fetching /api/dj/status on becoming the active source (not just on
+  // mount) picks up the true value in both cases: a fresh start (mood is
+  // genuinely null, matches) and an already-running session (mood reflects
+  // whatever was last pinned).
   useEffect(() => {
-    if (source !== 'dj') setDjMood(null);
+    if (source !== 'dj') { setDjMood(null); return; }
+    let alive = true;
+    api.getDjStatus().then(d => { if (alive) setDjMood(d.mood || null); }).catch(() => {});
+    return () => { alive = false; };
   }, [source]);
 
   const handleMoodClick = useCallback((id) => {
