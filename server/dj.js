@@ -200,7 +200,69 @@ async function getSpotifyTrackPool(token) {
   for (const t of [...saved, ...top]) {
     if (t?.uri && !seen.has(t.uri)) { seen.add(t.uri); pool.push(t); }
   }
+  await enrichPoolWithGenres(token, pool).catch(err =>
+    console.error('[DJ] Genre enrichment failed (non-fatal, mood falls back to unfiltered):', err.message)
+  );
   return pool;
+}
+
+// ── Mood-aware song selection (AUDIT-2026-08-03) ────────────────────────────
+// Until now, pinning a mood only ever changed the announcer's spoken tone
+// (see MOODS above) — pickTracks() picked purely at random regardless of
+// mood, reported live as "I wonder if it really filter something... what's
+// happen?" Real per-track energy/valence/danceability data would be the
+// right signal, but Spotify's `audio-features` endpoint is 403 Forbidden on
+// this app's API access tier (verified live 2026-08-03 — restricted to
+// extended-quota apps since a Nov 2024 policy change; see Phase 2's original
+// research in the loudness work, which hit the same wall). Each artist's own
+// genre tags ARE still freely accessible via /v1/artists, so this is a soft
+// preference toward genre-keyword matches, not a hard filter — genre tags
+// are noisy/inconsistent (an artist might be tagged "bedroom pop" or
+// "modern rock" with no obvious keyword overlap), so pickTracks() always
+// tops up with the general pool rather than ever starving a mood down to
+// too few candidates.
+const MOOD_GENRE_KEYWORDS = {
+  hype:     ['dance', 'edm', 'electro', 'house', 'techno', 'trap', 'hip hop', 'rap', 'dubstep', 'drum and bass', 'party'],
+  chill:    ['chill', 'acoustic', 'ambient', 'lo-fi', 'lofi', 'sleep', 'folk', 'singer-songwriter', 'jazz', 'soul', 'bossa nova', 'soft'],
+  casual:   ['pop', 'indie', 'singer-songwriter', 'coffeehouse', 'soft rock', 'adult standards'],
+  dramatic: ['metal', 'rock', 'punk', 'hard rock', 'orchestral', 'cinematic', 'opera', 'epic', 'industrial'],
+  playful:  ['pop', 'dance pop', 'k-pop', 'disco', 'funk', 'party', 'bubblegum', 'ska'],
+};
+
+function genreMatchesMood(genres, moodId) {
+  const keywords = MOOD_GENRE_KEYWORDS[moodId];
+  if (!keywords || !genres?.length) return false;
+  return genres.some(g => keywords.some(kw => g.includes(kw)));
+}
+
+// Session-lifetime cache (never cleared — genres don't change, and it's
+// bounded by the total distinct artists this box's Liked Songs/Top Tracks
+// ever contain). The pool is rebuilt fresh from Spotify on every mood pivot
+// (setMood() clears state.queue), but the underlying artist set overlaps
+// heavily across pivots, so this keeps a pivot from re-fetching genres for
+// artists already looked up earlier in the same session.
+const artistGenreCache = new Map(); // artistId -> genres[]
+
+async function enrichPoolWithGenres(token, tracks) {
+  const ids = [...new Set(tracks.map(t => t.artists?.[0]?.id).filter(Boolean))]
+    .filter(id => !artistGenreCache.has(id));
+  for (let i = 0; i < ids.length; i += 50) {
+    const chunk = ids.slice(i, i + 50);
+    try {
+      const data = await spotifyApi.getArtists(token, chunk);
+      for (const artist of data?.artists || []) {
+        if (artist?.id) artistGenreCache.set(artist.id, artist.genres || []);
+      }
+    } catch (err) {
+      console.error('[DJ] Artist genre batch lookup failed:', err.message);
+      // Leave these artists uncached — they'll just carry no genres this
+      // round, which genreMatchesMood() already treats as "no match" and
+      // pickTracks() already tops up from the general pool for.
+    }
+  }
+  for (const t of tracks) {
+    t._genres = artistGenreCache.get(t.artists?.[0]?.id) || [];
+  }
 }
 
 // Broadcasts full now-playing info through the SAME channel Kiosk.jsx's own
@@ -481,8 +543,18 @@ const state = {
 function pickTracks(n) {
   const unplayed = state.pool.filter(t => !state.playedUris.has(t.uri));
   const source = unplayed.length >= n ? unplayed : state.pool;
-  const shuffled = [...source].sort(() => Math.random() - 0.5);
-  return shuffled.slice(0, n);
+  if (!state.mood) {
+    return [...source].sort(() => Math.random() - 0.5).slice(0, n);
+  }
+  // Mood pinned — prefer genre-matched tracks first, then top up with the
+  // rest of the pool so a mood with few/no matches never runs the set dry.
+  // See enrichPoolWithGenres()/MOOD_GENRE_KEYWORDS above.
+  const matches = source.filter(t => genreMatchesMood(t._genres, state.mood));
+  const matchSet = new Set(matches);
+  const rest = source.filter(t => !matchSet.has(t));
+  const shuffledMatches = [...matches].sort(() => Math.random() - 0.5);
+  const shuffledRest = [...rest].sort(() => Math.random() - 0.5);
+  return [...shuffledMatches, ...shuffledRest].slice(0, n);
 }
 
 function broadcastState(extra = {}) {

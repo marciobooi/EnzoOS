@@ -227,6 +227,22 @@ export const spotifyApi = {
     return handleResponse(response);
   },
 
+  /**
+   * Batched artist lookup (max 50 ids/call, per Spotify's own limit) — added
+   * for DJ mode's mood-genre matching (server/dj.js). Not used anywhere in
+   * plain Spotify playback/browsing. `audio-features` (real energy/valence/
+   * danceability data) is 403 Forbidden on this app's API access tier
+   * (verified live 2026-08-03 — Spotify restricted it to extended-quota apps
+   * in a Nov 2024 policy change), so each artist's own genre tags are the
+   * best mood-relevant signal actually available.
+   */
+  async getArtists(token, ids) {
+    const response = await fetch(`${SPOTIFY_API_URL}/artists?ids=${ids.join(',')}`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    return handleResponse(response);
+  },
+
   /** Fetches tracks from a specific album. */
   async getAlbumTracks(token, albumId, limit = 50) {
     const response = await fetch(`${SPOTIFY_API_URL}/albums/${albumId}/tracks?limit=${limit}`, {
