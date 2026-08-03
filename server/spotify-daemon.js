@@ -161,5 +161,68 @@ setInterval(async () => {
   } catch { /* transient network/CamillaDSP hiccup — next tick retries */ }
 }, STALE_CHECK_INTERVAL_MS);
 
+// ── Crash-loop watchdog (AUDIT-2026-08-03) ──────────────────────────────────
+// A different failure mode from the stale-cache watchdog above: an ALSA
+// "Broken pipe" (snd_pcm_drain) — e.g. triggered by CamillaDSP reloading its
+// config during a resonance-api restart, which briefly drops the ALSA
+// loopback device librespot writes into — can crash librespot outright.
+// systemd auto-restarts it, but the new process sometimes comes back wedged
+// in a WebSocket-dealer reconnect loop that never self-stabilizes (confirmed
+// live via journalctl -u raspotify: repeating "Websocket connection failed:
+// ... unexpected-eof" / "Wasn't able to reply to dealer request: channel
+// closed" every ~6-7s, indefinitely). From the user's side this presents as
+// the official Spotify app showing "Resonance HiFi" stuck on "Connecting..."
+// forever — it required a manual `sudo systemctl restart raspotify` to clear
+// last time. This automates that instead of needing another SSH session.
+//
+// Signal: our device is completely absent from Spotify's own device list
+// for several consecutive checks. A healthy device shows up here even while
+// idle/paused (zeroconf advertising + dealer connection both up); a device
+// stuck in the reconnect loop drops off it because the dealer never holds
+// a session long enough for Spotify's backend to register it as present.
+const DEVICE_CHECK_INTERVAL_MS = 40_000;
+const MISSES_BEFORE_RESTART = 3; // ~2 min of sustained unreachability
+const MAX_AUTO_RESTARTS_PER_HOUR = 3; // give up and wait for a human past this
+let consecutiveDeviceMisses = 0;
+let autoRestartTimestamps = [];
+
+setInterval(async () => {
+  try {
+    const standby = await getSetting('standby').catch(() => null);
+    if (standby === 'true') { consecutiveDeviceMisses = 0; return; }
+
+    const token = await getValidAccessToken();
+    if (!token) { consecutiveDeviceMisses = 0; return; } // not linked — not our problem
+
+    const r = await fetch('https://api.spotify.com/v1/me/player/devices', { headers: { Authorization: `Bearer ${token}` } });
+    if (r.status !== 200) return; // transient API hiccup, don't count it
+    const j = await r.json();
+    const present = (j.devices || []).some(d => d.name === LIBRESPOT_DEVICE_NAME);
+
+    if (present) { consecutiveDeviceMisses = 0; return; }
+    consecutiveDeviceMisses++;
+    if (consecutiveDeviceMisses < MISSES_BEFORE_RESTART) return;
+    consecutiveDeviceMisses = 0;
+
+    const now = Date.now();
+    autoRestartTimestamps = autoRestartTimestamps.filter(t => now - t < 60 * 60 * 1000);
+    if (autoRestartTimestamps.length >= MAX_AUTO_RESTARTS_PER_HOUR) {
+      console.error(
+        `[Spotify Watchdog] "${LIBRESPOT_DEVICE_NAME}" still unreachable but ${MAX_AUTO_RESTARTS_PER_HOUR} ` +
+        `auto-restarts already happened in the last hour — giving up to avoid a restart loop. ` +
+        `Needs manual investigation (journalctl -u raspotify).`
+      );
+      return;
+    }
+
+    autoRestartTimestamps.push(now);
+    console.warn(
+      `[Spotify Watchdog] "${LIBRESPOT_DEVICE_NAME}" unreachable for ~${Math.round(MISSES_BEFORE_RESTART * DEVICE_CHECK_INTERVAL_MS / 1000)}s ` +
+      `— auto-restarting raspotify (attempt ${autoRestartTimestamps.length}/${MAX_AUTO_RESTARTS_PER_HOUR} this hour).`
+    );
+    await restartRaspotify().catch(err => console.error('[Spotify Watchdog] auto-restart failed:', err.message));
+  } catch { /* transient network hiccup — next tick retries */ }
+}, DEVICE_CHECK_INTERVAL_MS);
+
 export { buildRaspotifyConf, writeRaspotifyConf, restartRaspotify };
 export default router;

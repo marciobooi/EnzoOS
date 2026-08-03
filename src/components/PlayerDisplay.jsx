@@ -88,7 +88,13 @@ const PlayerDisplay = React.memo(function PlayerDisplay({
     if (source !== 'dj') { setDjMood(null); return; }
     let alive = true;
     api.getDjStatus().then(d => { if (alive) setDjMood(d.mood || null); }).catch(() => {});
-    return () => { alive = false; };
+    // AUDIT-2026-08-03: keeps this screen's highlighted mood live if it's
+    // pinned/cleared from a DIFFERENT screen mid-session (see websocket.js's
+    // DJ_STATE handler) — the fetch above only covers this screen's own
+    // mount/source-switch moment.
+    const onMoodEvent = (e) => { if (alive) setDjMood(e.detail); };
+    window.addEventListener('dj-mood', onMoodEvent);
+    return () => { alive = false; window.removeEventListener('dj-mood', onMoodEvent); };
   }, [source]);
 
   const handleMoodClick = useCallback((id) => {

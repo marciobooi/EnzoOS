@@ -324,6 +324,21 @@ export function useResonanceWS({
             if (type === 'DJ_STATE') {
               if (payload.phase === 'announcing' && payload.line) toast.success(payload.line, { duration: 6000 });
               if (payload.phase === 'error' && payload.message) toast.error(payload.message);
+              // AUDIT-2026-08-03: mood is broadcast on every track start
+              // ('playing') and every pivot ('pivoting'), but until now
+              // nothing on the client ever read it — each of the three
+              // screens (kiosk/phone/tablet) only ever fetched the mood
+              // once, when IT switched into DJ mode, so pinning a mood from
+              // one screen left every OTHER already-open screen showing a
+              // stale value indefinitely. Reported live as "check the mood
+              // cards". A plain window CustomEvent (like the toast above)
+              // keeps this a self-contained side-channel instead of
+              // threading djMood — currently local state in each of those
+              // three components, not lifted into this hook's props —
+              // through new context/prop plumbing.
+              if (payload.phase === 'playing' || payload.phase === 'pivoting') {
+                window.dispatchEvent(new CustomEvent('dj-mood', { detail: payload.mood ?? null }));
+              }
             }
         } catch (err) {
           console.error('[Resonance WS] Error parsing WS message:', err);

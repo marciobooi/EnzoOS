@@ -559,7 +559,7 @@ function waitForSpotifyTrackEnd(token, expectedUri, maxMs = 12 * 60 * 1000) {
       resolve();
     };
     state.resolveTrackWait = finish;
-    state.pollInterval = setInterval(async () => {
+    const poll = async () => {
       if (!state.active || state.pivotRequested) { finish(); return; }
       if (Date.now() - startedAt > maxMs) { finish(); return; }
       try {
@@ -583,17 +583,37 @@ function waitForSpotifyTrackEnd(token, expectedUri, maxMs = 12 * 60 * 1000) {
           finish(); return;
         }
 
-        if (data.item) broadcastSpotifyState(data.item, !data.is_playing, data.progress_ms);
+        // AUDIT-2026-08-03: only broadcast once Spotify itself confirms the
+        // NEW track is what's actually live. This function now gets kicked
+        // off concurrently with duckThroughCut (see runLoop) instead of only
+        // after the whole duck+announcement+fade-up sequence resolves, so
+        // during the settling window this often still sees the PREVIOUS
+        // track's data for the first tick or two — broadcasting it here used
+        // to flicker the display back to the old track/art right after
+        // runLoop had already announced the new one. Reported live as "time
+        // is not correct, lyrics doesn't match" — the deeper bug this fixes
+        // is that the client had nothing but its own local 1s ticker
+        // extrapolating from an optimistic position:0 broadcast (fired the
+        // instant play()'s HTTP call resolved, well before Spotify's Connect
+        // handoff actually started producing audio) for the ENTIRE length of
+        // the announcement clip, since no real correction landed until after
+        // it finished. Starting the poll early — gated on matchesTrack so it
+        // can't show stale metadata — gets a real correction in within a
+        // poll or two instead of 5-12+ seconds in.
+        const matchesTrack = data.item?.uri === expectedUri;
+        if (matchesTrack) broadcastSpotifyState(data.item, !data.is_playing, data.progress_ms);
 
         const remainingMs = (data.item?.duration_ms ?? Infinity) - (data.progress_ms ?? 0);
-        const nearEnd = data.item?.uri === expectedUri && data.is_playing && remainingMs <= HANDOFF_LEAD_MS;
+        const nearEnd = matchesTrack && data.is_playing && remainingMs <= HANDOFF_LEAD_MS;
 
-        if (!data.is_playing || data.item?.uri !== expectedUri || nearEnd) {
-          if (settling && data.item?.uri !== expectedUri) return; // our track hasn't shown up yet
+        if (!data.is_playing || !matchesTrack || nearEnd) {
+          if (settling && !matchesTrack) return; // our track hasn't shown up yet
           finish();
         }
       } catch { /* transient network hiccup — keep polling, don't abort the session over it */ }
-    }, 3000);
+    };
+    state.pollInterval = setInterval(poll, 3000);
+    poll(); // fire once immediately too — don't wait a full 3s for the first real correction
   });
 }
 
@@ -656,6 +676,11 @@ async function runLoop() {
     // means there's no dead air even when no announcement is ready at all.
     broadcastState({ phase: 'playing', mood: state.mood, track: { title: track.name, artist: (track.artists || []).map(a => a.name).join(', ') } });
     if (announcement) broadcastState({ phase: 'announcing', line: announcement.text });
+    // AUDIT-2026-08-03: kicked off HERE, concurrently with duckThroughCut,
+    // instead of after it resolves — see the big comment inside
+    // waitForSpotifyTrackEnd for why. Awaited further below, once the
+    // background-prepare setup for the next segment is also underway.
+    const trackEndPromise = waitForSpotifyTrackEnd(token, track.uri);
     await duckThroughCut(async () => {
       try {
         await spotifyApi.play(token, state.deviceId, null, [track.uri]);
@@ -713,7 +738,7 @@ async function runLoop() {
         .catch((err) => console.error('[DJ] background prepare failed:', err.message));
     }
 
-    await waitForSpotifyTrackEnd(token, track.uri);
+    await trackEndPromise;
   }
 
   state.active = false;
