@@ -1133,6 +1133,31 @@ else
   echo -e "${YELLOW}  /boot/firmware/config.txt not found — skipping HDMI config (QEMU/non-Pi).${NC}"
 fi
 
+# ── Optional I2S DAC HAT overlay ─────────────────────────────────────────────
+# AUDIT-2026-08-24: not every box uses one — the default output path is the
+# onboard bcm2835 "Headphones" jack (see the HDMI-audio comment above) or a
+# plug-and-play USB DAC, neither of which need anything here. An I2S HAT like
+# the Audiophonics/IQaudio I-Sabre Q2M (ES9038Q2M) is different: it replaces
+# the onboard analog codec entirely and needs its device-tree overlay loaded
+# before the kernel will expose it as an ALSA card at all — confirmed live on
+# a box that had this HAT wired up but no overlay recorded anywhere in this
+# repo, so a fresh install/reprovision of that same hardware would silently
+# come up on the onboard jack instead. Opt-in via DAC_HAT (empty = skip,
+# matching every other box's default) rather than unconditional: forcing
+# `dtparam=audio=off` on a box that DOESN'T have this HAT would kill its
+# onboard audio outright. detectDac() (server/camilla-config.js) then finds
+# whatever ALSA card actually exists at runtime — this step's only job is
+# making sure the HAT's card exists to be found in the first place.
+if [ -f "$CONFIG_TXT" ] && [ "${DAC_HAT:-}" = "i-sabre-q2m" ]; then
+  {
+    grep -q '^dtparam=audio=off'  "$CONFIG_TXT" || echo 'dtparam=audio=off'
+    grep -q '^dtparam=i2c=on'     "$CONFIG_TXT" || echo 'dtparam=i2c=on'
+    grep -q '^dtparam=i2c_arm=on' "$CONFIG_TXT" || echo 'dtparam=i2c_arm=on'
+    grep -q '^dtoverlay=i-sabre-Q2M' "$CONFIG_TXT" || echo 'dtoverlay=i-sabre-Q2M'
+  } >> "$CONFIG_TXT"
+  echo -e "${GREEN}  I-Sabre Q2M DAC HAT overlay written to $CONFIG_TXT — takes effect on next reboot.${NC}"
+fi
+
 # ── Strip a stray rotate= from a pre-existing kernel cmdline video= token ────
 # Raspberry Pi Imager's own OS-customization step can pre-bake a
 # `video=HDMI-A-1:<res>@<hz>,rotateNNN` token into cmdline.txt independent of
