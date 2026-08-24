@@ -333,6 +333,30 @@ function computeEqPeakDb(bands, fs = 48000) {
 let _lastHeadroomDb = 0;
 export function getLastHeadroomDb() { return _lastHeadroomDb; }
 
+// Room Calibration's master curve (STAGE A below) — a fixed, Harman-target-
+// style curve applied whenever Room Calibration is on, cascaded with the
+// user's own 5-band EQ (STAGE B) rather than replacing it. One shared
+// definition (not two copies of the same six numbers) so computeEqPeakDb()
+// can measure this curve's own peak contribution too.
+//
+// AUDIT-2026-08-24: auto-headroom previously only ever measured
+// profile.bands (the user's own EQ) — this curve's own gain (up to +5.5dB
+// at the bass shelf) was invisible to the safety calculation entirely. It
+// worked out fine in practice only by coincidence: a flat -6dB margin
+// already applied whenever isDspActive is true (a few lines below) happened
+// to be larger than this curve's single biggest boost, so nothing actually
+// clipped — but that margin was never computed FROM this curve, so it would
+// silently stop being enough the moment anyone tuned either number without
+// realizing they were connected. Now genuinely computed instead of assumed.
+const ROOM_CAL_MASTER_CURVE = [
+  { key: "subsonic_cut",        type: "Highpass",  freq: 18,    q: 0.707 },
+  { key: "harman_bass_shelf",   type: "Lowshelf",  freq: 105,   gain: 5.5,  q: 0.707 },
+  { key: "vocal_clarity_dip",   type: "Peaking",   freq: 250,   gain: -1.2, q: 0.6 },
+  { key: "presence_definition", type: "Peaking",   freq: 3000,  gain: 1.0,  q: 0.8 },
+  { key: "harman_treble_tilt",  type: "Highshelf", freq: 4500,  gain: -2.0, q: 0.5 },
+  { key: "spatial_air_sparkle", type: "Peaking",   freq: 14000, gain: 1.5,  q: 1.8 },
+];
+
 // --- CamillaDSP Configuration Generator ---
 // pureDirect = true: bypass all EQ, output flat pipeline (volume control still active)
 // balance: -12..+12 dB. Positive = right louder (attenuate left). Negative = left louder (attenuate right).
@@ -621,23 +645,17 @@ export function generateCamillaConfig(answers, eqSettings, dacInfo, {
   let subPipeline = [];
 
   // --- STAGE A: ROOM CALIBRATION MASTER STACK ---
+  // Built from ROOM_CAL_MASTER_CURVE (above) — the single source of truth
+  // also used by the auto-headroom calculation further down, so the two
+  // can't drift apart the way they did before AUDIT-2026-08-24.
   if (isDspActive) {
-    config.filters.subsonic_cut = { type: "Biquad", parameters: { type: "Highpass", freq: 18, q: 0.707 } };
-    config.filters.harman_bass_shelf = { type: "Biquad", parameters: { type: "Lowshelf", freq: 105, gain: 5.5, q: 0.707 } };
-    config.filters.vocal_clarity_dip = { type: "Biquad", parameters: { type: "Peaking", freq: 250, gain: -1.2, q: 0.6 } };
-    config.filters.presence_definition = { type: "Biquad", parameters: { type: "Peaking", freq: 3000, gain: 1.0, q: 0.8 } };
-    config.filters.harman_treble_tilt = { type: "Biquad", parameters: { type: "Highshelf", freq: 4500, gain: -2.0, q: 0.5 } };
-    config.filters.spatial_air_sparkle = { type: "Biquad", parameters: { type: "Peaking", freq: 14000, gain: 1.5, q: 1.8 } };
-
-    const masterCurveFilters = [
-      "subsonic_cut",
-      "harman_bass_shelf",
-      "vocal_clarity_dip",
-      "presence_definition",
-      "harman_treble_tilt",
-      "spatial_air_sparkle"
-    ];
-
+    for (const f of ROOM_CAL_MASTER_CURVE) {
+      config.filters[f.key] = {
+        type: "Biquad",
+        parameters: { type: f.type, freq: f.freq, ...(f.gain !== undefined ? { gain: f.gain } : {}), q: f.q },
+      };
+    }
+    const masterCurveFilters = ROOM_CAL_MASTER_CURVE.map(f => f.key);
     leftPipeline.push(...masterCurveFilters);
     rightPipeline.push(...masterCurveFilters);
   }
@@ -722,6 +740,14 @@ export function generateCamillaConfig(answers, eqSettings, dacInfo, {
   // safety margin is applied on top in every case as a guard against
   // inter-sample peaks and multi-stage summing exceeding 0 dBFS.
   let baseGainDb;
+  // AUDIT-2026-08-24: tracks whether baseGainDb already reflects Room
+  // Calibration's own master-curve peak (see below) — only the autoHeadroom
+  // branch actually computes that now. When it does, the flat -6dB
+  // isDspActive margin further down must NOT also apply on top of it, or
+  // the master curve's headroom gets double-counted (harmless — just extra
+  // needless attenuation — but no longer "correct by calculation", which
+  // was the whole point of this fix).
+  let dspHeadroomComputed = false;
   if (firEnabled && firFilterPath) {
     // computeEqPeakDb analyzes a biquad cascade's frequency response — it
     // has no way to know a convolution kernel's actual peak (that would
@@ -734,16 +760,26 @@ export function generateCamillaConfig(answers, eqSettings, dacInfo, {
     _lastHeadroomDb = 6.0;
   } else if (autoHeadroom) {
     const fs = dacInfo?.samplerate || 48000;
-    let peak = computeEqPeakDb(profile.bands || [], fs);
+    // Room Calibration's master curve (STAGE A) cascades with the user's
+    // own bands in the real pipeline — analyzed together here so the
+    // computed peak reflects the actual combined response, not the user's
+    // bands in isolation. Previously this only ever measured profile.bands,
+    // silently missing the master curve's own gain (up to +5.5dB at
+    // harman_bass_shelf) — see ROOM_CAL_MASTER_CURVE's own comment above.
+    const headroomBands = isDspActive
+      ? [...ROOM_CAL_MASTER_CURVE, ...(profile.bands || [])]
+      : (profile.bands || []);
+    let peak = computeEqPeakDb(headroomBands, fs);
     if (profile.useSaturation) peak += 2.0;
     const userPreAmp = Number(eqSettings?.preAmp) || 0;
     baseGainDb = userPreAmp - peak;
     _lastHeadroomDb = Math.round(peak * 10) / 10;
+    dspHeadroomComputed = isDspActive;
   } else {
     baseGainDb = Number(profile.preampGain) || 0;
     _lastHeadroomDb = Math.max(0, -baseGainDb);
   }
-  let preampGainDb = Number(isDspActive ? (baseGainDb - 6.0) : baseGainDb) || 0;
+  let preampGainDb = Number((isDspActive && !dspHeadroomComputed) ? (baseGainDb - 6.0) : baseGainDb) || 0;
   // The 'On Stage' spatial pipeline adds energy the biquad-response headroom
   // scan can't see: worst-case correlated reflection summing (+1.8 dB at
   // -13 dB) plus the +2.5 dB side shelf on fully-side content ≈ +4.3 dB.
