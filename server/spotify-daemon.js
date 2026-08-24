@@ -23,7 +23,17 @@ const router = express.Router();
 // changing/advancing normally), change this constant to something NEVER
 // used before. Do not reuse a name that has ever shown this symptom — it
 // will not un-stick itself, no matter what else is tried.
-export const LIBRESPOT_DEVICE_NAME = 'Resonance HiFi';
+//
+// AUDIT-2026-08-24: recurred on "Resonance HiFi" too — reported live as
+// stale cover/track info that "doesn't correspond to reality", confirmed by
+// querying Spotify's own /v1/me/player directly (bypassing this app's cache
+// entirely): Spotify's backend itself returned the same frozen track AND a
+// corrupted negative progress_ms, even after the user had already logged
+// out/back in (already known not to fix this — see above). Burned names so
+// far: "Resonance Connect", "Resonance HiFi". Do not reuse either. Also
+// update src/lib/spotifyDevice.js's copy of this constant — the two can't
+// share a module across the client/server bundle boundary.
+export const LIBRESPOT_DEVICE_NAME = 'EnzoOS HiFi';
 
 // Builds the managed /etc/raspotify/conf content. Exported separately so the
 // startup path can compare it against the last-applied copy (stored in the

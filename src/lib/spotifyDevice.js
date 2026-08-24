@@ -17,4 +17,12 @@
 // keeps changing/advancing normally), change this constant AND
 // server/spotify-daemon.js's LIBRESPOT_DEVICE_NAME to something never used
 // before — do not reuse a name that has ever shown this symptom.
-export const LIBRESPOT_DEVICE_NAME = 'Resonance HiFi';
+//
+// AUDIT-2026-08-24: recurred on "Resonance HiFi" too — reported live as
+// stale cover/track info that "doesn't correspond to reality", confirmed by
+// querying Spotify's own /v1/me/player directly (bypassing this app's cache
+// entirely): Spotify's backend itself returned the same frozen track AND a
+// corrupted negative progress_ms, even after the user had already logged
+// out/back in (already known not to fix this — see above). Burned names so
+// far: "Resonance Connect", "Resonance HiFi". Do not reuse either.
+export const LIBRESPOT_DEVICE_NAME = 'EnzoOS HiFi';
