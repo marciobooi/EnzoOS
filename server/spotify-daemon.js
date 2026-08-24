@@ -30,10 +30,12 @@ const router = express.Router();
 // entirely): Spotify's backend itself returned the same frozen track AND a
 // corrupted negative progress_ms, even after the user had already logged
 // out/back in (already known not to fix this — see above). Burned names so
-// far: "Resonance Connect", "Resonance HiFi". Do not reuse either. Also
-// update src/lib/spotifyDevice.js's copy of this constant — the two can't
-// share a module across the client/server bundle boundary.
-export const LIBRESPOT_DEVICE_NAME = 'EnzoOS HiFi';
+// far: "Resonance Connect", "Resonance HiFi", "EnzoOS HiFi" (this last one
+// was never stuck — just renamed again for on-brand naming, not a bug).
+// Do not reuse any of these three. Also update src/lib/spotifyDevice.js's
+// copy of this constant — the two can't share a module across the
+// client/server bundle boundary.
+export const LIBRESPOT_DEVICE_NAME = 'ResonanceOS';
 
 // Builds the managed /etc/raspotify/conf content. Exported separately so the
 // startup path can compare it against the last-applied copy (stored in the
