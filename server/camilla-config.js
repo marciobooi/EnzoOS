@@ -159,10 +159,21 @@ export async function updatePipeWireClock(dacInfo, bitPerfect = true) {
 # clock.allowed-rates = the DAC's native rates → PipeWire matches the source
 # rate with no resampling. The loopback runs rate-agnostic and CamillaDSP
 # follows via the MPD rate watcher.
+# AUDIT-2026-08-24: quantum was 1024 (~21ms @ 48kHz) — measured live via
+# GetCaptureSignalPeak's own processingLoad, CamillaDSP was reporting
+# 1.15 (115% of its real-time budget) even in Pure Direct with no EQ/FIR
+# active, on a Pi 4 running the full stack concurrently (kiosk Chromium,
+# Ollama for DJ mode, PipeWire/MPD/raspotify) under measured thermal
+# throttling. Reported live as "micro cuts". Doubled to 2048 (~43ms) —
+# must match camilladsp.yml's chunksize exactly (kept in sync below) —
+# trading ~21ms of inaudible extra latency for real headroom on a
+# playback-only appliance with no live-monitoring/interactive latency
+# requirement. min/max-quantum already bracket this (32/8192), so PipeWire
+# was already tolerating values far outside 1024 when it needed to.
 context.properties = {
     default.clock.rate          = 48000
     default.clock.allowed-rates = [ ${rates.join(' ')} ]
-    default.clock.quantum       = 1024
+    default.clock.quantum       = 2048
     default.clock.min-quantum   = 32
     default.clock.max-quantum   = 8192
 }
@@ -173,7 +184,7 @@ context.properties = {
 # rate-switch silence on hardware where rate-following is unreliable.
 context.properties = {
     default.clock.rate          = 48000
-    default.clock.quantum       = 1024
+    default.clock.quantum       = 2048
     default.clock.min-quantum   = 32
     default.clock.max-quantum   = 8192
 }
@@ -444,7 +455,11 @@ export function generateCamillaConfig(answers, eqSettings, dacInfo, {
     const pdConfig = {
       devices: {
         samplerate: dacInfo.samplerate || 44100,
-        chunksize: 1024,
+        // AUDIT-2026-08-24: 1024 -> 2048, matching updatePipeWireClock()'s
+        // quantum bump — see that function's comment for why. Measured live
+        // at 1.15 processingLoad (115%) in THIS exact Pure Direct path (no
+        // EQ/FIR active), so this is the more urgent of the two to fix.
+        chunksize: 2048,
         queuelimit: 4,
         capture:  { type: "Alsa", channels: 2, device: "loop_dsnoop", format: captureFormat },
         playback: playbackDevice,
@@ -461,7 +476,9 @@ export function generateCamillaConfig(answers, eqSettings, dacInfo, {
   let config = {
     devices: {
       samplerate: dacInfo.samplerate || 44100,
-      chunksize: 1024,
+      // AUDIT-2026-08-24: 1024 -> 2048 — see the Pure Direct path above and
+      // updatePipeWireClock()'s comment for the full rationale.
+      chunksize: 2048,
       queuelimit: 4,
       // CamillaDSP 4.1.3 is built with ALSA-only backends (no Pulse/PipeWire).
       // Audio reaches here via: PipeWire → ResonanceInput virtual sink
