@@ -79,6 +79,36 @@ LIMEOF
   echo -e "  ${GREEN}Wrote /etc/security/limits.d/95-resonance-audio.conf.${NC}"
 fi
 
+# ── 1b. Real-time CPU scheduling for CamillaDSP ───────────────────────────────
+# AUDIT-2026-08-24: found live on a deployed box with no record of how it got
+# there — this drop-in existed on the running Pi but was never written by
+# anything in this repo, so a fresh install or a from-scratch reprovision
+# would silently lack it. Without it, CamillaDSP runs SCHED_OTHER like any
+# ordinary process: on a Pi 4 running the full stack concurrently (kiosk
+# Chromium, Ollama for DJ mode, PipeWire, MPD, raspotify), sustained CPU
+# contention — worsened by thermal throttling under load (measured live:
+# 69.6C core temp, `vcgencmd get_throttled` showing the soft-limit flag
+# already set) — can starve CamillaDSP's real-time write loop long enough to
+# miss its ALSA deadline, surfacing as recurring "write underrun, Broken
+# pipe" on the DAC. Reported live as "micro cuts". SCHED_FIFO priority 70
+# is the exact value already proven live on that box (confirmed via
+# `systemctl show camilladsp -p CPUSchedulingPolicy` before this script
+# existed) — matches the `rtprio 95` ceiling already granted to the `audio`
+# group above with headroom to spare. Applied by systemd itself (as root,
+# before dropping to the service's own User=) via sched_setscheduler() on
+# the forked child, so no capability grant is needed on CamillaDSP itself —
+# the standard mechanism real-time audio daemons (JACK, PipeWire's own RT
+# threads) use to stay ahead of ordinary SCHED_OTHER CPU hogs like a browser
+# or an LLM inference process.
+mkdir -p /etc/systemd/system/camilladsp.service.d
+cat > /etc/systemd/system/camilladsp.service.d/10-resonance-rt-priority.conf <<'RTEOF'
+[Service]
+# Resonance HiFi — real-time scheduling priority (replaces core isolation)
+CPUSchedulingPolicy=fifo
+CPUSchedulingPriority=70
+RTEOF
+echo -e "  ${GREEN}camilladsp.service → CPUSchedulingPolicy=fifo, Priority=70.${NC}"
+
 # ── 2. Compile the mlockall LD_PRELOAD shim ───────────────────────────────────
 if [ -f "$SCRIPT_DIR/resonance-mlockall.c" ]; then
   if command -v gcc >/dev/null 2>&1; then

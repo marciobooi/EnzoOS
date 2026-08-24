@@ -428,7 +428,16 @@ context.modules = [
         node.name         = "resonance.loopback.capture"
         audio.position    = [ FL FR ]
         stream.dont-remix = true
-        node.passive      = true
+        # AUDIT-2026-08-24: was `true` — per this project's own
+        # pipewire-wireplumber.md doc (TODO §9.1), a passive link doesn't
+        # keep the graph alive: whenever the source briefly idles, the
+        # bridge itself idles and stops writing to the ALSA loopback,
+        # which stalls CamillaDSP's capture and shows up as recurring ALSA
+        # write-underrun "Broken pipe" errors on the DAC every ~90s —
+        # reported live as intermittent "micro cuts". node.pause-on-idle
+        # was already false on the ResonanceInput sink (50-resonance-
+        # sink.conf) — this was the other, still-passive half of that fix.
+        node.passive      = false
         target.object     = "ResonanceInput"
       }
       playback.props = {
@@ -780,11 +789,13 @@ Requires=sound.target
 [Service]
 Type=simple
 # Runs as the kiosk user, not root — CamillaDSP only needs ALSA device access
-# (covered by the audio group, already granted above) and no realtime
-# scheduling capability is requested by this unit. Its unauthenticated
+# (covered by the audio group, already granted above). Its unauthenticated
 # localhost control WebSocket (-p 1234) is bound to loopback only, but
 # running it as root was still unnecessary privilege for a process that
 # accepts reconfiguration commands over that socket.
+# Real-time CPU scheduling (SCHED_FIFO) is applied separately by
+# scripts/setup-ram-preload.sh's 10-resonance-rt-priority.conf drop-in — see
+# that script's AUDIT-2026-08-24 note for why.
 User=$TARGET_USER
 # A bare system-service User=, unlike an interactive login session, does NOT
 # get XDG_RUNTIME_DIR set by PAM — so the pipewire-alsa plugin CamillaDSP

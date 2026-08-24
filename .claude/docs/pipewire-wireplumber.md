@@ -26,7 +26,7 @@ Args: `node.description`, `target.delay.sec`, `capture.props {}`,
 `playback.props {}`. Props take standard keys: `node.name`, `audio.position`,
 `stream.dont-remix`, `node.passive`, `target.object`.
 - **`target.object` matches a PipeWire `node.name` (or object.serial) — NOT an ALSA device string.** `"hw:Loopback,0,0"` matches nothing → WirePlumber silently falls back to the **default sink**. This caused the live feedback loop (TODO §9.1): loopback playback linked back into ResonanceInput. Find the real name with `pw-cli ls Node | grep -i loopback` → typically `alsa_output.platform-snd_aloop.<profile>…`.
-- `node.passive = true`: link doesn't keep the graph alive — when no active source plays, the bridge idles and stops writing to the ALSA loopback (CamillaDSP capture then stalls; see xrun churn in TODO §9.1). Consider `node.passive = false` + sink `node.pause-on-idle = false` for an always-running bridge.
+- `node.passive = true`: link doesn't keep the graph alive — when no active source plays, the bridge idles and stops writing to the ALSA loopback (CamillaDSP capture then stalls; see xrun churn in TODO §9.1). **Fixed 2026-08-24**: `51-resonance-loopback.conf`'s capture.props now sets `node.passive = false` (install.sh + live Pi); the sink's `node.pause-on-idle = false` was already set (50-resonance-sink.conf) but was only half the fix. Recurring ALSA "write underrun, Broken pipe" on the DAC every ~90s (reported live as "micro cuts") was this — confirmed live via `journalctl` timestamps matching this exact idle/resume cadence.
 - `stream.dont-remix = true`: keep channel layout untouched.
 
 ## Clock / bit-perfect
