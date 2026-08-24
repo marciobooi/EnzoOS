@@ -175,6 +175,22 @@ export function useResonanceWS({
                 setShuffleState, setRepeatState, setVolume, setIsMuted,
                 setEqPreset, setEqBands, setEqSaturation, setEqNoiseFloor, setEqPreAmp,
                 setDspActive, setTheme, setActiveTheme, setBrightness, setVisualizerMode,
+                // AUDIT-2026-08-24: setPureDirect was accepted by this hook
+                // (used correctly by the live SET_PURE_DIRECT WS broadcast
+                // below) but never wired into this initial hydration call —
+                // applyFullStatus already handled it correctly (see its own
+                // `setters.setPureDirect` check), the setter was just never
+                // in this object. Every screen defaulted to Off on load/
+                // reconnect regardless of the real server state, and only
+                // ever corrected itself if ANOTHER screen later toggled it
+                // (broadcasting a fresh SET_PURE_DIRECT). Reported live as
+                // "Pure Direct: Off" on screen while /api/status and the DB
+                // both genuinely said true — and, because Pure Direct
+                // silently bypasses the whole EQ chain, this is what made
+                // EQ/preamp/saturation sliders look like they were being
+                // ignored: they weren't wired wrong, Pure Direct was really
+                // on the whole time despite the toggle saying otherwise.
+                setPureDirect,
               });
               console.log('[Resonance WS] Hydrated from /api/status');
             }
