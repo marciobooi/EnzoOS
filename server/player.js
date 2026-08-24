@@ -1762,7 +1762,17 @@ router.delete('/qobuz/disconnect', async (req, res) => {
 router.get('/replaygain', async (req, res) => {
   try {
     const { stdout } = await execPromise('mpc replaygain');
-    const match = stdout.trim().match(/ReplayGain:\s*(\S+)/i);
+    // AUDIT-2026-08-24: was /ReplayGain:\s*(\S+)/i, matching against mpc's
+    // *heading* text — but mpc 0.35's actual `mpc replaygain` (no args, the
+    // query form) output is `replay_gain_mode: track`, which that pattern
+    // never matches (underscores break the contiguous "ReplayGain:" match).
+    // So this endpoint always fell through to the 'off' fallback regardless
+    // of MPD's real mode — confirmed live: MPD reported `replay_gain_mode:
+    // track` and the DB's persisted replaygain_mode was genuinely "track"
+    // (restored correctly on every startup), but the Advanced settings
+    // screen always displayed "off". Reported live as part of a broader
+    // "are we even reading/writing this stuff" check.
+    const match = stdout.trim().match(/replay_gain_mode:\s*(\S+)/i);
     res.json({ mode: match ? match[1].toLowerCase() : 'off' });
   } catch { res.json({ mode: 'off' }); }
 });
