@@ -100,7 +100,7 @@ import { emit, getEffectiveVolumeDb, getState } from './event-service.js';
 import { getValidAccessToken } from './spotify-auth.js';
 import { spotifyApi } from '../src/api/spotify.js';
 import { LIBRESPOT_DEVICE_NAME } from './spotify-daemon.js';
-import { setCamillaVolume } from './camilla-config.js';
+import { setCamillaVolume, setDuckInProgress } from './camilla-config.js';
 
 const execFilePromise = promisify(execFile);
 const router = express.Router();
@@ -486,6 +486,14 @@ async function duckThroughCut(playNextTrack, announcementWavPath) {
   // announcement produces its own small audible jump.
   const before = getEffectiveVolumeDb();
   const canDuck = before > -90;
+  // AUDIT-2026-08-24: tells camilla-config.js's post-config-regen "SAFETY:
+  // always restore volume" step to skip while a duck is deliberately in
+  // progress. Without this, an unrelated concurrent config regen (an EQ
+  // tweak from a second connected client, or an MPD sample-rate change)
+  // firing during the ducked/announcement window used to snap CamillaDSP
+  // straight back to the full un-ducked level, which the fade-back-up below
+  // then fought — an audible volume glitch/jump mid-announcement.
+  setDuckInProgress(true);
   if (canDuck) {
     // One immediate retry: live-tested, the WS command occasionally reports
     // failure (transient — CamillaDSP's connection isn't always instantly
@@ -510,14 +518,24 @@ async function duckThroughCut(playNextTrack, announcementWavPath) {
     console.error('[DJ] playback failed:', err.message);
   } finally {
     if (canDuck) {
+      // AUDIT-2026-08-24: re-read the target NOW instead of reusing the
+      // pre-duck `before` snapshot — if the user dragged the volume slider
+      // (POST /api/player/volume, applied immediately and independently)
+      // during the announcement, the old code kept fading back to the
+      // STALE pre-duck level on every one of its 6 steps, silently
+      // reverting the user's own slider touch. The announcement/hold above
+      // can run several seconds; re-reading right before the fade starts
+      // catches any change made during that whole window.
+      const target = getEffectiveVolumeDb();
       // Stepped rather than instant — "smoothly fade the music volume back
       // up" per spec. 6 steps over ~700ms.
       const STEPS = 6;
       for (let i = 1; i <= STEPS; i++) {
-        await setCamillaVolume(before - DUCK_DB + (DUCK_DB * i) / STEPS);
+        await setCamillaVolume(target - DUCK_DB + (DUCK_DB * i) / STEPS);
         await new Promise((r) => setTimeout(r, 120));
       }
     }
+    setDuckInProgress(false);
   }
 }
 

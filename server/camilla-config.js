@@ -1104,8 +1104,42 @@ pcm.camilla_bt_output {
   }
 }
 
-// Exportable helper to update configuration on any settings change
-export async function updateCamillaConfigFromSettings({ skipAlsa = false, samplerate = null, pureDirect = false, forceRestart = false } = {}) {
+// AUDIT-2026-08-24: lets dj.js's duckThroughCut() suppress the trailing
+// "SAFETY: always restore volume" step below while a duck/announcement is
+// deliberately in progress. Without this, an unrelated concurrent config
+// regen (an EQ tweak from a second connected client, an MPD sample-rate
+// change) firing mid-duck snapped CamillaDSP straight back to the full,
+// un-ducked level — which duckThroughCut's own fade-back-up then fought,
+// producing an audible volume glitch/jump mid-announcement.
+let _duckInProgress = false;
+export function setDuckInProgress(active) { _duckInProgress = !!active; }
+
+// AUDIT-2026-08-24: two independent async chains (an EQ tweak and, say, an
+// MPD sample-rate change) used to call the real implementation below
+// concurrently with no ordering guarantee — each does its own DB reads,
+// writes the same camilladsp.yml, and does a WS SetConfig round-trip, so
+// whichever happened to finish last silently won regardless of which was
+// actually the newer request: CamillaDSP could end up running a stale
+// config while the DB/broadcast UI already showed the newest settings, or
+// two overlapping SetConfig-failure fallbacks could each independently
+// restart camilladsp back-to-back. Chaining every call through one shared
+// promise serializes them into the order they were actually invoked — the
+// exported name keeps its original signature/behavior for every caller,
+// only WHEN each call's real work is allowed to start has changed.
+let _configUpdateChain = Promise.resolve();
+export function updateCamillaConfigFromSettings(opts) {
+  const result = _configUpdateChain.then(() => _updateCamillaConfigFromSettingsImpl(opts));
+  // Keep the chain moving even if this call rejected — a failed regen must
+  // not permanently wedge every future call behind it — but don't let that
+  // rejection propagate anywhere except to THIS call's own caller (via the
+  // separate `result` promise returned above).
+  _configUpdateChain = result.catch(() => {});
+  return result;
+}
+
+// Real implementation — call updateCamillaConfigFromSettings() (above) in
+// application code, never this directly, or the serialization above is bypassed.
+async function _updateCamillaConfigFromSettingsImpl({ skipAlsa = false, samplerate = null, pureDirect = false, forceRestart = false } = {}) {
   const [dspVal, eqVal, balanceVal, phaseVal, bitPerfectVal, headroomVal, btOutVal, firEnabledVal, firPathVal, firMetaVal] = await Promise.all([
     getSetting('dsp_calibration'),
     getSetting('eq_settings'),
@@ -1232,12 +1266,19 @@ export async function updateCamillaConfigFromSettings({ skipAlsa = false, sample
   // CamillaDSP defaults to 0 dB (full volume) on every start; SetConfig preserves
   // whatever it currently has — on boot that is also 0 dB. Without this, the first
   // playback after startup or a service restart would be at full hardware volume.
-  try {
-    const targetDb = getEffectiveVolumeDb();
-    const ok = await setCamillaVolume(targetDb);
-    if (ok) console.log(`[CamillaDSP] Volume restored to ${targetDb.toFixed(1)} dB after config apply.`);
-  } catch (err) {
-    console.warn('[CamillaDSP] Volume restore failed (non-fatal):', err.message);
+  // AUDIT-2026-08-24: skipped while dj.js's duckThroughCut() has a duck
+  // deliberately in progress — see setDuckInProgress()'s own comment for
+  // the audible-jump bug this closes.
+  if (_duckInProgress) {
+    console.log('[CamillaDSP] Skipped post-config volume restore — DJ duck in progress.');
+  } else {
+    try {
+      const targetDb = getEffectiveVolumeDb();
+      const ok = await setCamillaVolume(targetDb);
+      if (ok) console.log(`[CamillaDSP] Volume restored to ${targetDb.toFixed(1)} dB after config apply.`);
+    } catch (err) {
+      console.warn('[CamillaDSP] Volume restore failed (non-fatal):', err.message);
+    }
   }
 
   return dacInfo;
