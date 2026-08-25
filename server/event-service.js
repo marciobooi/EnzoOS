@@ -178,7 +178,7 @@ export function getCachedVolumeDb() {
 // trim closes that gap — deliberately not a per-track dynamic fetch from
 // Spotify's audio-features endpoint, which Spotify has heavily
 // access-restricted for apps in this category in recent years.
-let cachedSpotifyTrimDb = -4.0;
+let cachedSpotifyTrimDb = 6.0;
 
 export function setSpotifyTrimDb(db) {
   const v = Number(db);

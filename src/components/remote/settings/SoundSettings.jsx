@@ -35,7 +35,7 @@ function AdvancedAudioSettings({ inline = false }) {
   const [dsdBypass, setDsdBypass]     = useState(true);
   const [autoHeadroom, setAutoHeadroom] = useState(true);
   const [headroomDb, setHeadroomDb]   = useState(0);
-  const [spotifyTrim, setSpotifyTrim] = useState(-4);
+  const [spotifyTrim, setSpotifyTrim] = useState(6);
   const [showSpotifyTrim, setShowSpotifyTrim] = useState(false);
   const [firState, setFirState] = useState({ enabled: false, name: null });
   const [showFir, setShowFir] = useState(false);
@@ -67,7 +67,7 @@ function AdvancedAudioSettings({ inline = false }) {
     api.getBitPerfect().then(d => setBitPerfect(d.enabled !== false)).catch(() => {});
     api.getDsdBypass().then(d => setDsdBypass(d.enabled !== false)).catch(() => {});
     api.getAutoHeadroom().then(d => { setAutoHeadroom(d.enabled !== false); setHeadroomDb(d.headroomDb || 0); }).catch(() => {});
-    api.getSpotifyTrim().then(d => setSpotifyTrim(d.trimDb ?? -4)).catch(() => {});
+    api.getSpotifyTrim().then(d => setSpotifyTrim(d.trimDb ?? 6)).catch(() => {});
     api.getFirFilter().then(setFirState).catch(() => {});
     api.getDigitalTransport().then(setTransport).catch(() => {});
     api.getAudioCards().then(d => setAudioCards(d.cards || [])).catch(() => {});
