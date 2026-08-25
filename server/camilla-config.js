@@ -357,6 +357,56 @@ const ROOM_CAL_MASTER_CURVE = [
   { key: "spatial_air_sparkle", type: "Peaking",   freq: 14000, gain: 1.5,  q: 1.8 },
 ];
 
+// AUDIT-2026-08-24: the DSP setup wizard (src/components/DspWizard.jsx,
+// shared by RemoteDspWizard.jsx) stores answers keyed by numeric question id
+// with short value tokens — {"0":"dsp","1":"subwoofer","2":"echoey",
+// "3":"left","5":"small","7":"wall"} — but every Stage C/D check below was
+// written against a DIFFERENT shape the wizard never actually produces:
+// named properties (q1_setup, q2_acoustics, q3_placement, q5_size,
+// q7_walls) holding full display-label strings ("2 Speakers + 1 Subwoofer",
+// "Echoey", etc.). isDspActive's own check (answers['0']==='dsp') happened
+// to already match by coincidence — the numeric-id form IS what it checks
+// — so Room Calibration's fixed master curve always applied, but every
+// per-room/speaker personalization branch (subwoofer crossover, speaker-
+// size safety highpass, echoey-room treble tamer, wall/corner boundary
+// correction, left/right speaker-distance delay) was silently unreachable
+// no matter what the user answered, despite being fully built, wired into
+// the wizard UI, and persisted to the DB. Normalizing into the shape the
+// checks already expect fixes all five branches without touching their
+// logic. (Wizard options with no corresponding branch below — "large"
+// speakers, "open" room, room "center" placement — correctly need none.)
+// AUDIT-2026-08-24: dither noise-shaping curve was hardcoded to
+// "Fweighted441" (psychoacoustically tuned around a 44.1kHz Nyquist)
+// regardless of what rate this bit-perfect, rate-following pipeline is
+// actually running at. Per this project's own camilladsp.md doc: Fweighted441
+// (or Gesemann441) for the 44.1kHz family, Gesemann48 for the 48kHz family,
+// "Flat" (triangular, explicitly documented as rate-agnostic) as the safe
+// default elsewhere — used here for the 88.2/96/176.4/192kHz hi-res family
+// rather than guessing an exact Shibata variant name.
+function ditherTypeFor(samplerate) {
+  const rate = Number(samplerate) || 48000;
+  if (rate % 44100 === 0) return "Fweighted441";
+  if (rate % 48000 === 0) return "Gesemann48";
+  return "Flat";
+}
+
+function normalizeDspAnswers(answers) {
+  if (!answers) return answers;
+  const setupMap     = { subwoofer: "2 Speakers + 1 Subwoofer" };
+  const acousticsMap = { echoey: "Echoey" };
+  const placementMap = { left: "Closer to the Left Speaker", right: "Closer to the Right Speaker" };
+  const sizeMap       = { small: "Small / Desktop", medium: "Medium / Bookshelf" };
+  const wallsMap      = { wall: "Pushed against a wall", corner: "Tucked in a corner / Shelf" };
+  return {
+    ...answers,
+    q1_setup:     setupMap[answers['1']]     || answers.q1_setup,
+    q2_acoustics: acousticsMap[answers['2']] || answers.q2_acoustics,
+    q3_placement: placementMap[answers['3']] || answers.q3_placement,
+    q5_size:      sizeMap[answers['5']]      || answers.q5_size,
+    q7_walls:     wallsMap[answers['7']]     || answers.q7_walls,
+  };
+}
+
 // --- CamillaDSP Configuration Generator ---
 // pureDirect = true: bypass all EQ, output flat pipeline (volume control still active)
 // balance: -12..+12 dB. Positive = right louder (attenuate left). Negative = left louder (attenuate right).
@@ -364,10 +414,11 @@ const ROOM_CAL_MASTER_CURVE = [
 // autoHeadroom = true: attenuate pre-amp by the computed EQ peak instead of the static preset value
 // Exported so the generated YAML can be validated offline against the real
 // binary (`camilladsp --check`) without touching the live service.
-export function generateCamillaConfig(answers, eqSettings, dacInfo, {
+export function generateCamillaConfig(rawAnswers, eqSettings, dacInfo, {
   pureDirect = false, balance = 0, phaseLeft = false, phaseRight = false, bitPerfect = true, autoHeadroom = true, btOutputActive = false,
   firEnabled = false, firFilterPath = null, firChannels = 1,
 } = {}) {
+  const answers = normalizeDspAnswers(rawAnswers);
   const isDspActive = answers && (answers[0] === 'dsp' || answers['0'] === 'dsp');
   const isSubwooferSetup = answers && answers.q1_setup === "2 Speakers + 1 Subwoofer";
   // 'On Stage' preset (EQ_PRESETS in src/components/EqualizerControl.jsx) keys
@@ -464,12 +515,30 @@ export function generateCamillaConfig(answers, eqSettings, dacInfo, {
     const pdPipeRight = [];
     if (phaseLeft)  { pdFilters.phase_left  = { type: "Gain", parameters: { gain: 0, inverted: true, mute: false } }; pdPipeLeft.push("phase_left"); }
     if (phaseRight) { pdFilters.phase_right = { type: "Gain", parameters: { gain: 0, inverted: true, mute: false } }; pdPipeRight.push("phase_right"); }
+    // AUDIT-2026-08-24: a true-peak safety net — CamillaDSP's computed
+    // headroom (biquad-cascade magnitude analysis) has no way to see
+    // inter-sample overs in the SOURCE material itself, and Pure Direct
+    // otherwise has zero ceiling at all beyond whatever the source and
+    // volume happen to sum to. soft_clip's cubic knee only engages within a
+    // fraction of a dB of clip_limit, so ordinary program material never
+    // touches it — belt-and-suspenders, not a tone-shaping stage.
+    pdFilters.true_peak_limiter = { type: "Limiter", parameters: { clip_limit: -0.3, soft_clip: true } };
+    pdPipeLeft.push("true_peak_limiter");
+    pdPipeRight.push("true_peak_limiter");
     // Dither is a fidelity improvement (replaces quantization distortion with
     // inaudible shaped noise), not tone-coloring processing, so it's applied
     // even in Pure Direct — unlike EQ/rate-adjust, which that mode deliberately
     // bypasses. Only matters when truncating to 16-bit output.
-    if ((dacInfo.format || '').startsWith('S16')) {
-      pdFilters.dither_16bit = { type: "Dither", parameters: { type: "Fweighted441", bits: 16 } };
+    // AUDIT-2026-08-24: gate was `dacInfo.format` (the physical DAC's own
+    // capability), but the ACTUAL ALSA write target when Bluetooth output is
+    // active is playbackDevice — hardcoded S16_LE regardless of the DAC — so
+    // on a real hi-res DAC (e.g. S32_LE) with Bluetooth output selected, this
+    // never matched, and 16-bit truncation happened at the final write with
+    // no dither applied at all. Gating on playbackDevice.format (the format
+    // actually being written) is correct for both the direct-DAC and
+    // Bluetooth paths.
+    if ((playbackDevice.format || '').startsWith('S16')) {
+      pdFilters.dither_16bit = { type: "Dither", parameters: { type: ditherTypeFor(dacInfo.samplerate), bits: 16 } };
       pdPipeLeft.push("dither_16bit");
       pdPipeRight.push("dither_16bit");
     }
@@ -760,17 +829,28 @@ export function generateCamillaConfig(answers, eqSettings, dacInfo, {
     _lastHeadroomDb = 6.0;
   } else if (autoHeadroom) {
     const fs = dacInfo?.samplerate || 48000;
-    // Room Calibration's master curve (STAGE A) cascades with the user's
-    // own bands in the real pipeline — analyzed together here so the
-    // computed peak reflects the actual combined response, not the user's
-    // bands in isolation. Previously this only ever measured profile.bands,
-    // silently missing the master curve's own gain (up to +5.5dB at
-    // harman_bass_shelf) — see ROOM_CAL_MASTER_CURVE's own comment above.
-    const headroomBands = isDspActive
-      ? [...ROOM_CAL_MASTER_CURVE, ...(profile.bands || [])]
-      : (profile.bands || []);
-    let peak = computeEqPeakDb(headroomBands, fs);
-    if (profile.useSaturation) peak += 2.0;
+    // Room Calibration's master curve (STAGE A) and the saturation "warmth"
+    // filter both cascade with the user's own bands in the real pipeline —
+    // analyzed together here so the computed peak reflects the actual
+    // combined response, not the user's bands in isolation.
+    // AUDIT-2026-08-24: previously this only ever measured profile.bands,
+    // missing the master curve's own gain (up to +5.5dB at
+    // harman_bass_shelf — see ROOM_CAL_MASTER_CURVE's own comment above) AND
+    // approximating saturation's contribution as a flat +2.0dB regardless of
+    // its actual slider value — saturation's real max is +2.5dB (slider=10,
+    // gain = saturation*0.25, matching the analog_saturation filter this
+    // function builds a few lines below), under-reserving headroom by up to
+    // 0.5dB at full saturation. Pushing saturation's own real filter
+    // definition into the same cascade array replaces both approximations
+    // with one exact calculation.
+    const headroomBands = [
+      ...(isDspActive ? ROOM_CAL_MASTER_CURVE : []),
+      ...(profile.bands || []),
+    ];
+    if (profile.useSaturation) {
+      headroomBands.push({ type: "Peaking", freq: 80, gain: Number(eqSettings?.saturation || 0) * 0.25, q: 1.5 });
+    }
+    const peak = computeEqPeakDb(headroomBands, fs);
     const userPreAmp = Number(eqSettings?.preAmp) || 0;
     baseGainDb = userPreAmp - peak;
     _lastHeadroomDb = Math.round(peak * 10) / 10;
@@ -792,14 +872,30 @@ export function generateCamillaConfig(answers, eqSettings, dacInfo, {
   if (phaseLeft)  { config.filters.phase_left  = { type: "Gain", parameters: { gain: 0, inverted: true, mute: false } }; leftPipeline.push("phase_left"); }
   if (phaseRight) { config.filters.phase_right = { type: "Gain", parameters: { gain: 0, inverted: true, mute: false } }; rightPipeline.push("phase_right"); }
 
+  // AUDIT-2026-08-24: a true-peak safety net — computeEqPeakDb() has no way
+  // to see inter-sample overs in the SOURCE material itself, only the EQ's
+  // OWN gain, and saturation's contribution was previously a flat guess
+  // (now computed exactly, but this remains cheap, independent insurance
+  // against that class of blind spot generally). soft_clip's cubic knee
+  // only engages within a fraction of a dB of clip_limit — inaudible on
+  // ordinary program material, not a tone-shaping stage.
+  config.filters.true_peak_limiter = { type: "Limiter", parameters: { clip_limit: -0.3, soft_clip: true } };
+  leftPipeline.push("true_peak_limiter");
+  rightPipeline.push("true_peak_limiter");
+  if (isSubwooferSetup) subPipeline.push("true_peak_limiter");
+
   // Dither only matters when truncating to 16-bit output (this VM's onboard
   // HDA is S16_LE; some budget DACs too) — without it, the EQ/volume/resample
   // math above (all float-precision) truncates to 16-bit undithered, adding
   // quantization distortion. Skip entirely for 24/32-bit outputs, where the
   // extra headroom makes it unnecessary. Must be the LAST filter in the
   // chain (dither after all gain/EQ stages, right before the ALSA write).
-  if ((dacInfo.format || '').startsWith('S16')) {
-    config.filters.dither_16bit = { type: "Dither", parameters: { type: "Fweighted441", bits: 16 } };
+  // AUDIT-2026-08-24: gate was dacInfo.format (the physical DAC's own
+  // capability) — see the matching Pure Direct comment above for why
+  // playbackDevice.format (what's actually written when Bluetooth output
+  // is active, hardcoded S16_LE regardless of the DAC) is the correct gate.
+  if ((playbackDevice.format || '').startsWith('S16')) {
+    config.filters.dither_16bit = { type: "Dither", parameters: { type: ditherTypeFor(dacInfo.samplerate), bits: 16 } };
     leftPipeline.push("dither_16bit");
     rightPipeline.push("dither_16bit");
     if (isSubwooferSetup) subPipeline.push("dither_16bit");
