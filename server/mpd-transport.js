@@ -30,6 +30,7 @@ import { getSetting, setSetting } from './db.js';
 import { sendError, badRequest } from './lib/errors.js';
 import { detectDac } from './camilla-config.js';
 import { getMpdOutputs, mpcEnableOnly } from './player.js';
+import { emit } from './event-service.js';
 
 const execPromise = promisify(exec);
 const router = express.Router();
@@ -216,7 +217,9 @@ router.post('/digital-transport', async (req, res) => {
     const [finalEnabled, outs, finalDevice] = await Promise.all([
       isDigitalTransportEnabled(), getMpdOutputs(), getSetting('digital_transport_device'),
     ]);
-    res.json({ enabled: finalEnabled, configured: outs.some(o => o.name === TRANSPORT_OUTPUT_NAME), device: finalDevice || null });
+    const state = { enabled: finalEnabled, configured: outs.some(o => o.name === TRANSPORT_OUTPUT_NAME), device: finalDevice || null };
+    emit('ADVANCED_SETTING_CHANGED', { field: 'digitalTransport', value: state });
+    res.json(state);
   } catch (err) {
     sendError(res, err);
   }

@@ -182,6 +182,7 @@ router.post('/spotify-trim', async (req, res) => {
   } catch (err) {
     console.warn('[Spotify Trim] Live re-apply failed (non-fatal):', err.message);
   }
+  emit('ADVANCED_SETTING_CHANGED', { field: 'spotifyTrim', value: trimDb });
   res.json({ trimDb: getSpotifyTrimDb() });
 });
 
@@ -1797,6 +1798,7 @@ router.post('/replaygain', async (req, res) => {
   try {
     await execFilePromise('mpc', ['replaygain', mode]);
     await setSetting('replaygain_mode', mode);
+    emit('ADVANCED_SETTING_CHANGED', { field: 'replayGain', value: mode });
     res.json({ success: true, mode });
   } catch (err) { sendError(res, err); }
 });
@@ -1824,6 +1826,7 @@ router.post('/crossfade', async (req, res) => {
   try {
     await execFilePromise('mpc', ['crossfade', String(secs)]);
     await setSetting('crossfade_seconds', secs);
+    emit('ADVANCED_SETTING_CHANGED', { field: 'crossfade', value: secs });
     res.json({ success: true, seconds: secs });
   } catch (err) { sendError(res, err); }
 });
@@ -1863,6 +1866,7 @@ router.post('/gapless', async (req, res) => {
       await execFilePromise('mpc', ['mixrampdelay', '-1']);
     }
     await setSetting('gapless_enabled', enabled ? '1' : '0');
+    emit('ADVANCED_SETTING_CHANGED', { field: 'gapless', value: enabled });
     res.json({ success: true, enabled });
   } catch (err) { sendError(res, err); }
 });
@@ -1880,6 +1884,7 @@ router.post('/balance', async (req, res) => {
   try {
     await setSetting('balance', bal);
     await updateCamillaConfigFromSettings({ skipAlsa: true });
+    emit('ADVANCED_SETTING_CHANGED', { field: 'balance', value: bal });
     res.json({ success: true, balance: bal });
   } catch (err) { sendError(res, err); }
 });
@@ -1896,6 +1901,7 @@ router.post('/phase', async (req, res) => {
   try {
     await setSetting('phase', JSON.stringify({ left, right }));
     await updateCamillaConfigFromSettings({ skipAlsa: true });
+    emit('ADVANCED_SETTING_CHANGED', { field: 'phase', value: { left, right } });
     res.json({ success: true, left, right });
   } catch (err) { sendError(res, err); }
 });
@@ -1918,6 +1924,7 @@ router.post('/bitperfect', async (req, res) => {
     await setSetting('bitperfect', enabled ? 'true' : 'false');
     // Full reconfig: rewrites asound.conf + PipeWire clock + CamillaDSP capture.
     await updateCamillaConfigFromSettings({ skipAlsa: false });
+    emit('ADVANCED_SETTING_CHANGED', { field: 'bitPerfect', value: enabled });
     res.json({ success: true, enabled, rebootRequired: true });
   } catch (err) { sendError(res, err); }
 });
@@ -1936,6 +1943,7 @@ router.post('/dsd-bypass', async (req, res) => {
   try {
     await setSetting('dsd_bypass', enabled ? 'true' : 'false');
     const active = await applyDsdRouting();
+    emit('ADVANCED_SETTING_CHANGED', { field: 'dsdBypass', value: enabled });
     res.json({ success: true, enabled, active });
   } catch (err) { sendError(res, err); }
 });
@@ -1954,6 +1962,7 @@ router.post('/auto-headroom', async (req, res) => {
   try {
     await setSetting('auto_headroom', enabled ? 'true' : 'false');
     await updateCamillaConfigFromSettings({ skipAlsa: true });
+    emit('ADVANCED_SETTING_CHANGED', { field: 'autoHeadroom', value: enabled });
     res.json({ success: true, enabled, headroomDb: getLastHeadroomDb() });
   } catch (err) { sendError(res, err); }
 });

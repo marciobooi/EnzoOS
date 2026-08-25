@@ -372,6 +372,18 @@ export function useResonanceWS({
             if (type === 'USB_STORAGE') {
               window.dispatchEvent(new CustomEvent('usb-storage-changed', { detail: payload }));
             }
+
+            // AUDIT-2026-08-25: Sound > Advanced sheet (ReplayGain,
+            // crossfade, gapless, balance, phase, bit-perfect, DSD bypass,
+            // auto-headroom, Spotify trim, FIR filter, digital transport) —
+            // SoundSettings.jsx only ever fetched each of these once, on
+            // its own mount, with no live-sync mechanism at all. Unlike
+            // usb-storage-changed above, the payload here already carries
+            // the real new value (not just "something changed"), so the
+            // listener applies it directly instead of re-fetching.
+            if (type === 'ADVANCED_SETTING_CHANGED') {
+              window.dispatchEvent(new CustomEvent('advanced-setting-changed', { detail: payload }));
+            }
         } catch (err) {
           console.error('[Resonance WS] Error parsing WS message:', err);
         }

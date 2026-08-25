@@ -760,6 +760,21 @@ async function handleEvent(type, payload, excludeWs) {
       break;
     }
 
+    // AUDIT-2026-08-25: single generic broadcast for the whole Sound >
+    // Advanced sheet (ReplayGain, crossfade, gapless, balance, phase,
+    // bit-perfect, DSD bypass, auto-headroom, Spotify trim, FIR filter,
+    // digital transport) — none of these had ANY live-sync mechanism at
+    // all (not even a dropped one, like USB_STORAGE above): each screen's
+    // SoundSettings.jsx only ever fetched them once, on its own mount, so
+    // changing any of them from one screen left every other already-open
+    // screen showing a stale value indefinitely — same bug class as the
+    // Pure Direct/ReplayGain display fixes, but for the whole sheet. One
+    // shared event ({field, value}) instead of ten bespoke ones per setting.
+    case 'ADVANCED_SETTING_CHANGED': {
+      broadcast({ type: 'ADVANCED_SETTING_CHANGED', payload }, excludeWs);
+      break;
+    }
+
     default:
       console.warn('[EventService] Unknown event type:', type);
   }

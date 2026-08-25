@@ -21,6 +21,7 @@ import { fileURLToPath } from 'url';
 import { getSetting, setSetting } from './db.js';
 import { sendError, badRequest } from './lib/errors.js';
 import { updateCamillaConfigFromSettings } from './camilla-config.js';
+import { emit } from './event-service.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const FIR_DIR = path.resolve(__dirname, '../data/fir-filters');
@@ -141,6 +142,7 @@ router.post('/dsp/fir-filter', async (req, res) => {
 
       await updateCamillaConfigFromSettings({ skipAlsa: true });
       const { path: _p, ...state } = await getFirState();
+      emit('ADVANCED_SETTING_CHANGED', { field: 'fir', value: state });
       res.json(state);
     } catch (err) {
       sendError(res, err);
@@ -156,6 +158,7 @@ router.post('/dsp/fir-filter/toggle', async (req, res) => {
     await setSetting('fir_enabled', enabled ? 'true' : 'false');
     await updateCamillaConfigFromSettings({ skipAlsa: true });
     const { path: _p, ...state } = await getFirState();
+    emit('ADVANCED_SETTING_CHANGED', { field: 'fir', value: state });
     res.json(state);
   } catch (err) {
     sendError(res, err);
@@ -173,6 +176,7 @@ router.delete('/dsp/fir-filter', async (req, res) => {
       setSetting('fir_filter_meta', ''),
     ]);
     await updateCamillaConfigFromSettings({ skipAlsa: true });
+    emit('ADVANCED_SETTING_CHANGED', { field: 'fir', value: { enabled: false, name: null } });
     res.json({ enabled: false, name: null });
   } catch (err) {
     sendError(res, err);

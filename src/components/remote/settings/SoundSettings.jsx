@@ -73,6 +73,36 @@ function AdvancedAudioSettings({ inline = false }) {
     api.getAudioCards().then(d => setAudioCards(d.cards || [])).catch(() => {});
   }, []);
 
+  // AUDIT-2026-08-25: this whole sheet only ever hydrated once, on mount
+  // (the effect above) — changing any of these settings from a DIFFERENT
+  // screen (or this same screen reconnecting) left every other already-open
+  // instance of this sheet showing a stale value indefinitely, the same bug
+  // class as the Pure Direct/ReplayGain display fixes but across the whole
+  // Advanced sheet at once. server/event-service.js's ADVANCED_SETTING_CHANGED
+  // broadcast already carries the real new value, so this applies it
+  // directly rather than re-fetching.
+  useEffect(() => {
+    const onChange = (e) => {
+      const { field, value } = e.detail || {};
+      switch (field) {
+        case 'replayGain':      setReplayGain(value); break;
+        case 'crossfade':       setCrossfade(value); break;
+        case 'gapless':         setGapless(value); break;
+        case 'balance':         setBalance(value); break;
+        case 'phase':           setPhaseLeft(!!value?.left); setPhaseRight(!!value?.right); break;
+        case 'bitPerfect':      setBitPerfect(value); break;
+        case 'dsdBypass':       setDsdBypass(value); break;
+        case 'autoHeadroom':    setAutoHeadroom(value); break;
+        case 'spotifyTrim':     setSpotifyTrim(value); break;
+        case 'fir':             setFirState(value); break;
+        case 'digitalTransport': setTransport(value); break;
+        default: break;
+      }
+    };
+    window.addEventListener('advanced-setting-changed', onChange);
+    return () => window.removeEventListener('advanced-setting-changed', onChange);
+  }, []);
+
   const handleReplayGainChange = async (mode) => {
     setReplayGain(mode);
     try { await api.setReplayGain(mode); toast.success(`ReplayGain: ${mode}`); }
