@@ -55,7 +55,7 @@ function Chip({ C, children, accent }) {
 // external aggregator's art, since it's guaranteed to be the exact release
 // actually in this library rather than whatever edition MusicBrainz/Last.fm
 // happens to have art for.
-export default function AlbumInfoSheet({ artist, album, albumImage, sampleFile, onClose, inline = false }) {
+export default function AlbumInfoSheet({ artist, leadArtist, album, albumImage, sampleFile, onClose, inline = false }) {
   const { C, cardWhite, darkMode } = useContext(Tk);
   const { lang, t } = useI18n();
   const [state, setState] = useState({ loading: true, error: null, data: null });
@@ -64,8 +64,15 @@ export default function AlbumInfoSheet({ artist, album, albumImage, sampleFile, 
     let alive = true;
     // Look up by the lead artist only — "Seether, Amy Lee" (Spotify's joined
     // feat.-artist credit) matches nothing in MusicBrainz/Last.fm/TheAudioDB,
-    // even though "Seether" alone is well documented.
-    api.getAlbumMetadata(primaryArtist(artist), album, lang)
+    // even though "Seether" alone is well documented. Prefer leadArtist (the
+    // real artists[0] name, passed by callers that still have it) over
+    // primaryArtist()'s comma-split guess on the already-joined `artist`
+    // string — see AUDIT-2026-08-24 in src/lib/format.js for why that guess
+    // breaks on artists whose actual name contains a comma (Earth, Wind &
+    // Fire). leadArtist is empty for sources with no per-artist array
+    // (radio/local library), where the fallback heuristic is the best
+    // available option anyway.
+    api.getAlbumMetadata(leadArtist || primaryArtist(artist), album, lang)
       .then((d) => {
         if (!alive) return;
         setState({ loading: false, error: null, data: d });
@@ -75,7 +82,7 @@ export default function AlbumInfoSheet({ artist, album, albumImage, sampleFile, 
       })
       .catch(() => { if (alive) setState({ loading: false, error: t('meta.couldNotLoad'), data: null }); });
     return () => { alive = false; };
-  }, [artist, album, lang]);
+  }, [artist, leadArtist, album, lang]);
 
   const d = state.data;
   const fmtNum = (n) => (n ? Number(n).toLocaleString() : null);

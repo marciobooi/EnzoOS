@@ -31,7 +31,7 @@ function Credit({ icon, label, value }) {
 export default function AlbumInfoOverlay() {
   const {
     isAlbumInfoOpen, setIsAlbumInfoOpen,
-    albumInfoArtist: artist, albumInfoAlbum: album, albumInfoImage,
+    albumInfoArtist: artist, albumInfoLeadArtist: leadArtist, albumInfoAlbum: album, albumInfoImage,
   } = useContext(Kk);
   const { lang, t } = useI18n();
 
@@ -43,12 +43,16 @@ export default function AlbumInfoOverlay() {
     let alive = true;
     // Look up by the lead artist only — "Seether, Amy Lee" (Spotify's joined
     // feat.-artist credit) matches nothing in MusicBrainz/Last.fm/TheAudioDB,
-    // even though "Seether" alone is well documented.
-    api.getAlbumMetadata(primaryArtist(artist), album, lang)
+    // even though "Seether" alone is well documented. Prefer the real
+    // leadArtist (from the intact artists array) over primaryArtist()'s
+    // comma-split guess on the joined string — see AUDIT-2026-08-24 in
+    // src/lib/format.js for why that guess breaks on artists whose actual
+    // name contains a comma (Earth, Wind & Fire).
+    api.getAlbumMetadata(leadArtist || primaryArtist(artist), album, lang)
       .then((d) => { if (alive) setRes({ album, data: d, error: false }); })
       .catch(() => { if (alive) setRes({ album, data: null, error: true }); });
     return () => { alive = false; };
-  }, [isAlbumInfoOpen, album, artist, lang]);
+  }, [isAlbumInfoOpen, album, artist, leadArtist, lang]);
 
   const ready = res.album === album;
   const loading = isAlbumInfoOpen && !ready;

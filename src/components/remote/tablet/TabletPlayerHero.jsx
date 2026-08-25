@@ -165,14 +165,15 @@ export default function TabletPlayerHero() {
   // a modal — see the `inline` prop on both components.
   if (showInfo) {
     return (
-      <AlbumInfoSheet inline artist={trackArtist} album={albumName} albumImage={albumImage}
+      <AlbumInfoSheet inline artist={trackArtist} leadArtist={currentTrack?.artists?.[0]?.name || ''}
+        album={albumName} albumImage={albumImage}
         onClose={() => setShowInfo(false)} />
     );
   }
   if (showLyrics) {
     return (
-      <LyricsSheet inline title={trackName} artist={trackArtist} album={albumName}
-        duration={trackDuration} position={trackPosition}
+      <LyricsSheet inline title={trackName} artist={trackArtist} leadArtist={currentTrack?.artists?.[0]?.name || ''}
+        album={albumName} duration={trackDuration} position={trackPosition}
         onClose={() => setShowLyrics(false)} />
     );
   }

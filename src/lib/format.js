@@ -32,8 +32,22 @@ export function getGreeting(date = new Date()) {
 // full joined string fails to match even for well-documented lead artists,
 // since no database has an artist literally named "Seether, Amy Lee". Use
 // this for API lookups; keep the full joined string for on-screen credits.
+// AUDIT-2026-08-24: splitting on the first comma also truncates any artist
+// whose REAL name contains one — "Earth, Wind & Fire", "Crosby, Stills &
+// Nash", "Emerson, Lake & Palmer" — since by the time a caller has a plain
+// joined string, the original per-artist array is already gone and there's
+// no reliable way to tell an in-name comma from a join separator. Callers
+// that still have the raw artists array (Spotify's track.artists[0] IS the
+// lead artist, unambiguously) should pass THAT instead — see the
+// albumInfoLeadArtist plumbing in Kiosk.jsx/RemoteControl.jsx and its
+// callers. This string-split path is now only the fallback for sources
+// (radio, local/MPD) that never had a real per-artist array to begin with.
 export function primaryArtist(displayArtist) {
   if (!displayArtist) return displayArtist;
+  if (Array.isArray(displayArtist)) {
+    const first = displayArtist[0];
+    return (typeof first === 'string' ? first : first?.name) || '';
+  }
   return displayArtist.split(',')[0].trim();
 }
 

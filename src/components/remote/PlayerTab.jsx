@@ -366,12 +366,13 @@ export default function PlayerTab() {
       )}
 
       {showInfo && (
-        <AlbumInfoSheet artist={trackArtist} album={albumName} albumImage={albumImage}
+        <AlbumInfoSheet artist={trackArtist} leadArtist={currentTrack?.artists?.[0]?.name || ''}
+          album={albumName} albumImage={albumImage}
           onClose={() => setShowInfo(false)} />
       )}
       {showLyrics && (
-        <LyricsSheet title={trackName} artist={trackArtist} album={albumName}
-          duration={trackDuration} position={trackPosition}
+        <LyricsSheet title={trackName} artist={trackArtist} leadArtist={currentTrack?.artists?.[0]?.name || ''}
+          album={albumName} duration={trackDuration} position={trackPosition}
           onClose={() => setShowLyrics(false)} />
       )}
     </div>

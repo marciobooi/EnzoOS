@@ -1597,6 +1597,12 @@ export default function Kiosk() {
     // album info
     isAlbumInfoOpen, setIsAlbumInfoOpen,
     albumInfoArtist: trackArtist,
+    // AUDIT-2026-08-24: the real lead-artist name from the still-intact
+    // artists array (unambiguous, unlike primaryArtist()'s comma-split
+    // fallback on the already-joined trackArtist string) — empty for
+    // sources with no per-artist array (radio/local), where the fallback
+    // heuristic in primaryArtist() is the best available option anyway.
+    albumInfoLeadArtist: currentTrack?.artists?.[0]?.name || '',
     albumInfoAlbum: currentTrack?.album?.name || '',
     albumInfoImage: albumImage,
     // settings menu

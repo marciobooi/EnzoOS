@@ -21,7 +21,7 @@ function parseSynced(lrc) {
 // `inline`: the tablet shell wants this to replace the main content pane in
 // place instead of sliding up as a bottom-sheet modal over it — see
 // TabletPlayerHero, the only caller that passes it. Phone always omits it.
-export default function LyricsSheet({ title, artist, album, duration, position, onClose, inline = false }) {
+export default function LyricsSheet({ title, artist, leadArtist, album, duration, position, onClose, inline = false }) {
   const { C, cardWhite } = useContext(Tk);
   const { t } = useI18n();
   const [loading, setLoading] = useState(true);
@@ -36,8 +36,12 @@ export default function LyricsSheet({ title, artist, album, duration, position, 
     let cancelled = false;
     setLoading(true); setError(false);
     // LRCLIB matches by exact artist name — "Seether, Amy Lee" (Spotify's
-    // joined feat.-artist credit) fails to match its "Seether" entry.
-    api.getLyrics(title, primaryArtist(artist), album, Math.round(duration / 1000))
+    // joined feat.-artist credit) fails to match its "Seether" entry. Prefer
+    // leadArtist (the real artists[0] name) over primaryArtist()'s
+    // comma-split guess — see AUDIT-2026-08-24 in src/lib/format.js for why
+    // that guess breaks on artists whose actual name contains a comma
+    // (Earth, Wind & Fire).
+    api.getLyrics(title, leadArtist || primaryArtist(artist), album, Math.round(duration / 1000))
       .then(d => {
         if (cancelled) return;
         const parsed = parseSynced(d.synced);
@@ -50,7 +54,7 @@ export default function LyricsSheet({ title, artist, album, duration, position, 
     return () => { cancelled = true; };
     // album/duration are part of the LRCLIB query — the same title on a
     // different album (or a different edit length) must refetch.
-  }, [title, artist, album, duration]);
+  }, [title, artist, leadArtist, album, duration]);
 
   useEffect(() => {
     if (!synced) return;
