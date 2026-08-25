@@ -402,11 +402,20 @@ async function unloadOllamaModel() {
 // prerequisite for this feature, same as Ollama/Piper themselves).
 const CLIP_RATE = 48000;
 
+// AUDIT-2026-08-25: spawned via `nice -n 19` (the lowest, most yielding
+// priority) — this synthesis runs entirely in the background during the
+// several minutes of runway before the NEXT track transition (see the
+// comment on synthesize()'s caller: "never on the critical path"), so
+// deprioritizing it costs nothing in practice but means it always yields
+// CPU to CamillaDSP (already SCHED_FIFO real-time — see
+// scripts/setup-ram-preload.sh) and to resonance-api's own request
+// handling instead of competing with either. Reported live: "priority is
+// always the music."
 function synthesizeRaw(text, language) {
   return new Promise((resolve, reject) => {
     const voice = VOICES[language] || VOICES.en;
     const outFile = path.join(os.tmpdir(), `dj-line-${Date.now()}-${Math.random().toString(36).slice(2, 7)}.raw.wav`);
-    const proc = spawn(PIPER_BIN, ['--model', voice, '--output_file', outFile, '--espeak_data', PIPER_ESPEAK_DATA, '--length_scale', String(SPEECH_LENGTH_SCALE)]);
+    const proc = spawn('nice', ['-n', '19', PIPER_BIN, '--model', voice, '--output_file', outFile, '--espeak_data', PIPER_ESPEAK_DATA, '--length_scale', String(SPEECH_LENGTH_SCALE)]);
     let stderr = '';
     proc.stderr.on('data', (d) => { stderr += d; });
     proc.on('error', reject);

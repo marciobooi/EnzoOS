@@ -28,6 +28,26 @@ fails) on a box that doesn't have them. Verified live on the real Pi 4
 | Piper voices | `/opt/piper-tts/piper/voices/*.onnx` | Only `en_US-ryan-high.onnx` and `pt_PT-tugao-medium.onnx` are referenced by `VOICES` — `en_US-lessac-medium.onnx` present on disk is a leftover from before the 2026-08-01 voice change, safe to delete |
 | ffmpeg | 6.1.1 (Ubuntu) | Used only to resample/boost/limit the announcement clip — see Audio path below |
 
+**Required manual step, AUDIT-2026-08-25**: Ollama's default install has no
+CPU priority tuning, so a generation call (measured live: 76-106s on a Pi 4,
+50%+ CPU) competes on equal footing with resonance-api/PipeWire/MPD for
+non-real-time CPU. CamillaDSP itself is already immune (SCHED_FIFO real-time
+— see `scripts/setup-ram-preload.sh`), but nothing protected everything
+ELSE from Ollama specifically. A systemd drop-in deprioritizes it — safe
+since DJ's own synthesis already runs entirely in the background with
+several minutes of runway before it's needed (see "never wait on
+Ollama/Piper" below):
+```
+sudo mkdir -p /etc/systemd/system/ollama.service.d
+sudo tee /etc/systemd/system/ollama.service.d/10-resonance-priority.conf <<'EOF'
+[Service]
+Nice=19
+EOF
+sudo systemctl daemon-reload && sudo systemctl restart ollama
+```
+Piper is spawned per-call by `synthesizeRaw()` (`server/dj.js`) directly via
+`nice -n 19`, no separate systemd unit involved.
+
 **Live-benchmarked hardware reality (Pi 4, 4GB, 2026-07-31)**: qwen2.5:1.5b
 generates a ~15-word line in ~10-12s once warm, ~44s cold. Piper (`-high`
 voice tier) adds ~3s load + roughly real-time synthesis. This is the entire
