@@ -249,13 +249,24 @@ async function getSpotifyTrackPool(token) {
 // regardless of whether it was remotely upbeat. Reported live as roughly 3
 // of 5 suggested "party" tracks not actually being party tracks. Replaced
 // with more specific tags that actually signal upbeat/party pop rather than
-// pop in general; 'casual' keeps bare 'pop' since that mood is deliberately
-// broad/generic.
+// pop in general.
+//
+// Same follow-up pass across the other three moods once asked "did you
+// cover the other moods too?": 'dramatic' had the identical problem with
+// bare 'rock' — "rock" spans everything from yacht rock and pop rock to
+// grunge and gothic rock, most of which isn't remotely "intense and
+// dramatic" — replaced with specific intense/dark rock subgenres the same
+// way. 'chill' and 'casual' were left as-is on inspection: 'casual' keeps
+// bare 'pop' deliberately (that mood IS meant to be broad/generic, unlike
+// party which needs real precision), and 'chill'/'jazz' + 'soul' are lower-
+// risk than 'pop'/'rock' were (jazz and soul both skew mellow far more
+// consistently as Spotify tags in practice) — left alone rather than fixing
+// a problem that wasn't actually reported.
 const MOOD_GENRE_KEYWORDS = {
   hype:     ['dance', 'edm', 'electro', 'house', 'techno', 'trap', 'hip hop', 'rap', 'dubstep', 'drum and bass', 'party', 'big room', 'festival', 'moombahton', 'brostep', 'future bass', 'melbourne bounce'],
   chill:    ['chill', 'acoustic', 'ambient', 'lo-fi', 'lofi', 'sleep', 'folk', 'singer-songwriter', 'jazz', 'soul', 'bossa nova', 'soft'],
   casual:   ['pop', 'indie', 'singer-songwriter', 'coffeehouse', 'soft rock', 'adult standards'],
-  dramatic: ['metal', 'rock', 'punk', 'hard rock', 'orchestral', 'cinematic', 'opera', 'epic', 'industrial'],
+  dramatic: ['metal', 'punk', 'hard rock', 'gothic rock', 'progressive rock', 'post-rock', 'grunge', 'rock opera', 'orchestral', 'cinematic', 'opera', 'epic', 'industrial'],
   playful:  ['dance pop', 'pop dance', 'k-pop', 'j-pop', 'europop', 'eurodance', 'electropop', 'tropical house', 'disco', 'funk', 'party', 'bubblegum', 'teen pop', 'boy band', 'girl group', 'ska'],
 };
 
