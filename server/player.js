@@ -762,7 +762,20 @@ function _connectMpdIdle() {
     const socket = net.createConnection(6600, '127.0.0.1');
     let buf = '';
     let greeted = false;
-    const reconnect = () => { socket.destroy(); setTimeout(_connectMpdIdle, 5000); };
+    // AUDIT-2026-08-24: was unguarded — 'error' fires reconnect() (which
+    // itself calls socket.destroy()), and destroy() then triggers this same
+    // socket's own 'close' event, which ALSO calls reconnect() a second
+    // time, scheduling two overlapping 5s-later _connectMpdIdle() calls
+    // instead of one. Repeated MPD instability (e.g. a restart triggered by
+    // mpd-transport.js) could compound this into an exponentially growing
+    // number of concurrent idle sockets. socket.destroyed is set
+    // synchronously by the first destroy() call, so checking it makes a
+    // second reconnect() on the same socket a no-op.
+    const reconnect = () => {
+      if (socket.destroyed) return;
+      socket.destroy();
+      setTimeout(_connectMpdIdle, 5000);
+    };
 
     socket.on('data', (chunk) => {
       buf += chunk.toString();
