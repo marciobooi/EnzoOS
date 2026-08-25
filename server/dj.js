@@ -540,6 +540,9 @@ function cleanupOrphanedClips() {
 // ── Session state machine ─────────────────────────────────────────────────
 const state = {
   active: false,
+  // AUDIT-2026-08-24: set synchronously (before any await) at the very top
+  // of start() to close a TOCTOU race — see start()'s own comment.
+  starting: false,
   pool: [],
   queue: [],
   pending: null, // { text, wavPath, forTrack } for the track about to play, prepared ahead of time
@@ -855,60 +858,80 @@ async function releaseSourceIfStillDj() {
 }
 
 async function start() {
-  if (state.active) return { alreadyActive: true };
-  cleanupOrphanedClips();
-  const token = await getValidAccessToken();
-  if (!token) {
-    broadcastState({ phase: 'error', message: 'Spotify is not connected.' });
-    return { error: 'spotify_not_connected' };
-  }
-  const pool = await getSpotifyTrackPool(token);
-  if (pool.length === 0) {
-    broadcastState({ phase: 'error', message: 'No Spotify tracks available — save some Liked Songs first.' });
-    return { error: 'empty_pool' };
-  }
-  state.deviceId = await ensureSpotifyDevice(token);
-  if (!state.deviceId) {
-    // Without our own device id every poll would have to accept whatever
-    // device Spotify calls active — i.e. the user's phone — which is exactly
-    // the confusion this session is meant to avoid. Fail loudly instead.
-    broadcastState({ phase: 'error', message: `${LIBRESPOT_DEVICE_NAME} is not available on Spotify yet — try again in a moment.` });
-    return { error: 'device_unavailable' };
-  }
-  // Claim the active source server-side. DJ and Spotify are separate sources
-  // that happen to share the same Connect device, and until this existed only
-  // the kiosk's own click handler ever set the source — so starting DJ any
-  // other way (this REST endpoint, a second screen, a client that missed the
-  // event) left active_source stuck on 'spotify'. Every Spotify-source client
-  // then kept polling /me/player on its 3s timer and rebroadcasting whatever
-  // it found — usually the phone's paused state — straight over the top of
-  // the DJ's own now-playing broadcasts, which is why the kiosk showed a
-  // frozen, wrong, paused track while the DJ was audibly playing something
-  // else. Reusing SET_SOURCE rather than inventing a parallel mechanism means
-  // the existing "stop the previous source" teardown runs too.
-  // Verified live: active_source read 'spotify' throughout a DJ session.
-  emit('SET_SOURCE', { source: 'dj', spotify: false });
-  // Belt-and-suspenders beyond SET_SOURCE's own previousSource-based teardown:
-  // that logic only fires correctly if cachedSourceState already reflects
-  // whatever was really playing (radio, local, etc.) — a stale/reset value
-  // (e.g. right after a resonance-api restart) would skip it, leaving MPD's
-  // stream mixed into the shared PipeWire input alongside DJ's Spotify audio.
-  // Reported live as "DJ is passing radio". DJ must own the input exclusively
-  // no matter what the tracked previous source was, so stop MPD unconditionally.
-  await execFilePromise('mpc', ['stop']).catch(() => {});
+  // AUDIT-2026-08-24: the OLD check here was `if (state.active) return
+  // {alreadyActive:true}` with state.active only actually set to true after
+  // several awaited network calls below (token, pool, device) — a classic
+  // TOCTOU gap. Two close-together start() calls (a double-tap on the DJ
+  // button, or two remote screens both pressing it) both read state.active
+  // as false and both proceed through the whole async setup concurrently,
+  // both eventually setting state.active=true and calling runLoop() — two
+  // loops then fight over the same shared state.queue/pool/pending/
+  // pollInterval. `state.starting` is claimed synchronously, before any
+  // await, closing the gap: JS's single-threaded execution guarantees no
+  // other call can slip in between the check and the claim.
+  if (state.active || state.starting) return { alreadyActive: true };
+  state.starting = true;
+  try {
+    cleanupOrphanedClips();
+    const token = await getValidAccessToken();
+    if (!token) {
+      broadcastState({ phase: 'error', message: 'Spotify is not connected.' });
+      return { error: 'spotify_not_connected' };
+    }
+    const pool = await getSpotifyTrackPool(token);
+    if (pool.length === 0) {
+      broadcastState({ phase: 'error', message: 'No Spotify tracks available — save some Liked Songs first.' });
+      return { error: 'empty_pool' };
+    }
+    state.deviceId = await ensureSpotifyDevice(token);
+    if (!state.deviceId) {
+      // Without our own device id every poll would have to accept whatever
+      // device Spotify calls active — i.e. the user's phone — which is exactly
+      // the confusion this session is meant to avoid. Fail loudly instead.
+      broadcastState({ phase: 'error', message: `${LIBRESPOT_DEVICE_NAME} is not available on Spotify yet — try again in a moment.` });
+      return { error: 'device_unavailable' };
+    }
+    // Claim the active source server-side. DJ and Spotify are separate sources
+    // that happen to share the same Connect device, and until this existed only
+    // the kiosk's own click handler ever set the source — so starting DJ any
+    // other way (this REST endpoint, a second screen, a client that missed the
+    // event) left active_source stuck on 'spotify'. Every Spotify-source client
+    // then kept polling /me/player on its 3s timer and rebroadcasting whatever
+    // it found — usually the phone's paused state — straight over the top of
+    // the DJ's own now-playing broadcasts, which is why the kiosk showed a
+    // frozen, wrong, paused track while the DJ was audibly playing something
+    // else. Reusing SET_SOURCE rather than inventing a parallel mechanism means
+    // the existing "stop the previous source" teardown runs too.
+    // Verified live: active_source read 'spotify' throughout a DJ session.
+    emit('SET_SOURCE', { source: 'dj', spotify: false });
+    // Belt-and-suspenders beyond SET_SOURCE's own previousSource-based teardown:
+    // that logic only fires correctly if cachedSourceState already reflects
+    // whatever was really playing (radio, local, etc.) — a stale/reset value
+    // (e.g. right after a resonance-api restart) would skip it, leaving MPD's
+    // stream mixed into the shared PipeWire input alongside DJ's Spotify audio.
+    // Reported live as "DJ is passing radio". DJ must own the input exclusively
+    // no matter what the tracked previous source was, so stop MPD unconditionally.
+    await execFilePromise('mpc', ['stop']).catch(() => {});
 
-  state.pool = pool;
-  state.active = true;
-  state.queue = [];
-  state.pending = null;
-  // Fresh session — no mood pinned, no play history, no stale pivot signal.
-  state.mood = null;
-  state.pivotRequested = false;
-  state.generation = 0;
-  state.playedUris = new Set();
-  broadcastState({ phase: 'starting' });
-  state.loopPromise = runLoop();
-  return { started: true };
+    state.pool = pool;
+    state.active = true;
+    state.queue = [];
+    state.pending = null;
+    // Fresh session — no mood pinned, no play history, no stale pivot signal.
+    state.mood = null;
+    state.pivotRequested = false;
+    state.generation = 0;
+    state.playedUris = new Set();
+    broadcastState({ phase: 'starting' });
+    state.loopPromise = runLoop();
+    return { started: true };
+  } finally {
+    // Cleared unconditionally on every exit path (success, any early
+    // `return { error: ... }`, or an unexpected throw) — state.active being
+    // true from here on is what actually blocks a subsequent start() call;
+    // this flag only ever needed to cover the window before that.
+    state.starting = false;
+  }
 }
 
 // Pins (or clears, if moodId is null) the announcer's energy for every line
