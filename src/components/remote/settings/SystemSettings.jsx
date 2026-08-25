@@ -67,6 +67,23 @@ export default function SystemSettings({ inline = false }) {
     try { await api.ejectUsb(); setUsbStatus({ mounted: false }); toast.success(t('settings.usbEjected')); }
     catch (e) { reportError(e.message); }
   };
+  // AUDIT-2026-08-25: usbStatus otherwise only ever refreshes when this row
+  // is tapped open — leave it open and unplug/eject the drive from a
+  // DIFFERENT screen (or physically) and it kept showing stale mounted/
+  // free-space info indefinitely. server/storage.js's own USB_STORAGE
+  // broadcast (see src/websocket.js's 'usb-storage-changed' window event)
+  // carries only {mounted, path}, not the full {label, freeMb, totalMb}
+  // shape this row needs, so re-fetch the real details rather than
+  // applying the broadcast payload directly — only while the row is
+  // actually open, to avoid a pointless fetch for a closed panel.
+  useEffect(() => {
+    const onUsbChange = () => {
+      if (!showUsb) return;
+      api.getUsbStatus().then(setUsbStatus).catch(() => setUsbStatus({ mounted: false }));
+    };
+    window.addEventListener('usb-storage-changed', onUsbChange);
+    return () => window.removeEventListener('usb-storage-changed', onUsbChange);
+  }, [showUsb]);
 
   // ── Bluetooth output (headphones/speakers) ──────────────────────────────────
   const [showBtOut, setShowBtOut]     = useState(false);

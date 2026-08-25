@@ -749,6 +749,17 @@ async function handleEvent(type, payload, excludeWs) {
       break;
     }
 
+    // AUDIT-2026-08-25: server/storage.js's own comment says this emit()
+    // exists specifically "so connected clients update live" on a real USB
+    // mount/unmount — but with no case for it here, it fell through to the
+    // `default` branch below and was silently dropped (just a
+    // console.warn), never reaching broadcast() at all. No client could
+    // have received it regardless of what it listened for.
+    case 'USB_STORAGE': {
+      broadcast({ type: 'USB_STORAGE', payload }, excludeWs);
+      break;
+    }
+
     default:
       console.warn('[EventService] Unknown event type:', type);
   }

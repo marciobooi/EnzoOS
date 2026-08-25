@@ -356,6 +356,22 @@ export function useResonanceWS({
                 window.dispatchEvent(new CustomEvent('dj-mood', { detail: payload.mood ?? null }));
               }
             }
+
+            // AUDIT-2026-08-25: server/storage.js emits this on every real
+            // USB mount/unmount specifically "so connected clients update
+            // live" (its own comment), but nothing on the client ever
+            // listened for it — SystemSettings.jsx only ever fetched
+            // usbStatus once, on-demand, when its USB row was tapped open.
+            // Leave that panel open, unplug/eject from elsewhere, and it
+            // shows stale mounted/free-space info until closed and
+            // reopened. The broadcast payload itself is minimal ({mounted,
+            // path}) — not the full {label, freeMb, totalMb} shape the UI
+            // needs — so this just signals "something changed"; the
+            // listener re-fetches the real details itself, same
+            // self-contained window-event pattern as dj-mood above.
+            if (type === 'USB_STORAGE') {
+              window.dispatchEvent(new CustomEvent('usb-storage-changed', { detail: payload }));
+            }
         } catch (err) {
           console.error('[Resonance WS] Error parsing WS message:', err);
         }
