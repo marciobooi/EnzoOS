@@ -233,6 +233,17 @@ router.post('/play-radio', async (req, res) => {
     if (name) await setSetting('last_radio_name', name);
     await setSetting('last_radio_favicon', favicon || '');
 
+    // Route through EventService BEFORE starting mpc playback below: SET_SOURCE's
+    // teardown of the previous source (mpc stop, pause Spotify, stop shairport-sync
+    // etc.) is awaited there specifically so a late `mpc stop` can't race and kill
+    // the track we're about to start (see the AWAITED comment in event-service.js's
+    // SET_SOURCE handler). Calling this after mpc play — as this route used to —
+    // let that race happen: playback would start, then get killed by the previous
+    // source's teardown a moment later, silent until the next full source switch.
+    // skipAutoResume=true — we do the mpc play ourselves below with this request's
+    // exact url/name/favicon rather than whatever SET_SOURCE would reload from the DB.
+    await emit('SET_SOURCE', { spotify: false, source: 'radio', skipAutoResume: true });
+
     // Clear playlist, add URL, play. Repeat on so HLS streams reconnect on segment-list end.
     await execPromise('mpc repeat on');
     await execPromise('mpc clear');
@@ -253,9 +264,6 @@ router.post('/play-radio', async (req, res) => {
       },
     };
 
-    // Route through EventService: persists active_source + broadcasts to all clients.
-    // skipAutoResume=true tells the handler not to restart MPC — we already did it above.
-    await emit('SET_SOURCE', { spotify: false, source: 'radio', skipAutoResume: true });
     await emit('PLAYBACK_STATE', stateUpdate);
 
     res.json({ success: true });
