@@ -772,7 +772,7 @@ const PlayerDisplay = React.memo(function PlayerDisplay({
                       aria-label={label}
                       aria-pressed={djMood === id}
                     >
-                      <Icon className="h-3 w-3" />
+                      <Icon className="h-3.5 w-3.5" />
                     </button>
                   ))}
                 </div>
