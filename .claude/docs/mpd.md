@@ -1,14 +1,18 @@
-# MPD 0.23.5 + mpc
+# MPD 0.23.14 + mpc
 
 Docs: mpd.readthedocs.io (user manual, plugins). Config:
 `/etc/mpd.conf` — written by `install.sh` (~line 547); runs as `pi` via drop-in
 (`/etc/systemd/system/mpd.service.d/run-as-user.conf`) so it can reach
 PipeWire; music at `/var/lib/mpd/music`.
 
-**Version correction (2026-08-02)**: this file previously said 0.23.14 —
-`mpc version` on the real Pi reports **0.23.5**. Verify live (`mpc version`)
-before trusting a version-sensitive claim anywhere in this doc; this package
-has drifted from what was originally pinned at least once already.
+**This package is not pinned and genuinely drifts** — not a one-time typo.
+2026-08-02: corrected a stale "0.23.14" to "0.23.5" after `mpc version` showed
+0.23.5 live. 2026-08-24: `mpd --version` on the same box now reports
+**0.23.14** again (Ubuntu 24.04's own repo, via unattended-upgrades or a
+manual `apt upgrade` — this project doesn't `apt-mark hold` this package).
+Don't "correct" this doc again without expecting it to drift once more —
+always verify live (`mpd --version` / `mpc version`) before trusting any
+version-sensitive claim in this file, rather than assuming either number.
 
 ## Project outputs (mpd.conf)
 1. `"CamillaDSP Input"` — alsa, device `camilla_input` (dmix→loopback), `mixer_type none`. Default/enabled.
