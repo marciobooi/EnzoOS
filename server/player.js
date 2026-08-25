@@ -1791,7 +1791,14 @@ router.post('/replaygain', async (req, res) => {
 // ── Crossfade (#5) ────────────────────────────────────────────────────────────
 router.get('/crossfade', async (req, res) => {
   try {
-    const { stdout } = await execPromise('mpc status');
+    // AUDIT-2026-08-24: was `mpc status`, which never includes a crossfade
+    // line at all (confirmed live — its output is just the volume/repeat/
+    // random/single/consume summary line) — the exact same "display always
+    // shows off/default while MPD/DB genuinely differ" bug class as the
+    // ReplayGain regex fixed in 11e2d0d, just for a different setting. The
+    // bare query form `mpc crossfade` (no argument) is what actually prints
+    // "crossfade: N".
+    const { stdout } = await execPromise('mpc crossfade');
     const match = stdout.match(/crossfade:\s*(\d+)/i);
     res.json({ seconds: match ? parseInt(match[1], 10) : 0 });
   } catch { res.json({ seconds: 0 }); }
