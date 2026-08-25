@@ -188,13 +188,33 @@ async function ensureSpotifyDevice(token) {
 // gives a bigger, more varied pool than either alone, and both are always
 // available for any account with listening history (no user-picked
 // playlist needed for this first pass).
+//
+// AUDIT-2026-08-25: was a single page of 50 each (100 tracks max). Reported
+// live as mood matching being weak — e.g. "Playful" pulling non-party tracks
+// into the top 5 — and with pickTracks() always taking the top N by score
+// regardless of how low that score is (never starving the set dry, see
+// pickTracks() below), a shallow pool starves the REAL fix: more raw
+// candidates for the mood to actually find matches among. Paginating to 3
+// pages (up to 150) of each roughly triples the odds a given mood's genre
+// keywords find enough genuine matches before pickTracks() has to fall back
+// to near-random score-0 tracks to fill out the set.
+const POOL_PAGES = 3;
+const POOL_PAGE_SIZE = 50;
+
+async function fetchPaged(fetchPage) {
+  const pages = await Promise.all(
+    Array.from({ length: POOL_PAGES }, (_, i) => fetchPage(i * POOL_PAGE_SIZE).catch(() => null))
+  );
+  return pages.flatMap(data => data?.items || []);
+}
+
 async function getSpotifyTrackPool(token) {
-  const [savedData, topData] = await Promise.all([
-    spotifyApi.getSavedTracks(token, 50).catch(() => null),
-    spotifyApi.getUserTopTracks(token, 50, 'medium_term').catch(() => null),
+  const [savedItems, topItems] = await Promise.all([
+    fetchPaged(offset => spotifyApi.getSavedTracks(token, POOL_PAGE_SIZE, offset)),
+    fetchPaged(offset => spotifyApi.getUserTopTracks(token, POOL_PAGE_SIZE, 'medium_term', offset)),
   ]);
-  const saved = (savedData?.items || []).map(i => i.track).filter(Boolean);
-  const top = topData?.items || [];
+  const saved = savedItems.map(i => i.track).filter(Boolean);
+  const top = topItems;
   const seen = new Set();
   const pool = [];
   for (const t of [...saved, ...top]) {
@@ -221,12 +241,22 @@ async function getSpotifyTrackPool(token) {
 // "modern rock" with no obvious keyword overlap), so pickTracks() always
 // tops up with the general pool rather than ever starving a mood down to
 // too few candidates.
+// AUDIT-2026-08-25: "playful" (the mood button carrying the party-popper
+// icon in the UI — see PlayerDisplay.jsx/shared.jsx DJ_MOODS) used to
+// include bare 'pop' as a keyword. Spotify's "pop" tag is its broadest,
+// noisiest genre bucket — it covers everything from dance-pop to somber
+// singer-songwriter pop — so any track with ANY pop-ish tag scored a match
+// regardless of whether it was remotely upbeat. Reported live as roughly 3
+// of 5 suggested "party" tracks not actually being party tracks. Replaced
+// with more specific tags that actually signal upbeat/party pop rather than
+// pop in general; 'casual' keeps bare 'pop' since that mood is deliberately
+// broad/generic.
 const MOOD_GENRE_KEYWORDS = {
-  hype:     ['dance', 'edm', 'electro', 'house', 'techno', 'trap', 'hip hop', 'rap', 'dubstep', 'drum and bass', 'party'],
+  hype:     ['dance', 'edm', 'electro', 'house', 'techno', 'trap', 'hip hop', 'rap', 'dubstep', 'drum and bass', 'party', 'big room', 'festival', 'moombahton', 'brostep', 'future bass', 'melbourne bounce'],
   chill:    ['chill', 'acoustic', 'ambient', 'lo-fi', 'lofi', 'sleep', 'folk', 'singer-songwriter', 'jazz', 'soul', 'bossa nova', 'soft'],
   casual:   ['pop', 'indie', 'singer-songwriter', 'coffeehouse', 'soft rock', 'adult standards'],
   dramatic: ['metal', 'rock', 'punk', 'hard rock', 'orchestral', 'cinematic', 'opera', 'epic', 'industrial'],
-  playful:  ['pop', 'dance pop', 'k-pop', 'disco', 'funk', 'party', 'bubblegum', 'ska'],
+  playful:  ['dance pop', 'pop dance', 'k-pop', 'j-pop', 'europop', 'eurodance', 'electropop', 'tropical house', 'disco', 'funk', 'party', 'bubblegum', 'teen pop', 'boy band', 'girl group', 'ska'],
 };
 
 // Score, not a flat yes/no: counts how many of a track's (deduped, ALL-
@@ -234,12 +264,20 @@ const MOOD_GENRE_KEYWORDS = {
 // "edm" and "party" for Hype should outrank one that just barely touches
 // "pop", not tie with it under a binary check. AUDIT-2026-08-03 improvement
 // pass on the original match/no-match version, per "so we can improve this?".
+//
+// Hyphens normalized to spaces on both sides before matching: Spotify's own
+// genre tags are inconsistently hyphenated ("dance-pop", "k-pop") vs
+// space-separated ("hip hop", "drum and bass") for otherwise-equivalent
+// compound genres, and this list was written with the space-separated style
+// — "dance pop" as a keyword silently never matched the real tag
+// "dance-pop" before this normalization (AUDIT-2026-08-25).
 function genreMatchScore(genres, moodId) {
   const keywords = MOOD_GENRE_KEYWORDS[moodId];
   if (!keywords || !genres?.length) return 0;
   let score = 0;
-  for (const g of genres) {
-    if (keywords.some(kw => g.includes(kw))) score++;
+  for (const rawG of genres) {
+    const g = rawG.replace(/-/g, ' ');
+    if (keywords.some(kw => g.includes(kw.replace(/-/g, ' ')))) score++;
   }
   return score;
 }

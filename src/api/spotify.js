@@ -191,8 +191,8 @@ export const spotifyApi = {
    * save/remove/contains calls to /me/library; GET /me/tracks for listing is
    * unaffected — verified live against the real API).
    */
-  async getSavedTracks(token, limit = 50) {
-    const response = await fetch(`${SPOTIFY_API_URL}/me/tracks?limit=${limit}`, {
+  async getSavedTracks(token, limit = 50, offset = 0) {
+    const response = await fetch(`${SPOTIFY_API_URL}/me/tracks?limit=${limit}&offset=${offset}`, {
       headers: { 'Authorization': `Bearer ${token}` }
     });
     return handleResponse(response);
@@ -220,8 +220,8 @@ export const spotifyApi = {
   },
 
   /** Fetches the user's top tracks. */
-  async getUserTopTracks(token, limit = 20, timeRange = 'short_term') {
-    const response = await fetch(`${SPOTIFY_API_URL}/me/top/tracks?limit=${limit}&time_range=${timeRange}`, {
+  async getUserTopTracks(token, limit = 20, timeRange = 'short_term', offset = 0) {
+    const response = await fetch(`${SPOTIFY_API_URL}/me/top/tracks?limit=${limit}&time_range=${timeRange}&offset=${offset}`, {
       headers: { 'Authorization': `Bearer ${token}` }
     });
     return handleResponse(response);
