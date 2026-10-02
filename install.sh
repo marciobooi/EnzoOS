@@ -903,7 +903,7 @@ cat <<RASPOEOF >> /etc/raspotify/conf
 # EXACT symptom recurs (metadata frozen while audio keeps changing), change
 # this name to something never used before — do not try to reuse a
 # previously-poisoned one, it will not un-stick itself.
-LIBRESPOT_NAME="Resonance HiFi"
+LIBRESPOT_NAME="ResonanceOS Pi"
 LIBRESPOT_BITRATE=320
 LIBRESPOT_BACKEND=alsa
 # plug: prefix adds ALSA's rate/format converter so librespot's 44100 Hz

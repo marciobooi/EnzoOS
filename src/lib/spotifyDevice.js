@@ -27,4 +27,15 @@
 // far: "Resonance Connect", "Resonance HiFi", "EnzoOS HiFi" (this last one
 // was never stuck — just renamed again for on-brand naming, not a bug).
 // Do not reuse any of these three.
-export const LIBRESPOT_DEVICE_NAME = 'ResonanceOS';
+//
+// AUDIT-2026-10-02: recurred on "ResonanceOS" — every Web API command returned
+// 200 but Spotify's cloud state never changed (same track, is_playing forever,
+// progress_ms ≈ -3.2e9 = -37.5 days). Probable ROOT CAUSE for this whole family
+// of "stuck" reports: the Pi 4 has no RTC, so after a long power-off it booted
+// with the old clock (restored by timesyncd), raspotify connected to Spotify
+// BEFORE NTP, then the clock jumped weeks forward, leaving timestamps in
+// Spotify's cache that can never be reconciled. install.sh now orders
+// raspotify/resonance-api after systemd-time-wait-sync (capped at 60 s), so
+// this should no longer recur. Burned names now: "Resonance Connect",
+// "Resonance HiFi", "EnzoOS HiFi", "ResonanceOS" — do not reuse any of them.
+export const LIBRESPOT_DEVICE_NAME = 'ResonanceOS Pi';
