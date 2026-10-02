@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { toast } from './lib/toast';
+import { getCookie } from './lib/cookies';
 
 /**
  * Apply a full /api/status snapshot to all React state setters at once.
@@ -143,8 +144,7 @@ export function useResonanceWS({
         // Browsers can't set headers on the WS handshake, so the remote-access
         // token (if any) travels in the query string. The kiosk has no token and
         // is authorized via loopback on the server.
-        const m = `; ${document.cookie}`.split('; remote_token=');
-        const wsToken = m.length === 2 ? m.pop().split(';').shift() : null;
+        const wsToken = getCookie('remote_token');
         const wsUrl = `${wsProtocol}//${window.location.host}/ws${wsToken ? `?token=${encodeURIComponent(wsToken)}` : ''}`;
         socket = new WebSocket(wsUrl);
         ws.current = socket;

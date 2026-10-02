@@ -5,10 +5,9 @@
 // cookie at login, after which every API call carries the token automatically —
 // without having to thread it through dozens of call sites.
 
-export const getAuthToken = () => {
-  const m = `; ${document.cookie}`.split('; remote_token=');
-  return m.length === 2 ? m.pop().split(';').shift() : null;
-};
+import { getCookie } from './cookies.js';
+
+export const getAuthToken = () => getCookie('remote_token');
 
 let installed = false;
 
