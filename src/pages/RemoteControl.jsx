@@ -815,7 +815,7 @@ export default function RemoteControl() {
   // (AUDIT-2026-08-02).
   const handlePlayFromQueue = async uri => {
     try {
-      await playOnResonance(() => api.addToQueue(token, uri).then(() => api.skipNext(token)));
+      await playOnResonance(() => api.addToSpotifyQueue(token, uri).then(() => api.skipNext(token)));
       setTimeout(() => { localSync(); requestWSStateSync(); fetchQueue(); }, 800);
     } catch (e) { reportError(e.message); }
   };

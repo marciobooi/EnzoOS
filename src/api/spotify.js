@@ -107,7 +107,7 @@ export const spotifyApi = {
    * playTrackFromQueue in RemoteControl.jsx for why this exists instead of
    * a plain uris:[uri] play call.
    */
-  async addToQueue(token, uri) {
+  async addToSpotifyQueue(token, uri) {
     const response = await fetch(`${SPOTIFY_API_URL}/me/player/queue?uri=${encodeURIComponent(uri)}`, {
       method: 'POST',
       headers: { 'Authorization': `Bearer ${token}` }
