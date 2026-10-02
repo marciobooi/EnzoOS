@@ -936,6 +936,11 @@ TARGET_UID=$(id -u "$TARGET_USER")
 # was dead until a phone poked it (confirmed live 2026-10-02 after a 5-week
 # power-off). Hold both services until systemd-time-wait-sync reports a sync.
 systemctl enable systemd-time-wait-sync.service 2>/dev/null || true
+# Cap the wait at 60 s: with no internet the sync never completes, and
+# raspotify/resonance-api (Wants=, not Requires=) must still start offline.
+mkdir -p /etc/systemd/system/systemd-time-wait-sync.service.d
+printf '[Service]\nTimeoutStartSec=60\n' \
+  > /etc/systemd/system/systemd-time-wait-sync.service.d/10-resonance-timeout.conf
 for unit in raspotify resonance-api; do
   mkdir -p /etc/systemd/system/$unit.service.d
   printf '[Unit]\nAfter=time-sync.target\nWants=time-sync.target\n' \
