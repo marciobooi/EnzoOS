@@ -930,6 +930,17 @@ RASPOEOF
 # (/run/user/0 doesn't exist), so ALSA "default" → PipeWire routing above
 # would only work by accident. Matches the pattern MPD already uses.
 TARGET_UID=$(id -u "$TARGET_USER")
+# The Pi has no battery-backed RTC: it boots with the last saved time and only
+# reaches NTP a while later. Without this, librespot connected to Spotify with a
+# clock weeks in the past, then the clock jumped forward and the Connect session
+# was dead until a phone poked it (confirmed live 2026-10-02 after a 5-week
+# power-off). Hold both services until systemd-time-wait-sync reports a sync.
+systemctl enable systemd-time-wait-sync.service 2>/dev/null || true
+for unit in raspotify resonance-api; do
+  mkdir -p /etc/systemd/system/$unit.service.d
+  printf '[Unit]\nAfter=time-sync.target\nWants=time-sync.target\n' \
+    > /etc/systemd/system/$unit.service.d/30-resonance-wait-for-time.conf
+done
 mkdir -p /etc/systemd/system/raspotify.service.d
 cat > /etc/systemd/system/raspotify.service.d/10-resonance-run-as-user.conf <<RASPOUSEREOF
 [Service]

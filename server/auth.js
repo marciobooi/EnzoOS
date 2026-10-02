@@ -11,11 +11,11 @@ import { sendError, unauthorized } from './lib/errors.js';
 //
 // Authentication is QR-code-only: no username/password. The kiosk generates a
 // short-lived (10 min) single-use token and bakes it into the remote URL as
-// ?qr=<token>. The remote page redeems it for a long-lived (30-day) bearer
+// ?qr=<token>. The remote page redeems it for a long-lived (1-year) bearer
 // token stored in a cookie (the cookie itself is set to expire after 365
-// days, but the signed token embedded in it stops verifying after 30 — the
-// remote silently drops back to the QR gate at that point, requiring
-// re-pairing). Tokens are HMAC-signed with a per-install secret kept in the
+// days, matching the token lifetime — a 30-day token expired while the Pi
+// was switched off for five weeks and the paired phone fell back to the QR
+// gate). Tokens are HMAC-signed with a per-install secret kept in the
 // DB, so they survive restarts and cannot be forged without the secret.
 //
 // There is no way to revoke a single issued token short of rotating
@@ -23,7 +23,7 @@ import { sendError, unauthorized } from './lib/errors.js';
 // device needs to re-scan the QR code). Fine for a single-household
 // appliance; would need a per-token ID + revocation list for multi-tenant use.
 
-const TOKEN_TTL_MS    = 30 * 24 * 60 * 60 * 1000;  // 30-day bearer session
+const TOKEN_TTL_MS    = 365 * 24 * 60 * 60 * 1000; // 1-year bearer session
 const QR_TTL_MS       = 10 * 60 * 1000;             // 10 min QR token
 
 let cachedSecret = null;
