@@ -43,7 +43,12 @@ TARGET="$NETPLAN_DIR/90-resonance-nm-wifi.yaml"
 # this caused multi-second latency spikes and dropped SSH/remote connections
 # the moment NM took over wlan0 — observed live. 2 = disable. Written before
 # any migration so the very first NM association already runs without it.
-PS_CONF="/etc/NetworkManager/conf.d/91-resonance-wifi-powersave-off.conf"
+# The file name MUST sort after default-wifi-powersave-on.conf — NM applies
+# conf.d files in lexical order, last one wins, so the old "91-" name was
+# silently overridden and power saving stayed ON (confirmed live 2026-10-02
+# via `NetworkManager --print-config` → wifi.powersave=3 despite the file).
+PS_CONF="/etc/NetworkManager/conf.d/zz-resonance-wifi-powersave-off.conf"
+rm -f /etc/NetworkManager/conf.d/91-resonance-wifi-powersave-off.conf
 if [ ! -f "$PS_CONF" ]; then
   mkdir -p /etc/NetworkManager/conf.d
   cat > "$PS_CONF" <<'PSEOF'
